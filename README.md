@@ -3,13 +3,17 @@
 Das Tool unterstützt Sie bei der Erfassung Ihrer Arbeitszeiten. 
 ![Main Screen](/assets/mainPage_Screenshot.png)
 
+### Dashboard
+![Main Screen](/assets/Dashboard_Screenshot.png)
+
 ## Hauptfunktionen
 
 - **Erfassung von Arbeitszeiten:** Nutzer können die Startzeit, Endzeit und Pausenzeit eingeben.
 - **Auswahl des Standortes:** Nutzer können auswählen, ob sie im Büro, im Home Office oder auf Dienstreise arbeiten.
 - **Beschreibung hinzufügen:** Optionen wie Urlaub, Feiertag und Krankheit sind verfügbar.
-- **Statistik:** Es werden Statistiken über die Arbeitszeit für den aktuellen Monat und das Jahr angezeigt.
+- **Statistik:** Es werden Statistiken über die Arbeitszeit für den aktuellen Monat und das Jahr angezeigt mit Dashboard
 - **Übersicht der Arbeitszeiten:** Eine detaillierte Tabelle mit allen Arbeitszeiten, die der Benutzer eingibt.
+- **Automatische Berechnung** der Arbeitstage in diesem Monat und **Feiertage** weren berücksichtigt
 
 ## Abhängigkeiten und Ressourcen
 
@@ -23,7 +27,7 @@ Das Tool unterstützt Sie bei der Erfassung Ihrer Arbeitszeiten.
 
 - Kopieren Sie alle Dateien in Ihr gewünschtes Verzeichnis.
 - Fügen Sie die benötigten externen Bibliotheken hinzu. Diese werden im Haupt-HTML-Dateikopf referenziert.
-- Stellen Sie sicher, dass Sie die lokale Datei `functions.php` haben, da sie notwendige Funktionen enthält.
+
 
 ## Datenbank Konfiguration
 
