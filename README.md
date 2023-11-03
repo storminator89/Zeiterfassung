@@ -22,6 +22,7 @@ Das Tool unterstützt Sie bei der Erfassung Ihrer Arbeitszeiten.
 - **DataTables:** Für das Rendern und Managen von Tabellen.
 - **Chart.js:** Für das Zeichnen von Diagrammen (wenn implementiert).
 - **PDFMake und JSZip:** Für das Erstellen von PDF-Dateien und das Zippen von Daten.
+- **MS SQL Server** Aktuell wird nur Microsoft SQL Server Express unterstützt. Mehr sind geplant
 
 ## Installation
 
