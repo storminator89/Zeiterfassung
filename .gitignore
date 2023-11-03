@@ -1,0 +1,49 @@
+# Log-Dateien
+*.log
+
+# Temporäre Dateien
+*.tmp
+*.temp
+*.swp
+*.swo
+*.bak
+
+# Betriebssystem-Dateien
+.DS_Store
+.Thumbs.db
+
+# Python
+*.pyc
+__pycache__/
+
+# Node.js
+node_modules/
+npm-debug.log
+
+# Umgebungsdateien
+.env
+
+# Entwicklungsumgebungen
+.vscode/
+.idea/
+
+# Build-Verzeichnisse
+build/
+dist/
+
+# Datenbankdateien
+*.sqlite
+
+# Binäre Dateien
+*.bin
+*.exe
+*.o
+*.so
+
+# Backup-Dateien
+*~
+
+# Andere Tools
+*.sass-cache
+*.next
+

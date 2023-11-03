@@ -1,0 +1,86 @@
+body {
+    background-color: #ededed;
+    font-family: 'Source Sans Pro', sans-serif;
+}
+label {    
+    font-family: 'Source Sans Pro', sans-serif;
+}
+
+.rotating-logo {
+    animation: rotateLogo 100s infinite linear;
+}
+
+@keyframes rotateLogo {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.btn-primary {
+background-color: #59aa6e;
+font-family: 'Source Sans Pro', sans-serif;
+}
+
+.btn-success {
+background-color: #59aa6e;
+font-family: 'Source Sans Pro', sans-serif;
+}
+
+.navbar-custom {
+    background-color: #3b3e4d;
+    padding-left: 30px;
+    color: #3b3e4d;
+}
+
+.navbar-custom .nav-link {
+    font-size: 20px;
+    margin-right: 15px; 
+}
+
+.mt-5{
+    background-color: #fff;
+    font-family: 'Source Sans Pro', sans-serif;    
+    border: none;
+    border-radius: 10px;    
+    margin-bottom: 20px;    
+    padding-top: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+
+.grid-container {
+    display: grid;
+    grid-template-columns: auto 1fr;  /* Erste Spalte nimmt so viel Platz ein wie benötigt, zweite Spalte nimmt den verbleibenden Platz ein */
+    gap: 10px 15px;  /* Abstand zwischen den Zeilen und Spalten */
+}
+.font-weight-bold {
+    font-weight: bold;
+}
+
+.details-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.details-table th, 
+.details-table td {
+    border: 1px solid #d1d1d1;
+    padding: 8px 12px;
+    text-align: center;
+}
+
+.details-table th {
+    background-color: #f2f2f2;
+}
+
+.tooltip.bs-tooltip-bottom .tooltip-inner {
+    background-color: #dc3545;
+    color: #fff;
+}
+
+.tooltip.bs-tooltip-bottom .tooltip-arrow::before {
+    border-bottom-color: #dc3545;
+}
