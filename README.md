@@ -1,6 +1,7 @@
 # Arbeitszeiterfassung
 
 Das Tool unterstützt Sie bei der Erfassung Ihrer Arbeitszeiten. 
+![Main Screen](/assets/mainPage_Screenshot.png)
 
 ## Hauptfunktionen
 
