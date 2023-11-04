@@ -242,4 +242,10 @@ function getGermanDayName($date) {
     return $days[date("w", strtotime($date))];
 }
 
+//Gamification
+$stmt = $conn->prepare("SELECT COUNT(DISTINCT DATEPART(ISO_WEEK, startzeit)) as weeksCount FROM zeiterfassung");
+$stmt->execute();
+$result = $stmt->fetch(PDO::FETCH_ASSOC);
+$isFirstWeek = $result['weeksCount'] == 1;
+
 

@@ -157,5 +157,48 @@ label {
 }
 
 
+.alert-success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+    display: none; /* Versteckt zu Beginn */
+    border-radius: 5px;
+    padding: 15px 20px;
+    position: relative;
+    animation: zoomIn 0.6s ease-out forwards;
+}
+
+.alert-success .alert-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.alert-success strong {
+    font-size: 1.5em;
+    margin-left: 15px; /* Abstand zum Icon */
+}
+
+.alert-success p {
+    margin-top: 5px;
+}
+
+.fas.fa-trophy {
+    font-size: 1.5em;
+    color: gold; /* Farbe des Pokals */
+}
+
+@keyframes zoomIn {
+    0% {
+        transform: scale(0.2);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+
 
 

@@ -1,4 +1,5 @@
-<?php include 'functions.php'; ?>
+<?php include 'functions.php';
+session_start() ?>
 <!DOCTYPE html>
 <html lang="de">
 
@@ -128,6 +129,8 @@
                         </div>
                     </div>
                 </form>
+                <input type="hidden" id="isFirstWeek" value="<?php echo $isFirstWeek ? '1' : '0'; ?>">
+                <div id="firstWeekNotification" class="row mb-3"></div>
             </div>
         </div>
 
