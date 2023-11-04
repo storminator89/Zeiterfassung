@@ -61,7 +61,7 @@
         <h2>Zeiterfassung Arbeit</h2>
         <div class="row">
             <div class="col-md-12">
-                <form action="save.php" method="post">
+                <form action="save.php" method="post" id="mainForm">
                     <div class="row mb-3">
                         <div class="col">
                             <div class="form-group">

@@ -65,7 +65,7 @@ $(document).ready(function () {
     });
 
     const pauseButton = $('#pauseButton');
-    const pauseInput = $('#pauseInput');
+   // const pauseInput = $('#pauseInput');
     const pauseDisplay = $('#pauseDisplay');
     let startTime = parseInt(localStorage.getItem('startTime') || '0');
     let elapsedPauseInSeconds = parseInt(localStorage.getItem('elapsedPauseInSeconds') || '0');
@@ -140,42 +140,49 @@ $(document).ready(function () {
         });
     }
 
-    $('form').submit(function () {
+    const startzeitInput = document.querySelector('input[name="startzeit"]');
+    const endzeitInput = document.querySelector('input[name="endzeit"]');
+    const pauseInput = document.querySelector('#pauseInput');
+
+    const endzeitTooltip = new bootstrap.Tooltip(endzeitInput, {
+        title: "Endzeit sollte nach der Startzeit liegen.",
+        trigger: 'manual',
+        placement: 'bottom',
+        template: '<div class="tooltip custom-tooltip" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner"></div></div>'
+    });
+    
+    const pauseTooltip = new bootstrap.Tooltip(pauseInput, {
+        title: "Pause sollte nicht negativ sein.",
+        trigger: 'manual',
+        placement: 'bottom',
+        template: '<div class="tooltip custom-tooltip" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner"></div></div>'
+    });
+
+    $('#mainForm').on('submit', function(e) {
         const pauseManuell = $('#pauseManuell');
         if (pauseManuell.val()) {
-            pauseInput.val(pauseManuell.val());
+            pauseInput.value = pauseManuell.val();
         }
-        localStorage.removeItem('startzeit');
-        localStorage.removeItem('elapsedPauseInSeconds');
-    });
 
-    const startzeitInput = document.querySelector('input[name="startzeit"]');
-    const tooltip = new bootstrap.Tooltip(startzeitInput, {
-        placement: 'bottom',
-        trigger: 'manual' // Nur manuell anzeigen/ausblenden
-    });
-
-    /* need more test for the tooltip
-    $('form').on('submit', function (e) {
-        const endzeitInput = document.querySelector('input[name="endzeit"]');
-        const pauseInputValue = parseInt(document.querySelector('input[name="pause"]').value);
+        const pauseInputValue = parseInt(pauseInput.value);
         const startzeit = new Date(startzeitInput.value);
         const endzeit = new Date(endzeitInput.value);
 
         if (endzeit < startzeit) {
             e.preventDefault(); // Verhindert das Absenden des Formulars
-            tooltip.show();
+            endzeitTooltip.show();
         } else if (pauseInputValue < 0) {
             e.preventDefault(); // Verhindert das Absenden des Formulars
-            new bootstrap.Tooltip(pauseInput, {
-                trigger: 'manual'
-            }).show();
+            pauseTooltip.show();
         } else {
-            tooltip.hide();
+            endzeitTooltip.hide();
+            pauseTooltip.hide();
         }
-    });
-    */
 
+        // Löschen Sie die Einträge aus dem lokalen Speicher
+        localStorage.removeItem('startzeit');
+        localStorage.removeItem('elapsedPauseInSeconds');
+    });
 });
 
 

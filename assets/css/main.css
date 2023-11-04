@@ -88,3 +88,12 @@ font-family: 'Source Sans Pro', sans-serif;
 .tooltip.bs-tooltip-bottom .tooltip-arrow::before {
     border-bottom-color: #dc3545;
 }
+
+.custom-tooltip .tooltip-inner {
+    background-color: red;
+    color: white;
+}
+
+.custom-tooltip .tooltip-arrow::before {
+    border-bottom-color: red;
+}
