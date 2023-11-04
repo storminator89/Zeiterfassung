@@ -8,9 +8,9 @@ $records = $stmt->fetchAll();
 
 $currentWeekNumber = date("W");
 
-// Get total hours worked this week
+// Get total hours worked this week minus breaks
 $stmt = $conn->prepare('
-SELECT SUM(DATEDIFF(MINUTE, startzeit, endzeit)) as totalMinutes
+SELECT SUM(DATEDIFF(MINUTE, startzeit, endzeit) - pause) as totalMinutes
 FROM zeiterfassung
 WHERE YEAR(startzeit) = 2023
 AND DATEPART(ISO_WEEK, startzeit) = :weekNumber
@@ -18,7 +18,10 @@ AND DATEPART(ISO_WEEK, startzeit) = :weekNumber
 $stmt->bindParam(':weekNumber', $currentWeekNumber);
 $stmt->execute();
 $totalMinutesThisWeek = $stmt->fetchColumn();
-$totalHoursThisWeek = floor($totalMinutesThisWeek / 60);
+$totalHours = floor($totalMinutesThisWeek / 60);
+$remainingMinutes = $totalMinutesThisWeek % 60;
+$totalHoursThisWeek = $totalHours + round($remainingMinutes / 60, 1);
+
 
 
 // Heutiges Datum ermitteln
@@ -132,6 +135,26 @@ function fetchFeiertageDB($jahr)
 
 // Aufrufen der Funktion zu Jahresbeginn
 fetchFeiertageDB($currentYear);
+
+function fetchFeiertageDieseWoche($currentYear, $currentWeekNumber) {
+    global $conn;
+
+    // Feiertage dieser Woche aus der Datenbank abrufen
+    $stmt = $conn->prepare("
+        SELECT Datum
+        FROM Feiertage
+        WHERE YEAR(Datum) = :jahr
+        AND DATEPART(ISO_WEEK, Datum) = :weekNumber
+    ");
+    $stmt->bindParam(':jahr', $currentYear);
+    $stmt->bindParam(':weekNumber', $currentWeekNumber);
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Feiertage dieser Woche holen
+$feiertageDieseWoche = fetchFeiertageDieseWoche($currentYear, $currentWeekNumber);
+
 
 // Erster Tag des aktuellen Monats
 $firstDayOfTheMonth = "{$currentYear}-{$currentMonth}-01";

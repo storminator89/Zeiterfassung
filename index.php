@@ -62,7 +62,7 @@
 
     </nav>
     <div class="container mt-5 p-5">
-    <h2 class="fancy-title"><i class="fas fa-hourglass-start mr-2"></i>ZeitWerk - Zeiterfassung</h2>
+        <h2 class="fancy-title"><i class="fas fa-hourglass-start mr-2"></i> ZeitWerk - Zeiterfassung</h2>
         <div class="row">
             <div class="col-md-12">
                 <form action="save.php" method="post" id="mainForm">
@@ -151,7 +151,7 @@
                         <tbody>
                             <tr>
                                 <td><?= $workingDaysThisMonth ?></td>
-                                <td><?= $totalHoursThisWeek ?></td>
+                                <td><?= number_format($totalHoursThisWeek, 1) ?></td>
                                 <td>
                                     <?php if ($overHoursThisWeek > 0) : ?>
                                         <?= $overHoursThisWeek ?> Überstunden
@@ -176,6 +176,18 @@
                             </tr>
                         </tbody>
                     </table>
+                    <?php if (!empty($feiertageDieseWoche)) : ?>
+                        <div class="rtd-infobox">
+                            <div class="rtd-infobox-header"><i class="fas fa-info-circle"></i> Feiertage diese Woche:</div>
+                            <div class="rtd-infobox-content">
+                                <ul>
+                                    <?php foreach ($feiertageDieseWoche as $feiertag) : ?>
+                                        <li><?= getGermanDayName($feiertag['Datum']) ?>, <?= date("d.m.Y", strtotime($feiertag['Datum'])) ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -219,7 +231,9 @@
                         <td>
                             <form action="delete.php" method="post">
                                 <input type="hidden" name="id" value="<?= $record['id'] ?>">
-                                <button type="submit" class="btn btn-danger btn-sm">Löschen</button>
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-trash-alt mr-1"></i> Löschen
+                                </button>
                             </form>
                         </td>
                     </tr>

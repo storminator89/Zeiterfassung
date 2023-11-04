@@ -113,3 +113,49 @@ label {
 .custom-tooltip .tooltip-arrow::before {
     border-bottom-color: red;
 }
+
+.rtd-infobox {
+    border: 1px solid #e1e4e5;
+    margin-top: 20px;
+    border-radius: 4px;
+}
+
+.rtd-infobox-header {
+    background-color: #0366d6; 
+    color: white;
+    padding: 10px 20px; 
+    border-radius: 4px 4px 0 0;
+    font-weight: bold;
+    position: relative;
+}
+
+.rtd-infobox-header .fa-info-circle { 
+    margin-right: 10px;
+    vertical-align: middle;
+}
+
+.rtd-infobox-content {
+    padding: 15px;
+    background-color: #e6f1fa; 
+}
+
+.rtd-infobox-content li {
+    list-style-type: none;
+    margin-left: -20px;
+    padding-left: 20px;
+    position: relative;
+}
+
+.rtd-infobox-content li:before {
+    content: "\f073"; 
+    font-family: FontAwesome;
+    position: absolute;
+    left: 0;
+    top: 50%; 
+    transform: translateY(-50%); 
+    color: #0366d6; 
+}
+
+
+
+
