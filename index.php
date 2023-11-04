@@ -1,6 +1,7 @@
 <?php include 'functions.php'; ?>
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -33,6 +34,7 @@
     </script>
     <script src="./assets/js/main.js"></script>
 </head>
+
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom pl-3">
         <a class="navbar-brand" href="index.php">
@@ -61,28 +63,24 @@
             <div class="col-md-12">
                 <form action="save.php" method="post">
                     <div class="row mb-3">
-                        <!-- Startzeit -->
                         <div class="col">
                             <div class="form-group">
                                 <label for="startzeit">Startzeit</label>
                                 <input type="datetime-local" name="startzeit" class="form-control" required value="<?= date('Y-m-d\TH:i'); ?>">
                             </div>
                         </div>
-                        <!-- Endzeit -->
                         <div class="col">
                             <div class="form-group">
                                 <label for="endzeit">Endzeit</label>
                                 <input type="datetime-local" id="endzeit" name="endzeit" class="form-control">
                             </div>
                         </div>
-                        <!-- Pause Manuell -->
                         <div class="col">
                             <div class="form-group">
                                 <label for="pauseManuell">Pause (Manuell)</label>
                                 <input type="number" id="pauseManuell" class="form-control" placeholder="Manuell in Minuten">
                             </div>
                         </div>
-                        <!-- Pause in Minuten -->
                         <div class="col">
                             <div class="form-group">
                                 <label for="pauseDisplay">Pause (Minuten)</label>
@@ -94,7 +92,6 @@
                     </div>
 
                     <div class="row mb-3">
-                        <!-- Standort -->
                         <div class="col">
                             <div class="form-group">
                                 <label for="standort">Standort</label>
@@ -106,7 +103,6 @@
                                 </select>
                             </div>
                         </div>
-                        <!-- Beschreibung -->
                         <div class="col">
                             <div class="form-group">
                                 <label for="beschreibung">Beschreibung</label>
@@ -121,7 +117,6 @@
                     </div>
 
                     <div class="row mb-3">
-                        <!-- Hinzufügen Button -->
                         <div class="col">
                             <div class="form-group">
                                 <button type="submit" class="btn btn-primary">Hinzufügen</button>
@@ -140,6 +135,8 @@
                         <thead>
                             <tr>
                                 <th>Arbeitstage <?= $currentMonthName ?></th>
+                                <th>Arbeitsstunden diese Woche</th>
+                                <th>Überstunden diese Woche</th>
                                 <th>Arbeitsstunden im <?= $currentMonthName ?></th>
                                 <th>Gesamtstunden aktueller Monat</th>
                                 <th>Überstunden <?= $currentMonthName ?></th>
@@ -149,6 +146,16 @@
                         <tbody>
                             <tr>
                                 <td><?= $workingDaysThisMonth ?></td>
+                                <td><?= $totalHoursThisWeek ?></td>
+                                <td>
+                                    <?php if ($overHoursThisWeek > 0) : ?>
+                                        <?= $overHoursThisWeek ?> Überstunden
+                                    <?php elseif ($overHoursThisWeek < 0) : ?>
+                                        - <?= abs($overHoursThisWeek) ?> Stunden
+                                    <?php else : ?>
+                                        erwarteten Stunden
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= $workingHoursThisMonth ?></td>
                                 <td><?= $totalHoursThisMonthFromRecords ?></td>
                                 <td>
@@ -167,9 +174,8 @@
                 </div>
             </div>
         </div>
-        <br>
 
-        <h3>Arbeitszeiten</h3>
+        <h3 class="mt-4">Arbeitszeiten</h3>
         <table class="table">
             <thead>
                 <tr>
@@ -215,23 +221,49 @@
                 <?php } ?>
             </tbody>
         </table>
-    </div>
 
-    <div class="modal fade" id="aboutModal" tabindex="-1" role="dialog" aria-labelledby="aboutModalLabel">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                    <h4 class="modal-title" id="aboutModalLabel">About</h4>
-                </div>
-                <div class="modal-body">
-                    <p>Das Tool hilft für die Arbeitszeiterfassung</p>
+        <div class="row">
+            <div class="col-4">
+                <h3 class="main-title">Feiertage</h3>
+                <div class="toggle-content">
+                    <table class="details-table">
+                        <thead>
+                            <tr>
+                                <th>Datum</th>
+                                <th>Tag</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($feiertageThisYear as $feiertag) { ?>
+                                <tr>
+                                    <td><?= date("d.m.Y", strtotime($feiertag['Datum'])) ?></td>
+                                    <td><?= getGermanDayName($feiertag['Datum']) ?></td>
+                                </tr>
+                            <?php } ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
-    </div>
+
+
+
+        <div class="modal fade" id="aboutModal" tabindex="-1" role="dialog" aria-labelledby="aboutModalLabel">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                        <h4 class="modal-title" id="aboutModalLabel">About</h4>
+                    </div>
+                    <div class="modal-body">
+                        <p>Das Tool hilft für die Arbeitszeiterfassung</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
 
 </body>
 

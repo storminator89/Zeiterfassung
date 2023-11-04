@@ -59,36 +59,15 @@ foreach ($workHoursPerDay as $record) {
     $hours[] = $record['arbeitsstunden'];
 }
 
-function fetchFeiertage($jahr)
-{
-    if (isset($_SESSION['feiertage'][$jahr])) {
-        return $_SESSION['feiertage'][$jahr];
-    }
-
-    $url = "https://feiertage-api.de/api/?jahr=$jahr&nur_land=BW";
-    $json = file_get_contents($url);
-    $data = json_decode($json, true);
-
-    $feiertage = [];
-    foreach ($data as $feiertag) {
-        $feiertage[] = $feiertag['datum'];
-    }
-
-    $_SESSION['feiertage'][$jahr] = $feiertage;
-    
-    return $feiertage;
-}
-
 function istFeiertag($datum)
 {
-    $jahr = date('Y', strtotime($datum));
-    
-    // Verwenden Sie den Cached-Wert, anstatt jedes Mal die API aufzurufen
-    if (!isset($_SESSION['feiertage'][$jahr])) {
-        $_SESSION['feiertage'][$jahr] = fetchFeiertage($jahr);
-    }
-    
-    return in_array($datum, $_SESSION['feiertage'][$jahr]);
+    global $conn;
+
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM Feiertage WHERE Datum = ?");
+    $stmt->execute([$datum]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $result['count'] > 0;
 }
 
 
@@ -121,6 +100,38 @@ function getWorkingHours($startDate, $endDate)
 $currentYear = date("Y");  // Das aktuelle Jahr
 $currentMonth = date("m"); // Der aktuelle Monat
 $currentMonthName = (new DateTime())->format('F');
+
+function fetchFeiertageDB($jahr)
+{
+    global $conn;
+
+    // Überprüfen, ob das aktuelle Jahr bereits in der Datenbank ist
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM Feiertage WHERE YEAR(Datum) = ?");
+    $stmt->execute([$jahr]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($result['count'] > 0) {
+        // Das Jahr wurde bereits in der Datenbank gespeichert, kein erneuter Abruf notwendig
+        return;
+    }
+
+    $url = "https://feiertage-api.de/api/?jahr=$jahr&nur_land=BW";
+    $json = file_get_contents($url);
+    $data = json_decode($json, true);
+
+    $feiertage = [];
+    foreach ($data as $feiertag) {
+        $feiertage[] = $feiertag['datum'];
+    }
+
+    // Daten in die Datenbank einfügen
+    $stmt = $conn->prepare("INSERT INTO Feiertage (Datum) VALUES (?)");
+    foreach ($feiertage as $feiertag) {
+        $stmt->execute([$feiertag]);
+    }
+}
+
+// Aufrufen der Funktion zu Jahresbeginn
+fetchFeiertageDB($currentYear);
 
 // Erster Tag des aktuellen Monats
 $firstDayOfTheMonth = "{$currentYear}-{$currentMonth}-01";
@@ -175,3 +186,37 @@ $workingHoursThisYear = getWorkingHours($firstDayOfTheYear, $lastDayOfTheYear);
 
 // Überstunden für das Jahr berechnen
 $overHoursThisYear = $totalHoursThisYearFromRecords - $workingHoursThisYear;
+
+// Bestimmen Sie den ersten und den letzten Tag der aktuellen Arbeitswoche (Montag bis Freitag)
+$firstDayOfWeek = date('Y-m-d', strtotime('Monday this week'));
+$lastWorkingDayOfWeek = date('Y-m-d', strtotime('Friday this week'));
+
+$expectedHoursThisWeek = 40;
+
+// Überprüfen Sie jeden Tag der Arbeitswoche, ob er ein Feiertag ist
+$currentDate = $firstDayOfWeek;
+while (strtotime($currentDate) <= strtotime($lastWorkingDayOfWeek)) {
+    if (istFeiertag($currentDate)) {
+        $expectedHoursThisWeek -= 8;
+    }
+    $currentDate = date('Y-m-d', strtotime("+1 day", strtotime($currentDate)));
+}
+
+// Überstunden für diese Woche berechnen
+$overHoursThisWeek = $totalHoursThisWeek - $expectedHoursThisWeek;
+
+function getFeiertageForYear($jahr) {
+    global $conn;
+
+    $stmt = $conn->prepare("SELECT Datum FROM Feiertage WHERE YEAR(Datum) = ?");
+    $stmt->execute([$jahr]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+$feiertageThisYear = getFeiertageForYear($currentYear);
+
+function getGermanDayName($date) {
+    $days = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+    return $days[date("w", strtotime($date))];
+}
+
+

@@ -1,0 +1,4 @@
+CREATE TABLE Feiertage (
+    ID INT PRIMARY KEY IDENTITY(1,1),
+    Datum DATE NOT NULL
+);

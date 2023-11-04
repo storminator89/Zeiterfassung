@@ -19,6 +19,10 @@ label {
     }
 }
 
+.toggle-content {
+    display: none;
+}
+
 .btn-primary {
 background-color: #59aa6e;
 font-family: 'Source Sans Pro', sans-serif;

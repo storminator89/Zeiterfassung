@@ -155,6 +155,7 @@ $(document).ready(function () {
         trigger: 'manual' // Nur manuell anzeigen/ausblenden
     });
 
+    /* need more test for the tooltip
     $('form').on('submit', function (e) {
         const endzeitInput = document.querySelector('input[name="endzeit"]');
         const pauseInputValue = parseInt(document.querySelector('input[name="pause"]').value);
@@ -173,6 +174,7 @@ $(document).ready(function () {
             tooltip.hide();
         }
     });
+    */
 
 });
 
