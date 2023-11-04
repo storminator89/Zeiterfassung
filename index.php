@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zeiterfassung Arbeit</title>
+    <title>ZeitWerk - Zeiterfassung</title>
     <link rel="icon" href="assets/logo_zeiterfassung.png" type="image/png">
 
     <!-- Externe Stylesheets und Skripte -->
@@ -21,6 +21,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.3.0/js/buttons.html5.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+
 
     <!-- Lokale Stylesheets und Skripte -->
     <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
@@ -46,47 +49,48 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ml-auto">
                 <li class="nav-item active">
-                    <a class="nav-link" href="#">Home</a>
+                    <a class="nav-link" href="#"><i class="fas fa-home mr-1"></i> Home</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="dashboard.php">Dashboard</a>
+                    <a class="nav-link" href="dashboard.php"><i class="fas fa-tachometer-alt mr-1"></i> Dashboard</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal">About</a>
+                    <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-info-circle mr-1"></i> About</a>
                 </li>
             </ul>
         </div>
+
     </nav>
     <div class="container mt-5 p-5">
-        <h2>Zeiterfassung Arbeit</h2>
+    <h2 class="fancy-title"><i class="fas fa-hourglass-start mr-2"></i>ZeitWerk - Zeiterfassung</h2>
         <div class="row">
             <div class="col-md-12">
                 <form action="save.php" method="post" id="mainForm">
                     <div class="row mb-3">
                         <div class="col">
-                            <div class="form-group">
-                                <label for="startzeit">Startzeit</label>
+                            <div class="form-group position-relative">
+                                <label for="startzeit"><i class="fas fa-play mr-2"></i> Startzeit</label>
                                 <input type="datetime-local" name="startzeit" class="form-control" required value="<?= date('Y-m-d\TH:i'); ?>">
                             </div>
                         </div>
                         <div class="col">
                             <div class="form-group">
-                                <label for="endzeit">Endzeit</label>
+                                <label for="endzeit"><i class="fas fa-stop mr-2"></i> Endzeit</label>
                                 <input type="datetime-local" id="endzeit" name="endzeit" class="form-control">
                             </div>
                         </div>
                         <div class="col">
                             <div class="form-group">
-                                <label for="pauseManuell">Pause (Manuell)</label>
+                                <label for="pauseManuell"><i class="fas fa-pause mr-2"></i> Pause (Manuell)</label>
                                 <input type="number" id="pauseManuell" class="form-control" placeholder="Manuell in Minuten">
                             </div>
                         </div>
                         <div class="col">
                             <div class="form-group">
-                                <label for="pauseDisplay">Pause (Minuten)</label>
+                                <label for="pauseDisplay"><i class="fas fa-clock mr-2"></i> Pause (Minuten)</label>
                                 <input type="text" id="pauseDisplay" class="form-control" placeholder="MM:SS" readonly>
                                 <input type="hidden" id="pauseInput" name="pause">
-                                <button id="pauseButton" type="button" class="btn btn-secondary mt-2">Pause starten/beenden</button>
+                                <button id="pauseButton" type="button" class="btn btn-secondary mt-2"><i class="fas fa-pause-circle mr-1"></i> Pause starten/beenden</button>
                             </div>
                         </div>
                     </div>
@@ -94,7 +98,7 @@
                     <div class="row mb-3">
                         <div class="col">
                             <div class="form-group">
-                                <label for="standort">Standort</label>
+                                <label for="standort"><i class="fas fa-map-marker-alt mr-2"></i> Standort</label>
                                 <select name="standort" class="form-control" required>
                                     <option value="">-</option>
                                     <option value="Büro">Büro</option>
@@ -105,7 +109,7 @@
                         </div>
                         <div class="col">
                             <div class="form-group">
-                                <label for="beschreibung">Beschreibung</label>
+                                <label for="beschreibung"><i class="fas fa-info-circle mr-2"></i> Beschreibung</label>
                                 <select name="beschreibung" class="form-control">
                                     <option value="">-</option>
                                     <option value="Urlaub">Urlaub</option>
@@ -119,7 +123,7 @@
                     <div class="row mb-3">
                         <div class="col">
                             <div class="form-group">
-                                <button type="submit" class="btn btn-primary">Hinzufügen</button>
+                                <button type="submit" class="btn btn-primary"><i class="fas fa-plus-circle mr-1"></i> Hinzufügen</button>
                             </div>
                         </div>
                     </div>
@@ -127,10 +131,11 @@
             </div>
         </div>
 
+
         <div class="row mt-4">
             <div class="col-12">
                 <div class="form-group">
-                    <h3>Statistik Arbeitszeiten</h3>
+                    <h3><i class="fas fa-chart-bar mr-2"></i> Statistik Arbeitszeiten</h3>
                     <table class="details-table">
                         <thead>
                             <tr>
@@ -175,7 +180,7 @@
             </div>
         </div>
 
-        <h3 class="mt-4">Arbeitszeiten</h3>
+        <h3 class="mt-4"><i class="fas fa-business-time mr-2"></i> Arbeitszeiten</h3>
         <table class="table">
             <thead>
                 <tr>
@@ -224,7 +229,9 @@
 
         <div class="row">
             <div class="col-4">
-                <h3 class="main-title">Feiertage</h3>
+                <h3 class="main-title">
+                    <i class="fas fa-chevron-down mr-2"></i> Feiertage
+                </h3>
                 <div class="toggle-content">
                     <table class="details-table">
                         <thead>

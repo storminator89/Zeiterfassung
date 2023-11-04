@@ -2,7 +2,15 @@ $(document).ready(function () {
 
     $(".main-title").click(function () {
         $(this).next(".toggle-content").slideToggle();
+
+        const icon = $(this).find('i.fas');
+        if (icon.hasClass('fa-chevron-down')) {
+            icon.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+        } else {
+            icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+        }
     });
+
 
     function updateDateTimeField() {
         const now = new Date();
@@ -17,10 +25,28 @@ $(document).ready(function () {
         columns: ':not(:last-child)' // schließt die letzte Spalte aus
     };
 
-    const dataTableButtons = ['copyHtml5', 'excelHtml5', 'csvHtml5', 'pdfHtml5'].map(type => ({
-        extend: type,
-        exportOptions: exportOptions
-    }));
+    const dataTableButtons = [
+        {
+            extend: 'copyHtml5',
+            exportOptions: exportOptions,
+            text: '<i class="fas fa-copy"></i> Kopieren'
+        },
+        {
+            extend: 'excelHtml5',
+            exportOptions: exportOptions,
+            text: '<i class="fas fa-file-excel"></i> Excel'
+        },
+        {
+            extend: 'csvHtml5',
+            exportOptions: exportOptions,
+            text: '<i class="fas fa-file-csv"></i> CSV'
+        },
+        {
+            extend: 'pdfHtml5',
+            exportOptions: exportOptions,
+            text: '<i class="fas fa-file-pdf"></i> PDF'
+        }
+    ];
 
     const table = $('.table').DataTable({
         dom: 'Bfrtip',
@@ -65,7 +91,7 @@ $(document).ready(function () {
     });
 
     const pauseButton = $('#pauseButton');
-   // const pauseInput = $('#pauseInput');
+    // const pauseInput = $('#pauseInput');
     const pauseDisplay = $('#pauseDisplay');
     let startTime = parseInt(localStorage.getItem('startTime') || '0');
     let elapsedPauseInSeconds = parseInt(localStorage.getItem('elapsedPauseInSeconds') || '0');
@@ -150,7 +176,7 @@ $(document).ready(function () {
         placement: 'bottom',
         template: '<div class="tooltip custom-tooltip" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner"></div></div>'
     });
-    
+
     const pauseTooltip = new bootstrap.Tooltip(pauseInput, {
         title: "Pause sollte nicht negativ sein.",
         trigger: 'manual',
@@ -158,7 +184,7 @@ $(document).ready(function () {
         template: '<div class="tooltip custom-tooltip" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner"></div></div>'
     });
 
-    $('#mainForm').on('submit', function(e) {
+    $('#mainForm').on('submit', function (e) {
         const pauseManuell = $('#pauseManuell');
         if (pauseManuell.val()) {
             pauseInput.value = pauseManuell.val();

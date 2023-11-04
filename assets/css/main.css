@@ -2,7 +2,8 @@ body {
     background-color: #ededed;
     font-family: 'Source Sans Pro', sans-serif;
 }
-label {    
+
+label {
     font-family: 'Source Sans Pro', sans-serif;
 }
 
@@ -14,6 +15,7 @@ label {
     0% {
         transform: rotate(0deg);
     }
+
     100% {
         transform: rotate(360deg);
     }
@@ -23,14 +25,25 @@ label {
     display: none;
 }
 
+.fancy-title {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #3b3e4d;
+    text-align: center;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    letter-spacing: 1.5px;
+    margin-bottom: 25px;
+    border-bottom: 3px solid #3b3e4d;
+}
+
 .btn-primary {
-background-color: #59aa6e;
-font-family: 'Source Sans Pro', sans-serif;
+    background-color: #59aa6e;
+    font-family: 'Source Sans Pro', sans-serif;
 }
 
 .btn-success {
-background-color: #59aa6e;
-font-family: 'Source Sans Pro', sans-serif;
+    background-color: #59aa6e;
+    font-family: 'Source Sans Pro', sans-serif;
 }
 
 .navbar-custom {
@@ -41,15 +54,15 @@ font-family: 'Source Sans Pro', sans-serif;
 
 .navbar-custom .nav-link {
     font-size: 20px;
-    margin-right: 15px; 
+    margin-right: 15px;
 }
 
-.mt-5{
+.mt-5 {
     background-color: #fff;
-    font-family: 'Source Sans Pro', sans-serif;    
+    font-family: 'Source Sans Pro', sans-serif;
     border: none;
-    border-radius: 10px;    
-    margin-bottom: 20px;    
+    border-radius: 10px;
+    margin-bottom: 20px;
     padding-top: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
@@ -57,9 +70,12 @@ font-family: 'Source Sans Pro', sans-serif;
 
 .grid-container {
     display: grid;
-    grid-template-columns: auto 1fr;  /* Erste Spalte nimmt so viel Platz ein wie benötigt, zweite Spalte nimmt den verbleibenden Platz ein */
-    gap: 10px 15px;  /* Abstand zwischen den Zeilen und Spalten */
+    grid-template-columns: auto 1fr;
+    /* Erste Spalte nimmt so viel Platz ein wie benötigt, zweite Spalte nimmt den verbleibenden Platz ein */
+    gap: 10px 15px;
+    /* Abstand zwischen den Zeilen und Spalten */
 }
+
 .font-weight-bold {
     font-weight: bold;
 }
@@ -69,7 +85,7 @@ font-family: 'Source Sans Pro', sans-serif;
     border-collapse: collapse;
 }
 
-.details-table th, 
+.details-table th,
 .details-table td {
     border: 1px solid #d1d1d1;
     padding: 8px 12px;
