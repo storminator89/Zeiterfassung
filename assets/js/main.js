@@ -59,11 +59,10 @@ $(function () {
             <p>Sie haben Ihre erste Arbeitswoche erfasst! Weiter so!</p>
         `;
         notificationContainer.appendChild(notificationDiv);
-    
+
         // Setzen Sie den localStorage-Eintrag, um zu vermerken, dass die Benachrichtigung angezeigt wurde.
         localStorage.setItem("firstWeekNotified", "true");
     }
-    
 
     $('.table').DataTable({
         dom: 'Bfrtip',
@@ -91,12 +90,14 @@ $(function () {
         let newVal = $input.val();
         let id = $input.closest('tr').find('input[name="id"]').val();
 
+        let columnName = $input.closest('table').find('th').eq(col).data('name');    
+
         cell.data(newVal).draw();
 
         $.post('save.php', {
             update: true,
             id,
-            column: $input.closest('table').find('th').eq(col).data('name'),
+            column: columnName,
             data: newVal
         });
     });
@@ -394,8 +395,57 @@ if (window.location.pathname.includes('dashboard.php')) {
             }
         };
 
-        let monthlyChart = createChart('monthlyHoursChart', 'bar', monthlyData, monthlyOptions);
+        let monthlyChart = createChart('monthlyHoursChart', 'bar', monthlyData, monthlyOptions);        
 
+        var calendar = new tui.Calendar('#calendar', {
+            defaultView: 'week',
+            workweek: true, 
+            startDayOfWeek: 1,
+            taskView: false,      
+            milestoneView: false,
+            week: {
+                startDayOfWeek: 1  
+            },
+            template: {
+                // hier können Sie weitere Vorlagen hinzufügen, falls benötigt
+            }
+        });
+
+        calendar.createSchedules(allEvents);
+        document.getElementById('prevMonthBtn').addEventListener('click', function () {
+            calendar.prev();
+        });
+
+        document.getElementById('nextMonthBtn').addEventListener('click', function () {
+            calendar.next();
+        });
+
+        document.getElementById('todayBtn').addEventListener('click', function () {
+            calendar.today();
+        });
+
+        function formatDate(date) {
+            var day = ("0" + date.getDate()).slice(-2);
+            var month = ("0" + (date.getMonth() + 1)).slice(-2);
+            var year = date.getFullYear();
+            return day + "." + month + "." + year;
+        }
+
+        var scheduleModal = new bootstrap.Modal(document.getElementById('scheduleModal'));
+
+        calendar.on('clickSchedule', function (event) {
+            var schedule = event.schedule;
+
+            if (schedule.title === 'Arbeit') {
+                var startDate = new Date(schedule.start);
+                var endDate = new Date(schedule.end);
+
+                document.getElementById('startTime').textContent = formatDate(startDate) + " " + startDate.toLocaleTimeString();
+                document.getElementById('endTime').textContent = formatDate(endDate) + " " + endDate.toLocaleTimeString();
+
+                scheduleModal.show();
+            }
+        });
     });
 
 }

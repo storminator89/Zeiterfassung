@@ -199,6 +199,19 @@ label {
     }
 }
 
+.tui-full-calendar-weekday-schedule,
+.tui-full-calendar-time-schedule {
+    border-bottom-left-radius: 2px;
+    border-bottom-right-radius: 2px;
+    border-top-left-radius: 2px;
+    border-top-right-radius: 2px;
+    color: #ffffff !important; /* Schriftfarbe weiß */
+    background-color: #0366d6 !important;
+    border-color: #0366d6 !important;
+}
+
+
+
 
 
 

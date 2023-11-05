@@ -8,8 +8,16 @@ include 'functions.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zeiterfassung Arbeit</title>
+    <title>ZeitWerk - Dashboard</title>
     <link rel="icon" href="assets\logo_zeiterfassung.png" type="image/png">
+    <script src="https://uicdn.toast.com/tui.code-snippet/latest/tui-code-snippet.js"></script>
+    <script src="https://uicdn.toast.com/tui.dom/v3.0.0/tui-dom.js"></script>
+    <script src="https://uicdn.toast.com/tui.time-picker/latest/tui-time-picker.min.js"></script>
+    <script src="https://uicdn.toast.com/tui.date-picker/latest/tui-date-picker.min.js"></script>
+    <script src="https://uicdn.toast.com/tui-calendar/latest/tui-calendar.js"></script>
+    <link rel="stylesheet" href="https://uicdn.toast.com/tui-calendar/latest/tui-calendar.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
@@ -30,10 +38,12 @@ include 'functions.php';
         var totalHoursThisWeek = <?= $totalHoursThisWeek ?>;
         var days = <?= json_encode($days) ?>;
         var hours = <?= json_encode($hours) ?>;
+        var allEvents = <?= json_encode($events) ?>;
     </script>
     <script src="./assets/js/main.js"></script>
     <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
 </head>
+
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
         <a class="navbar-brand" href="index.php">
@@ -46,24 +56,59 @@ include 'functions.php';
             <ul class="navbar-nav ml-auto">
                 <li class="nav-item active">
                     <a class="nav-link" href="index.php">Home</a>
-                </li>               
+                </li>
             </ul>
         </div>
     </nav>
 
     <div class="container mt-5">
+        <h2 class="fancy-title"><i class="fas fa-hourglass-start mr-2"></i> ZeitWerk - Dashboard</h2>
+
         <div class="row">
+            <div class="calendar-navigation">
+                <button id="prevMonthBtn" class="btn btn-light"><i class="fas fa-arrow-left"></i></button>
+                <button id="todayBtn" class="btn btn-light"><i class="fas fa-calendar-day"></i> Heute</button>
+                <button id="nextMonthBtn" class="btn btn-light"><i class="fas fa-arrow-right"></i></button>
+            </div>
+            <div class="col-md-12" id="calendar"></div>
+        </div>
+
+        <div class="row mt-3">
             <div class="col-md-6">
                 <canvas id="weeklyHoursChart" width="200" height="200"></canvas>
             </div>
             <div class="col-md-6">
                 <canvas id="dailyHoursChart" width="200" height="200"></canvas>
             </div>
+        </div>
+        <div class="row mt-3">
             <div class="col-md-6">
                 <canvas id="monthlyHoursChart" width="400" height="200"></canvas>
             </div>
         </div>
     </div>
 
-    </body>
+    <div class="modal fade" id="scheduleModal" tabindex="-1" role="dialog" aria-labelledby="scheduleModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="scheduleModalLabel">Arbeitszeiten</h5>
+                    <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <strong>Start:</strong> <span id="startTime"></span><br>
+                    <strong>Ende:</strong> <span id="endTime"></span>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</body>
+
 </html>

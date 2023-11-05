@@ -248,4 +248,33 @@ $stmt->execute();
 $result = $stmt->fetch(PDO::FETCH_ASSOC);
 $isFirstWeek = $result['weeksCount'] == 1;
 
+$events = [];
+foreach ($records as $record) {
+    $events[] = [
+        'id' => $record['id'],
+        'title' => 'Arbeit',
+        'start' => date("Y-m-d\TH:i:s", strtotime($record['startzeit'])),
+        'end' => date("Y-m-d\TH:i:s", strtotime($record['endzeit'])),
+        'category' => 'time',
+        'dueDateClass' => '',
+        'isAllDay' => false
+    ];
+}
+
+foreach ($feiertageThisYear as $feiertag) {
+    $events[] = [
+        'id' => 'feiertag_' . $feiertag['Datum'],
+        'title' => 'Feiertag',
+        'start' => date("Y-m-d", strtotime($feiertag['Datum'])),
+        'end' => date("Y-m-d", strtotime($feiertag['Datum'])),
+        'category' => 'allday',
+        'isAllDay' => true
+    ];
+}
+
+
+
+
+
+
 
