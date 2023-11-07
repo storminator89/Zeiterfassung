@@ -42,13 +42,13 @@ $(function () {
     $(".alert-success").fadeIn(1000);
 
     // Variablen zuerst definieren
-    var isFirstWeekInput = document.getElementById('isFirstWeek');
-    var isFirstWeek = isFirstWeekInput.value === '1';
-    var notificationContainer = document.getElementById('firstWeekNotification');
+    let isFirstWeekInput = document.getElementById('isFirstWeek');
+    let isFirstWeek = isFirstWeekInput.value === '1';
+    let notificationContainer = document.getElementById('firstWeekNotification');
 
     if (isFirstWeek && !localStorage.getItem("firstWeekNotified")) {
         // Erstelle die Benachrichtigungs-Div und füge sie zum Platzhalter hinzu
-        var notificationDiv = document.createElement('div');
+        let notificationDiv = document.createElement('div');
         notificationDiv.className = 'alert-success col';
         notificationDiv.style.display = "block";  // <-- Hier setzen wir die Anzeige auf "block"
         notificationDiv.innerHTML = `
@@ -397,7 +397,7 @@ if (window.location.pathname.includes('dashboard.php')) {
 
         let monthlyChart = createChart('monthlyHoursChart', 'bar', monthlyData, monthlyOptions);        
 
-        var calendar = new tui.Calendar('#calendar', {
+        let calendar = new tui.Calendar('#calendar', {
             defaultView: 'week',
             workweek: true, 
             startDayOfWeek: 1,
@@ -425,20 +425,20 @@ if (window.location.pathname.includes('dashboard.php')) {
         });
 
         function formatDate(date) {
-            var day = ("0" + date.getDate()).slice(-2);
-            var month = ("0" + (date.getMonth() + 1)).slice(-2);
-            var year = date.getFullYear();
+            let day = ("0" + date.getDate()).slice(-2);
+            let month = ("0" + (date.getMonth() + 1)).slice(-2);
+            let year = date.getFullYear();
             return day + "." + month + "." + year;
         }
 
-        var scheduleModal = new bootstrap.Modal(document.getElementById('scheduleModal'));
+        let scheduleModal = new bootstrap.Modal(document.getElementById('scheduleModal'));
 
         calendar.on('clickSchedule', function (event) {
-            var schedule = event.schedule;
+            let schedule = event.schedule;
 
             if (schedule.title === 'Arbeit') {
-                var startDate = new Date(schedule.start);
-                var endDate = new Date(schedule.end);
+                let startDate = new Date(schedule.start);
+                let endDate = new Date(schedule.end);
 
                 document.getElementById('startTime').textContent = formatDate(startDate) + " " + startDate.toLocaleTimeString();
                 document.getElementById('endTime').textContent = formatDate(endDate) + " " + endDate.toLocaleTimeString();
