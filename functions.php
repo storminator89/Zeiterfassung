@@ -11,11 +11,15 @@ $stmt->execute();
 $records = $stmt->fetchAll();
 
 $currentWeekNumber = date("W");
+$currentYear = date("Y");  // Das aktuelle Jahr
+$currentMonth = date("m"); // Der aktuelle Monat
+$currentMonthName = (new DateTime())->format('F');
+
 
 // Gesamtanzahl der gearbeiteten Minuten dieser Woche abzüglich Pausen berechnen
 $stmt = $conn->prepare('
 SELECT SUM(
-    ((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60) - pause
+    ((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60) - COALESCE(pause, 0)
 ) as totalMinutes
 FROM zeiterfassung
 WHERE strftime("%Y", startzeit) = "2023"
@@ -24,9 +28,24 @@ AND strftime("%W", startzeit) = :weekNumber
 $stmt->bindParam(':weekNumber', $currentWeekNumber, PDO::PARAM_STR);
 $stmt->execute();
 $totalMinutesThisWeek = $stmt->fetchColumn();
-$totalHours = floor($totalMinutesThisWeek / 60);
+
+// Sicherstellen, dass das Ergebnis eine Zahl ist
+if ($totalMinutesThisWeek === false) {
+    $totalMinutesThisWeek = 0;
+}
+
+// Berechnung der Stunden und Minuten
+$totalHours = intdiv($totalMinutesThisWeek, 60);
 $remainingMinutes = $totalMinutesThisWeek % 60;
-$totalHoursThisWeek = $totalHours + round($remainingMinutes / 60, 1);
+// Konvertierung der Gesamtminuten in Stunden mit einer Dezimalstelle
+$totalHoursThisWeek = $totalHours + ($remainingMinutes / 60);
+
+
+// Erster Tag des aktuellen Monats
+$currentMonthStart = "{$currentYear}-{$currentMonth}-01";
+$currentMonthEnd = date("Y-m-t"); // Letzter Tag des aktuellen Monats
+
+$workingHoursThisMonth = getWorkingHours($currentMonthStart, $currentMonthEnd);
 
 
 
@@ -104,9 +123,7 @@ function getWorkingHours($startDate, $endDate)
     return $workingDays * $hoursPerDay;
 }
 
-$currentYear = date("Y");  // Das aktuelle Jahr
-$currentMonth = date("m"); // Der aktuelle Monat
-$currentMonthName = (new DateTime())->format('F');
+
 
 function fetchFeiertageDB($jahr)
 {
@@ -169,17 +186,10 @@ $firstDayOfTheMonth = "{$currentYear}-{$currentMonth}-01";
 $lastDayOfTheMonth = date("Y-m-t", strtotime($currentMonthStart));
 $workingDaysThisMonth = getWorkingDays($firstDayOfTheMonth, $lastDayOfTheMonth);
 
-$currentYear = date("Y");
-$currentMonth = date("m");
 
-// Erster Tag des aktuellen Monats
-$currentMonthStart = "{$currentYear}-{$currentMonth}-01";
-$currentMonthEnd = date("Y-m-t"); // Letzter Tag des aktuellen Monats
 
-$workingHoursThisMonth = getWorkingHours($currentMonthStart, $currentMonthEnd);
 
-$currentYear = date("Y");
-$currentMonth = date("m");
+
 
 // SQL-Abfrage für die gesamten Arbeitsstunden dieses Monats
 $stmt = $conn->prepare('

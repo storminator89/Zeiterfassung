@@ -94,18 +94,29 @@ $(function () {
         let col = cell.index().column;
         let newVal = $input.val();
         let id = $input.closest('tr').find('input[name="id"]').val();
-
-        let columnName = $input.closest('table').find('th').eq(col).data('name');    
-
+        let columnName = $input.closest('table').find('th').eq(col).data('name');
+    
+        // Prüfen, ob das bearbeitete Feld ein Datum oder eine Zeit ist
+        if (columnName === 'startzeit' || columnName === 'endzeit') {
+            // Versuchen, das Datum/Zeit im deutschen Format zu parsen
+            let germanDatePattern = /(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2}):(\d{2})/;
+            if (germanDatePattern.test(newVal)) {
+                // Umwandlung in das ISO-8601-Format
+                let matches = germanDatePattern.exec(newVal);
+                newVal = `${matches[3]}-${matches[2]}-${matches[1]}T${matches[4]}:${matches[5]}:${matches[6]}`;
+            }
+        }
+    
         cell.data(newVal).draw();
-
+    
         $.post('save.php', {
             update: true,
-            id,
+            id: id,
             column: columnName,
             data: newVal
         });
     });
+    
 
     $('select[name="beschreibung"]').change(function () {
         let desc = $(this).val();
