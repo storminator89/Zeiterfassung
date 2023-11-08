@@ -1,21 +1,27 @@
 <?php
 include 'config.php';
 
-// Fetch all records
-$stmt = $conn->prepare('SELECT *, DATEPART(ISO_WEEK, startzeit) as weekNumber FROM zeiterfassung ORDER BY startzeit DESC');
+$database = __DIR__ . '/timetracking.sqlite'; // Pfad zur SQLite-Datenbankdatei
+$conn = new PDO("sqlite:$database");
+$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+// Alle Einträge aus zeiterfassung abrufen und nach startzeit sortieren
+$stmt = $conn->prepare('SELECT *, strftime("%W", startzeit) as weekNumber FROM zeiterfassung ORDER BY startzeit DESC');
 $stmt->execute();
 $records = $stmt->fetchAll();
 
 $currentWeekNumber = date("W");
 
-// Get total hours worked this week minus breaks
+// Gesamtanzahl der gearbeiteten Minuten dieser Woche abzüglich Pausen berechnen
 $stmt = $conn->prepare('
-SELECT SUM(DATEDIFF(MINUTE, startzeit, endzeit) - pause) as totalMinutes
+SELECT SUM(
+    ((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60) - pause
+) as totalMinutes
 FROM zeiterfassung
-WHERE YEAR(startzeit) = 2023
-AND DATEPART(ISO_WEEK, startzeit) = :weekNumber
+WHERE strftime("%Y", startzeit) = "2023"
+AND strftime("%W", startzeit) = :weekNumber
 ');
-$stmt->bindParam(':weekNumber', $currentWeekNumber);
+$stmt->bindParam(':weekNumber', $currentWeekNumber, PDO::PARAM_STR);
 $stmt->execute();
 $totalMinutesThisWeek = $stmt->fetchColumn();
 $totalHours = floor($totalMinutesThisWeek / 60);
@@ -28,26 +34,24 @@ $totalHoursThisWeek = $totalHours + round($remainingMinutes / 60, 1);
 $currentDate = date("Y-m-d");
 
 // Kalenderwoche für das heutige Datum ermitteln
-$currentWeekNumber = date("W", strtotime($currentDate));
-
+$currentWeekNumber = date("W");
 $currentYear = date("Y");
-
 
 // SQL-Abfrage anpassen, um Daten für die aktuelle Kalenderwoche abzurufen
 $stmt = $conn->prepare('
     SELECT
-        CONVERT(DATE, startzeit) AS tag,
-        SUM(DATEDIFF(MINUTE, startzeit, endzeit)) / 60.0 AS arbeitsstunden
+        strftime("%Y-%m-%d", startzeit) AS tag,
+        SUM((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60.0) AS arbeitsstunden
     FROM
         zeiterfassung
     WHERE
-        DATEPART(ISO_WEEK, startzeit) = :weekNumber AND
-        YEAR(startzeit) = :currentYear
+        strftime("%W", startzeit) = :weekNumber AND
+        strftime("%Y", startzeit) = :currentYear
     GROUP BY
-        CONVERT(DATE, startzeit)
+        strftime("%Y-%m-%d", startzeit)
 ');
-$stmt->bindParam(':weekNumber', $currentWeekNumber);
-$stmt->bindParam(':currentYear', $currentYear);
+$stmt->bindParam(':weekNumber', $currentWeekNumber, PDO::PARAM_STR);
+$stmt->bindParam(':currentYear', $currentYear, PDO::PARAM_STR);
 $stmt->execute();
 $workHoursPerDay = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -109,7 +113,7 @@ function fetchFeiertageDB($jahr)
     global $conn;
 
     // Überprüfen, ob das aktuelle Jahr bereits in der Datenbank ist
-    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM Feiertage WHERE YEAR(Datum) = ?");
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM Feiertage WHERE strftime('%Y', Datum) = ?");
     $stmt->execute([$jahr]);
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($result['count'] > 0) {
@@ -133,6 +137,7 @@ function fetchFeiertageDB($jahr)
     }
 }
 
+
 // Aufrufen der Funktion zu Jahresbeginn
 fetchFeiertageDB($currentYear);
 
@@ -143,14 +148,15 @@ function fetchFeiertageDieseWoche($currentYear, $currentWeekNumber) {
     $stmt = $conn->prepare("
         SELECT Datum
         FROM Feiertage
-        WHERE YEAR(Datum) = :jahr
-        AND DATEPART(ISO_WEEK, Datum) = :weekNumber
+        WHERE strftime('%Y', Datum) = :jahr
+        AND strftime('%W', Datum) = :weekNumber
     ");
     $stmt->bindParam(':jahr', $currentYear);
     $stmt->bindParam(':weekNumber', $currentWeekNumber);
     $stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+
 
 // Feiertage dieser Woche holen
 $feiertageDieseWoche = fetchFeiertageDieseWoche($currentYear, $currentWeekNumber);
@@ -160,24 +166,30 @@ $feiertageDieseWoche = fetchFeiertageDieseWoche($currentYear, $currentWeekNumber
 $firstDayOfTheMonth = "{$currentYear}-{$currentMonth}-01";
 
 // Letzter Tag des aktuellen Monats
-$lastDayOfTheMonth = date("Y-m-t", strtotime($firstDayOfTheMonth));
+$lastDayOfTheMonth = date("Y-m-t", strtotime($currentMonthStart));
 $workingDaysThisMonth = getWorkingDays($firstDayOfTheMonth, $lastDayOfTheMonth);
 
-// Testen der Funktion
-$currentMonthStart = date("Y-m") . "-01"; // Erster Tag des aktuellen Monats
+$currentYear = date("Y");
+$currentMonth = date("m");
+
+// Erster Tag des aktuellen Monats
+$currentMonthStart = "{$currentYear}-{$currentMonth}-01";
 $currentMonthEnd = date("Y-m-t"); // Letzter Tag des aktuellen Monats
 
 $workingHoursThisMonth = getWorkingHours($currentMonthStart, $currentMonthEnd);
 
+$currentYear = date("Y");
+$currentMonth = date("m");
+
 // SQL-Abfrage für die gesamten Arbeitsstunden dieses Monats
 $stmt = $conn->prepare('
     SELECT
-        SUM(DATEDIFF(MINUTE, startzeit, endzeit)) as totalMinutes
+        SUM((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60) as totalMinutes
     FROM
         zeiterfassung
     WHERE
-        YEAR(startzeit) = :currentYear AND
-        MONTH(startzeit) = :currentMonth
+        strftime("%Y", startzeit) = :currentYear AND
+        strftime("%m", startzeit) = :currentMonth
 ');
 $stmt->bindParam(':currentYear', $currentYear);
 $stmt->bindParam(':currentMonth', $currentMonth);
@@ -185,17 +197,18 @@ $stmt->execute();
 $totalMinutesThisMonthFromRecords = $stmt->fetchColumn();
 $totalHoursThisMonthFromRecords = floor($totalMinutesThisMonthFromRecords / 60);
 
+
 //Ueberstunden:
 $overHoursThisMonth = $totalHoursThisMonthFromRecords - $workingHoursThisMonth;
 
 // Gesamtarbeitsstunden des Jahres
 $stmt = $conn->prepare('
     SELECT
-        SUM(DATEDIFF(MINUTE, startzeit, endzeit)) as totalMinutes
+        SUM((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60) as totalMinutes
     FROM
         zeiterfassung
     WHERE
-        YEAR(startzeit) = :currentYear
+        strftime("%Y", startzeit) = :currentYear
 ');
 $stmt->bindParam(':currentYear', $currentYear);
 $stmt->execute();
@@ -231,19 +244,22 @@ $overHoursThisWeek = $totalHoursThisWeek - $expectedHoursThisWeek;
 function getFeiertageForYear($jahr) {
     global $conn;
 
-    $stmt = $conn->prepare("SELECT Datum FROM Feiertage WHERE YEAR(Datum) = ?");
+    $stmt = $conn->prepare("SELECT Datum FROM Feiertage WHERE strftime('%Y', Datum) = ?");
     $stmt->execute([$jahr]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+
+$currentYear = date("Y");
 $feiertageThisYear = getFeiertageForYear($currentYear);
+
 
 function getGermanDayName($date) {
     $days = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
     return $days[date("w", strtotime($date))];
 }
 
-//Gamification
-$stmt = $conn->prepare("SELECT COUNT(DISTINCT DATEPART(ISO_WEEK, startzeit)) as weeksCount FROM zeiterfassung");
+// Gamification: Zählen der unterschiedlichen Wochen, in denen gearbeitet wurde
+$stmt = $conn->prepare("SELECT COUNT(DISTINCT strftime('%W', startzeit)) as weeksCount FROM zeiterfassung");
 $stmt->execute();
 $result = $stmt->fetch(PDO::FETCH_ASSOC);
 $isFirstWeek = $result['weeksCount'] == 1;
@@ -260,6 +276,7 @@ foreach ($records as $record) {
         'isAllDay' => false
     ];
 }
+
 
 foreach ($feiertageThisYear as $feiertag) {
     $events[] = [

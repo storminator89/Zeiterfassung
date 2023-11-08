@@ -211,17 +211,22 @@ session_start() ?>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($records as $record) {
-                    $start = new DateTime($record['startzeit']);
-                    $end = new DateTime($record['endzeit']);
-                    $interval = $start->diff($end);
+            <?php 
+                    foreach ($records as $record) {
+                        $start = new DateTime($record['startzeit']);
+                        $end = new DateTime($record['endzeit']);
+                        $interval = $start->diff($end);
 
-                    // Dauer ohne Pause berechnen
-                    $gesamtMinuten = ($interval->h * 60 + $interval->i) - $record['pause'];
-                    $stunden = floor($gesamtMinuten / 60);
-                    $minuten = $gesamtMinuten % 60;
-                    $dauer = "{$stunden} Stunden {$minuten} Minuten";
-                ?>
+                        // Stelle sicher, dass 'pause' ein Integer ist
+                        $pauseMinuten = intval($record['pause']);
+
+                        // Dauer ohne Pause berechnen
+                        $gesamtMinuten = ($interval->h * 60 + $interval->i) - $pauseMinuten;
+                        $stunden = floor($gesamtMinuten / 60);
+                        $minuten = $gesamtMinuten % 60;
+                        $dauer = "{$stunden} Stunden {$minuten} Minuten";
+
+                    ?>
                     <tr>
                         <td><?= $record['id'] ?></td>
                         <td><?= $record['weekNumber'] ?></td>

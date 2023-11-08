@@ -22,7 +22,7 @@ Das Tool unterstützt Sie bei der Erfassung Ihrer Arbeitszeiten.
 - **DataTables:** Für das Rendern und Managen von Tabellen.
 - **Chart.js:** Für das Zeichnen von Diagrammen (wenn implementiert).
 - **PDFMake und JSZip:** Für das Erstellen von PDF-Dateien und das Zippen von Daten.
-- **MS SQL Server** Aktuell wird nur Microsoft SQL Server Express unterstützt. Mehr sind geplant
+- **MS SQL Server** Umgesetzt mit SQLLite
 
 ## Installation
 
@@ -32,19 +32,7 @@ Das Tool unterstützt Sie bei der Erfassung Ihrer Arbeitszeiten.
 
 ## Datenbank Konfiguration
 
-Bevor Sie beginnen, müssen Sie sicherstellen, dass Sie eine Datenbankverbindung eingerichtet haben. 
-
-Erstellen Sie eine `.env`-Datei im Hauptverzeichnis Ihrer Anwendung mit folgendem Inhalt:
-
-```bash
-DB_SERVER=YOUR_SERVER_NAME
-DB_NAME=YOUR_DATABASE_NAME
-DB_USER=YOUR_DATABASE_USERNAME
-DB_PASS=YOUR_DATABASE_PASSWORD
-``` 
-
-
-Ersetzen Sie `YOUR_SERVER_NAME`, `YOUR_DATABASE_NAME`, `YOUR_DATABASE_USERNAME` und `YOUR_DATABASE_PASSWORD` durch Ihre eigenen Datenbankinformationen. Zum Beispiel:
+Schreibrechte auf Hauptverzeichnis, damit die sqllite Datei angelegt wird
 
 ## Hinweis
 

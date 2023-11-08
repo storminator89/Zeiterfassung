@@ -7,10 +7,15 @@ $(function () {
     });
 
     function updateDateTimeField() {
-        $("#endzeit").val(new Date().toISOString().slice(0, 16));
-    }
-
-    updateDateTimeField();
+        
+        var now = new Date();    
+        var timezoneOffsetMinutes = now.getTimezoneOffset();        
+        
+        var correctedTime = new Date(now.getTime() - timezoneOffsetMinutes * 60000);        
+        $("#endzeit").val(correctedTime.toISOString().slice(0, 16));
+    }    
+    
+    updateDateTimeField();    
     setInterval(updateDateTimeField, 60000);
 
     const exportOptions = {
