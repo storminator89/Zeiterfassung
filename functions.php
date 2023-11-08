@@ -78,11 +78,11 @@ $days = [];
 $hours = [];
 
 foreach ($workHoursPerDay as $record) {
-    // Das Datum in deutsches Datumsformat konvertieren
-    $date = date("d.m.Y", strtotime($record['tag']));
+    $date = date("d.m.Y", strtotime($record['tag']));  
+    $roundedHours = round($record['arbeitsstunden'] / 60, 2); 
 
-    $days[] = $date; // Das konvertierte Datum hinzufügen
-    $hours[] = $record['arbeitsstunden'];
+    $days[] = $date;
+    $hours[] = $roundedHours; 
 }
 
 function istFeiertag($datum)
