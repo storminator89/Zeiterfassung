@@ -215,9 +215,7 @@ session_start() ?>
                     foreach ($records as $record) {
                         $start = new DateTime($record['startzeit']);
                         $end = new DateTime($record['endzeit']);
-                        $interval = $start->diff($end);
-
-                        // Stelle sicher, dass 'pause' ein Integer ist
+                        $interval = $start->diff($end);                       
                         $pauseMinuten = intval($record['pause']);
 
                         // Dauer ohne Pause berechnen
@@ -234,7 +232,7 @@ session_start() ?>
                         <td><?= $record['endzeit'] ? date("d.m.Y H:i:s", strtotime($record['endzeit'])) : '-' ?></td>
                         <td><?= $dauer ?></td>
                         <td><?= $record['pause'] ?></td>
-                        <td><?= $record['standort'] ?></td> <!-- Zeige den Standort hier an -->
+                        <td><?= $record['standort'] ?></td> 
                         <td><?= $record['beschreibung'] ?></td>
                         <td>
                             <form action="delete.php" method="post">
