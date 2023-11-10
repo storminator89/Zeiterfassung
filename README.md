@@ -42,7 +42,10 @@ Alle Dateien in gleiches Verzeichnis wie Dockerfile
 z.B. `docker run  --name zeitwerk -d -p 8000:80 -v /root/Docker/zeitwerk/db:/var/www/html/timetracking zeitwerk`
 
 manuelles Kopieren der SQL-Lite DB:
-docker cp zeitwerk:/var/www/html/timetracking.sqlite /root/Docker/zeitwerk/db
+`docker cp zeitwerk:/var/www/html/timetracking.sqlite /root/Docker/zeitwerk/db`
+
+und andersherum von Docker zu Host:
+`docker cp /root/Docker/zeitwerk/db/timetracking.sqlite zeitwerk:/var/www/html/timetracking.sqlite`
 
 
 
