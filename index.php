@@ -1,5 +1,7 @@
-<?php include 'functions.php';
-session_start() ?>
+<?php
+session_start();
+include 'functions.php';
+?>
 <!DOCTYPE html>
 <html lang="de">
 

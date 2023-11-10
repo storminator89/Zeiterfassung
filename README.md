@@ -14,6 +14,7 @@ Das Tool unterstützt Sie bei der Erfassung Ihrer Arbeitszeiten.
 - **Statistik:** Es werden Statistiken über die Arbeitszeit für den aktuellen Monat und das Jahr angezeigt mit Dashboard
 - **Übersicht der Arbeitszeiten:** Eine detaillierte Tabelle mit allen Arbeitszeiten, die der Benutzer eingibt.
 - **Automatische Berechnung** der Arbeitstage in diesem Monat und **Feiertage** weren berücksichtigt
+- **Kalenderansicht**
 
 ## Abhängigkeiten und Ressourcen
 
@@ -22,7 +23,7 @@ Das Tool unterstützt Sie bei der Erfassung Ihrer Arbeitszeiten.
 - **DataTables:** Für das Rendern und Managen von Tabellen.
 - **Chart.js:** Für das Zeichnen von Diagrammen (wenn implementiert).
 - **PDFMake und JSZip:** Für das Erstellen von PDF-Dateien und das Zippen von Daten.
-- **MS SQL Server** Umgesetzt mit SQLLite
+- **SQL Lite** Umgesetzt mit SQLLite
 
 ## Installation
 
@@ -34,7 +35,16 @@ Das Tool unterstützt Sie bei der Erfassung Ihrer Arbeitszeiten.
 
 Schreibrechte auf Hauptverzeichnis, damit die sqllite Datei angelegt wird
 
-## Hinweis
+# Dockerfile
+Alle Dateien in gleiches Verzeichnis wie Dockerfile
+`docker build -t zeitwerk .`
 
-Halten Sie Ihre `.env`-Datei sicher und teilen Sie sie nicht, da sie vertrauliche Informationen enthält!
+z.B. `docker run  --name zeitwerk -d -p 8000:80 -v /root/Docker/zeitwerk/db:/var/www/html/timetracking zeitwerk`
+
+manuelles Kopieren der SQL-Lite DB:
+docker cp zeitwerk:/var/www/html/timetracking.sqlite /root/Docker/zeitwerk/db
+
+
+
+
 

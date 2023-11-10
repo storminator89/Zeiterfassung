@@ -34,7 +34,7 @@ if ($totalMinutesThisWeek === false) {
     $totalMinutesThisWeek = 0;
 }
 
-// Berechnung der Stunden und Minuten
+$totalMinutesThisWeek = $totalMinutesThisWeek ?? 0;
 $totalHours = intdiv($totalMinutesThisWeek, 60);
 $remainingMinutes = $totalMinutesThisWeek % 60;
 // Konvertierung der Gesamtminuten in Stunden mit einer Dezimalstelle
