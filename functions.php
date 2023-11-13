@@ -1,7 +1,6 @@
 <?php
 include 'config.php';
 
-$database = __DIR__ . '/timetracking.sqlite'; // Pfad zur SQLite-Datenbankdatei
 $conn = new PDO("sqlite:$database");
 $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 

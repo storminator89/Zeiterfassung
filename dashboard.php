@@ -8,7 +8,7 @@ include 'functions.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZeitWerk - Dashboard</title>
+    <title>StundenSchmied - Dashboard</title>
     <link rel="icon" href="assets\logo_zeiterfassung.png" type="image/png">
     <script src="https://uicdn.toast.com/tui.code-snippet/latest/tui-code-snippet.js"></script>
     <script src="https://uicdn.toast.com/tui.dom/v3.0.0/tui-dom.js"></script>
@@ -62,8 +62,10 @@ include 'functions.php';
     </nav>
 
     <div class="container mt-5">
-        <h2 class="fancy-title"><i class="fas fa-hourglass-start mr-2"></i> ZeitWerk - Dashboard</h2>
-
+        <h2 class="fancy-title">
+            <img src="assets/kolibri_icon.png" alt="StundenSchmied Logo" style="width: 80px; height: 80px; margin-right: 10px;">
+            StundenSchmied - Zeiterfassung
+        </h2>
         <div class="row">
             <div class="calendar-navigation">
                 <button id="prevMonthBtn" class="btn btn-light"><i class="fas fa-arrow-left"></i></button>

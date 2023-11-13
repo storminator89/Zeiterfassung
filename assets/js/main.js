@@ -6,17 +6,37 @@ $(function () {
         $(this).find('i.fas').toggleClass('fa-chevron-down fa-chevron-up');
     });
 
-    function updateDateTimeField() {
-        
-        var now = new Date();    
-        var timezoneOffsetMinutes = now.getTimezoneOffset();        
-        
-        var correctedTime = new Date(now.getTime() - timezoneOffsetMinutes * 60000);        
-        $("#endzeit").val(correctedTime.toISOString().slice(0, 16));
-    }    
-    
-    updateDateTimeField();    
-    setInterval(updateDateTimeField, 60000);
+    var startButton = document.getElementById('startButton');
+    var endButton = document.getElementById('endButton');
+
+    startButton.addEventListener('click', function () {
+        var now = new Date();
+        var formattedDateTime = now.getFullYear() + '-' +
+            ('0' + (now.getMonth() + 1)).slice(-2) + '-' +
+            ('0' + now.getDate()).slice(-2) + 'T' +
+            ('0' + now.getHours()).slice(-2) + ':' +
+            ('0' + now.getMinutes()).slice(-2);
+        document.getElementById('startzeit').value = formattedDateTime;
+        startButton.disabled = true;
+        localStorage.setItem('startzeit', formattedDateTime);
+    });
+
+    endButton.addEventListener('click', function () {
+        var now = new Date();
+        var formattedDateTime = now.getFullYear() + '-' +
+            ('0' + (now.getMonth() + 1)).slice(-2) + '-' +
+            ('0' + now.getDate()).slice(-2) + 'T' +
+            ('0' + now.getHours()).slice(-2) + ':' +
+            ('0' + now.getMinutes()).slice(-2);
+        document.getElementById('endzeit').value = formattedDateTime;
+        startButton.disabled = false;
+        var addButton = document.getElementById('addButton');
+        addButton.style.display = 'block';
+        addButton.classList.add('fade-in');
+    });
+
+
+
 
     const exportOptions = {
         columns: ':not(:last-child)'
@@ -95,7 +115,7 @@ $(function () {
         let newVal = $input.val();
         let id = $input.closest('tr').find('input[name="id"]').val();
         let columnName = $input.closest('table').find('th').eq(col).data('name');
-    
+
         // Prüfen, ob das bearbeitete Feld ein Datum oder eine Zeit ist
         if (columnName === 'startzeit' || columnName === 'endzeit') {
             // Versuchen, das Datum/Zeit im deutschen Format zu parsen
@@ -106,9 +126,9 @@ $(function () {
                 newVal = `${matches[3]}-${matches[2]}-${matches[1]}T${matches[4]}:${matches[5]}:${matches[6]}`;
             }
         }
-    
+
         cell.data(newVal).draw();
-    
+
         $.post('save.php', {
             update: true,
             id: id,
@@ -116,7 +136,7 @@ $(function () {
             data: newVal
         });
     });
-    
+
 
     $('select[name="beschreibung"]').change(function () {
         let desc = $(this).val();
@@ -132,19 +152,15 @@ $(function () {
     let pauseDisplay = $('#pauseDisplay');
     let startTime = parseInt(localStorage.getItem('startTime')) || 0;
     let elapsedPause = parseInt(localStorage.getItem('elapsedPauseInSeconds')) || 0;
-    let interval;
-
-    function getLocalISOTime() {
-        let offset = new Date().getTimezoneOffset() * 60 * 1000;
-        return new Date(Date.now() - offset).toISOString().slice(0, 16);
-    }
+    let interval;    
 
     let startzeitField = $('input[name="startzeit"]');
     let savedStartzeit = localStorage.getItem('startzeit');
-    startzeitField.val(savedStartzeit || getLocalISOTime());
 
-    if (!savedStartzeit) {
-        localStorage.setItem('startzeit', getLocalISOTime());
+    if (savedStartzeit) {
+        startzeitField.val(savedStartzeit);
+    } else {        
+        startzeitField.val(""); 
     }
 
     let timeUntilMidnight = new Date(Date.now() + 86400000) - Date.now();
@@ -181,6 +197,9 @@ $(function () {
             let endTime = Date.now();
             let duration = Math.round((endTime - startTime) / 1000);
             elapsedPause += duration;
+
+            let totalPauseMinutes = Math.round(elapsedPause / 60);
+            document.getElementById('pauseInput').value = totalPauseMinutes;
 
             localStorage.removeItem('startTime');
             localStorage.setItem('elapsedPauseInSeconds', elapsedPause);
@@ -411,16 +430,16 @@ if (window.location.pathname.includes('dashboard.php')) {
             }
         };
 
-        let monthlyChart = createChart('monthlyHoursChart', 'bar', monthlyData, monthlyOptions);        
+        let monthlyChart = createChart('monthlyHoursChart', 'bar', monthlyData, monthlyOptions);
 
         let calendar = new tui.Calendar('#calendar', {
             defaultView: 'week',
-            workweek: true, 
+            workweek: true,
             startDayOfWeek: 1,
-            taskView: false,      
+            taskView: false,
             milestoneView: false,
             week: {
-                startDayOfWeek: 1  
+                startDayOfWeek: 1
             },
             template: {
                 // hier können Sie weitere Vorlagen hinzufügen, falls benötigt

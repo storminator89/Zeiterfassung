@@ -36,8 +36,7 @@ label {
     border-bottom: 3px solid #3b3e4d;
 }
 
-.btn-primary {
-    background-color: #59aa6e;
+.btn-primary {    
     font-family: 'Source Sans Pro', sans-serif;
 }
 
@@ -211,7 +210,14 @@ label {
 }
 
 
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
 
+.fade-in {
+    animation: fadeIn 2s ease-out;
+}
 
 
 

@@ -8,7 +8,7 @@ include 'functions.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZeitWerk - Zeiterfassung</title>
+    <title>StundenSchmied - Zeiterfassung</title>
     <link rel="icon" href="assets/logo_zeiterfassung.png" type="image/png">
 
     <!-- Externe Stylesheets und Skripte -->
@@ -44,7 +44,7 @@ include 'functions.php';
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom pl-3">
         <a class="navbar-brand" href="index.php">
-            <img class="pl-3 rotating-logo" src="assets\logo_zeiterfassung.png" alt="Arbeitszeiterfassung" height="50">
+            <img class="pl-3 rotating-logo" src="assets/logo_zeiterfassung.png" alt="Arbeitszeiterfassung" height="50">
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -65,7 +65,10 @@ include 'functions.php';
 
     </nav>
     <div class="container mt-5 p-5">
-        <h2 class="fancy-title"><i class="fas fa-hourglass-start mr-2"></i> ZeitWerk - Zeiterfassung</h2>
+        <h2 class="fancy-title">
+            <img src="assets/kolibri_icon.png" alt="StundenSchmied Logo" style="width: 80px; height: 80px; margin-right: 10px;">
+            StundenSchmied - Zeiterfassung
+        </h2>
         <div class="row">
             <div class="col-md-12">
                 <form action="save.php" method="post" id="mainForm">
@@ -73,13 +76,15 @@ include 'functions.php';
                         <div class="col">
                             <div class="form-group position-relative">
                                 <label for="startzeit"><i class="fas fa-play mr-2"></i> Startzeit</label>
-                                <input type="datetime-local" name="startzeit" class="form-control" required value="<?= date('Y-m-d\TH:i'); ?>">
+                                <input type="datetime-local" id="startzeit" name="startzeit" class="form-control" readonly required>
+                                <button type="button" id="startButton" class="btn btn-primary mt-2"><i class="fas fa-sign-in-alt"></i> Kommen</button>
                             </div>
                         </div>
                         <div class="col">
                             <div class="form-group">
                                 <label for="endzeit"><i class="fas fa-stop mr-2"></i> Endzeit</label>
-                                <input type="datetime-local" id="endzeit" name="endzeit" class="form-control">
+                                <input type="datetime-local" id="endzeit" name="endzeit" class="form-control" readonly>
+                                <button type="button" id="endButton" class="btn btn-primary mt-2"><i class="fas fa-sign-out-alt"></i> Gehen</button>
                             </div>
                         </div>
                         <div class="col">
@@ -126,7 +131,7 @@ include 'functions.php';
                     <div class="row mb-3">
                         <div class="col">
                             <div class="form-group">
-                                <button type="submit" class="btn btn-primary"><i class="fas fa-plus-circle mr-1"></i> Hinzufügen</button>
+                                <button type="submit" id="addButton" class="btn btn-primary" style="display: none;"><i class="fas fa-plus-circle mr-1"></i> Hinzufügen</button>
                             </div>
                         </div>
                     </div>
@@ -213,20 +218,20 @@ include 'functions.php';
                 </tr>
             </thead>
             <tbody>
-            <?php 
-                    foreach ($records as $record) {
-                        $start = new DateTime($record['startzeit']);
-                        $end = new DateTime($record['endzeit']);
-                        $interval = $start->diff($end);                       
-                        $pauseMinuten = intval($record['pause']);
+                <?php
+                foreach ($records as $record) {
+                    $start = new DateTime($record['startzeit']);
+                    $end = new DateTime($record['endzeit']);
+                    $interval = $start->diff($end);
+                    $pauseMinuten = intval($record['pause']);
 
-                        // Dauer ohne Pause berechnen
-                        $gesamtMinuten = ($interval->h * 60 + $interval->i) - $pauseMinuten;
-                        $stunden = floor($gesamtMinuten / 60);
-                        $minuten = $gesamtMinuten % 60;
-                        $dauer = "{$stunden} Stunden {$minuten} Minuten";
+                    // Dauer ohne Pause berechnen
+                    $gesamtMinuten = ($interval->h * 60 + $interval->i) - $pauseMinuten;
+                    $stunden = floor($gesamtMinuten / 60);
+                    $minuten = $gesamtMinuten % 60;
+                    $dauer = "{$stunden} Stunden {$minuten} Minuten";
 
-                    ?>
+                ?>
                     <tr>
                         <td><?= $record['id'] ?></td>
                         <td><?= $record['weekNumber'] ?></td>
@@ -234,7 +239,7 @@ include 'functions.php';
                         <td><?= $record['endzeit'] ? date("d.m.Y H:i:s", strtotime($record['endzeit'])) : '-' ?></td>
                         <td><?= $dauer ?></td>
                         <td><?= $record['pause'] ?></td>
-                        <td><?= $record['standort'] ?></td> 
+                        <td><?= $record['standort'] ?></td>
                         <td><?= $record['beschreibung'] ?></td>
                         <td>
                             <form action="delete.php" method="post">

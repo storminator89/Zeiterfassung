@@ -1,6 +1,6 @@
 <?php
 
-$database = __DIR__ . '/timetracking.sqlite';
+$database = __DIR__ . '/assets/db/timetracking.sqlite';
 
 try {    
     $conn = new PDO("sqlite:$database");
