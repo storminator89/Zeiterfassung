@@ -137,30 +137,33 @@ $(function () {
         });
     });
 
-
     $('select[name="beschreibung"]').change(function () {
         let desc = $(this).val();
-
-        if (["Feiertag", "Krankheit"].includes(desc)) {
-            let date = $('input[name="startzeit"]').val().split('T')[0];
+        let date = $('input[name="startzeit"]').val().split('T')[0];
+    
+        if (desc === "Feiertag") {
+            $('input[name="startzeit"]').val(`${date}T00:00`);
+            $('input[name="endzeit"]').val(`${date}T00:00`);
+        } else if (["Urlaub", "Krankheit"].includes(desc)) {
             $('input[name="startzeit"]').val(`${date}T09:00`);
             $('input[name="endzeit"]').val(`${date}T17:00`);
         }
+        $('#addButton').show();
     });
 
     let pauseBtn = $('#pauseButton');
     let pauseDisplay = $('#pauseDisplay');
     let startTime = parseInt(localStorage.getItem('startTime')) || 0;
     let elapsedPause = parseInt(localStorage.getItem('elapsedPauseInSeconds')) || 0;
-    let interval;    
+    let interval;
 
     let startzeitField = $('input[name="startzeit"]');
     let savedStartzeit = localStorage.getItem('startzeit');
 
     if (savedStartzeit) {
         startzeitField.val(savedStartzeit);
-    } else {        
-        startzeitField.val(""); 
+    } else {
+        startzeitField.val("");
     }
 
     let timeUntilMidnight = new Date(Date.now() + 86400000) - Date.now();

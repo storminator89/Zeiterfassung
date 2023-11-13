@@ -117,11 +117,11 @@ include 'functions.php';
                         </div>
                         <div class="col">
                             <div class="form-group">
-                                <label for="beschreibung"><i class="fas fa-info-circle mr-2"></i> Beschreibung</label>
+                                <label for="beschreibung"><i class="fas fa-info-circle mr-2"></i> Abwesenheitsgrund (Urlaub, Krankheit...)</label>
                                 <select name="beschreibung" class="form-control">
                                     <option value="">-</option>
-                                    <option value="Urlaub">Urlaub</option>
-                                    <option value="Feiertag">Feiertag (wird als 8h gewertet)</option>
+                                    <option value="Urlaub">Urlaub (wird als 8h gewertet)</option>
+                                    <option value="Feiertag">Feiertag (0h für Statistik)</option>
                                     <option value="Krankheit">Krankheit (wird als 8h gewertet)</option>
                                 </select>
                             </div>
@@ -213,7 +213,7 @@ include 'functions.php';
                     <th data-name="dauer">Dauer</th>
                     <th data-name="pause">Pause (Min.)</th>
                     <th data-name="standort">Standort</th> <!-- Hinzugefügte Spalte für Standort -->
-                    <th data-name="beschreibung">Beschreibung</th>
+                    <th data-name="beschreibung">Abwesenheitsgrund</th>
                     <th data-name="aktion">Aktion</th>
                 </tr>
             </thead>
