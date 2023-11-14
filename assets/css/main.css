@@ -30,10 +30,16 @@ label {
     font-weight: bold;
     color: #3b3e4d;
     text-align: center;
+    display: flex;
+    align-items: center;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
     letter-spacing: 1.5px;
     margin-bottom: 25px;
     border-bottom: 3px solid #3b3e4d;
+}
+
+.fancy-title img {
+    margin-top: -25px; 
 }
 
 .btn-primary {    

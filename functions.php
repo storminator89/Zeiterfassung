@@ -191,8 +191,28 @@ $lastDayOfTheMonth = date("Y-m-t", strtotime($currentMonthStart));
 $workingDaysThisMonth = getWorkingDays($firstDayOfTheMonth, $lastDayOfTheMonth);
 
 
+$regularWorkingHours = 8; // Reguläre Arbeitsstunden pro Tag
+$totalOverHours = 0; // Gesamtüberstunden
 
+foreach ($records as $record) {
+    $startzeit = new DateTime($record['startzeit']);
+    $endzeit = new DateTime($record['endzeit']);
+    $gesamtdauer = $endzeit->diff($startzeit); // Gesamtdauer von Start bis Ende
 
+    // Umrechnung der Dauer in Stunden und Minuten
+    $gesamtstunden = $gesamtdauer->h;
+    $gesamtminuten = $gesamtdauer->i;
+
+    // Umrechnen der gesamten Dauer in Minuten und Abzug der Pausenzeit
+    $arbeitstunden = ($gesamtstunden * 60 + $gesamtminuten - $record['pause']) / 60;
+    $überstunden = $arbeitstunden - $regularWorkingHours; // Ermöglicht auch negative Überstunden
+
+    // Gesamtüberstunden aktualisieren
+    $totalOverHours += $überstunden;
+}
+
+// Runden der Gesamtüberstunden auf eine Nachkommastelle und anzeigen
+$totalOverHours = round($totalOverHours, 1);
 
 
 // SQL-Abfrage für die gesamten Arbeitsstunden dieses Monats

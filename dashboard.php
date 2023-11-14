@@ -8,7 +8,7 @@ include 'functions.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StundenSchmied - Dashboard</title>
+    <title>Quodara Chrono - Dashboard</title>
     <link rel="icon" href="assets\logo_zeiterfassung.png" type="image/png">
     <script src="https://uicdn.toast.com/tui.code-snippet/latest/tui-code-snippet.js"></script>
     <script src="https://uicdn.toast.com/tui.dom/v3.0.0/tui-dom.js"></script>
@@ -64,7 +64,7 @@ include 'functions.php';
     <div class="container mt-5">
         <h2 class="fancy-title">
             <img src="assets/kolibri_icon.png" alt="StundenSchmied Logo" style="width: 80px; height: 80px; margin-right: 10px;">
-            StundenSchmied - Zeiterfassung
+            Quodara Chrono - Zeiterfassung
         </h2>
         <div class="row">
             <div class="calendar-navigation">

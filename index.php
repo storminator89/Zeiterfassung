@@ -8,8 +8,8 @@ include 'functions.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StundenSchmied - Zeiterfassung</title>
-    <link rel="icon" href="assets/logo_zeiterfassung.png" type="image/png">
+    <title>Quodara Chrono - Zeiterfassung</title>
+    <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
 
     <!-- Externe Stylesheets und Skripte -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -44,7 +44,7 @@ include 'functions.php';
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom pl-3">
         <a class="navbar-brand" href="index.php">
-            <img class="pl-3 rotating-logo" src="assets/logo_zeiterfassung.png" alt="Arbeitszeiterfassung" height="50">
+            <img class="pl-3" src="assets/kolibri_icon_weiß.png" alt="Arbeitszeiterfassung" height="50">
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -67,7 +67,7 @@ include 'functions.php';
     <div class="container mt-5 p-5">
         <h2 class="fancy-title">
             <img src="assets/kolibri_icon.png" alt="StundenSchmied Logo" style="width: 80px; height: 80px; margin-right: 10px;">
-            StundenSchmied - Zeiterfassung
+            Quodara Chrono - Zeiterfassung
         </h2>
         <div class="row">
             <div class="col-md-12">
@@ -150,17 +150,21 @@ include 'functions.php';
                         <thead>
                             <tr>
                                 <th>Arbeitstage <?= $currentMonthName ?></th>
+                                <th>Gesamtüberstunden</th>
                                 <th>Arbeitsstunden diese Woche</th>
-                                <th>Überstunden diese Woche</th>
+                                <th>Zu Arbeiten noch diese Woche</th>
                                 <th>Arbeitsstunden im <?= $currentMonthName ?></th>
                                 <th>Gesamtstunden aktueller Monat</th>
-                                <th>Überstunden <?= $currentMonthName ?></th>
-                                <th>Überstunden dieses Jahr</th>
+                                <th>Zu Arbeiten <?= $currentMonthName ?></th>
+                                <th>Zu Arbeiten dieses Jahr</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
                                 <td><?= $workingDaysThisMonth ?></td>
+                                <td style="<?= $totalOverHours > 0 ? 'color: darkgreen;' : 'color: red;'; ?> font-weight: bold;">
+                                    <?= number_format($totalOverHours, 1) ?>
+                                </td> 
                                 <td><?= number_format($totalHoursThisWeek, 1) ?></td>
                                 <td>
                                     <?php if ($overHoursThisWeek > 0) : ?>
