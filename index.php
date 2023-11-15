@@ -1,4 +1,5 @@
 <?php
+// Start the session and include the functions
 session_start();
 include 'functions.php';
 ?>
@@ -6,12 +7,15 @@ include 'functions.php';
 <html lang="de">
 
 <head>
+    <!-- Meta tags and title -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quodara Chrono - Zeiterfassung</title>
+    <title>Quodara Chrono - Time Tracking</title>
+    <!-- Favicon -->
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
 
-    <!-- Externe Stylesheets und Skripte -->
+    <!-- External stylesheets and scripts -->
+    <!-- Bootstrap CSS and JS, jQuery, DataTables CSS and JS, Chart.js, Font Awesome -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -26,9 +30,8 @@ include 'functions.php';
     <script src="https://cdn.datatables.net/buttons/2.3.0/js/buttons.html5.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
-
-
-    <!-- Lokale Stylesheets und Skripte -->
+    <!-- Local stylesheets and scripts -->
+    <!-- Main CSS and JS, and some variables for the script -->
     <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
     <script>
         var totalHoursThisMonthFromRecords = <?= $totalHoursThisMonthFromRecords ?>;
@@ -42,14 +45,16 @@ include 'functions.php';
 </head>
 
 <body>
+    <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom pl-3">
         <a class="navbar-brand" href="index.php">
-            <img class="pl-3" src="assets/kolibri_icon_weiß.png" alt="Arbeitszeiterfassung" height="50">
+            <img class="pl-3" src="assets/kolibri_icon_weiß.png" alt="Time Tracking" height="50">
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
+            <!-- Navigation items -->
             <ul class="navbar-nav ml-auto">
                 <li class="nav-item active">
                     <a class="nav-link" href="#"><i class="fas fa-home mr-1"></i> Home</a>
@@ -62,8 +67,9 @@ include 'functions.php';
                 </li>
             </ul>
         </div>
-
     </nav>
+
+    <!-- Main content -->
     <div class="container mt-5 p-5">
         <h2 class="fancy-title">
             <img src="assets/kolibri_icon.png" alt="StundenSchmied Logo" style="width: 80px; height: 80px; margin-right: 10px;">
@@ -71,7 +77,9 @@ include 'functions.php';
         </h2>
         <div class="row">
             <div class="col-md-12">
+                <!-- Main form -->
                 <form action="save.php" method="post" id="mainForm">
+                    <!-- First row of the form -->
                     <div class="row mb-3">
                         <div class="col">
                             <div class="form-group position-relative">
@@ -89,8 +97,8 @@ include 'functions.php';
                         </div>
                         <div class="col">
                             <div class="form-group">
-                                <label for="pauseManuell"><i class="fas fa-pause mr-2"></i> Pause (Manuell)</label>
-                                <input type="number" id="pauseManuell" class="form-control" placeholder="Manuell in Minuten">
+                                <label for="pauseManuell"><i class="fas fa-pause mr-2"></i> Pause (manuell)</label>
+                                <input type="number" id="pauseManuell" class="form-control" placeholder="Manual in Minutes">
                             </div>
                         </div>
                         <div class="col">
@@ -98,11 +106,12 @@ include 'functions.php';
                                 <label for="pauseDisplay"><i class="fas fa-clock mr-2"></i> Pause (Minuten)</label>
                                 <input type="text" id="pauseDisplay" class="form-control" placeholder="MM:SS" readonly>
                                 <input type="hidden" id="pauseInput" name="pause">
-                                <button id="pauseButton" type="button" class="btn btn-secondary mt-2"><i class="fas fa-pause-circle mr-1"></i> Pause starten/beenden</button>
+                                <button id="pauseButton" type="button" class="btn btn-secondary mt-2"><i class="fas fa-pause-circle mr-1"></i> Start/Ende Pause</button>
                             </div>
                         </div>
                     </div>
 
+                    <!-- Second row of the form -->
                     <div class="row mb-3">
                         <div class="col">
                             <div class="form-group">
@@ -120,18 +129,19 @@ include 'functions.php';
                                 <label for="beschreibung"><i class="fas fa-info-circle mr-2"></i> Abwesenheitsgrund (Urlaub, Krankheit...)</label>
                                 <select name="beschreibung" class="form-control">
                                     <option value="">-</option>
-                                    <option value="Urlaub">Urlaub (wird als 8h gewertet)</option>
+                                    <option value="Urlaub">Urlaub (8h)</option>
                                     <option value="Feiertag">Feiertag (0h für Statistik)</option>
-                                    <option value="Krankheit">Krankheit (wird als 8h gewertet)</option>
+                                    <option value="Krankheit">Krankheit (8h)</option>
                                 </select>
                             </div>
                         </div>
                     </div>
 
+                    <!-- Third row of the form -->
                     <div class="row mb-3">
                         <div class="col">
                             <div class="form-group">
-                                <button type="submit" id="addButton" class="btn btn-primary" style="display: none;"><i class="fas fa-plus-circle mr-1"></i> Hinzufügen</button>
+                                <button type="submit" id="addButton" class="btn btn-primary" style="display: none;"><i class="fas fa-plus-circle mr-1"></i> Buchen</button>
                             </div>
                         </div>
                     </div>
@@ -140,7 +150,6 @@ include 'functions.php';
                 <div id="firstWeekNotification" class="row mb-3"></div>
             </div>
         </div>
-
 
         <div class="row mt-4">
             <div class="col-12">
@@ -216,7 +225,7 @@ include 'functions.php';
                     <th data-name="endzeit">Endzeit</th>
                     <th data-name="dauer">Dauer</th>
                     <th data-name="pause">Pause (Min.)</th>
-                    <th data-name="standort">Standort</th> <!-- Hinzugefügte Spalte für Standort -->
+                    <th data-name="standort">Standort</th> 
                     <th data-name="beschreibung">Abwesenheitsgrund</th>
                     <th data-name="aktion">Aktion</th>
                 </tr>
@@ -284,8 +293,15 @@ include 'functions.php';
             </div>
         </div>
 
+        <!-- Footer -->
+    <footer class="footer mt-auto py-3">
+        <div class="container">
+            <span class="text-muted">© 2023 Quodara Chrono - Zeiterfassung</span>
+        </div>
+    </footer>
 
 
+        <!-- About modal -->    
         <div class="modal fade" id="aboutModal" tabindex="-1" role="dialog" aria-labelledby="aboutModalLabel">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
