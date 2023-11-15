@@ -14,8 +14,8 @@ try {
     CREATE TABLE IF NOT EXISTS zeiterfassung (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         startzeit TEXT NOT NULL,
-        endzeit TEXT NOT NULL,
-        pause INTEGER NOT NULL,
+        endzeit TEXT,
+        pause INTEGER,
         beschreibung TEXT,
         standort TEXT
     );";    
