@@ -204,7 +204,9 @@ foreach ($records as $record) {
     $gesamtminuten = $gesamtdauer->i;
 
     // Umrechnen der gesamten Dauer in Minuten und Abzug der Pausenzeit
-    $arbeitstunden = ($gesamtstunden * 60 + $gesamtminuten - $record['pause']) / 60;
+    // Stellen Sie sicher, dass die Pausenzeit eine Zahl ist und setzen Sie sie auf 0, falls sie leer ist
+    $pause = is_numeric($record['pause']) ? (int)$record['pause'] : 0;
+    $arbeitstunden = ($gesamtstunden * 60 + $gesamtminuten - $pause) / 60;
     $überstunden = $arbeitstunden - $regularWorkingHours; // Ermöglicht auch negative Überstunden
 
     // Gesamtüberstunden aktualisieren
