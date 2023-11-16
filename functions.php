@@ -291,6 +291,21 @@ function getGermanDayName($date) {
     return $days[date("w", strtotime($date))];
 }
 
+function getEntryById($conn, $id) {
+    $stmt = $conn->prepare("SELECT * FROM zeiterfassung WHERE id = :id");
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
+
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($result) {
+        echo json_encode(["success" => true, "data" => $result]);
+    } else {
+        echo json_encode(["success" => false, "message" => "Kein Eintrag gefunden mit ID: $id"]);
+    }
+}
+
+
 // Gamification: Counting the different weeks worked
 $stmt = $conn->prepare("SELECT COUNT(DISTINCT strftime('%W', startzeit)) as weeksCount FROM zeiterfassung");
 $stmt->execute();

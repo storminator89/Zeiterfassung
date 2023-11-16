@@ -29,12 +29,33 @@ function createNewWorkEntry($conn) {
 
     $stmt->execute();
     $lastId = $conn->lastInsertId();
+    
+    $stmt = $conn->prepare("SELECT * FROM zeiterfassung WHERE id = :id");
+    $stmt->bindParam(':id', $lastId, PDO::PARAM_INT);
+    $stmt->execute();
+    $newEntry = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    echo json_encode(["success" => true, "message" => "Entry created", "id" => $lastId]);
+    if ($newEntry) {
+        echo json_encode(["success" => true, "message" => "Eintrag erstellt", "data" => $newEntry]);
+    } else {
+        echo json_encode(["success" => false, "message" => "Eintrag erstellt, aber Daten konnten nicht abgerufen werden"]);
+    }
 }
 
-// weitere Funktionen für andere Aktionen hinzufügen
-// ...
+function setEndzeit($conn, $input) {
+    $id = $input['id'];
+    $endzeit = date('Y-m-d\TH:i:s'); 
+
+    $stmt = $conn->prepare("UPDATE zeiterfassung SET endzeit = :endzeit WHERE id = :id");
+    $stmt->bindParam(':endzeit', $endzeit, PDO::PARAM_STR);
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+
+    if ($stmt->execute()) {
+        echo json_encode(["success" => true, "message" => "Endzeit aktualisiert", "id" => $id]);
+    } else {
+        echo json_encode(["success" => false, "message" => "Fehler beim Aktualisieren der Endzeit"]);
+    }
+}
 
 // Router-Logik
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -47,12 +68,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         case 'createNewWorkEntry':
             createNewWorkEntry($conn);
             break;
-
-        //  Fälle für weitere Aktionen hinzufügen
-        // ...
-
+        case 'setEndzeit': // Neue Aktion für das Gehen-Event
+            setEndzeit($conn, $input);
+            break;
+        // Weitere Fälle ...
+        case 'getEntryById':
+            $id = $input['id'] ?? 0;
+            getEntryById($conn, $id);
+            break;
+        // Weitere Fälle ...
         default:
-            echo json_encode(["success" => false, "message" => "invalid action parameter"]);
+            echo json_encode(["success" => false, "message" => "Ungültige Aktion"]);
     }
 } else {
     echo json_encode(["success" => false, "message" => "Only POST requests allowed"]);

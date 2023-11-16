@@ -47,7 +47,7 @@ include 'functions.php';
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
         <a class="navbar-brand" href="index.php">
-            <img src="assets\logo_zeiterfassung.png" alt="JobRouter Arbeitszeiterfassung" height="50">
+            <img src="assets\logo_zeiterfassung.png" alt="Arbeitszeiterfassung" height="50">
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -63,7 +63,7 @@ include 'functions.php';
 
     <div class="container mt-5">
         <h2 class="fancy-title">
-            <img src="assets/kolibri_icon.png" alt="StundenSchmied Logo" style="width: 80px; height: 80px; margin-right: 10px;">
+            <img src="assets/kolibri_icon.png" alt="Logo" style="width: 70px; height: 70px; margin-right: 10px;">
             Quodara Chrono - Zeiterfassung
         </h2>
         <div class="row">

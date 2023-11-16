@@ -1,11 +1,30 @@
 <!DOCTYPE html>
 <html>
+    <meta charset="UTF-8">
 <head>
     <title>Zeiterfassung</title>
     <link rel="stylesheet" type="text/css" href="popup.css">
 </head>
 <body>
     <h1>Zeiterfassungs-Plugin</h1>
+    <div id="settingsContainer">
+        <input type="text" id="apiUrl" placeholder="API URL eingeben">
+        <button id="saveUrlButton">Speichern</button>        
+    </div>
+    <div id="standortContainer">
+        <select id="standort" class="form-control">
+            <option value="">-</option>
+            <option value="Büro">Büro</option>
+            <option value="Home Office">Home Office</option>
+            <option value="Dienstreise">Dienstreise</option>
+        </select>
+    </div>
+    <div id="pauseContainer">
+        <input type="text" id="pause" placeholder="Pause in Minuten">
+        <button id="startPauseButton">Pause Starten</button>
+        <button id="stopPauseButton">Pause Stoppen</button>
+    </div>
+    
     <div id="buttonContainer">
         <button id="kommButton">Kommen</button>
         <button id="gehenButton">Gehen</button>

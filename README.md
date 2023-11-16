@@ -3,6 +3,10 @@
 Das Tool unterstützt Sie bei der Erfassung Ihrer Arbeitszeiten. 
 ![Main Screen](/assets/mainPage_Screenshot.png)
 
+## Browser Plugin
+![Browser Plugin](/assets/erweiterung_edge.png) 
+In time-tracker-extension_edge folder
+
 ### Dashboard
 ![Main Screen](/assets/Dashboard_Screenshot.png)
 
@@ -36,13 +40,15 @@ Das Tool unterstützt Sie bei der Erfassung Ihrer Arbeitszeiten.
 Schreibrechte auf Hauptverzeichnis, damit die sqllite Datei angelegt wird
 
 # REST API
-an /api.php POST Request
+an `/api.php` POST Request
+```json
 {
   "action": "createNewWorkEntry",
   "startzeit": "2023-11-15T08:00:00", 
   "endzeit": "2023-11-15T16:00:00", 
   "pause": 30
 }
+```
 
 # Dockerfile
 Alle Dateien in gleiches Verzeichnis wie Dockerfile
