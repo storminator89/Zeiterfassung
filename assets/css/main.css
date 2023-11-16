@@ -30,14 +30,19 @@ label {
     font-weight: bold;
     color: #3b3e4d;
     text-align: center;
+    display: flex;
+    align-items: center;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
     letter-spacing: 1.5px;
     margin-bottom: 25px;
     border-bottom: 3px solid #3b3e4d;
 }
 
-.btn-primary {
-    background-color: #59aa6e;
+.fancy-title img {
+    margin-top: -25px; 
+}
+
+.btn-primary {    
     font-family: 'Source Sans Pro', sans-serif;
 }
 
@@ -211,7 +216,14 @@ label {
 }
 
 
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
 
+.fade-in {
+    animation: fadeIn 2s ease-out;
+}
 
 
 

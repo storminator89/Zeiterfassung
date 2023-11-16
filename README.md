@@ -14,6 +14,7 @@ Das Tool unterstützt Sie bei der Erfassung Ihrer Arbeitszeiten.
 - **Statistik:** Es werden Statistiken über die Arbeitszeit für den aktuellen Monat und das Jahr angezeigt mit Dashboard
 - **Übersicht der Arbeitszeiten:** Eine detaillierte Tabelle mit allen Arbeitszeiten, die der Benutzer eingibt.
 - **Automatische Berechnung** der Arbeitstage in diesem Monat und **Feiertage** weren berücksichtigt
+- **Kalenderansicht**
 
 ## Abhängigkeiten und Ressourcen
 
@@ -22,7 +23,7 @@ Das Tool unterstützt Sie bei der Erfassung Ihrer Arbeitszeiten.
 - **DataTables:** Für das Rendern und Managen von Tabellen.
 - **Chart.js:** Für das Zeichnen von Diagrammen (wenn implementiert).
 - **PDFMake und JSZip:** Für das Erstellen von PDF-Dateien und das Zippen von Daten.
-- **MS SQL Server** Aktuell wird nur Microsoft SQL Server Express unterstützt. Mehr sind geplant
+- **SQL Lite** Umgesetzt mit SQLLite
 
 ## Installation
 
@@ -32,21 +33,30 @@ Das Tool unterstützt Sie bei der Erfassung Ihrer Arbeitszeiten.
 
 ## Datenbank Konfiguration
 
-Bevor Sie beginnen, müssen Sie sicherstellen, dass Sie eine Datenbankverbindung eingerichtet haben. 
+Schreibrechte auf Hauptverzeichnis, damit die sqllite Datei angelegt wird
 
-Erstellen Sie eine `.env`-Datei im Hauptverzeichnis Ihrer Anwendung mit folgendem Inhalt:
+# REST API
+an /api.php POST Request
+{
+  "action": "createNewWorkEntry",
+  "startzeit": "2023-11-15T08:00:00", 
+  "endzeit": "2023-11-15T16:00:00", 
+  "pause": 30
+}
 
-```bash
-DB_SERVER=YOUR_SERVER_NAME
-DB_NAME=YOUR_DATABASE_NAME
-DB_USER=YOUR_DATABASE_USERNAME
-DB_PASS=YOUR_DATABASE_PASSWORD
-``` 
+# Dockerfile
+Alle Dateien in gleiches Verzeichnis wie Dockerfile
+`docker build -t zeitwerk .`
+
+z.B. `docker run  --name zeitwerk -d -p 8000:80 -v /root/Docker/zeitwerk/db:/var/www/html/timetracking zeitwerk`
+
+manuelles Kopieren der SQL-Lite DB:
+`docker cp zeitwerk:/var/www/html/timetracking.sqlite /root/Docker/zeitwerk/db`
+
+und andersherum von Docker zu Host:
+`docker cp /root/Docker/zeitwerk/db/timetracking.sqlite zeitwerk:/var/www/html/timetracking.sqlite`
 
 
-Ersetzen Sie `YOUR_SERVER_NAME`, `YOUR_DATABASE_NAME`, `YOUR_DATABASE_USERNAME` und `YOUR_DATABASE_PASSWORD` durch Ihre eigenen Datenbankinformationen. Zum Beispiel:
 
-## Hinweis
 
-Halten Sie Ihre `.env`-Datei sicher und teilen Sie sie nicht, da sie vertrauliche Informationen enthält!
 

@@ -1,19 +1,37 @@
-
 <?php
 
-require 'vendor/autoload.php';
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
-$dotenv->load();
+// Define the path to the SQLite database file
+$database = __DIR__ . '/assets/db/timetracking.sqlite';
 
-$server = $_ENV['DB_SERVER'];
-$database = $_ENV['DB_NAME'];
-$user = $_ENV['DB_USER'];
-$pass = $_ENV['DB_PASS'];
-
-try {
-    $conn = new PDO("sqlsrv:server=$server;Database=$database", $user, $pass);
+try {    
+    // Create a new PDO instance for SQLite database connection
+    $conn = new PDO("sqlite:$database");
+    // Set the error mode to exception for better error handling
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    
+    // SQL to create the 'zeiterfassung' table if it doesn't exist
+    $createZeiterfassungSql = "
+    CREATE TABLE IF NOT EXISTS zeiterfassung (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        startzeit TEXT NOT NULL,
+        endzeit TEXT,
+        pause INTEGER,
+        beschreibung TEXT,
+        standort TEXT
+    );";    
+    // Execute the query to create 'zeiterfassung' table
+    $conn->exec($createZeiterfassungSql);
+    
+    // SQL to create the 'Feiertage' table if it doesn't exist
+    $createFeiertageSql = "
+    CREATE TABLE IF NOT EXISTS Feiertage (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        Datum TEXT NOT NULL
+    );";
+    // Execute the query to create 'Feiertage' table
+    $conn->exec($createFeiertageSql);
+
 } catch (PDOException $e) {
-    die("Error connecting to SQL Server: " . $e->getMessage());
+    // Handle any connection errors
+    die("Can't connect to SQLite database: " . $e->getMessage());
 }
-?>

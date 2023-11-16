@@ -1,27 +1,31 @@
 <?php
 include 'config.php';
 
-// Überprüfen, ob ID gesendet wurde
+// Check if an ID has been sent
 if (isset($_POST['id'])) {
-   $id = $_POST['id'];
+    $id = $_POST['id'];
 
-   // Datensatz löschen
-   $stmt = $conn->prepare('DELETE FROM zeiterfassung WHERE id = :id');
-   $stmt->bindParam(':id', $id);
+    // Prepare a statement to delete the record with the given ID
+    $stmt = $conn->prepare('DELETE FROM zeiterfassung WHERE id = :id');
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
    
-   if ($stmt->execute()) {
-       $affectedRows = $stmt->rowCount();
-       if ($affectedRows == 0) {
-           die("Kein Datensatz mit der ID $id gefunden.");
-       }
-   } else {
-       die("Fehler beim Löschen des Datensatzes: " . $stmt->errorInfo()[2]);
-   }
+    // Execute the statement and check if the execution was successful
+    if ($stmt->execute()) {
+        // Check if any rows were affected
+        $affectedRows = $stmt->rowCount();
+        if ($affectedRows == 0) {
+            die("No record found with ID $id.");
+        }
+    } else {
+        // Error handling for failed deletion
+        die("Error deleting the record: " . $stmt->errorInfo()[2]);
+    }
 
-   // Zur Hauptseite umleiten
-   header("Location: index.php");
-   exit;
+    // Redirect to the main page after successful deletion
+    header("Location: index.php");
+    exit;
 } else {
-   die("ID nicht angegeben.");
+    // Handling the case when no ID is provided
+    die("ID not provided.");
 }
 ?>
