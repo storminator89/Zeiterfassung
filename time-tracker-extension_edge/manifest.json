@@ -1,0 +1,10 @@
+{
+  "manifest_version": 2,
+  "name": "Zeiterfassungs-Plugin",
+  "version": "1.0",
+  "description": "Ein einfaches Zeiterfassungs-Plugin für Edge.",
+  "permissions": ["activeTab"],
+  "browser_action": {
+    "default_popup": "popup.html"    
+  }  
+}

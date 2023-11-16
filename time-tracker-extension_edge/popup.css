@@ -1,0 +1,41 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    text-align: center;
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 20px;
+}
+
+button {
+    background-color: #3b3e4d;
+    color: white;
+    padding: 10px 20px;
+    margin: 5px;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+#response {
+    margin-top: 20px;
+    padding: 10px;
+    border-radius: 4px;
+    background-color: #f2f2f2;
+    border: 1px solid #ddd;
+    color: #333;
+}
+
+/* Zusätzliche Stile für das Layout der Buttons */
+#buttonContainer {
+    display: flex;
+    justify-content: center;
+    gap: 10px; /* Abstand zwischen den Buttons */
+}
