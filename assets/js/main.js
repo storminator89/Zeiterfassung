@@ -4,7 +4,8 @@ $(function () {
         $(this).next(".toggle-content").slideToggle();
 
         $(this).find('i.fas').toggleClass('fa-chevron-down fa-chevron-up');
-    });
+    });   
+    
 
     function updateDateTimeField() {
         
@@ -274,8 +275,20 @@ $(function () {
         localStorage.removeItem('startzeit');
         localStorage.removeItem('elapsedPauseInSeconds');
     });
+    
 
 });
+
+function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    var icon = document.querySelector('.fancy-title img'); 
+    if (document.body.classList.contains('dark-mode')) {
+        icon.src = 'assets/kolibri_icon_weiß.png'; 
+    } else {
+        icon.src = 'assets/kolibri_icon.png'; 
+    }
+}
+
 
 if (window.location.pathname.includes('dashboard.php')) {
 

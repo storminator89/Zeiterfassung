@@ -225,5 +225,111 @@ label {
     animation: fadeIn 2s ease-out;
 }
 
+.dark-mode {
+    background-color: #1e1c1cdf; /* Dark background */
+    color: #ffffff; /* Light text */
+}
+
+.dark-mode label, .dark-mode .navbar-custom, .dark-mode .rtd-infobox-header, .dark-mode .alert-success, .dark-mode .tui-full-calendar-weekday-schedule,
+.dark-mode .tui-full-calendar-time-schedule {
+    color: #ffffff; /* Light text for specific elements */
+}
+
+.dark-mode .details-table th, .dark-mode .details-table td {
+    border-color: #444; /* Darker borders for tables */
+}
+
+.dark-mode .details-table th {
+    background-color: #333; /* Darker header for tables */
+}
+
+.dark-mode .rtd-infobox-content {
+    background-color: #333; /* Dark background for info boxes */
+    color: #ddd; /* Light text for info boxes */
+}
+
+.dark-mode .navbar-custom {
+    background-color: #222; /* Dark background for navbar */
+}
+
+.dark-mode .fancy-title {
+    color: #ccc; /* Lighter text for titles */
+    text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.1); /* Adjust text shadow */
+}
+
+.dark-mode label {
+    color: #ffffff; /* Light color for readability */
+}
+
+.dark-mode .fas {
+    color: #ffffff; /* Ensures icons within labels are also light colored */
+}
 
 
+.dark-mode .mt-5 {
+    background-color: #333; /* Darker background for dark mode */
+    color: #fff; /* Light text color for readability */
+    box-shadow: 0 4px 8px rgba(255, 255, 255, 0.2); /* Adjust box shadow for dark mode */
+}
+
+.dark-mode .table thead th {
+    background-color: #454545; /* Darker background for headers */
+    color: #ffffff; /* Light text color */
+}
+
+.dark-mode .table tbody tr {
+    background-color: #333333; /* Slightly lighter than header */
+}
+
+.dark-mode .table tbody tr td {
+    color: #ffffff; /* Light text color */
+    border-color: #555555; /* Slightly darker border */
+}
+
+.dark-mode .table tbody tr:hover {
+    background-color: #383838; /* Slightly lighter for hover state */
+}
+
+.dark-mode .dt-button {
+    color: #ffffff; /* Light color for text */
+    background-color: #444444; /* Darker background for the button */
+    border-color: #666666; /* Optional: if you want to change the border color */
+}
+
+.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button {
+    color: #ffffff; /* Light color for text */
+    background-color: #333333; /* Darker background for the button */
+    border-color: #555555; /* Dark border color */
+}
+
+/* Style for non-active buttons */
+.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button {
+    color: #ffffff; /* Light color for text */
+    background-color: #333333; /* Darker background */
+    border-color: #555555; /* Dark border */
+}
+
+/* Style for the active button */
+.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button.current, 
+.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+    color: #ffffff; 
+    background-color: #555555; 
+    border-color: #777777; 
+}
+
+
+.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background-color: #444444;
+    color: #ffffff; 
+    border-color: #666666;
+}
+
+
+
+
+.navbar .dark-mode-toggle {
+    border: none;
+    background: transparent; 
+    color: #fff; 
+    margin-left: auto; 
+}
