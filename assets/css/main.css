@@ -324,8 +324,46 @@ label {
     border-color: #666666;
 }
 
+.dark-mode input[type="text"],
+.dark-mode input[type="email"],
+.dark-mode input[type="password"],
+.dark-mode input[type="number"],
+.dark-mode input[type="date"],
+.dark-mode input[type="datetime-local"],
+.dark-mode input[type="search"],
+.dark-mode select,
+.dark-mode textarea {
+    background-color: #222222; /* Dark background */
+    color: #ffffff; /* Light text */
+    border: 1px solid #555555; /* Adjusted border color */
+    padding: 5px; /* Optional: Adjust padding if needed */
+}
 
+.dark-mode input[type="text"]:focus,
+.dark-mode input[type="email"]:focus,
+.dark-mode input[type="password"]:focus,
+.dark-mode input[type="number"]:focus,
+.dark-mode input[type="date"]:focus,
+.dark-mode input[type="datetime-local"]:focus,
+.dark-mode input[type="search"]:focus,
+.dark-mode select:focus,
+.dark-mode textarea:focus {
+    border-color: #888888; /* Different border color on focus */
+    outline: none; /* Optional: Removes the default outline */
+}
 
+.dark-mode select option {
+    background-color: #333333; /* Dark background */
+    color: #ffffff; /* Light text */
+}
+
+.dark-mode .positive-overhours {
+    color: lightgreen !important; /* Brighter green color */
+}
+
+.dark-mode .negative-overhours {
+    color: #ff6666 !important; /* Brighter red color */
+}
 
 .navbar .dark-mode-toggle {
     border: none;

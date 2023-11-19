@@ -10,15 +10,18 @@ In time-tracker-extension_edge folder
 ### Dashboard
 ![Main Screen](/assets/Dashboard_Screenshot.png)
 
+### Darkmode
+![Darkmode](/assets/darkmode.png)
+
 ## Hauptfunktionen
 
-- **Erfassung von Arbeitszeiten:** Nutzer können die Startzeit, Endzeit und Pausenzeit eingeben.
+- **Erfassung von Arbeitszeiten:** Nutzer können die Startzeit, Endzeit und Pausenzeit (manuell oder mit Timer) eingeben.
 - **Auswahl des Standortes:** Nutzer können auswählen, ob sie im Büro, im Home Office oder auf Dienstreise arbeiten.
 - **Beschreibung hinzufügen:** Optionen wie Urlaub, Feiertag und Krankheit sind verfügbar.
 - **Statistik:** Es werden Statistiken über die Arbeitszeit für den aktuellen Monat und das Jahr angezeigt mit Dashboard
 - **Übersicht der Arbeitszeiten:** Eine detaillierte Tabelle mit allen Arbeitszeiten, die der Benutzer eingibt.
 - **Automatische Berechnung** der Arbeitstage in diesem Monat und **Feiertage** weren berücksichtigt
-- **Kalenderansicht**
+- **Kalenderansicht** aller Arbeitszeiten für bessere Übersicht
 
 ## Abhängigkeiten und Ressourcen
 
@@ -27,13 +30,11 @@ In time-tracker-extension_edge folder
 - **DataTables:** Für das Rendern und Managen von Tabellen.
 - **Chart.js:** Für das Zeichnen von Diagrammen (wenn implementiert).
 - **PDFMake und JSZip:** Für das Erstellen von PDF-Dateien und das Zippen von Daten.
-- **SQL Lite** Umgesetzt mit SQLLite
+- **SQL Lite** SQLlite für die Speicherung der Daten
 
 ## Installation
 
-- Kopieren Sie alle Dateien in Ihr gewünschtes Verzeichnis.
-- Fügen Sie die benötigten externen Bibliotheken hinzu. Diese werden im Haupt-HTML-Dateikopf referenziert.
-
+- Kopieren Sie alle Dateien in Ihr gewünschtes Verzeichnis
 
 ## Datenbank Konfiguration
 

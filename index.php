@@ -63,19 +63,19 @@ include 'functions.php';
                     <a class="nav-link" href="dashboard.php"><i class="fas fa-tachometer-alt mr-1"></i> Dashboard</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-info-circle mr-1"></i> About</a>                    
+                    <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-info-circle mr-1"></i> About</a>
                 </li>
             </ul>
-            <button class="dark-mode-toggle" onclick="toggleDarkMode()">
-            <i class="fas fa-moon"></i> 
-        </button>
+            <button class="dark-mode-toggle me-3" onclick="toggleDarkMode()">
+                <i class="fas fa-moon fa-2x"></i> 
+            </button>
         </div>
     </nav>
 
     <!-- Main content -->
     <div class="container mt-5 p-5">
         <h2 class="fancy-title">
-            <img src="assets/kolibri_icon.png" alt="StundenSchmied Logo" style="width: 80px; height: 80px; margin-right: 10px;">
+            <img src="assets/kolibri_icon.png" alt="Quodora Chrono Logo" style="width: 80px; height: 80px; margin-right: 10px;">
             Quodara Chrono - Zeiterfassung
         </h2>
         <div class="row">
@@ -87,14 +87,14 @@ include 'functions.php';
                         <div class="col">
                             <div class="form-group position-relative">
                                 <label for="startzeit"><i class="fas fa-play mr-2"></i> Startzeit</label>
-                                <input type="datetime-local" id="startzeit" name="startzeit" class="form-control" readonly required>
+                                <input type="datetime-local" id="startzeit" name="startzeit" class="form-control" required>
                                 <button type="button" id="startButton" class="btn btn-primary mt-2"><i class="fas fa-sign-in-alt"></i> Kommen</button>
                             </div>
                         </div>
                         <div class="col">
                             <div class="form-group">
                                 <label for="endzeit"><i class="fas fa-stop mr-2"></i> Endzeit</label>
-                                <input type="datetime-local" id="endzeit" name="endzeit" class="form-control" readonly>
+                                <input type="datetime-local" id="endzeit" name="endzeit" class="form-control">
                                 <button type="button" id="endButton" class="btn btn-primary mt-2"><i class="fas fa-sign-out-alt"></i> Gehen</button>
                             </div>
                         </div>
@@ -174,9 +174,10 @@ include 'functions.php';
                         <tbody>
                             <tr>
                                 <td><?= $workingDaysThisMonth ?></td>
-                                <td style="<?= $totalOverHours > 0 ? 'color: darkgreen;' : 'color: red;'; ?> font-weight: bold;">
+                                <td class="<?= $totalOverHours > 0 ? 'positive-overhours' : 'negative-overhours'; ?>" style="font-weight: bold;">
                                     <?= number_format($totalOverHours, 1) ?>
-                                </td> 
+                                </td>
+
                                 <td><?= number_format($totalHoursThisWeek, 1) ?></td>
                                 <td>
                                     <?php if ($overHoursThisWeek > 0) : ?>
@@ -228,7 +229,7 @@ include 'functions.php';
                     <th data-name="endzeit">Endzeit</th>
                     <th data-name="dauer">Dauer</th>
                     <th data-name="pause">Pause (Min.)</th>
-                    <th data-name="standort">Standort</th> 
+                    <th data-name="standort">Standort</th>
                     <th data-name="beschreibung">Abwesenheitsgrund</th>
                     <th data-name="aktion">Aktion</th>
                 </tr>
@@ -297,14 +298,14 @@ include 'functions.php';
         </div>
 
         <!-- Footer -->
-    <footer class="footer mt-auto py-3">
-        <div class="container">
-            <span class="text-muted">© 2023 Quodara Chrono - Zeiterfassung</span>
-        </div>
-    </footer>
+        <footer class="footer mt-auto py-3">
+            <div class="container">
+                <span class="text-muted">© 2023 Quodara Chrono - Zeiterfassung</span>
+            </div>
+        </footer>
 
 
-        <!-- About modal -->    
+        <!-- About modal -->
         <div class="modal fade" id="aboutModal" tabindex="-1" role="dialog" aria-labelledby="aboutModalLabel">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
