@@ -106,7 +106,8 @@ $(function () {
         buttons,
         language: {
             url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/de-DE.json"
-        }
+        },
+        order: [[1, 'desc']]
     });
 
     $('.table tbody').on('dblclick', 'td', function () {
