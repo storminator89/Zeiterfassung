@@ -4,19 +4,19 @@ $(function () {
         $(this).next(".toggle-content").slideToggle();
 
         $(this).find('i.fas').toggleClass('fa-chevron-down fa-chevron-up');
-    });   
-    
+    });
+
 
     function updateDateTimeField() {
-        
-        var now = new Date();    
-        var timezoneOffsetMinutes = now.getTimezoneOffset();        
-        
-        var correctedTime = new Date(now.getTime() - timezoneOffsetMinutes * 60000);        
+
+        var now = new Date();
+        var timezoneOffsetMinutes = now.getTimezoneOffset();
+
+        var correctedTime = new Date(now.getTime() - timezoneOffsetMinutes * 60000);
         $("#endzeit").val(correctedTime.toISOString().slice(0, 16));
-    }    
-    
-    updateDateTimeField();    
+    }
+
+    updateDateTimeField();
     setInterval(updateDateTimeField, 60000);
     var startButton = document.getElementById('startButton');
     var endButton = document.getElementById('endButton');
@@ -153,7 +153,7 @@ $(function () {
     $('select[name="beschreibung"]').change(function () {
         let desc = $(this).val();
         let date = $('input[name="startzeit"]').val().split('T')[0];
-    
+
         if (desc === "Feiertag") {
             $('input[name="startzeit"]').val(`${date}T00:00`);
             $('input[name="endzeit"]').val(`${date}T00:00`);
@@ -168,6 +168,7 @@ $(function () {
     let pauseDisplay = $('#pauseDisplay');
     let startTime = parseInt(localStorage.getItem('startTime')) || 0;
     let elapsedPause = parseInt(localStorage.getItem('elapsedPauseInSeconds')) || 0;
+    let isPaused = !startTime;
     let interval;
 
     let startzeitField = $('input[name="startzeit"]');
@@ -196,31 +197,40 @@ $(function () {
         return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
     }
 
+    if (elapsedPause > 0) {
+        pauseDisplay.val(formatTime(elapsedPause));
+    }
+
     if (startTime) {
         interval = setInterval(updatePause, 1000);
         pauseBtn.text('Pause beenden');
+    } else if (elapsedPause > 0) {
+        pauseBtn.text('Pause fortsetzen');
+    } else {
+        pauseBtn.text('Pause starten');
     }
 
     pauseBtn.click(function () {
-        if (!startTime) {
+        if (isPaused) {
+            // Starten oder Fortsetzen der Pause
             startTime = Date.now();
             localStorage.setItem('startTime', startTime);
-            localStorage.setItem('elapsedPauseInSeconds', elapsedPause);
             pauseBtn.text('Pause beenden');
             interval = setInterval(updatePause, 1000);
+            isPaused = false;
         } else {
+            // Beenden der Pause
             clearInterval(interval);
             let endTime = Date.now();
             let duration = Math.round((endTime - startTime) / 1000);
             elapsedPause += duration;
 
-            let totalPauseMinutes = Math.round(elapsedPause / 60);
-            document.getElementById('pauseInput').value = totalPauseMinutes;
-
-            localStorage.removeItem('startTime');
             localStorage.setItem('elapsedPauseInSeconds', elapsedPause);
+            localStorage.removeItem('startTime');
+            startTime = null;
 
-            pauseBtn.text('Pause fortsetzen');
+            pauseBtn.text('Pause starten');
+            isPaused = true;
         }
     });
 
@@ -276,17 +286,17 @@ $(function () {
         localStorage.removeItem('startzeit');
         localStorage.removeItem('elapsedPauseInSeconds');
     });
-    
+
 
 });
 
 function toggleDarkMode() {
     document.body.classList.toggle('dark-mode');
-    var icon = document.querySelector('.fancy-title img'); 
+    var icon = document.querySelector('.fancy-title img');
     if (document.body.classList.contains('dark-mode')) {
-        icon.src = 'assets/kolibri_icon_weiß.png'; 
+        icon.src = 'assets/kolibri_icon_weiß.png';
     } else {
-        icon.src = 'assets/kolibri_icon.png'; 
+        icon.src = 'assets/kolibri_icon.png';
     }
 }
 
