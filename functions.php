@@ -143,14 +143,15 @@ function fetchFeiertageDB($jahr)
     $data = json_decode($json, true);
     if (!is_array($data)) {        
         throw new Exception("Unexpected format of holiday data.");
-    }
+    }    
     
     $feiertage = array_map(function ($feiertag) {
         return $feiertag['datum'] ?? null;
     }, $data);
     
     $feiertage = array_filter($feiertage);
-    
+    $feiertage = array_values($feiertage); 
+
     if (count($feiertage) > 0) {
         $placeholders = implode(',', array_fill(0, count($feiertage), '(?)'));
         $stmt = $conn->prepare("INSERT INTO Feiertage (Datum) VALUES $placeholders");
@@ -189,25 +190,33 @@ $lastDayOfTheMonth = date("Y-m-t", strtotime($currentMonthStart));
 $workingDaysThisMonth = getWorkingDays($firstDayOfTheMonth, $lastDayOfTheMonth);
 
 $regularWorkingHours = 8; // Regular working hours per day
-$totalOverHours = 0; // Total over hours
+$totalOverHours = 0; // Gesamtüberstunden
+$workHoursByDate = []; // Speichert Arbeitsstunden pro Datum
 
-// Looping through the records
+// Durchlaufen der Datensätze
 foreach ($records as $record) {
+    $datum = (new DateTime($record['startzeit']))->format('Y-m-d');
     $startzeit = new DateTime($record['startzeit']);
     $endzeit = new DateTime($record['endzeit']);
-    $gesamtdauer = $endzeit->diff($startzeit); // Total duration from start to end
+    $gesamtdauer = $endzeit->diff($startzeit);
 
-    // Converting the duration into hours and minutes
     $gesamtstunden = $gesamtdauer->h;
     $gesamtminuten = $gesamtdauer->i;
 
-    // Converting the total duration into minutes and subtracting the break time
-    // Ensure the break time is a number and set it to 0 if it's empty
     $pause = is_numeric($record['pause']) ? (int)$record['pause'] : 0;
-    $arbeitstunden = ($gesamtstunden * 60 + $gesamtminuten - $pause) / 60;
-    $überstunden = $arbeitstunden - $regularWorkingHours; // Allows negative over hours as well
+    $arbeitstunden = $gesamtstunden * 60 + $gesamtminuten - $pause;
 
-    // Updating total over hours
+    // Speichert Arbeitsstunden pro Datum
+    if (!isset($workHoursByDate[$datum])) {
+        $workHoursByDate[$datum] = 0;
+    }
+    $workHoursByDate[$datum] += $arbeitstunden;
+}
+
+// Berechnung der Überstunden pro Datum
+foreach ($workHoursByDate as $date => $minutes) {
+    $arbeitstunden = $minutes / 60;
+    $überstunden = $arbeitstunden - $regularWorkingHours; 
     $totalOverHours += $überstunden;
 }
 
