@@ -67,7 +67,7 @@ include 'functions.php';
                 </li>
             </ul>
             <button class="dark-mode-toggle me-3" onclick="toggleDarkMode()">
-                <i class="fas fa-moon fa-2x"></i> 
+                <i class="fas fa-moon fa-2x"></i>
             </button>
         </div>
     </nav>
@@ -84,20 +84,34 @@ include 'functions.php';
                 <form action="save.php" method="post" id="mainForm">
                     <!-- First row of the form -->
                     <div class="row mb-3">
-                        <div class="col">
+                        <div class="col" style="display: none;">
                             <div class="form-group position-relative">
                                 <label for="startzeit"><i class="fas fa-play mr-2"></i> Startzeit</label>
                                 <input type="datetime-local" id="startzeit" name="startzeit" class="form-control" required>
-                                <button type="button" id="startButton" class="btn btn-primary mt-2"><i class="fas fa-sign-in-alt"></i> Kommen</button>
                             </div>
                         </div>
-                        <div class="col">
+
+                        <div class="col" style="display: none;">
                             <div class="form-group">
                                 <label for="endzeit"><i class="fas fa-stop mr-2"></i> Endzeit</label>
                                 <input type="datetime-local" id="endzeit" name="endzeit" class="form-control">
-                                <button type="button" id="endButton" class="btn btn-primary mt-2"><i class="fas fa-sign-out-alt"></i> Gehen</button>
                             </div>
                         </div>
+
+                        <div class="row">
+                            <div class="col">
+                                <div class="form-group mb-4">
+                                    <button type="button" id="startButton" class="btn btn-primary btn-block btn-lg"><i class="fas fa-sign-in-alt"></i> Kommen</button>
+                                </div>
+                            </div>
+
+                            <div class="col">
+                                <div class="form-group mb-4">
+                                    <button type="button" id="endButton" class="btn btn-success btn-block btn-lg"><i class="fas fa-sign-out-alt"></i> Gehen</button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="col">
                             <div class="form-group">
                                 <label for="pauseManuell"><i class="fas fa-pause mr-2"></i> Pause (manuell)</label>
@@ -129,13 +143,8 @@ include 'functions.php';
                         </div>
                         <div class="col">
                             <div class="form-group">
-                                <label for="beschreibung"><i class="fas fa-info-circle mr-2"></i> Abwesenheitsgrund (Urlaub, Krankheit...)</label>
-                                <select name="beschreibung" class="form-control">
-                                    <option value="">-</option>
-                                    <option value="Urlaub">Urlaub (8h)</option>
-                                    <option value="Feiertag">Feiertag (0h für Statistik)</option>
-                                    <option value="Krankheit">Krankheit (8h)</option>
-                                </select>
+                                <label for="beschreibung"><i class="fas fa-info-circle mr-2"></i> Kommentar</label>
+                                <textarea name="beschreibung" class="form-control" rows="4" placeholder="Hier können Sie einen Kommentar hinterlassen..."></textarea>
                             </div>
                         </div>
                     </div>
@@ -321,8 +330,6 @@ include 'functions.php';
                 </div>
             </div>
         </div>
-
-
 </body>
 
 </html>

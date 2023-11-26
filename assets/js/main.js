@@ -31,7 +31,22 @@ $(function () {
         document.getElementById('startzeit').value = formattedDateTime;
         startButton.disabled = true;
         localStorage.setItem('startzeit', formattedDateTime);
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "save.php", true);
+        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+        xhr.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+                var lastId = this.responseText;
+                localStorage.setItem('lastId', lastId);
+
+                location.reload();
+            }
+        };
+        xhr.send("startzeit=" + formattedDateTime);
     });
+
+
 
     endButton.addEventListener('click', function () {
         var now = new Date();
@@ -43,10 +58,24 @@ $(function () {
         document.getElementById('endzeit').value = formattedDateTime;
         startButton.disabled = false;
         var addButton = document.getElementById('addButton');
-        addButton.style.display = 'block';
-        addButton.classList.add('fade-in');
-    });
+       // addButton.style.display = 'block';
+       // addButton.classList.add('fade-in');
 
+        var lastId = localStorage.getItem('lastId');
+        var pauseManuell = document.getElementById('pauseManuell').value;
+        var standort = document.querySelector('select[name="standort"]').value;
+        var beschreibung = document.querySelector('textarea[name="beschreibung"]').value;
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "save.php", true);
+        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+        xhr.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+                location.reload();
+            }
+        };
+        xhr.send("endzeit=" + formattedDateTime + "&id=" + lastId + "&aktion=gehen" + "&pause=" + pauseManuell + "&standort=" + encodeURIComponent(standort) + "&beschreibung=" + encodeURIComponent(beschreibung));
+    });
 
 
 
@@ -113,14 +142,23 @@ $(function () {
     $('.table tbody').on('dblclick', 'td', function () {
         let $cell = $(this);
         let col = $cell.closest('table').DataTable().cell($cell).index().column;
-
-        if ($cell.closest('table').find('th').eq(col).data('name') !== "dauer") {
-            let html = $cell.html();
-            $cell.html(`<input type="text" value="${html}"/>`);
+        let columnName = $cell.closest('table').find('th').eq(col).data('name');
+    
+        if (columnName !== "dauer") {
+            let html = $cell.text().trim();
+            let inputElement;
+    
+            if (columnName === 'startzeit' || columnName === 'endzeit') {
+                inputElement = `<input type="datetime-local" value="${html}"/>`;
+            } else {
+                inputElement = `<input type="text" value="${html}"/>`;
+            }
+    
+            $cell.html(inputElement);
             $cell.find('input').focus();
         }
     });
-
+    
     $('.table tbody').on('blur', 'td input', function () {
         let $input = $(this);
         let cell = $input.closest('table').DataTable().cell($input.parent());
@@ -128,20 +166,10 @@ $(function () {
         let newVal = $input.val();
         let id = $input.closest('tr').find('input[name="id"]').val();
         let columnName = $input.closest('table').find('th').eq(col).data('name');
-
-        // Prüfen, ob das bearbeitete Feld ein Datum oder eine Zeit ist
-        if (columnName === 'startzeit' || columnName === 'endzeit') {
-            // Versuchen, das Datum/Zeit im deutschen Format zu parsen
-            let germanDatePattern = /(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2}):(\d{2})/;
-            if (germanDatePattern.test(newVal)) {
-                // Umwandlung in das ISO-8601-Format
-                let matches = germanDatePattern.exec(newVal);
-                newVal = `${matches[3]}-${matches[2]}-${matches[1]}T${matches[4]}:${matches[5]}:${matches[6]}`;
-            }
-        }
-
+      
+    
         cell.data(newVal).draw();
-
+    
         $.post('save.php', {
             update: true,
             id: id,
@@ -149,6 +177,7 @@ $(function () {
             data: newVal
         });
     });
+    
 
     $('select[name="beschreibung"]').change(function () {
         let desc = $(this).val();
@@ -191,6 +220,8 @@ $(function () {
         let totalDuration = elapsedPause + currentDuration;
 
         pauseDisplay.val(formatTime(totalDuration));
+        let totalMinutes = Math.round(totalDuration / 60);
+        $('#pauseManuell').val(totalMinutes);
     }
 
     function formatTime(seconds) {
@@ -211,19 +242,20 @@ $(function () {
     }
 
     pauseBtn.click(function () {
-        if (isPaused) {
-            // Starten oder Fortsetzen der Pause
+        if (isPaused) {            
             startTime = Date.now();
             localStorage.setItem('startTime', startTime);
             pauseBtn.text('Pause beenden');
             interval = setInterval(updatePause, 1000);
             isPaused = false;
-        } else {
-            // Beenden der Pause
+        } else {            
             clearInterval(interval);
             let endTime = Date.now();
             let duration = Math.round((endTime - startTime) / 1000);
             elapsedPause += duration;
+           
+            let totalMinutes = Math.round(elapsedPause / 60);
+            $('#pauseManuell').val(totalMinutes);
 
             localStorage.setItem('elapsedPauseInSeconds', elapsedPause);
             localStorage.removeItem('startTime');
@@ -233,6 +265,7 @@ $(function () {
             isPaused = true;
         }
     });
+
 
     let standortSelect = document.querySelector('select[name="standort"]');
     if (standortSelect) {
