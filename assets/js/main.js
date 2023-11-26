@@ -166,7 +166,6 @@ $(function () {
         let newVal = $input.val();
         let id = $input.closest('tr').find('input[name="id"]').val();
         let columnName = $input.closest('table').find('th').eq(col).data('name');
-      
     
         cell.data(newVal).draw();
     
@@ -175,8 +174,36 @@ $(function () {
             id: id,
             column: columnName,
             data: newVal
+        }).done(function() {            
+            location.reload();
         });
     });
+
+    $('.table tbody').on('keypress', 'td input', function (e) {
+        if (e.which == 13) { // Return key
+            let $input = $(this);
+            let cell = $input.closest('table').DataTable().cell($input.parent());
+            let col = cell.index().column;
+            let newVal = $input.val();
+            let id = $input.closest('tr').find('input[name="id"]').val();
+            let columnName = $input.closest('table').find('th').eq(col).data('name');
+    
+            cell.data(newVal).draw();
+    
+            $.post('save.php', {
+                update: true,
+                id: id,
+                column: columnName,
+                data: newVal
+            }).done(function() {
+                location.reload();
+            });    
+           
+            e.preventDefault();
+        }
+    });
+    
+    
     
 
     $('select[name="beschreibung"]').change(function () {
