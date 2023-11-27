@@ -157,9 +157,55 @@ include 'functions.php';
                             </div>
                         </div>
                     </div>
-                </form>
-                <input type="hidden" id="isFirstWeek" value="<?php echo $isFirstWeek ? '1' : '0'; ?>">
-                <div id="firstWeekNotification" class="row mb-3"></div>
+                    <div class="row">
+
+                        <div class="col">
+                            <div class="form-group">
+                                <a href="download.php" id="downloadDbButton" class="btn btn-secondary">
+                                    <i class="fas fa-download mr-2"></i>
+                                    Datenbank Backup Download
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="col">
+                            <div class="form-group">
+                                <button type="button" id="importDbButton" class="btn btn-secondary">
+                                    <i class="fas fa-file-upload mr-2"></i>
+                                    Datenbank importieren
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="importModalLabel">Datenbank importieren</h5>
+                                    <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <form id="importForm" enctype="multipart/form-data">
+                                        <div class="form-group">
+                                            <label for="dbFile">Datenbankdatei auswählen</label>
+                                            <input type="file" class="form-control-file" id="dbFile" name="dbFile">
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                                            <button type="submit" class="btn btn-primary">Importieren</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="isFirstWeek" value="<?php echo $isFirstWeek ? '1' : '0'; ?>">
+                    <div id="firstWeekNotification" class="row mb-3"></div>
             </div>
         </div>
 

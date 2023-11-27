@@ -6,6 +6,40 @@ $(function () {
         $(this).find('i.fas').toggleClass('fa-chevron-down fa-chevron-up');
     });
 
+    document.getElementById('importDbButton').addEventListener('click', function() {
+        var importModal = new bootstrap.Modal(document.getElementById('importModal'));
+        importModal.show();
+    });
+
+    document.getElementById('importModal').addEventListener('shown.bs.modal', function () {
+        $(this).find('.modal-footer .btn-primary').off('click').on('click', function (e) {
+            console.log('Import-Button geklickt');
+            e.preventDefault();
+            var formData = new FormData($('#importForm')[0]);
+    
+            $.ajax({
+                url: 'import.php',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (response) {
+                    console.log('Erfolg: ', response);
+                    alert('Datenbank wurde erfolgreich importiert');
+                    var importModalBootstrap = bootstrap.Modal.getInstance(document.getElementById('importModal'));
+                    importModalBootstrap.hide();
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    console.log('Fehler: ', textStatus, errorThrown);
+                    alert('Fehler beim Importieren der Datenbank');
+                }
+            });
+        });
+    });
+    
+
+
+
 
     function updateDateTimeField() {
 
@@ -58,8 +92,8 @@ $(function () {
         document.getElementById('endzeit').value = formattedDateTime;
         startButton.disabled = false;
         var addButton = document.getElementById('addButton');
-       // addButton.style.display = 'block';
-       // addButton.classList.add('fade-in');
+        // addButton.style.display = 'block';
+        // addButton.classList.add('fade-in');
 
         var lastId = localStorage.getItem('lastId');
         var pauseManuell = document.getElementById('pauseManuell').value;
@@ -143,22 +177,22 @@ $(function () {
         let $cell = $(this);
         let col = $cell.closest('table').DataTable().cell($cell).index().column;
         let columnName = $cell.closest('table').find('th').eq(col).data('name');
-    
+
         if (columnName !== "dauer") {
             let html = $cell.text().trim();
             let inputElement;
-    
+
             if (columnName === 'startzeit' || columnName === 'endzeit') {
                 inputElement = `<input type="datetime-local" value="${html}"/>`;
             } else {
                 inputElement = `<input type="text" value="${html}"/>`;
             }
-    
+
             $cell.html(inputElement);
             $cell.find('input').focus();
         }
     });
-    
+
     $('.table tbody').on('blur', 'td input', function () {
         let $input = $(this);
         let cell = $input.closest('table').DataTable().cell($input.parent());
@@ -166,15 +200,15 @@ $(function () {
         let newVal = $input.val();
         let id = $input.closest('tr').find('input[name="id"]').val();
         let columnName = $input.closest('table').find('th').eq(col).data('name');
-    
+
         cell.data(newVal).draw();
-    
+
         $.post('save.php', {
             update: true,
             id: id,
             column: columnName,
             data: newVal
-        }).done(function() {            
+        }).done(function () {
             location.reload();
         });
     });
@@ -187,24 +221,24 @@ $(function () {
             let newVal = $input.val();
             let id = $input.closest('tr').find('input[name="id"]').val();
             let columnName = $input.closest('table').find('th').eq(col).data('name');
-    
+
             cell.data(newVal).draw();
-    
+
             $.post('save.php', {
                 update: true,
                 id: id,
                 column: columnName,
                 data: newVal
-            }).done(function() {
+            }).done(function () {
                 location.reload();
-            });    
-           
+            });
+
             e.preventDefault();
         }
     });
-    
-    
-    
+
+
+
 
     $('select[name="beschreibung"]').change(function () {
         let desc = $(this).val();
@@ -269,18 +303,18 @@ $(function () {
     }
 
     pauseBtn.click(function () {
-        if (isPaused) {            
+        if (isPaused) {
             startTime = Date.now();
             localStorage.setItem('startTime', startTime);
             pauseBtn.text('Pause beenden');
             interval = setInterval(updatePause, 1000);
             isPaused = false;
-        } else {            
+        } else {
             clearInterval(interval);
             let endTime = Date.now();
             let duration = Math.round((endTime - startTime) / 1000);
             elapsedPause += duration;
-           
+
             let totalMinutes = Math.round(elapsedPause / 60);
             $('#pauseManuell').val(totalMinutes);
 
@@ -359,6 +393,8 @@ function toggleDarkMode() {
         icon.src = 'assets/kolibri_icon.png';
     }
 }
+
+
 
 
 if (window.location.pathname.includes('dashboard.php')) {
