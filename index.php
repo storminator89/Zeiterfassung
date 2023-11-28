@@ -1,8 +1,8 @@
 <?php
-// Start the session and include the functions
 session_start();
-include 'functions.php';
+require_once 'functions.php'; 
 ?>
+
 <!DOCTYPE html>
 <html lang="de">
 
@@ -11,11 +11,11 @@ include 'functions.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quodara Chrono - Time Tracking</title>
+
     <!-- Favicon -->
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
 
-    <!-- External stylesheets and scripts -->
-    <!-- Bootstrap CSS and JS, jQuery, DataTables CSS and JS, Chart.js, Font Awesome -->
+    <!-- External stylesheets and scripts -->   
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -30,8 +30,7 @@ include 'functions.php';
     <script src="https://cdn.datatables.net/buttons/2.3.0/js/buttons.html5.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
-    <!-- Local stylesheets and scripts -->
-    <!-- Main CSS and JS, and some variables for the script -->
+    <!-- Local stylesheets and scripts -->   
     <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
     <script>
         var totalHoursThisMonthFromRecords = <?= $totalHoursThisMonthFromRecords ?>;
