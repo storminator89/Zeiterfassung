@@ -220,8 +220,12 @@ foreach ($workHoursByDate as $date => $minutes) {
     $totalOverHours += $überstunden;
 }
 
-// Rounding total over hours to one decimal place and displaying
-$totalOverHours = round($totalOverHours, 1);
+
+$totalOverHoursHours = floor($totalOverHours); // Get the whole hours
+$totalOverHoursMinutes = ($totalOverHours - $totalOverHoursHours) * 60; // Get the remaining minutes
+
+// Display total over hours as hours and minutes
+$totalOverHoursFormatted = sprintf("%02d:%02d", $totalOverHoursHours, $totalOverHoursMinutes);
 
 // SQL query for total working hours this month
 $stmt = $conn->prepare('

@@ -196,13 +196,14 @@ include 'functions.php';
                                         </div>
                                         <div class="modal-footer">
                                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
-                                            <button type="submit" class="btn btn-primary">Importieren</button>
+                                            <button type="submit" class="btn btn-primary" id="importButton">Importieren</button>
                                         </div>
                                     </form>
                                 </div>
                             </div>
                         </div>
                     </div>
+
 
                     <input type="hidden" id="isFirstWeek" value="<?php echo $isFirstWeek ? '1' : '0'; ?>">
                     <div id="firstWeekNotification" class="row mb-3"></div>
@@ -230,7 +231,7 @@ include 'functions.php';
                             <tr>
                                 <td><?= $workingDaysThisMonth ?></td>
                                 <td class="<?= $totalOverHours > 0 ? 'positive-overhours' : 'negative-overhours'; ?>" style="font-weight: bold;">
-                                    <?= number_format($totalOverHours, 1) ?>
+                                    <?= $totalOverHoursFormatted ?>
                                 </td>
 
                                 <td><?= number_format($totalHoursThisWeek, 1) ?></td>

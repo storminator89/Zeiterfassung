@@ -1,7 +1,6 @@
 <?php
 $databasePath = __DIR__ . '/assets/db/timetracking.sqlite';
 
-
 if (!empty($_FILES['dbFile']['name'])) {
     $tempFile = $_FILES['dbFile']['tmp_name'];
     $uploadFileName = $_FILES['dbFile']['name'];

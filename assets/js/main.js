@@ -6,7 +6,7 @@ $(function () {
         $(this).find('i.fas').toggleClass('fa-chevron-down fa-chevron-up');
     });
 
-    document.getElementById('importDbButton').addEventListener('click', function() {
+    document.getElementById('importDbButton').addEventListener('click', function () {
         var importModal = new bootstrap.Modal(document.getElementById('importModal'));
         importModal.show();
     });
@@ -15,28 +15,46 @@ $(function () {
         $(this).find('.modal-footer .btn-primary').off('click').on('click', function (e) {
             console.log('Import-Button geklickt');
             e.preventDefault();
-            var formData = new FormData($('#importForm')[0]);
     
-            $.ajax({
-                url: 'import.php',
-                type: 'POST',
-                data: formData,
-                contentType: false,
-                processData: false,
-                success: function (response) {
-                    console.log('Erfolg: ', response);
-                    alert('Datenbank wurde erfolgreich importiert');
-                    var importModalBootstrap = bootstrap.Modal.getInstance(document.getElementById('importModal'));
-                    importModalBootstrap.hide();
-                },
-                error: function (jqXHR, textStatus, errorThrown) {
-                    console.log('Fehler: ', textStatus, errorThrown);
-                    alert('Fehler beim Importieren der Datenbank');
-                }
-            });
+            // Create a FormData object
+            var formData = new FormData();
+    
+            // Get the file input element
+            var fileInput = document.getElementById('dbFile');
+    
+            // Check if a file is selected
+            if (fileInput.files.length > 0) {               
+                formData.append('dbFile', fileInput.files[0]);
+    
+                $.ajax({
+                    url: 'import.php',
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function (response) {                      
+                        location.reload();
+                    },
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        console.log('Fehler: ', textStatus, errorThrown);
+                        alert('error import database file');
+                    }
+                });
+            } else {
+                alert('please choose a file');
+            }
         });
-    });
+    });  
     
+
+    document.getElementById('importButton').addEventListener('click', function (e) {
+        var fileInput = document.getElementById('dbFile');
+
+        if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+            e.preventDefault(); // Prevent form submission if no file is selected
+            alert('Please choose a file!');
+        }
+    });
 
 
 
