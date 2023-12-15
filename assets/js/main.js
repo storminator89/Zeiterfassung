@@ -301,79 +301,66 @@ $(function () {
 
 
 
-    // Change event handler for select[name="beschreibung"]
     $('select[name="beschreibung"]').change(function () {
-        const description = $(this).val();
-        const date = $('input[name="startzeit"]').val().split('T')[0];
+        let desc = $(this).val();
+        let date = $('input[name="startzeit"]').val().split('T')[0];
 
-        if (description === "Feiertag") {
-            setTimeInputs(date, '00:00', '00:00');
-        } else if (["Urlaub", "Krankheit"].includes(description)) {
-            setTimeInputs(date, '09:00', '17:00');
+        if (desc === "Feiertag") {
+            $('input[name="startzeit"]').val(`${date}T00:00`);
+            $('input[name="endzeit"]').val(`${date}T00:00`);
+        } else if (["Urlaub", "Krankheit"].includes(desc)) {
+            $('input[name="startzeit"]').val(`${date}T09:00`);
+            $('input[name="endzeit"]').val(`${date}T17:00`);
         }
-
         $('#addButton').show();
     });
 
-    // Utility function to set time inputs based on description and time ranges
-    function setTimeInputs(date, start, end) {
-        $('input[name="startzeit"]').val(`${date}T${start}`);
-        $('input[name="endzeit"]').val(`${date}T${end}`);
-    }
-
-    // Access various HTML elements using jQuery
-    const pauseBtn = $('#pauseButton');
-    const pauseDisplay = $('#pauseDisplay');
-    const startTime = parseInt(localStorage.getItem('startTime')) || 0;
-    const elapsedPause = parseInt(localStorage.getItem('elapsedPauseInSeconds') || 0, 10);
+    let pauseBtn = $('#pauseButton');
+    let pauseDisplay = $('#pauseDisplay');
+    let startTime = parseInt(localStorage.getItem('startTime')) || 0;
+    let elapsedPause = parseInt(localStorage.getItem('elapsedPauseInSeconds') || 0, 10);
     let previousDate = localStorage.getItem('previousDate');
 
-    // Reset elapsedPause if the date has changed since the previous visit
     if (previousDate && new Date(previousDate).getDate() != new Date().getDate()) {
         elapsedPause = 0;
     }
 
-    // Save the current date and set elapsedPause to 0 if the page is left idle until midnight
     localStorage.setItem('previousDate', new Date().toString());
-    setTimeout(() => {
-        localStorage.removeItem('startzeit');
-    }, 86400000);
-
-    // Manage paused state and associated UI elements
     let isPaused = !startTime;
     let interval;
-    const startzeitField = $('input[name="startzeit"]');
-    const savedStartzeit = localStorage.getItem('startzeit');
 
-    // Restore saved startzeit value if available
+    let startzeitField = $('input[name="startzeit"]');
+    let savedStartzeit = localStorage.getItem('startzeit');
+
     if (savedStartzeit) {
         startzeitField.val(savedStartzeit);
     } else {
         startzeitField.val("");
     }
 
-    // Initialize pauseDisplay with elapsedPause value if greater than 0
-    if (elapsedPause > 0) {
-        pauseDisplay.val(formatTime(elapsedPause));
-    }
+    let timeUntilMidnight = new Date(Date.now() + 86400000) - Date.now();
+    setTimeout(() => {
+        localStorage.removeItem('startzeit');
+    }, timeUntilMidnight);
 
-    // Update pauseDisplay and #pauseManuell every second while timer is active
     function updatePause() {
-        const currentTime = Date.now();
-        const currentDuration = Math.round((currentTime - startTime) / 1000);
-        const totalDuration = elapsedPause + currentDuration;
+        let currentTime = Date.now();
+        let currentDuration = Math.round((currentTime - startTime) / 1000);
+        let totalDuration = elapsedPause + currentDuration;
 
         pauseDisplay.val(formatTime(totalDuration));
-        const totalMinutes = Math.round(totalDuration / 60);
+        let totalMinutes = Math.round(totalDuration / 60);
         $('#pauseManuell').val(totalMinutes);
     }
 
-    // Format time in HH:mm format
     function formatTime(seconds) {
         return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
     }
 
-    // Update UI and timer management depending on startTime value
+    if (elapsedPause > 0) {
+        pauseDisplay.val(formatTime(elapsedPause));
+    }
+
     if (startTime) {
         interval = setInterval(updatePause, 1000);
         pauseBtn.text('Pause beenden');
@@ -383,7 +370,6 @@ $(function () {
         pauseBtn.text('Pause starten');
     }
 
-    // Toggle pause state when clicking pauseBtn
     pauseBtn.click(function () {
         if (isPaused) {
             startTime = Date.now();
@@ -393,11 +379,11 @@ $(function () {
             isPaused = false;
         } else {
             clearInterval(interval);
-            const endTime = Date.now();
-            const duration = Math.round((endTime - startTime) / 1000);
+            let endTime = Date.now();
+            let duration = Math.round((endTime - startTime) / 1000);
             elapsedPause += duration;
 
-            const totalMinutes = Math.round(elapsedPause / 60);
+            let totalMinutes = Math.round(elapsedPause / 60);
             $('#pauseManuell').val(totalMinutes);
 
             localStorage.setItem('elapsedPauseInSeconds', elapsedPause);

@@ -10,7 +10,7 @@ include 'functions.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quodara Chrono - Dashboard</title>
-    <link rel="icon" href="assets\logo_zeiterfassung.png" type="image/png">
+    <link rel="icon" href="assets\kolibri_icon.png" type="image/png">
 
     <!-- Toast UI Components -->
     <script src="https://uicdn.toast.com/tui.code-snippet/latest/tui-code-snippet.js"></script>
