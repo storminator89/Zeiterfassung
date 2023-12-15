@@ -362,7 +362,8 @@ foreach ($records as $record) {
         'end' => $endDateTime->format("Y-m-d\TH:i:s"),
         'category' => 'time',
         'dueDateClass' => '',
-        'isAllDay' => false
+        'isAllDay' => false,
+        'standort' => $record['standort']
     ];
 }
 

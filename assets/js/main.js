@@ -1,187 +1,227 @@
 $(function () {
 
+    // Click event listener for expanding/collapsing toggle-content sections under main-title classes
     $(".main-title").on("click", function () {
         $(this).next(".toggle-content").slideToggle();
-
         $(this).find('i.fas').toggleClass('fa-chevron-down fa-chevron-up');
     });
 
+    // Event listener for showing the importModal dialog box when clicking the #importDbButton
     document.getElementById('importDbButton').addEventListener('click', function () {
         var importModal = new bootstrap.Modal(document.getElementById('importModal'));
         importModal.show();
     });
 
+    // Event listener for submitting the file import form once the primary button is clicked inside the importModal
     document.getElementById('importModal').addEventListener('shown.bs.modal', function () {
-        $(this).find('.modal-footer .btn-primary').off('click').on('click', function (e) {
-            console.log('Import-Button geklickt');
-            e.preventDefault();
-    
-            // Create a FormData object
+        // Remove previously attached click event listeners to avoid duplicate triggers
+        $(this).find('.modal-footer .btn-primary').off('click');
+
+        // Attach a click event listener for submitting the form
+        $(this).find('.modal-footer .btn-primary').on('click', function (e) {
+            console.log('Import-Button geklickt'); // Logging for development purposes
+            e.preventDefault(); // Prevent the form from being submitted normally
+
+            // Initialize a FormData object
             var formData = new FormData();
-    
+
             // Get the file input element
             var fileInput = document.getElementById('dbFile');
-    
-            // Check if a file is selected
-            if (fileInput.files.length > 0) {               
+
+            // Ensure a file is chosen
+            if (fileInput.files.length > 0) {
+                // Append the selected file to the FormData object
                 formData.append('dbFile', fileInput.files[0]);
-    
+
+                // Send an AJAX POST request to the import.php endpoint
                 $.ajax({
                     url: 'import.php',
                     type: 'POST',
                     data: formData,
-                    contentType: false,
-                    processData: false,
-                    success: function (response) {                      
-                        location.reload();
+                    contentType: false, // Disable automatic conversion of data to query string format
+                    processData: false, // Do not convert objects to strings
+                    success: function (response) {
+                        location.reload(); // Refresh the page upon successful import
                     },
                     error: function (jqXHR, textStatus, errorThrown) {
-                        console.log('Fehler: ', textStatus, errorThrown);
-                        alert('error import database file');
+                        console.log('Fehler: ', textStatus, errorThrown); // Logging for development purposes
+                        alert('error import database file'); // Show generic error message to users
                     }
                 });
             } else {
-                alert('please choose a file');
+                alert('please choose a file'); // Show error message to users when no file is selected
             }
         });
-    });  
-    
+    });
 
+    // Event listener to validate file selection prior to form submission
     document.getElementById('importButton').addEventListener('click', function (e) {
         var fileInput = document.getElementById('dbFile');
 
+        // Block form submission if no file is selected
         if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-            e.preventDefault(); // Prevent form submission if no file is selected
+            e.preventDefault();
             alert('Please choose a file!');
         }
     });
 
-
-
-
     function updateDateTimeField() {
-
+        // Get the current date and time
         var now = new Date();
+
+        // Calculate the offset in minutes between UTC and the local time zone
         var timezoneOffsetMinutes = now.getTimezoneOffset();
 
+        // Adjust the date and time to match the UTC time
         var correctedTime = new Date(now.getTime() - timezoneOffsetMinutes * 60000);
+
+        // Format the adjusted date and time to YYYY-MM-DDTHH:mm and store it in the 'endzeit' field
         $("#endzeit").val(correctedTime.toISOString().slice(0, 16));
     }
 
+    // Initial call to updateDateTimeField followed by periodic calls every minute
     updateDateTimeField();
     setInterval(updateDateTimeField, 60000);
-    var startButton = document.getElementById('startButton');
-    var endButton = document.getElementById('endButton');
 
+    // Cache DOM references for performance reasons
+    var startButton = document.getElementById('startButton'),
+        endButton = document.getElementById('endButton');
+
+    // Event listener for the start button
     startButton.addEventListener('click', function () {
-        var now = new Date();
-        var formattedDateTime = now.getFullYear() + '-' +
-            ('0' + (now.getMonth() + 1)).slice(-2) + '-' +
-            ('0' + now.getDate()).slice(-2) + 'T' +
-            ('0' + now.getHours()).slice(-2) + ':' +
-            ('0' + now.getMinutes()).slice(-2);
+        // Get the current date and time and format it to YYYY-MM-DDTHH:mm
+        var now = new Date(),
+            formattedDateTime = now.getFullYear() + '-' +
+                ('0' + (now.getMonth() + 1)).slice(-2) + '-' +
+                ('0' + now.getDate()).slice(-2) + 'T' +
+                ('0' + now.getHours()).slice(-2) + ':' +
+                ('0' + now.getMinutes()).slice(-2);
+
+        // Populate the 'startzeit' field with the formatted date and time
         document.getElementById('startzeit').value = formattedDateTime;
+
+        // Disable the start button
         startButton.disabled = true;
+
+        // Store the formatted date and time in local storage
         localStorage.setItem('startzeit', formattedDateTime);
 
+        // Send an HTTP request to save.php with the startzeit parameter
         var xhr = new XMLHttpRequest();
         xhr.open("POST", "save.php", true);
         xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
         xhr.onreadystatechange = function () {
             if (this.readyState == 4 && this.status == 200) {
+                // Upon success, save the returned lastId in local storage and refresh the page
                 var lastId = this.responseText;
                 localStorage.setItem('lastId', lastId);
-
                 location.reload();
             }
         };
         xhr.send("startzeit=" + formattedDateTime);
     });
 
-
-
+    // Event listener for the end button
     endButton.addEventListener('click', function () {
-        var now = new Date();
-        var formattedDateTime = now.getFullYear() + '-' +
-            ('0' + (now.getMonth() + 1)).slice(-2) + '-' +
-            ('0' + now.getDate()).slice(-2) + 'T' +
-            ('0' + now.getHours()).slice(-2) + ':' +
-            ('0' + now.getMinutes()).slice(-2);
+        // Get the current date and time and format it to YYYY-MM-DDTHH:mm
+        var now = new Date(),
+            formattedDateTime = now.getFullYear() + '-' +
+                ('0' + (now.getMonth() + 1)).slice(-2) + '-' +
+                ('0' + now.getDate()).slice(-2) + 'T' +
+                ('0' + now.getHours()).slice(-2) + ':' +
+                ('0' + now.getMinutes()).slice(-2);
+
+        // Populate the 'endzeit' field with the formatted date and time
         document.getElementById('endzeit').value = formattedDateTime;
+
+        // Enable the start button again
         startButton.disabled = false;
+
+        // Cache DOM reference for efficiency reasons
         var addButton = document.getElementById('addButton');
-        // addButton.style.display = 'block';
-        // addButton.classList.add('fade-in');
 
-        var lastId = localStorage.getItem('lastId');
-        var pauseManuell = document.getElementById('pauseManuell').value;
-        var standort = document.querySelector('select[name="standort"]').value;
-        var beschreibung = document.querySelector('textarea[name="beschreibung"]').value;
+        // Get relevant input fields and values
+        var lastId = localStorage.getItem('lastId'),
+            pauseManuell = document.getElementById('pauseManuell').value,
+            standort = document.querySelector('select[name="standort"]').value,
+            beschreibung = document.querySelector('textarea[name="beschreibung"]').value;
 
+        // Send an HTTP request to save.php with required parameters
         var xhr = new XMLHttpRequest();
         xhr.open("POST", "save.php", true);
         xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
         xhr.onreadystatechange = function () {
             if (this.readyState == 4 && this.status == 200) {
+                // Upon success, reload the page
                 location.reload();
             }
         };
-        xhr.send("endzeit=" + formattedDateTime + "&id=" + lastId + "&aktion=gehen" + "&pause=" + pauseManuell + "&standort=" + encodeURIComponent(standort) + "&beschreibung=" + encodeURIComponent(beschreibung));
+        xhr.send("endzeit=" + formattedDateTime +
+            "&id=" + lastId +
+            "&aktion=gehen" +
+            "&pause=" + pauseManuell +
+            "&standort=" + encodeURIComponent(standort) +
+            "&beschreibung=" + encodeURIComponent(beschreibung));
     });
 
 
 
+    // Configuration for DataTables export options
     const exportOptions = {
         columns: ':not(:last-child)'
     };
 
-    const buttons = [{
-        extend: 'copyHtml5',
-        exportOptions,
-        text: '<i class="fas fa-copy"></i> Kopieren'
-    },
-    {
-        extend: 'excelHtml5',
-        exportOptions,
-        text: '<i class="fas fa-file-excel"></i> Excel'
-    },
-    {
-        extend: 'csvHtml5',
-        exportOptions,
-        text: '<i class="fas fa-file-csv"></i> CSV'
-    },
-    {
-        extend: 'pdfHtml5',
-        exportOptions,
-        text: '<i class="fas fa-file-pdf"></i> PDF'
-    }
+    // Buttons configuration for DataTables
+    const buttons = [
+        {
+            extend: 'copyHtml5',
+            exportOptions,
+            text: '<i class="fas fa-copy"></i> Kopieren'
+        },
+        {
+            extend: 'excelHtml5',
+            exportOptions,
+            text: '<i class="fas fa-file-excel"></i> Excel'
+        },
+        {
+            extend: 'csvHtml5',
+            exportOptions,
+            text: '<i class="fas fa-file-csv"></i> CSV'
+        },
+        {
+            extend: 'pdfHtml5',
+            exportOptions,
+            text: '<i class="fas fa-file-pdf"></i> PDF'
+        }
     ];
 
+    // Fade in the success alert
     $(".alert-success").fadeIn(1000);
 
-    // Variablen zuerst definieren
-    let isFirstWeekInput = document.getElementById('isFirstWeek');
-    let isFirstWeek = isFirstWeekInput.value === '1';
-    let notificationContainer = document.getElementById('firstWeekNotification');
+    // Define variables earlier
+    const isFirstWeekInput = document.getElementById('isFirstWeek');
+    const isFirstWeek = isFirstWeekInput.value === '1';
+    const notificationContainer = document.getElementById('firstWeekNotification');
 
+    // Conditionally create and append the first-week notification div
     if (isFirstWeek && !localStorage.getItem("firstWeekNotified")) {
-        // Erstelle die Benachrichtigungs-Div und füge sie zum Platzhalter hinzu
-        let notificationDiv = document.createElement('div');
+        const notificationDiv = document.createElement('div');
         notificationDiv.className = 'alert-success col';
-        notificationDiv.style.display = "block";  // <-- Hier setzen wir die Anzeige auf "block"
+        notificationDiv.style.display = "block";
         notificationDiv.innerHTML = `
-            <div class='alert-header'>
-                <i class='fas fa-trophy'></i>
-                <strong>Gratulation!</strong>
-            </div>
-            <p>Sie haben Ihre erste Arbeitswoche erfasst! Weiter so!</p>
-        `;
+        <div class='alert-header'>
+            <i class='fas fa-trophy'></i>
+            <strong>Gratulation!</strong>
+        </div>
+        <p>Sie haben Ihre erste Arbeitswoche erfasst! Weiter so!</p>
+    `;
         notificationContainer.appendChild(notificationDiv);
 
-        // Setzen Sie den localStorage-Eintrag, um zu vermerken, dass die Benachrichtigung angezeigt wurde.
+        // Mark the notification as displayed
         localStorage.setItem("firstWeekNotified", "true");
     }
 
+    // Initialize the DataTable
     $('.table').DataTable({
         dom: 'Bfrtip',
         buttons,
@@ -191,6 +231,7 @@ $(function () {
         order: [[1, 'desc']]
     });
 
+    // Double-click event handler for table cells
     $('.table tbody').on('dblclick', 'td', function () {
         let $cell = $(this);
         let col = $cell.closest('table').DataTable().cell($cell).index().column;
@@ -211,6 +252,7 @@ $(function () {
         }
     });
 
+    // Blur event handler for table cells
     $('.table tbody').on('blur', 'td input', function () {
         let $input = $(this);
         let cell = $input.closest('table').DataTable().cell($input.parent());
@@ -231,6 +273,7 @@ $(function () {
         });
     });
 
+    // Keypress event handler for table cells
     $('.table tbody').on('keypress', 'td input', function (e) {
         if (e.which == 13) { // Return key
             let $input = $(this);
@@ -258,59 +301,79 @@ $(function () {
 
 
 
+    // Change event handler for select[name="beschreibung"]
     $('select[name="beschreibung"]').change(function () {
-        let desc = $(this).val();
-        let date = $('input[name="startzeit"]').val().split('T')[0];
+        const description = $(this).val();
+        const date = $('input[name="startzeit"]').val().split('T')[0];
 
-        if (desc === "Feiertag") {
-            $('input[name="startzeit"]').val(`${date}T00:00`);
-            $('input[name="endzeit"]').val(`${date}T00:00`);
-        } else if (["Urlaub", "Krankheit"].includes(desc)) {
-            $('input[name="startzeit"]').val(`${date}T09:00`);
-            $('input[name="endzeit"]').val(`${date}T17:00`);
+        if (description === "Feiertag") {
+            setTimeInputs(date, '00:00', '00:00');
+        } else if (["Urlaub", "Krankheit"].includes(description)) {
+            setTimeInputs(date, '09:00', '17:00');
         }
+
         $('#addButton').show();
     });
 
-    let pauseBtn = $('#pauseButton');
-    let pauseDisplay = $('#pauseDisplay');
-    let startTime = parseInt(localStorage.getItem('startTime')) || 0;
-    let elapsedPause = parseInt(localStorage.getItem('elapsedPauseInSeconds')) || 0;
+    // Utility function to set time inputs based on description and time ranges
+    function setTimeInputs(date, start, end) {
+        $('input[name="startzeit"]').val(`${date}T${start}`);
+        $('input[name="endzeit"]').val(`${date}T${end}`);
+    }
+
+    // Access various HTML elements using jQuery
+    const pauseBtn = $('#pauseButton');
+    const pauseDisplay = $('#pauseDisplay');
+    const startTime = parseInt(localStorage.getItem('startTime')) || 0;
+    const elapsedPause = parseInt(localStorage.getItem('elapsedPauseInSeconds') || 0, 10);
+    let previousDate = localStorage.getItem('previousDate');
+
+    // Reset elapsedPause if the date has changed since the previous visit
+    if (previousDate && new Date(previousDate).getDate() != new Date().getDate()) {
+        elapsedPause = 0;
+    }
+
+    // Save the current date and set elapsedPause to 0 if the page is left idle until midnight
+    localStorage.setItem('previousDate', new Date().toString());
+    setTimeout(() => {
+        localStorage.removeItem('startzeit');
+    }, 86400000);
+
+    // Manage paused state and associated UI elements
     let isPaused = !startTime;
     let interval;
+    const startzeitField = $('input[name="startzeit"]');
+    const savedStartzeit = localStorage.getItem('startzeit');
 
-    let startzeitField = $('input[name="startzeit"]');
-    let savedStartzeit = localStorage.getItem('startzeit');
-
+    // Restore saved startzeit value if available
     if (savedStartzeit) {
         startzeitField.val(savedStartzeit);
     } else {
         startzeitField.val("");
     }
 
-    let timeUntilMidnight = new Date(Date.now() + 86400000) - Date.now();
-    setTimeout(() => {
-        localStorage.removeItem('startzeit');
-    }, timeUntilMidnight);
-
-    function updatePause() {
-        let currentTime = Date.now();
-        let currentDuration = Math.round((currentTime - startTime) / 1000);
-        let totalDuration = elapsedPause + currentDuration;
-
-        pauseDisplay.val(formatTime(totalDuration));
-        let totalMinutes = Math.round(totalDuration / 60);
-        $('#pauseManuell').val(totalMinutes);
-    }
-
-    function formatTime(seconds) {
-        return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
-    }
-
+    // Initialize pauseDisplay with elapsedPause value if greater than 0
     if (elapsedPause > 0) {
         pauseDisplay.val(formatTime(elapsedPause));
     }
 
+    // Update pauseDisplay and #pauseManuell every second while timer is active
+    function updatePause() {
+        const currentTime = Date.now();
+        const currentDuration = Math.round((currentTime - startTime) / 1000);
+        const totalDuration = elapsedPause + currentDuration;
+
+        pauseDisplay.val(formatTime(totalDuration));
+        const totalMinutes = Math.round(totalDuration / 60);
+        $('#pauseManuell').val(totalMinutes);
+    }
+
+    // Format time in HH:mm format
+    function formatTime(seconds) {
+        return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+    }
+
+    // Update UI and timer management depending on startTime value
     if (startTime) {
         interval = setInterval(updatePause, 1000);
         pauseBtn.text('Pause beenden');
@@ -320,6 +383,7 @@ $(function () {
         pauseBtn.text('Pause starten');
     }
 
+    // Toggle pause state when clicking pauseBtn
     pauseBtn.click(function () {
         if (isPaused) {
             startTime = Date.now();
@@ -329,11 +393,11 @@ $(function () {
             isPaused = false;
         } else {
             clearInterval(interval);
-            let endTime = Date.now();
-            let duration = Math.round((endTime - startTime) / 1000);
+            const endTime = Date.now();
+            const duration = Math.round((endTime - startTime) / 1000);
             elapsedPause += duration;
 
-            let totalMinutes = Math.round(elapsedPause / 60);
+            const totalMinutes = Math.round(elapsedPause / 60);
             $('#pauseManuell').val(totalMinutes);
 
             localStorage.setItem('elapsedPauseInSeconds', elapsedPause);
@@ -623,7 +687,8 @@ if (window.location.pathname.includes('dashboard.php')) {
         calendar.on('clickSchedule', function (event) {
             let schedule = event.schedule;
 
-            if (schedule.title === 'Arbeit') {
+            const validTitles = ['Arbeit', 'Urlaub'];
+            if (validTitles.includes(schedule.title)) {
                 let startDate = new Date(schedule.start);
                 let endDate = new Date(schedule.end);
 

@@ -1,19 +1,21 @@
 <?php
+// including the config file
 include 'config.php';
 
-// Check if it's an update request
+// Update request handler
 if (isset($_POST["update"]) && $_POST["update"] == true) {
+    // Input validation to avoid editing reserved columns
+    $forbiddenColumns = ["dauer", "id", "aktion"];
     $column = $_POST["column"];
     $data = $_POST["data"];
     $id = $_POST["id"];
 
-    // Validate if the column is editable
-    if (in_array($column, ["dauer", "id", "aktion"])) {
+    if (in_array($column, $forbiddenColumns)) {
         echo "Invalid column";
         exit;
     }
 
-    // Prepare and execute the update statement
+    // Prepare and bind params for the update query
     $stmt = $conn->prepare("UPDATE zeiterfassung SET $column = :data WHERE id = :id");
     $stmt->bindParam(':data', $data);
     $stmt->bindParam(':id', $id);
@@ -23,30 +25,34 @@ if (isset($_POST["update"]) && $_POST["update"] == true) {
     exit;
 }
 
+// Insert starting timestamp upon receiving a post request
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["startzeit"])) {
     $startzeit_iso = date('Y-m-d\TH:i:s', strtotime($_POST["startzeit"]));
 
+    // Prepare and execute insert query
     $stmt = $conn->prepare("INSERT INTO zeiterfassung (startzeit) VALUES (:startzeit)");
     $stmt->bindParam(':startzeit', $startzeit_iso);
     $stmt->execute();
-    $last_id = $conn->lastInsertId();
-    echo $last_id;    
+
+    // Output the newly created entry Id
+    echo $conn->lastInsertId();
 }
 
-
+// Handling "go away" action with given id
 if (isset($_POST["aktion"]) && $_POST["aktion"] === "gehen" && isset($_POST["id"])) {
+    // Store incoming data with reasonable defaults
     $id = $_POST["id"];
-    // Collect input data with default values
     $startzeit_raw = $_POST["startzeit"];
-    $endzeit_raw = $_POST["endzeit"];
+    $endzeit_raw = $_POST["endzeit"] ?? null;
     $beschreibung = $_POST["beschreibung"] ?? '';
-    $pause = $_POST["pause"] ?? 0;  // Assume default value for pause is 0
-    $standort = $_POST["standort"] ?? '';  // New code for location
+    $pause = $_POST["pause"] ?? 0;
+    $standort = $_POST["standort"] ?? '';
 
-    // Convert times to ISO format
+    // Format received timestamps
     $startzeit_iso = date('Y-m-d\TH:i:s', strtotime($startzeit_raw));
-    $endzeit_iso = $endzeit_raw ? date('Y-m-d\TH:i:s', strtotime($endzeit_raw)) : NULL;
+    $endzeit_iso = $endzeit_raw ? date('Y-m-d\TH:i:s', strtotime($endzeit_raw)) : null;
 
+    // Prepare and bind params for update query
     $stmt = $conn->prepare("UPDATE zeiterfassung SET endzeit = :endzeit, beschreibung = :beschreibung, pause = :pause, standort = :standort WHERE id = :id");
     $stmt->bindParam(':endzeit', $endzeit_iso);
     $stmt->bindParam(':beschreibung', $beschreibung);
@@ -55,6 +61,6 @@ if (isset($_POST["aktion"]) && $_POST["aktion"] === "gehen" && isset($_POST["id"
     $stmt->bindParam(':id', $id);
     $stmt->execute();
 
-    // Redirect to the index page
+    // Perform redirect to index page
     header("Location: index.php");
 }
