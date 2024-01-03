@@ -228,7 +228,7 @@ $(function () {
         language: {
             url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/de-DE.json"
         },
-        order: [[1, 'desc']]
+        order: [[0, 'desc']]
     });
 
     // Double-click event handler for table cells

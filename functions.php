@@ -15,7 +15,7 @@ try {
     $stmt = $conn->prepare('
         SELECT *, strftime("%W", startzeit) as weekNumber 
         FROM zeiterfassung 
-        ORDER BY id DESC
+        ORDER BY startzeit DESC
     ');
     $stmt->execute();
     $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
