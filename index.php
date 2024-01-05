@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'functions.php'; 
+require_once 'functions.php';
 ?>
 
 <!DOCTYPE html>
@@ -15,7 +15,7 @@ require_once 'functions.php';
     <!-- Favicon -->
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
 
-    <!-- External stylesheets and scripts -->   
+    <!-- External stylesheets and scripts -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -30,7 +30,7 @@ require_once 'functions.php';
     <script src="https://cdn.datatables.net/buttons/2.3.0/js/buttons.html5.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
-    <!-- Local stylesheets and scripts -->   
+    <!-- Local stylesheets and scripts -->
     <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
     <script>
         var totalHoursThisMonthFromRecords = <?= $totalHoursThisMonthFromRecords ?>;
@@ -147,6 +147,26 @@ require_once 'functions.php';
                             </div>
                         </div>
                     </div>
+
+                    <div class="row mb-3">
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="urlaubstag"><i class="fas fa-calendar-alt mr-2"></i> Spezielle Tage eintragen:</label>
+                                <input type="date" name="urlaubstag" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="col d-flex align-items-end">
+                            <div class="form-group">
+                                <button type="button" id="urlaubEintragenButton" class="btn btn-primary">
+                                    <i class="fas fa-plane-departure mr-2"></i> Urlaub eintragen
+                                </button>
+                                <button type="button" id="feiertagEintragenButton" class="btn btn-primary">
+                                    <i class="fas fa-calendar-day mr-2"></i> Feiertag eintragen
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
 
                     <!-- Third row of the form -->
                     <div class="row mb-3">

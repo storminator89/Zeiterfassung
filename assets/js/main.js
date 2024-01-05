@@ -65,6 +65,49 @@ $(function () {
         }
     });
 
+    var urlaubEintragenButton = document.getElementById('urlaubEintragenButton');
+    urlaubEintragenButton.addEventListener('click', function() {
+        var urlaubstag = document.querySelector('input[name="urlaubstag"]').value;
+        if (urlaubstag) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', 'save.php', true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onload = function() {
+                if (this.status == 200) {
+                    console.log('Erfolgreich eingetragen: ', this.responseText);
+                    location.reload();
+                } else {
+                    console.error('Fehler beim Eintragen des Urlaubs');
+                }
+            };
+            xhr.send('urlaubstag=' + encodeURIComponent(urlaubstag));
+        } else {
+            alert('Bitte wählen Sie ein Datum für den Urlaubstag.');
+        }
+    });
+
+    var feiertagEintragenButton = document.getElementById('feiertagEintragenButton');
+    feiertagEintragenButton.addEventListener('click', function() {
+        var feiertag = document.querySelector('input[name="urlaubstag"]').value;
+        if (feiertag) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', 'save.php', true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onload = function() {
+                if (this.status == 200) {
+                    console.log('Erfolgreich eingetragen: ', this.responseText);
+                    // Seite aktualisieren
+                    location.reload();
+                } else {
+                    console.error('Fehler beim Eintragen des Feiertags');
+                }
+            };
+            xhr.send('feiertag=' + encodeURIComponent(feiertag));
+        } else {
+            alert('Bitte wählen Sie ein Datum für den Feiertag.');
+        }
+    });
+
     function updateDateTimeField() {
         // Get the current date and time
         var now = new Date();

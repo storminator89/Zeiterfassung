@@ -38,6 +38,51 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["startzeit"])) {
     echo $conn->lastInsertId();
 }
 
+// Insert a vacation day
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["urlaubstag"])) {
+    $urlaubstag = $_POST["urlaubstag"];
+    $startzeit_iso = $urlaubstag . ' 09:00:00';
+    $endzeit_iso = $urlaubstag . ' 17:00:00';
+    $beschreibung = 'Urlaub';
+    $pause = '0';
+    $standort = '';
+
+    // Prepare and execute insert query
+    $stmt = $conn->prepare("INSERT INTO zeiterfassung (startzeit, endzeit, beschreibung, pause, standort) VALUES (:startzeit, :endzeit, :beschreibung, :pause, :standort)");
+    $stmt->bindParam(':startzeit', $startzeit_iso);
+    $stmt->bindParam(':endzeit', $endzeit_iso);
+    $stmt->bindParam(':beschreibung', $beschreibung);
+    $stmt->bindParam(':pause', $pause);
+    $stmt->bindParam(':standort', $standort);
+    $stmt->execute();
+
+    // Output the newly created entry Id
+    echo $conn->lastInsertId();
+}
+
+// Insert a holiday
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["feiertag"])) {
+    $feiertag = $_POST["feiertag"];
+    $startzeit_iso = $feiertag . ' 00:00:00';
+    $endzeit_iso = $feiertag . ' 00:00:00';
+    $beschreibung = 'Feiertag';
+    $pause = '0';
+    $standort = '';
+
+    // Prepare and execute insert query
+    $stmt = $conn->prepare("INSERT INTO zeiterfassung (startzeit, endzeit, beschreibung, pause, standort) VALUES (:startzeit, :endzeit, :beschreibung, :pause, :standort)");
+    $stmt->bindParam(':startzeit', $startzeit_iso);
+    $stmt->bindParam(':endzeit', $endzeit_iso);
+    $stmt->bindParam(':beschreibung', $beschreibung);
+    $stmt->bindParam(':pause', $pause);
+    $stmt->bindParam(':standort', $standort);
+    $stmt->execute();
+
+    // Output the newly created entry Id
+    echo $conn->lastInsertId();
+}
+
+
 // Handling "go away" action with given id
 if (isset($_POST["aktion"]) && $_POST["aktion"] === "gehen" && isset($_POST["id"])) {
     // Store incoming data with reasonable defaults
