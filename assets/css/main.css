@@ -97,8 +97,24 @@ label {
     text-align: center;
 }
 
-.details-table th {
-    background-color: #f2f2f2;
+.details-tablestats{
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.details-tablestats td {
+    background-color: #fff;
+    border: 1px solid #d1d1d1;
+    padding: 8px 12px;
+    text-align: center;
+}
+
+.details-tablestats th {
+    background-color: #0366d6;
+    color: white;
+    border: 1px solid #d1d1d1;
+    padding: 8px 12px;
+    text-align: center;
 }
 
 .tooltip.bs-tooltip-bottom .tooltip-inner {
@@ -288,6 +304,15 @@ label {
 
 .dark-mode .table tbody tr:hover {
     background-color: #383838; /* Slightly lighter for hover state */
+}
+
+.dark-mode .details-tablestats td {
+    background-color: #333; 
+    color: #fff; 
+}
+
+.dark-mode .details-tablestats th {
+    background-color: #005cb2; 
 }
 
 .dark-mode .dt-button {

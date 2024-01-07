@@ -63,8 +63,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["urlaubstag"])) {
 // Insert a holiday
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["feiertag"])) {
     $feiertag = $_POST["feiertag"];
-    $startzeit_iso = $feiertag . ' 00:00:00';
-    $endzeit_iso = $feiertag . ' 00:00:00';
+    $startzeit_iso = $feiertag . ' 09:00:00';
+    $endzeit_iso = $feiertag . ' 17:00:00';
     $beschreibung = 'Feiertag';
     $pause = '0';
     $standort = '';

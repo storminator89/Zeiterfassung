@@ -24,11 +24,26 @@ try {
     die("Datenbankfehler: " . $e->getMessage());
 }
 
+$germanMonths = [
+    "01" => "Januar",
+    "02" => "Februar",
+    "03" => "März",
+    "04" => "April",
+    "05" => "Mai",
+    "06" => "Juni",
+    "07" => "Juli",
+    "08" => "August",
+    "09" => "September",
+    "10" => "Oktober",
+    "11" => "November",
+    "12" => "Dezember"
+];
+
 // Getting current date details
 $currentWeekNumber = date("W");
 $currentYear = date("Y");
 $currentMonth = date("m");
-$currentMonthName = (new DateTime())->format('F');
+$currentMonthName = $germanMonths[$currentMonth];
 
 // Calculate total worked minutes this week excluding breaks
 try {
@@ -39,6 +54,7 @@ try {
         FROM zeiterfassung
         WHERE strftime("%Y", startzeit) = :currentYear
         AND strftime("%W", startzeit) = :weekNumber
+        AND beschreibung != "Feiertag"
     ');
     $stmt->bindParam(':currentYear', $currentYear);
     $stmt->bindParam(':weekNumber', $currentWeekNumber);
@@ -233,19 +249,25 @@ foreach ($records as $record) {
     $workHoursByDate[$datum] += $arbeitstunden;
 }
 
-// Berechnung der Überstunden pro Datum
+// Calculate over hours per date
 foreach ($workHoursByDate as $date => $minutes) {
-    $arbeitstunden = $minutes / 60;
-    $überstunden = $arbeitstunden - $regularWorkingHours;
-    $totalOverHours += $überstunden;
+    // Convert minutes to hours
+    $workHours = $minutes / 60;
+
+    // Calculate over hours for the date
+    // Here it's assumed that $regularWorkingHours is the regular working time per day
+    $overHours = $workHours - $regularWorkingHours;
+
+    // Add over hours to the total over hours
+    $totalOverHours += $overHours;
 }
 
+// Convert total over hours into hours and minutes
+$totalOverHoursHours = floor($totalOverHours); // Whole hours of over hours
+$totalOverHoursMinutes = round(($totalOverHours - $totalOverHoursHours) * 60); // Remaining minutes of over hours
 
-$totalOverHoursHours = floor($totalOverHours); // Get the whole hours
-$totalOverHoursMinutes = ($totalOverHours - $totalOverHoursHours) * 60; // Get the remaining minutes
-
-// Display total over hours as hours and minutes
-$totalOverHoursFormatted = sprintf("%02d:%02d", $totalOverHoursHours, $totalOverHoursMinutes);
+// Format total over hours as hours:minutes
+$totalOverHoursFormatted = sprintf("%02d:%02d", $totalOverHoursHours, abs($totalOverHoursMinutes));
 
 // SQL query for total working hours this month
 $stmt = $conn->prepare('
@@ -318,6 +340,8 @@ function getFeiertageForYear($jahr)
 
 $currentYear = date("Y");
 $feiertageThisYear = getFeiertageForYear($currentYear);
+
+
 
 // Function to get German day name
 function getGermanDayName($date)
