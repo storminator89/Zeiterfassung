@@ -233,17 +233,19 @@ require_once 'functions.php';
             <div class="col-12">
                 <div class="form-group">
                     <h3><i class="fas fa-chart-bar mr-2"></i> Statistik Arbeitszeiten</h3>
-                    <table class="details-table">
+                    <table class="details-tablestats">
                         <thead>
                             <tr>
                                 <th>Arbeitstage <?= $currentMonthName ?></th>
                                 <th>Gesamtüberstunden</th>
+                                <!-- Ausgeblendete Spalten
                                 <th>Arbeitsstunden diese Woche</th>
                                 <th>Zu Arbeiten noch diese Woche</th>
                                 <th>Arbeitsstunden im <?= $currentMonthName ?></th>
                                 <th>Gesamtstunden aktueller Monat</th>
                                 <th>Zu Arbeiten <?= $currentMonthName ?></th>
                                 <th>Zu Arbeiten dieses Jahr</th>
+                                -->
                             </tr>
                         </thead>
                         <tbody>
@@ -252,7 +254,7 @@ require_once 'functions.php';
                                 <td class="<?= $totalOverHours > 0 ? 'positive-overhours' : 'negative-overhours'; ?>" style="font-weight: bold;">
                                     <?= $totalOverHoursFormatted ?>
                                 </td>
-
+                                <!-- Ausgeblendete Zellen
                                 <td><?= number_format($totalHoursThisWeek, 1) ?></td>
                                 <td>
                                     <?php if ($overHoursThisWeek > 0) : ?>
@@ -275,6 +277,7 @@ require_once 'functions.php';
                                     <?php endif; ?>
                                 </td>
                                 <td><?= $overHoursThisYear ?></td>
+                                -->
                             </tr>
                         </tbody>
                     </table>
