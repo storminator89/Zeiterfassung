@@ -264,6 +264,8 @@ $(function () {
         localStorage.setItem("firstWeekNotified", "true");
     }
 
+    $.fn.dataTable.moment('DD.MM.YYYY HH:mm:ss');
+
     // Initialize the DataTable
     $('.table').DataTable({
         dom: 'Bfrtip',
@@ -271,7 +273,8 @@ $(function () {
         language: {
             url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/de-DE.json"
         },
-        order: [[0, 'desc']]
+        order: [[2, 'desc']],
+        paging: true
     });
 
     // Double-click event handler for table cells

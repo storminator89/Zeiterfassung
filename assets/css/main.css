@@ -85,6 +85,15 @@ label {
     font-weight: bold;
 }
 
+.table thead th {
+    background-color: #0366d6;
+    color: white;
+    border: 1px solid #d1d1d1;
+    padding: 8px 12px;
+    text-align: center;
+}
+
+
 .details-table {
     width: 100%;
     border-collapse: collapse;
