@@ -66,13 +66,13 @@ $(function () {
     });
 
     var urlaubEintragenButton = document.getElementById('urlaubEintragenButton');
-    urlaubEintragenButton.addEventListener('click', function() {
+    urlaubEintragenButton.addEventListener('click', function () {
         var urlaubstag = document.querySelector('input[name="urlaubstag"]').value;
         if (urlaubstag) {
             var xhr = new XMLHttpRequest();
             xhr.open('POST', 'save.php', true);
             xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-            xhr.onload = function() {
+            xhr.onload = function () {
                 if (this.status == 200) {
                     console.log('Erfolgreich eingetragen: ', this.responseText);
                     location.reload();
@@ -87,13 +87,13 @@ $(function () {
     });
 
     var feiertagEintragenButton = document.getElementById('feiertagEintragenButton');
-    feiertagEintragenButton.addEventListener('click', function() {
+    feiertagEintragenButton.addEventListener('click', function () {
         var feiertag = document.querySelector('input[name="urlaubstag"]').value;
         if (feiertag) {
             var xhr = new XMLHttpRequest();
             xhr.open('POST', 'save.php', true);
             xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-            xhr.onload = function() {
+            xhr.onload = function () {
                 if (this.status == 200) {
                     console.log('Erfolgreich eingetragen: ', this.responseText);
                     // Seite aktualisieren
@@ -264,6 +264,8 @@ $(function () {
         localStorage.setItem("firstWeekNotified", "true");
     }
 
+    $.fn.dataTable.moment('DD.MM.YYYY HH:mm:ss');
+
     // Initialize the DataTable
     $('.table').DataTable({
         dom: 'Bfrtip',
@@ -271,7 +273,8 @@ $(function () {
         language: {
             url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/de-DE.json"
         },
-        order: [[0, 'desc']]
+        order: [[2, 'desc']],
+        paging: true
     });
 
     // Double-click event handler for table cells
@@ -280,12 +283,22 @@ $(function () {
         let col = $cell.closest('table').DataTable().cell($cell).index().column;
         let columnName = $cell.closest('table').find('th').eq(col).data('name');
 
+        // Prevent editing of the "dauer" column
         if (columnName !== "dauer") {
             let html = $cell.text().trim();
             let inputElement;
 
+            // For "startzeit" and "endzeit", use datetime-local
             if (columnName === 'startzeit' || columnName === 'endzeit') {
-                inputElement = `<input type="datetime-local" value="${html}"/>`;
+                // Convert the date into the correct format for datetime-local
+                let currentDateTime = new Date(html.replace(/(\d+).(\d+).(\d+) (\d+):(\d+):(\d+)/, '$3-$2-$1T$4:$5'));
+                // Create an offset in minutes and convert it to milliseconds
+                let timezoneOffset = currentDateTime.getTimezoneOffset() * 60000;
+                // Create a new date by subtracting the offset to get the local time
+                let localDateTime = new Date(currentDateTime.getTime() - timezoneOffset);
+                // Convert the date into the local format for datetime-local
+                let dateTimeLocalString = localDateTime.toISOString().slice(0, 16);
+                inputElement = `<input type="datetime-local" value="${dateTimeLocalString}"/>`;
             } else {
                 inputElement = `<input type="text" value="${html}"/>`;
             }
