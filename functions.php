@@ -379,9 +379,12 @@ foreach ($records as $record) {
     $startDateTime = new DateTime($record['startzeit']);
     $endDateTime = new DateTime($record['endzeit']);
 
+    // Überprüfen, ob das 'beschreibung'-Feld leer ist und entsprechend den Titel setzen
+    $title = empty($record['beschreibung']) ? 'Arbeit' : $record['beschreibung'];
+
     $events[] = [
         'id' => $record['id'],
-        'title' => 'Arbeit',
+        'title' => $title,
         'start' => $startDateTime->format("Y-m-d\TH:i:s"),
         'end' => $endDateTime->format("Y-m-d\TH:i:s"),
         'category' => 'time',
@@ -404,3 +407,4 @@ foreach ($feiertageThisYear as $feiertag) {
         'isAllDay' => true
     ];
 }
+

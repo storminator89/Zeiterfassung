@@ -62,6 +62,9 @@ require_once 'functions.php';
                     <a class="nav-link" href="dashboard.php"><i class="fas fa-tachometer-alt mr-1"></i> Dashboard</a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#settingsModal"><i class="fas fa-cog mr-1"></i> Einstellungen</a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-info-circle mr-1"></i> About</a>
                 </li>
             </ul>
@@ -175,28 +178,7 @@ require_once 'functions.php';
                                 <button type="submit" id="addButton" class="btn btn-primary" style="display: none;"><i class="fas fa-plus-circle mr-1"></i> Buchen</button>
                             </div>
                         </div>
-                    </div>
-                    <div class="row">
-
-                        <div class="col">
-                            <div class="form-group">
-                                <a href="download.php" id="downloadDbButton" class="btn btn-secondary">
-                                    <i class="fas fa-download mr-2"></i>
-                                    Datenbank Backup Download
-                                </a>
-                            </div>
-                        </div>
-
-                        <div class="col">
-                            <div class="form-group">
-                                <button type="button" id="importDbButton" class="btn btn-secondary">
-                                    <i class="fas fa-file-upload mr-2"></i>
-                                    Datenbank importieren
-                                </button>
-                            </div>
-                        </div>
-
-                    </div>
+                    </div>                   
 
                     <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
                         <div class="modal-dialog" role="document">
@@ -399,6 +381,31 @@ require_once 'functions.php';
                 </div>
             </div>
         </div>
+
+        <!-- Setting modal -->
+        <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="settingsModalLabel">Einstellungen</h5>
+                        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">                        
+                        <a href="download.php" id="downloadDbButton" class="btn btn-secondary">
+                            <i class="fas fa-download mr-2"></i>
+                            Datenbank Backup Download
+                        </a>
+                        <button type="button" id="importDbButton" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#importModal">
+                            <i class="fas fa-file-upload mr-2"></i>
+                            Datenbank importieren
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
 </body>
 
 </html>
