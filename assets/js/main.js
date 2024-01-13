@@ -274,6 +274,9 @@ $(function () {
     let table = $('.table').DataTable({
         dom: 'Bfrtip',
         buttons,
+        columnDefs: [
+            { className: "text-center", "targets": [0, 1, 5] } 
+        ],
         language: {
             url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/de-DE.json"
         },

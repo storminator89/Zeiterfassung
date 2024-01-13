@@ -7,6 +7,10 @@ label {
     font-family: 'Source Sans Pro', sans-serif;
 }
 
+.text-center {
+    text-align: center;
+}
+
 .rotating-logo {
     animation: rotateLogo 100s infinite linear;
 }

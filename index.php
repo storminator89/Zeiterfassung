@@ -289,13 +289,13 @@ require_once 'functions.php';
             <thead>
                 <tr>
                     <th data-name="id">ID</th>
-                    <th data-name="kalenderwoche">Kalenderwoche</th>
+                    <th data-name="kalenderwoche">KW</th>
                     <th data-name="startzeit">Startzeit</th>
                     <th data-name="endzeit">Endzeit</th>
                     <th data-name="dauer">Dauer</th>
                     <th data-name="pause">Pause (Min.)</th>
                     <th data-name="standort">Standort</th>
-                    <th data-name="beschreibung">Abwesenheitsgrund</th>
+                    <th data-name="beschreibung">Bemerkung</th>
                     <th data-name="aktion">Aktion</th>
                 </tr>
             </thead>
