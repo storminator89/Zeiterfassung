@@ -122,7 +122,7 @@ require_once 'functions.php';
                         <div class="col">
                             <div class="form-group">
                                 <label for="pauseManuell"><i class="fas fa-pause mr-2"></i> Pause (manuell)</label>
-                                <input type="number" id="pauseManuell" class="form-control" placeholder="Manual in Minutes">
+                                <input type="number" id="pauseManuell" class="form-control" placeholder="Manuelle Eingabe (Minuten)">
                             </div>
                         </div>
                         <div class="col">

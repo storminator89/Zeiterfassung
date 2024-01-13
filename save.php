@@ -25,18 +25,21 @@ if (isset($_POST["update"]) && $_POST["update"] == true) {
     exit;
 }
 
-// Insert starting timestamp upon receiving a post request
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["startzeit"])) {
-    $startzeit_iso = date('Y-m-d\TH:i:s', strtotime($_POST["startzeit"]));
+// Insert starting timestamp and location upon receiving a post request
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["startzeit"]) && isset($_POST["standort"])) {
+    $startzeit_iso = date('Y-m-d H:i:s', strtotime($_POST["startzeit"]));
+    $standort = $_POST["standort"];
 
     // Prepare and execute insert query
-    $stmt = $conn->prepare("INSERT INTO zeiterfassung (startzeit) VALUES (:startzeit)");
+    $stmt = $conn->prepare("INSERT INTO zeiterfassung (startzeit, standort) VALUES (:startzeit, :standort)");
     $stmt->bindParam(':startzeit', $startzeit_iso);
+    $stmt->bindParam(':standort', $standort);
     $stmt->execute();
 
     // Output the newly created entry Id
     echo $conn->lastInsertId();
 }
+
 
 // Insert a vacation day
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["urlaubstag"])) {

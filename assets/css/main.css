@@ -97,6 +97,22 @@ label {
     background-color: #f2f2f2;
 }
 
+td.editable {
+    position: relative; 
+}
+
+td.editable:hover .edit-icon {
+    visibility: visible;
+}
+
+.edit-icon {
+    visibility: hidden;
+    cursor: pointer;
+    position: absolute; 
+    top: 50%; 
+    right: 2px; 
+    transform: translateY(-50%); 
+}
 
 .details-table {
     width: 100%;

@@ -149,7 +149,10 @@ $(function () {
         // Store the formatted date and time in local storage
         localStorage.setItem('startzeit', formattedDateTime);
 
-        // Send an HTTP request to save.php with the startzeit parameter
+        // Get the selected location
+        var standort = document.querySelector('select[name="standort"]').value;
+
+        // Send an HTTP request to save.php with the startzeit and standort parameters
         var xhr = new XMLHttpRequest();
         xhr.open("POST", "save.php", true);
         xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
@@ -161,8 +164,9 @@ $(function () {
                 location.reload();
             }
         };
-        xhr.send("startzeit=" + formattedDateTime);
-    });
+        xhr.send("startzeit=" + formattedDateTime + "&standort=" + standort);
+    })
+
 
     // Event listener for the end button
     endButton.addEventListener('click', function () {
@@ -267,7 +271,7 @@ $(function () {
     $.fn.dataTable.moment('DD.MM.YYYY HH:mm:ss');
 
     // Initialize the DataTable
-    $('.table').DataTable({
+    let table = $('.table').DataTable({
         dom: 'Bfrtip',
         buttons,
         language: {
@@ -277,35 +281,44 @@ $(function () {
         paging: true
     });
 
-    // Double-click event handler for table cells
-    $('.table tbody').on('dblclick', 'td', function () {
+    $('.table tbody').on('mouseenter', 'td', function () {
         let $cell = $(this);
-        let col = $cell.closest('table').DataTable().cell($cell).index().column;
+        let col = $cell.index();
+        let totalColumns = table.columns().nodes().length; // Gesamtzahl der Spalten
         let columnName = $cell.closest('table').find('th').eq(col).data('name');
-
-        // Prevent editing of the "dauer" column
-        if (columnName !== "dauer") {
-            let html = $cell.text().trim();
-            let inputElement;
-
-            // For "startzeit" and "endzeit", use datetime-local
-            if (columnName === 'startzeit' || columnName === 'endzeit') {
-                // Convert the date into the correct format for datetime-local
-                let currentDateTime = new Date(html.replace(/(\d+).(\d+).(\d+) (\d+):(\d+):(\d+)/, '$3-$2-$1T$4:$5'));
-                // Create an offset in minutes and convert it to milliseconds
-                let timezoneOffset = currentDateTime.getTimezoneOffset() * 60000;
-                // Create a new date by subtracting the offset to get the local time
-                let localDateTime = new Date(currentDateTime.getTime() - timezoneOffset);
-                // Convert the date into the local format for datetime-local
-                let dateTimeLocalString = localDateTime.toISOString().slice(0, 16);
-                inputElement = `<input type="datetime-local" value="${dateTimeLocalString}"/>`;
-            } else {
-                inputElement = `<input type="text" value="${html}"/>`;
-            }
-
-            $cell.html(inputElement);
-            $cell.find('input').focus();
+        if (col > 1 && col < totalColumns - 1 && columnName !== "dauer") { // Verhindern Sie das Hinzufügen des Icons zur "dauer" Spalte, den ersten beiden Spalten und der letzten Spalte
+            $cell.addClass('editable').append('<i class="fa fa-pencil edit-icon"></i>'); // FontAwesome Bleistift-Icon für Bearbeitung
         }
+    }).on('mouseleave', 'td', function () {
+        $(this).removeClass('editable').find('.edit-icon').remove();
+    });
+
+    // Klick-Event-Handler für das Bearbeitungs-Icon
+    $('.table tbody').on('click', '.edit-icon', function (e) {
+        e.stopPropagation();
+        let $cell = $(this).closest('td');
+        let col = $cell.index();
+        let columnName = $cell.closest('table').find('th').eq(col).data('name');
+        let html = $cell.text().trim();
+        let inputElement;
+
+        // For "startzeit" and "endzeit", use datetime-local
+        if (columnName === 'startzeit' || columnName === 'endzeit') {
+            // Convert the date into the correct format for datetime-local
+            let currentDateTime = new Date(html.replace(/(\d+).(\d+).(\d+) (\d+):(\d+):(\d+)/, '$3-$2-$1T$4:$5'));
+            // Create an offset in minutes and convert it to milliseconds
+            let timezoneOffset = currentDateTime.getTimezoneOffset() * 60000;
+            // Create a new date by subtracting the offset to get the local time
+            let localDateTime = new Date(currentDateTime.getTime() - timezoneOffset);
+            // Convert the date into the local format for datetime-local
+            let dateTimeLocalString = localDateTime.toISOString().slice(0, 16);
+            inputElement = `<input type="datetime-local" value="${dateTimeLocalString}"/>`;
+        } else {
+            inputElement = `<input type="text" value="${html}"/>`;
+        }
+
+        $cell.html(inputElement);
+        $cell.find('input').focus();
     });
 
     // Blur event handler for table cells
@@ -327,6 +340,31 @@ $(function () {
         }).done(function () {
             location.reload();
         });
+    });
+
+    // Keypress event handler for table cells
+    $('.table tbody').on('keypress', 'td input', function (e) {
+        if (e.which == 13) { // Return key
+            let $input = $(this);
+            let cell = $input.closest('table').DataTable().cell($input.parent());
+            let col = cell.index().column;
+            let newVal = $input.val();
+            let id = $input.closest('tr').find('input[name="id"]').val();
+            let columnName = $input.closest('table').find('th').eq(col).data('name');
+
+            cell.data(newVal).draw();
+
+            $.post('save.php', {
+                update: true,
+                id: id,
+                column: columnName,
+                data: newVal
+            }).done(function () {
+                location.reload();
+            });
+
+            e.preventDefault();
+        }
     });
 
     // Keypress event handler for table cells
