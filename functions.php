@@ -229,45 +229,48 @@ $regularWorkingHours = 8; // Regular working hours per day
 $totalOverHours = 0; // Gesamtüberstunden
 $workHoursByDate = []; // Speichert Arbeitsstunden pro Datum
 
-// Durchlaufen der Datensätze
 foreach ($records as $record) {
     $datum = (new DateTime($record['startzeit']))->format('Y-m-d');
     $startzeit = new DateTime($record['startzeit']);
     $endzeit = new DateTime($record['endzeit']);
     $gesamtdauer = $endzeit->diff($startzeit);
 
-    $gesamtstunden = $gesamtdauer->h;
-    $gesamtminuten = $gesamtdauer->i;
+    $gesamtstunden = $gesamtdauer->h + ($gesamtdauer->i / 60);
+    $pause = is_numeric($record['pause']) ? ($record['pause'] / 60) : 0;
+    $arbeitstunden = $gesamtstunden - $pause;
 
-    $pause = is_numeric($record['pause']) ? (int)$record['pause'] : 0;
-    $arbeitstunden = $gesamtstunden * 60 + $gesamtminuten - $pause;
-
-    // Speichert Arbeitsstunden pro Datum
+    // Speichern der Arbeitsstunden pro Datum
     if (!isset($workHoursByDate[$datum])) {
         $workHoursByDate[$datum] = 0;
     }
     $workHoursByDate[$datum] += $arbeitstunden;
 }
 
-// Calculate over hours per date
-foreach ($workHoursByDate as $date => $minutes) {
-    // Convert minutes to hours
-    $workHours = $minutes / 60;
+// Initialisierung der Gesamtüberstunden
+$totalOverHours = 0;
 
-    // Calculate over hours for the date
-    // Here it's assumed that $regularWorkingHours is the regular working time per day
-    $overHours = $workHours - $regularWorkingHours;
-
-    // Add over hours to the total over hours
-    $totalOverHours += $overHours;
+// Durchlaufen der gesammelten Arbeitsstunden pro Tag
+foreach ($workHoursByDate as $datum => $hours) {
+    $wochentag = date('N', strtotime($datum));
+    if ($wochentag >= 1 && $wochentag <= 5) { // Montag bis Freitag
+        $totalOverHours += $hours - $regularWorkingHours;
+    } else {
+        $totalOverHours += $hours; // Wochenendarbeit als Überstunden
+    }
 }
 
-// Convert total over hours into hours and minutes
-$totalOverHoursHours = floor($totalOverHours); // Whole hours of over hours
-$totalOverHoursMinutes = round(($totalOverHours - $totalOverHoursHours) * 60); // Remaining minutes of over hours
-
-// Format total over hours as hours:minutes
-$totalOverHoursFormatted = sprintf("%02d:%02d", $totalOverHoursHours, abs($totalOverHoursMinutes));
+// Berechnung der Gesamtüberstunden in Stunden und Minuten
+if ($totalOverHours < 0) {
+    // Negative Gesamtüberstunden, verwenden Absolutwerte für Stunden und Minuten
+    $totalOverHoursHours = floor(abs($totalOverHours)); // Absolutwert für Stunden, abgerundet auf die nächste niedrigere ganze Zahl
+    $totalOverHoursMinutes = round((abs($totalOverHours) - $totalOverHoursHours) * 60); // Differenz zu ganzen Stunden, umgewandelt in Minuten
+    $totalOverHoursFormatted = sprintf("-%02d:%02d", $totalOverHoursHours, $totalOverHoursMinutes);
+} else {
+    // Positive Gesamtüberstunden
+    $totalOverHoursHours = floor($totalOverHours); // Ganze Stunden
+    $totalOverHoursMinutes = round(($totalOverHours - $totalOverHoursHours) * 60); // Umwandlung der restlichen Dezimalstunden in Minuten
+    $totalOverHoursFormatted = sprintf("%02d:%02d", $totalOverHoursHours, $totalOverHoursMinutes);
+}
 
 // SQL query for total working hours this month
 $stmt = $conn->prepare('
