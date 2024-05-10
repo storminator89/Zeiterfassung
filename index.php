@@ -159,21 +159,44 @@ require_once 'functions.php';
                     <div class="row mb-3">
                         <div class="col">
                             <div class="form-group">
-                                <label for="urlaubstag"><i class="fas fa-calendar-alt mr-2"></i> Spezielle Tage eintragen:</label>
-                                <input type="date" name="urlaubstag" class="form-control" required>
-                            </div>
-                        </div>
-                        <div class="col d-flex align-items-end">
-                            <div class="form-group">
-                                <button type="button" id="urlaubEintragenButton" class="btn btn-primary">
-                                    <i class="fas fa-plane-departure mr-2"></i> Urlaub eintragen
-                                </button>
-                                <button type="button" id="feiertagEintragenButton" class="btn btn-primary">
-                                    <i class="fas fa-calendar-day mr-2"></i> Feiertag eintragen
-                                </button>
+                                <label><i class="fas fa-calendar-check mr-2"></i> Ereignistyp:</label>
+                                <div class="d-flex justify-content-start">
+                                    <div class="form-check form-check-inline">
+                                        <input type="radio" id="urlaub" name="ereignistyp" value="Urlaub" class="form-check-input" checked>
+                                        <label class="form-check-label" for="urlaub"><i class="fas fa-umbrella-beach mr-2"></i> Urlaub</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input type="radio" id="feiertag" name="ereignistyp" value="Feiertag" class="form-check-input">
+                                        <label class="form-check-label" for="feiertag"><i class="fas fa-gift mr-2"></i> Feiertag</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input type="radio" id="krank" name="ereignistyp" value="Krank" class="form-check-input">
+                                        <label class="form-check-label" for="krank"><i class="fas fa-bed mr-2"></i> Krank</label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    <div class="row mb-3">
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="urlaubStart"><i class="fas fa-calendar-alt mr-2"></i> Beginn:</label>
+                                <input type="date" name="urlaubStart" id="urlaubStart" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="urlaubEnde"><i class="fas fa-calendar-alt mr-2"></i> Ende:</label>
+                                <input type="date" name="urlaubEnde" id="urlaubEnde" class="form-control" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" id="datenEintragenButton" class="btn btn-primary">
+                        <i class="fas fa-plane-departure mr-2"></i> Daten eintragen
+                    </button>
+
 
 
                     <!-- Third row of the form -->

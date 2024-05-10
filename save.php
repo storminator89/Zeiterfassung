@@ -40,52 +40,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["startzeit"]) && isset(
     echo $conn->lastInsertId();
 }
 
-
-// Insert a vacation day
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["urlaubstag"])) {
-    $urlaubstag = $_POST["urlaubstag"];
-    $startzeit_iso = $urlaubstag . ' 09:00:00';
-    $endzeit_iso = $urlaubstag . ' 17:00:00';
-    $beschreibung = 'Urlaub';
-    $pause = '0';
-    $standort = '';
-
-    // Prepare and execute insert query
-    $stmt = $conn->prepare("INSERT INTO zeiterfassung (startzeit, endzeit, beschreibung, pause, standort) VALUES (:startzeit, :endzeit, :beschreibung, :pause, :standort)");
-    $stmt->bindParam(':startzeit', $startzeit_iso);
-    $stmt->bindParam(':endzeit', $endzeit_iso);
-    $stmt->bindParam(':beschreibung', $beschreibung);
-    $stmt->bindParam(':pause', $pause);
-    $stmt->bindParam(':standort', $standort);
-    $stmt->execute();
-
-    // Output the newly created entry Id
-    echo $conn->lastInsertId();
-}
-
-// Insert a holiday
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["feiertag"])) {
-    $feiertag = $_POST["feiertag"];
-    $startzeit_iso = $feiertag . ' 09:00:00';
-    $endzeit_iso = $feiertag . ' 17:00:00';
-    $beschreibung = 'Feiertag';
-    $pause = '0';
-    $standort = '';
-
-    // Prepare and execute insert query
-    $stmt = $conn->prepare("INSERT INTO zeiterfassung (startzeit, endzeit, beschreibung, pause, standort) VALUES (:startzeit, :endzeit, :beschreibung, :pause, :standort)");
-    $stmt->bindParam(':startzeit', $startzeit_iso);
-    $stmt->bindParam(':endzeit', $endzeit_iso);
-    $stmt->bindParam(':beschreibung', $beschreibung);
-    $stmt->bindParam(':pause', $pause);
-    $stmt->bindParam(':standort', $standort);
-    $stmt->execute();
-
-    // Output the newly created entry Id
-    echo $conn->lastInsertId();
-}
-
-
 // Handling "go away" action with given id
 if (isset($_POST["aktion"]) && $_POST["aktion"] === "gehen" && isset($_POST["id"])) {
     // Store incoming data with reasonable defaults
@@ -111,4 +65,30 @@ if (isset($_POST["aktion"]) && $_POST["aktion"] === "gehen" && isset($_POST["id"
 
     // Perform redirect to index page
     header("Location: index.php");
+}
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["urlaubStart"]) && isset($_POST["urlaubEnde"]) && isset($_POST["ereignistyp"])) {
+    $start = new DateTime($_POST["urlaubStart"]);
+    $end = new DateTime($_POST["urlaubEnde"]);
+    $end = $end->modify('+1 day');
+    $ereignistyp = $_POST["ereignistyp"];
+
+    $interval = new DateInterval('P1D');
+    $daterange = new DatePeriod($start, $interval, $end);
+
+    foreach ($daterange as $date) {
+        $datum = $date->format("Y-m-d");
+        $startzeit_iso = $datum . ' 09:00:00';
+        $endzeit_iso = $datum . ' 17:00:00';
+        $beschreibung = $ereignistyp;
+        $pause = 0;
+        $standort = '';
+
+        $stmt = $conn->prepare("INSERT INTO zeiterfassung (startzeit, endzeit, beschreibung, pause, standort) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$startzeit_iso, $endzeit_iso, $beschreibung, $pause, $standort]);
+    }
+
+    echo "{$ereignistyp} von {$start->format('Y-m-d')} bis {$end->format('Y-m-d')} wurde eingetragen.";
+} else {
+    
 }

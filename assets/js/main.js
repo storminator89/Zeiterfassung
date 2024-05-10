@@ -65,46 +65,31 @@ $(function () {
         }
     });
 
-    var urlaubEintragenButton = document.getElementById('urlaubEintragenButton');
-    urlaubEintragenButton.addEventListener('click', function () {
-        var urlaubstag = document.querySelector('input[name="urlaubstag"]').value;
-        if (urlaubstag) {
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', 'save.php', true);
-            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-            xhr.onload = function () {
-                if (this.status == 200) {
-                    console.log('Erfolgreich eingetragen: ', this.responseText);
-                    location.reload();
-                } else {
-                    console.error('Fehler beim Eintragen des Urlaubs');
-                }
-            };
-            xhr.send('urlaubstag=' + encodeURIComponent(urlaubstag));
-        } else {
-            alert('Bitte wählen Sie ein Datum für den Urlaubstag.');
-        }
-    });
+    var datenEintragenButton = document.getElementById('datenEintragenButton');
+    datenEintragenButton.addEventListener('click', function () {
+        var urlaubStart = document.getElementById('urlaubStart').value;
+        var urlaubEnde = document.getElementById('urlaubEnde').value;
+        var ereignistyp = document.querySelector('input[name="ereignistyp"]:checked').value;
 
-    var feiertagEintragenButton = document.getElementById('feiertagEintragenButton');
-    feiertagEintragenButton.addEventListener('click', function () {
-        var feiertag = document.querySelector('input[name="urlaubstag"]').value;
-        if (feiertag) {
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', 'save.php', true);
-            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-            xhr.onload = function () {
-                if (this.status == 200) {
-                    console.log('Erfolgreich eingetragen: ', this.responseText);
-                    // Seite aktualisieren
-                    location.reload();
-                } else {
-                    console.error('Fehler beim Eintragen des Feiertags');
-                }
-            };
-            xhr.send('feiertag=' + encodeURIComponent(feiertag));
+        if (urlaubStart && urlaubEnde) {
+            if (urlaubStart <= urlaubEnde) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', 'save.php', true);
+                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                xhr.onload = function () {
+                    if (this.status === 200) {
+                        console.log('Ereignis erfolgreich eingetragen: ', this.responseText);
+                        location.reload();
+                    } else {
+                        console.error('Fehler beim Eintragen des Ereignisses');
+                    }
+                };
+                xhr.send('urlaubStart=' + encodeURIComponent(urlaubStart) + '&urlaubEnde=' + encodeURIComponent(urlaubEnde) + '&ereignistyp=' + encodeURIComponent(ereignistyp));
+            } else {
+                alert('Das Startdatum muss vor dem Enddatum liegen.');
+            }
         } else {
-            alert('Bitte wählen Sie ein Datum für den Feiertag.');
+            alert('Bitte füllen Sie beide Datumsfelder aus.');
         }
     });
 
