@@ -24,6 +24,19 @@ if (isset($_POST['id'])) {
     // Redirect to the main page after successful deletion
     header("Location: index.php");
     exit;
+} elseif (isset($_POST["ids"])) {
+    // Delete multiple records
+    $ids = $_POST["ids"];
+
+    foreach ($ids as $id) {
+        $stmt = $conn->prepare("DELETE FROM zeiterfassung WHERE id = ?");
+        $stmt->bindParam(1, $id, PDO::PARAM_INT);
+        $stmt->execute();
+    }
+
+    // Redirect to the main page after successful deletion
+    header("Location: index.php");
+    exit;
 } else {
     // Handling the case when no ID is provided
     die("ID not provided.");

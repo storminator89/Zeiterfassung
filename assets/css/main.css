@@ -360,19 +360,25 @@ td.editable:hover .edit-icon {
     border-color: #555555; /* Dark border color */
 }
 
+.dark-mode input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+}
+
 /* Style for non-active buttons */
 .dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button {
-    color: #ffffff; /* Light color for text */
+    color: #ffffff !important; /* Light color for text */
     background-color: #333333; /* Darker background */
     border-color: #555555; /* Dark border */
 }
 
+
+
 /* Style for the active button */
-.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button.current, 
+.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button.current,
 .dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
-    color: #ffffff; 
-    background-color: #555555; 
-    border-color: #777777; 
+    color: #ffffff !important;
+    background-color: #000000 !important;
+    border-color: #000000 !important;
 }
 
 

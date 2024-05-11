@@ -206,7 +206,7 @@ require_once 'functions.php';
                                 <button type="submit" id="addButton" class="btn btn-primary" style="display: none;"><i class="fas fa-plus-circle mr-1"></i> Buchen</button>
                             </div>
                         </div>
-                    </div>                   
+                    </div>
 
                     <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
                         <div class="modal-dialog" role="document">
@@ -311,6 +311,7 @@ require_once 'functions.php';
         <table class="table">
             <thead>
                 <tr>
+                    <th><input type="checkbox" id="selectAll"></th>
                     <th data-name="id">ID</th>
                     <th data-name="kalenderwoche">KW</th>
                     <th data-name="startzeit">Startzeit</th>
@@ -319,7 +320,6 @@ require_once 'functions.php';
                     <th data-name="pause">Pause (Min.)</th>
                     <th data-name="standort">Standort</th>
                     <th data-name="beschreibung">Bemerkung</th>
-                    <th data-name="aktion">Aktion</th>
                 </tr>
             </thead>
             <tbody>
@@ -338,6 +338,7 @@ require_once 'functions.php';
 
                 ?>
                     <tr>
+                        <td><input type="checkbox" class="selectRow" data-id="<?= $record['id'] ?>"></td>
                         <td><?= $record['id'] ?></td>
                         <td><?= $record['weekNumber'] ?></td>
                         <td><?= date("d.m.Y H:i:s", strtotime($record['startzeit'])) ?></td>
@@ -346,18 +347,12 @@ require_once 'functions.php';
                         <td><?= $record['pause'] ?></td>
                         <td><?= $record['standort'] ?></td>
                         <td><?= $record['beschreibung'] ?></td>
-                        <td>
-                            <form action="delete.php" method="post">
-                                <input type="hidden" name="id" value="<?= $record['id'] ?>">
-                                <button type="submit" class="btn btn-danger btn-sm">
-                                    <i class="fas fa-trash-alt mr-1"></i> Löschen
-                                </button>
-                            </form>
-                        </td>
                     </tr>
                 <?php } ?>
             </tbody>
         </table>
+
+        <button type="button" id="deleteSelected" class="btn btn-danger">Ausgewählte löschen</button>
 
         <div class="row">
             <div class="col-4">
@@ -420,7 +415,7 @@ require_once 'functions.php';
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
-                    <div class="modal-body">                        
+                    <div class="modal-body">
                         <a href="download.php" id="downloadDbButton" class="btn btn-secondary">
                             <i class="fas fa-download mr-2"></i>
                             Datenbank Backup Download

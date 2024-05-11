@@ -260,12 +260,12 @@ $(function () {
         dom: 'Bfrtip',
         buttons,
         columnDefs: [
-            { className: "text-center", "targets": [0, 1, 5] } 
+            { className: "text-center", "targets": [0, 1, 5] }
         ],
         language: {
             url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/de-DE.json"
         },
-        order: [[2, 'desc']],
+        order: [[3, 'desc']],
         paging: true
     });
 
@@ -310,7 +310,7 @@ $(function () {
     });
 
     // Blur event handler for table cells
-    $('.table tbody').on('blur', 'td input', function () {
+    $('.table tbody').on('blur', 'td input:not(.selectRow)', function () {
         let $input = $(this);
         let cell = $input.closest('table').DataTable().cell($input.parent());
         let col = cell.index().column;
@@ -355,33 +355,36 @@ $(function () {
         }
     });
 
-    // Keypress event handler for table cells
-    $('.table tbody').on('keypress', 'td input', function (e) {
-        if (e.which == 13) { // Return key
-            let $input = $(this);
-            let cell = $input.closest('table').DataTable().cell($input.parent());
-            let col = cell.index().column;
-            let newVal = $input.val();
-            let id = $input.closest('tr').find('input[name="id"]').val();
-            let columnName = $input.closest('table').find('th').eq(col).data('name');
+    // Checkbox in der Kopfzeile zum Auswählen/Abwählen aller Zeilen
+    $('#selectAll').on('click', function () {
+        $('.selectRow').prop('checked', this.checked);
+    });
 
-            cell.data(newVal).draw();
-
-            $.post('save.php', {
-                update: true,
-                id: id,
-                column: columnName,
-                data: newVal
-            }).done(function () {
-                location.reload();
-            });
-
-            e.preventDefault();
+    // Checkboxen in den Zeilen zum Auswählen/Abwählen einzelner Zeilen
+    $('.selectRow').on('click', function () {
+        if ($('.selectRow:checked').length == $('.selectRow').length) {
+            $('#selectAll').prop('checked', true);
+        } else {
+            $('#selectAll').prop('checked', false);
         }
     });
 
+    // "Ausgewählte löschen"-Button
+    $('#deleteSelected').on('click', function () {
+        let ids = [];
+        $('.selectRow:checked').each(function () {
+            ids.push($(this).data('id'));
+        });
 
-
+        if (ids.length > 0) {
+            if (confirm('Möchten Sie die ausgewählten Datensätze wirklich löschen?')) {
+                $.post('delete.php', { ids: ids })
+                    .done(function () {
+                        location.reload();
+                    });
+            }
+        }
+    });
 
     $('select[name="beschreibung"]').change(function () {
         let desc = $(this).val();
@@ -545,7 +548,7 @@ function toggleDarkMode() {
 }
 
 function checkDarkModePreference() {
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {        
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
         document.body.classList.add('dark-mode');
         var icon = document.querySelector('.fancy-title img');
         icon.src = 'assets/kolibri_icon_weiß.png';
