@@ -315,7 +315,7 @@ $(function () {
         let cell = $input.closest('table').DataTable().cell($input.parent());
         let col = cell.index().column;
         let newVal = $input.val();
-        let id = $input.closest('tr').find('input[name="id"]').val();
+        let id = $input.closest('tr').find('td:eq(1)').text(); // Zugriff auf die ID in der zweiten Spalte (Index 1)
         let columnName = $input.closest('table').find('th').eq(col).data('name');
 
         cell.data(newVal).draw();
