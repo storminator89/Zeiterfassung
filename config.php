@@ -30,6 +30,17 @@ CREATE TABLE IF NOT EXISTS Feiertage (
 );
 SQL;
 
+$createUserSql = <<<SQL
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE
+);
+SQL;
+
+$conn->exec($createUserSql);
+
     // Execution of table creation queries
     $conn->exec($createZeiterfassungSql);
     $conn->exec($createFeiertageSql);

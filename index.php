@@ -1,5 +1,9 @@
 <?php
 session_start();
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
 require_once 'functions.php';
 ?>
 
@@ -71,6 +75,9 @@ require_once 'functions.php';
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-info-circle mr-1"></i> About</a>
+                </li>              
+                <li class="nav-item">
+                    <a class="nav-link" href="logout.php"><i class="fas fa-sign-out-alt mr-1"></i> Logout</a>
                 </li>
             </ul>
             <button class="dark-mode-toggle me-3" onclick="toggleDarkMode()">
@@ -78,6 +85,7 @@ require_once 'functions.php';
             </button>
         </div>
     </nav>
+
 
     <!-- Main content -->
     <div class="container mt-5 p-5">
