@@ -2,7 +2,17 @@
 session_start();
 include 'config.php';
 
-$error = '';  // Variable für Fehlermeldungen initialisieren
+$error = '';  
+
+// Überprüfen, ob bereits ein Benutzer registriert ist
+$stmt = $conn->prepare("SELECT COUNT(*) FROM users");
+$stmt->execute();
+$userCount = $stmt->fetchColumn();
+
+if ($userCount > 0) {
+    header("Location: login.php?error=existinguser");
+    exit();
+}
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = $_POST['username'];
@@ -21,13 +31,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         try {
             $stmt = $conn->prepare("INSERT INTO users (username, password, email) VALUES (?, ?, ?)");
             $stmt->execute([$username, $password, $email]);
-            header("Location: login.php");
+            header("Location: login.php?success=1");
             exit();
         } catch (PDOException $e) {
             $error = "Fehler beim Einfügen des Benutzers: " . $e->getMessage();
         }
     }
 }
+
+// Wenn kein Benutzer existiert, zeige das Formular an
+if ($userCount == 0):
 ?>
 
 <!DOCTYPE html>
@@ -78,3 +91,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </footer>
 </body>
 </html>
+<?php endif; ?>  

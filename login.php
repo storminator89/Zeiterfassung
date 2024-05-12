@@ -2,6 +2,22 @@
 session_start();
 include 'config.php';
 
+$error = '';
+$successMessage = '';
+
+// Überprüfen, ob bereits ein Benutzer registriert ist
+$stmt = $conn->prepare("SELECT COUNT(*) FROM users");
+$stmt->execute();
+$userCount = $stmt->fetchColumn();
+
+if (isset($_GET['error']) && $_GET['error'] == 'existinguser') {
+    $error = "Registrierung ist nicht möglich, da bereits ein Nutzer existiert.";
+}
+
+if (isset($_GET['success'])) {
+    $successMessage = "Registrierung erfolgreich! Bitte loggen Sie sich ein.";
+}
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = $_POST['username'];
     $password = $_POST['password'];
@@ -63,8 +79,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <input type="password" class="form-control" id="password" name="password" required>
             </div>
             <button type="submit" class="btn btn-primary">Login</button>
-            <a href="register.php" class="btn btn-secondary">Registrieren</a>
-            <?php if (!empty($error)) { echo "<div class='alert alert-danger mt-3'>$error</div>"; } ?>
+            <?php if ($successMessage) {
+                echo "<div class='alert alert-success mt-3'>$successMessage</div>";
+            } ?>
+            <?php if ($userCount == 0) : ?>
+                <a href="register.php" class="btn btn-secondary">Registrieren</a>
+            <?php endif; ?>
+            <?php if (!empty($error)) {
+                echo "<div class='alert alert-danger mt-3'>$error</div>";
+            } ?>
         </form>
     </div>
 
