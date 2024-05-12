@@ -2,6 +2,7 @@
 
 Das Tool unterstützt Sie bei der Erfassung Ihrer Arbeitszeiten. 
 ![Main Screen](/assets/mainPage_Screenshot.png)
+![Main Screen](/assets/mainPage_Screenshot2.png)
 
 ## Browser Plugin
 ![Browser Plugin](/assets/erweiterung_edge.png) 
@@ -20,8 +21,9 @@ In time-tracker-extension_edge folder
 - **Beschreibung hinzufügen:** Optionen wie Urlaub, Feiertag und Krankheit sind verfügbar.
 - **Statistik:** Es werden Statistiken über die Arbeitszeit für den aktuellen Monat und das Jahr angezeigt mit Dashboard
 - **Übersicht der Arbeitszeiten:** Eine detaillierte Tabelle mit allen Arbeitszeiten, die der Benutzer eingibt.
-- **Automatische Berechnung** der Arbeitstage in diesem Monat und **Feiertage** weren berücksichtigt
+- **Automatische Berechnung** der Arbeitstage in diesem Monat und **Feiertage** werden berücksichtigt
 - **Kalenderansicht** aller Arbeitszeiten für bessere Übersicht
+- **Login und Logout/ Registrierung**
 
 ## Abhängigkeiten und Ressourcen
 
