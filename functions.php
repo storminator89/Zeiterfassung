@@ -1,5 +1,14 @@
 <?php
 include 'config.php';
+session_start();
+
+// Ensure the user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
 
 // Establish a PDO connection
 try {
@@ -10,13 +19,15 @@ try {
     die("Verbindungsfehler: " . $e->getMessage());
 }
 
-// Fetch all entries from 'zeiterfassung', adding week number
+// Fetch all entries from 'zeiterfassung' for the current user, adding week number
 try {
     $stmt = $conn->prepare('
         SELECT *, strftime("%W", startzeit) as weekNumber 
         FROM zeiterfassung 
+        WHERE user_id = :user_id
         ORDER BY startzeit DESC
     ');
+    $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
     $stmt->execute();
     $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
@@ -52,12 +63,14 @@ try {
             ((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60) - COALESCE(pause, 0)
         ) as totalMinutes
         FROM zeiterfassung
-        WHERE strftime("%Y", startzeit) = :currentYear
+        WHERE user_id = :user_id
+        AND strftime("%Y", startzeit) = :currentYear
         AND strftime("%W", startzeit) = :weekNumber
         AND beschreibung != "Feiertag"
     ');
-    $stmt->bindParam(':currentYear', $currentYear);
-    $stmt->bindParam(':weekNumber', $currentWeekNumber);
+    $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+    $stmt->bindParam(':currentYear', $currentYear, PDO::PARAM_STR);
+    $stmt->bindParam(':weekNumber', $currentWeekNumber, PDO::PARAM_STR);
     $stmt->execute();
     $totalMinutesThisWeek = $stmt->fetchColumn();
 } catch (PDOException $e) {
@@ -84,10 +97,6 @@ $workingHoursThisMonth = getWorkingHours($currentMonthStart, $currentMonthEnd);
 // Getting today's date
 $currentDate = date("Y-m-d");
 
-// Getting calendar week for today's date
-$currentWeekNumber = date("W");
-$currentYear = date("Y");
-
 // Adjusting SQL query to fetch data for the current calendar week
 $stmt = $conn->prepare('
     SELECT
@@ -96,11 +105,13 @@ $stmt = $conn->prepare('
     FROM
         zeiterfassung
     WHERE
-        strftime("%W", startzeit) = :weekNumber AND
-        strftime("%Y", startzeit) = :currentYear
+        user_id = :user_id
+        AND strftime("%W", startzeit) = :weekNumber
+        AND strftime("%Y", startzeit) = :currentYear
     GROUP BY
         strftime("%Y-%m-%d", startzeit)
 ');
+$stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
 $stmt->bindParam(':weekNumber', $currentWeekNumber, PDO::PARAM_STR);
 $stmt->bindParam(':currentYear', $currentYear, PDO::PARAM_STR);
 $stmt->execute();
@@ -279,11 +290,13 @@ $stmt = $conn->prepare('
     FROM
         zeiterfassung
     WHERE
-        strftime("%Y", startzeit) = :currentYear AND
-        strftime("%m", startzeit) = :currentMonth
+        user_id = :user_id
+        AND strftime("%Y", startzeit) = :currentYear
+        AND strftime("%m", startzeit) = :currentMonth
 ');
-$stmt->bindParam(':currentYear', $currentYear);
-$stmt->bindParam(':currentMonth', $currentMonth);
+$stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+$stmt->bindParam(':currentYear', $currentYear, PDO::PARAM_STR);
+$stmt->bindParam(':currentMonth', $currentMonth, PDO::PARAM_STR);
 $stmt->execute();
 $totalMinutesThisMonthFromRecords = $stmt->fetchColumn();
 $totalHoursThisMonthFromRecords = floor($totalMinutesThisMonthFromRecords / 60);
@@ -298,9 +311,11 @@ $stmt = $conn->prepare('
     FROM
         zeiterfassung
     WHERE
-        strftime("%Y", startzeit) = :currentYear
+        user_id = :user_id
+        AND strftime("%Y", startzeit) = :currentYear
 ');
-$stmt->bindParam(':currentYear', $currentYear);
+$stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+$stmt->bindParam(':currentYear', $currentYear, PDO::PARAM_STR);
 $stmt->execute();
 $totalMinutesThisYearFromRecords = $stmt->fetchColumn();
 $totalHoursThisYearFromRecords = floor($totalMinutesThisYearFromRecords / 60);
@@ -344,8 +359,6 @@ function getFeiertageForYear($jahr)
 $currentYear = date("Y");
 $feiertageThisYear = getFeiertageForYear($currentYear);
 
-
-
 // Function to get German day name
 function getGermanDayName($date)
 {
@@ -355,8 +368,9 @@ function getGermanDayName($date)
 
 function getEntryById($conn, $id)
 {
-    $stmt = $conn->prepare("SELECT * FROM zeiterfassung WHERE id = :id");
+    $stmt = $conn->prepare("SELECT * FROM zeiterfassung WHERE id = :id AND user_id = :user_id");
     $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->bindParam(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
     $stmt->execute();
 
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -368,9 +382,9 @@ function getEntryById($conn, $id)
     }
 }
 
-
 // Gamification: Counting the different weeks worked
-$stmt = $conn->prepare("SELECT COUNT(DISTINCT strftime('%W', startzeit)) as weeksCount FROM zeiterfassung");
+$stmt = $conn->prepare("SELECT COUNT(DISTINCT strftime('%W', startzeit)) as weeksCount FROM zeiterfassung WHERE user_id = :user_id");
+$stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
 $stmt->execute();
 $result = $stmt->fetch(PDO::FETCH_ASSOC);
 $isFirstWeek = $result['weeksCount'] == 1;
@@ -410,4 +424,3 @@ foreach ($feiertageThisYear as $feiertag) {
         'isAllDay' => true
     ];
 }
-

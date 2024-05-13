@@ -5,21 +5,20 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 require_once 'functions.php';
+
+$user_id = $_SESSION['user_id'];
 ?>
 
 <!DOCTYPE html>
 <html lang="de">
-
 <head>
     <!-- Meta tags and title -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quodara Chrono - Time Tracking</title>
 
-    <!-- Favicon -->
+    <!-- Favicon and external stylesheets -->
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
-
-    <!-- External stylesheets and scripts -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -36,8 +35,6 @@ require_once 'functions.php';
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/locale/de.js"></script>
     <script src="https://cdn.datatables.net/plug-ins/1.10.22/sorting/datetime-moment.js"></script>
-
-
 
     <!-- Local stylesheets and scripts -->
     <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
@@ -62,7 +59,6 @@ require_once 'functions.php';
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
-            <!-- Navigation items -->
             <ul class="navbar-nav ml-auto">
                 <li class="nav-item active">
                     <a class="nav-link" href="#"><i class="fas fa-home mr-1"></i> Home</a>
@@ -86,16 +82,14 @@ require_once 'functions.php';
         </div>
     </nav>
 
-
     <!-- Main content -->
     <div class="container mt-5 p-5">
         <h2 class="fancy-title">
-            <img src="assets/kolibri_icon.png" alt="Quodora Chrono Logo" style="width: 80px; height: 80px; margin-right: 10px;">
+            <img src="assets/kolibri_icon.png" alt="Quodara Chrono Logo" style="width: 80px; height: 80px; margin-right: 10px;">
             Quodara Chrono - Zeiterfassung
         </h2>
         <div class="row">
             <div class="col-md-12">
-                <!-- Main form -->
                 <form action="save.php" method="post" id="mainForm">
                     <!-- First row of the form -->
                     <div class="row mb-3">
@@ -205,8 +199,6 @@ require_once 'functions.php';
                         <i class="fas fa-plane-departure mr-2"></i> Daten eintragen
                     </button>
 
-
-
                     <!-- Third row of the form -->
                     <div class="row mb-3">
                         <div class="col">
@@ -241,7 +233,6 @@ require_once 'functions.php';
                         </div>
                     </div>
 
-
                     <input type="hidden" id="isFirstWeek" value="<?php echo $isFirstWeek ? '1' : '0'; ?>">
                     <div id="firstWeekNotification" class="row mb-3"></div>
             </div>
@@ -256,14 +247,6 @@ require_once 'functions.php';
                             <tr>
                                 <th>Arbeitstage <?= $currentMonthName ?></th>
                                 <th>Gesamtüberstunden</th>
-                                <!-- Ausgeblendete Spalten
-                                <th>Arbeitsstunden diese Woche</th>
-                                <th>Zu Arbeiten noch diese Woche</th>
-                                <th>Arbeitsstunden im <?= $currentMonthName ?></th>
-                                <th>Gesamtstunden aktueller Monat</th>
-                                <th>Zu Arbeiten <?= $currentMonthName ?></th>
-                                <th>Zu Arbeiten dieses Jahr</th>
-                                -->
                             </tr>
                         </thead>
                         <tbody>
@@ -272,30 +255,6 @@ require_once 'functions.php';
                                 <td class="<?= $totalOverHours > 0 ? 'positive-overhours' : 'negative-overhours'; ?>" style="font-weight: bold;">
                                     <?= $totalOverHoursFormatted ?>
                                 </td>
-                                <!-- Ausgeblendete Zellen
-                                <td><?= number_format($totalHoursThisWeek, 1) ?></td>
-                                <td>
-                                    <?php if ($overHoursThisWeek > 0) : ?>
-                                        <?= $overHoursThisWeek ?> Überstunden
-                                    <?php elseif ($overHoursThisWeek < 0) : ?>
-                                        - <?= abs($overHoursThisWeek) ?> Stunden
-                                    <?php else : ?>
-                                        erwarteten Stunden
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= $workingHoursThisMonth ?></td>
-                                <td><?= $totalHoursThisMonthFromRecords ?></td>
-                                <td>
-                                    <?php if ($overHoursThisMonth > 0) : ?>
-                                        <?= $overHoursThisMonth ?> Überstunden
-                                    <?php elseif ($overHoursThisMonth < 0) : ?>
-                                        - <?= abs($overHoursThisMonth) ?> Stunden
-                                    <?php else : ?>
-                                        erwarteten Stunden
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= $overHoursThisYear ?></td>
-                                -->
                             </tr>
                         </tbody>
                     </table>
@@ -332,18 +291,21 @@ require_once 'functions.php';
             </thead>
             <tbody>
                 <?php
+                // Aktualisieren Sie die Abfrage, um benutzerspezifische Zeiterfassungen anzuzeigen
+                $stmt = $conn->prepare("SELECT *, strftime('%W', startzeit) AS weekNumber FROM zeiterfassung WHERE user_id = ?");
+                $stmt->execute([$user_id]);
+                $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
                 foreach ($records as $record) {
                     $start = new DateTime($record['startzeit']);
                     $end = new DateTime($record['endzeit']);
                     $interval = $start->diff($end);
                     $pauseMinuten = intval($record['pause']);
 
-                    // Dauer ohne Pause berechnen
                     $gesamtMinuten = ($interval->h * 60 + $interval->i) - $pauseMinuten;
                     $stunden = floor($gesamtMinuten / 60);
                     $minuten = $gesamtMinuten % 60;
                     $dauer = "{$stunden} Stunden {$minuten} Minuten";
-
                 ?>
                     <tr>
                         <td><input type="checkbox" class="selectRow" data-id="<?= $record['id'] ?>"></td>
@@ -360,7 +322,7 @@ require_once 'functions.php';
             </tbody>
         </table>
 
-        <button type="button" id="deleteSelected" class="btn btn-danger">Ausgewählte löschen</button>
+        <button type="button" id="deleteSelected" class="btn btn-danger">Auswahl löschen</button>
 
         <div class="row">
             <div class="col-4">
@@ -394,7 +356,6 @@ require_once 'functions.php';
                 <span class="text-muted">© 2023 Quodara Chrono - Zeiterfassung</span>
             </div>
         </footer>
-
 
         <!-- About modal -->
         <div class="modal fade" id="aboutModal" tabindex="-1" role="dialog" aria-labelledby="aboutModalLabel">

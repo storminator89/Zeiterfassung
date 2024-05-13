@@ -5,10 +5,10 @@ include 'config.php';
 $error = '';
 $successMessage = '';
 
-// Überprüfen, ob bereits ein Benutzer registriert ist
-$stmt = $conn->prepare("SELECT COUNT(*) FROM users");
-$stmt->execute();
-$userCount = $stmt->fetchColumn();
+// Generate a CSRF token
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 
 if (isset($_GET['error']) && $_GET['error'] == 'existinguser') {
     $error = "Registrierung ist nicht möglich, da bereits ein Nutzer existiert.";
@@ -19,21 +19,44 @@ if (isset($_GET['success'])) {
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $username = $_POST['username'];
-    $password = $_POST['password'];
-
-    $stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
-    $stmt->execute([$username]);
-    $user = $stmt->fetch();
-
-    if ($user && password_verify($password, $user->password)) {
-        $_SESSION['user_id'] = $user->id;
-        $_SESSION['username'] = $user->username;
-        header("Location: index.php");
-        exit();
+    // CSRF Token validation
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        $error = "Ungültiges CSRF-Token.";
     } else {
-        $error = "Benutzername oder Passwort falsch!";
+        $username = trim($_POST['username']);
+        $password = trim($_POST['password']);
+
+        if (!empty($username) && !empty($password)) {
+            $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username");
+            $stmt->bindParam(':username', $username, PDO::PARAM_STR);
+            $stmt->execute();
+            $user = $stmt->fetch(PDO::FETCH_OBJ);
+
+            if ($user && password_verify($password, $user->password)) {
+                // Regenerate session ID to prevent session fixation
+                session_regenerate_id(true);
+
+                $_SESSION['user_id'] = $user->id;
+                $_SESSION['username'] = $user->username;
+
+                header("Location: index.php");
+                exit();
+            } else {
+                $error = "Benutzername oder Passwort falsch!";
+            }
+        } else {
+            $error = "Bitte alle Felder ausfüllen!";
+        }
     }
+}
+
+// Function to check if the connection is secure
+function isSecure() {
+    return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $_SERVER['SERVER_PORT'] == 443;
+}
+
+if (!isSecure()) {
+    $error = "Verwenden Sie eine sichere HTTPS-Verbindung.";
 }
 ?>
 
@@ -63,13 +86,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <a class="navbar-brand" href="#">
             <img class="pl-3" src="assets/kolibri_icon_weiß.png" alt="Time Tracking" height="50">
         </a>
-        <!-- Simplified navigation for login page -->
     </nav>
 
     <!-- Main content -->
     <div class="container mt-5 p-5">
         <h2>Login</h2>
         <form method="post" class="mt-4">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
             <div class="mb-3">
                 <label for="username" class="form-label">Benutzername</label>
                 <input type="text" class="form-control" id="username" name="username" required>
@@ -82,9 +105,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <?php if ($successMessage) {
                 echo "<div class='alert alert-success mt-3'>$successMessage</div>";
             } ?>
-            <?php if ($userCount == 0) : ?>
-                <a href="register.php" class="btn btn-secondary">Registrieren</a>
-            <?php endif; ?>
+            <a href="register.php" class="btn btn-secondary">Registrieren</a>
             <?php if (!empty($error)) {
                 echo "<div class='alert alert-danger mt-3'>$error</div>";
             } ?>

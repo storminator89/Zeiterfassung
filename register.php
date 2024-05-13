@@ -2,24 +2,13 @@
 session_start();
 include 'config.php';
 
-$error = '';  
-
-// Überprüfen, ob bereits ein Benutzer registriert ist
-$stmt = $conn->prepare("SELECT COUNT(*) FROM users");
-$stmt->execute();
-$userCount = $stmt->fetchColumn();
-
-if ($userCount > 0) {
-    header("Location: login.php?error=existinguser");
-    exit();
-}
+$error = '';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = $_POST['username'];
     $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
     $email = $_POST['email'];
 
-    // Überprüfen, ob der Benutzername bereits existiert
     $stmt = $conn->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
     $stmt->execute([$username]);
     $count = $stmt->fetchColumn();
@@ -27,7 +16,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($count > 0) {
         $error = "Der Benutzername ist bereits vergeben.";
     } else {
-        // Versuch, den neuen Benutzer einzufügen
         try {
             $stmt = $conn->prepare("INSERT INTO users (username, password, email) VALUES (?, ?, ?)");
             $stmt->execute([$username, $password, $email]);
@@ -38,13 +26,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     }
 }
-
-// Wenn kein Benutzer existiert, zeige das Formular an
-if ($userCount == 0):
 ?>
 
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <!-- Meta tags, title, styles and scripts -->
     <meta charset="UTF-8">
@@ -57,6 +43,7 @@ if ($userCount == 0):
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
 </head>
+
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom pl-3">
         <a class="navbar-brand" href="index.php">
@@ -90,5 +77,5 @@ if ($userCount == 0):
         </div>
     </footer>
 </body>
+
 </html>
-<?php endif; ?>  

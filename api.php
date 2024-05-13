@@ -1,13 +1,23 @@
 <?php
 // Including configuration settings
 include 'config.php';
+session_start();
+
+// Ensure the user is logged in
+if (!isset($_SESSION['user_id'])) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
 
 // Creating a new instance of the PDO object to connect to SQLite database
 $conn = new PDO("sqlite:$database");
 $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 // Function to insert a new work entry into the time tracking table
-function createNewWorkEntry($conn) {
+function createNewWorkEntry($conn, $user_id) {
     // Reading JSON input
     $inputJSON = file_get_contents('php://input');
     $input = json_decode($inputJSON, TRUE);
@@ -25,7 +35,7 @@ function createNewWorkEntry($conn) {
 
     try {
         // Preparing statement for inserting records
-        $stmt = $conn->prepare("INSERT INTO zeiterfassung (startzeit, endzeit, pause, beschreibung, standort) VALUES (:startzeit, :endzeit, :pause, :beschreibung, :standort)");
+        $stmt = $conn->prepare("INSERT INTO zeiterfassung (startzeit, endzeit, pause, beschreibung, standort, user_id) VALUES (:startzeit, :endzeit, :pause, :beschreibung, :standort, :user_id)");
         
         // Binding variables to prevent SQL injection attacks
         $stmt->bindParam(':startzeit', $startzeit_iso);
@@ -33,14 +43,16 @@ function createNewWorkEntry($conn) {
         $stmt->bindParam(':pause', $pause);
         $stmt->bindParam(':beschreibung', $beschreibung);
         $stmt->bindParam(':standort', $standort);
+        $stmt->bindParam(':user_id', $user_id);
 
         // Executing query
         $stmt->execute();
         $lastId = $conn->lastInsertId();
 
         // Selecting inserted record
-        $stmt = $conn->prepare("SELECT * FROM zeiterfassung WHERE id = :id");
+        $stmt = $conn->prepare("SELECT * FROM zeiterfassung WHERE id = :id AND user_id = :user_id");
         $stmt->bindParam(':id', $lastId, PDO::PARAM_INT);
+        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
         $stmt->execute();
         $newEntry = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -54,15 +66,16 @@ function createNewWorkEntry($conn) {
 }
 
 // Function to update endzeit of specific row
-function setEndzeit($conn, $input) {
+function setEndzeit($conn, $input, $user_id) {
     $id = $input['id'];
     $endzeit = date('Y-m-d\TH:i:s'); 
 
     try {
         // Preparing update statement
-        $stmt = $conn->prepare("UPDATE zeiterfassung SET endzeit = :endzeit WHERE id = :id");
+        $stmt = $conn->prepare("UPDATE zeiterfassung SET endzeit = :endzeit WHERE id = :id AND user_id = :user_id");
         $stmt->bindParam(':endzeit', $endzeit, PDO::PARAM_STR);
         $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
 
         // Executing query
         if ($stmt->execute()) {
@@ -84,10 +97,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     switch ($action) {
         case 'createNewWorkEntry':
-            createNewWorkEntry($conn);
+            createNewWorkEntry($conn, $user_id);
             break;
         case 'setEndzeit':
-            setEndzeit($conn, $input);
+            setEndzeit($conn, $input, $user_id);
             break;
         // More cases here
         default:

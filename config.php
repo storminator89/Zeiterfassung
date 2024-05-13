@@ -1,17 +1,13 @@
 <?php
 
-// Path to the SQLite database file
 $database = __DIR__ . '/assets/db/timetracking.sqlite';
 
-// Connect to the SQLite database
 try {
-    // New PDO instance for SQLite database connection
     $conn = new PDO("sqlite:{$database}", null, null, [
         \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_OBJ,
         \PDO::ATTR_ERRMODE           => \PDO::ERRMODE_EXCEPTION
     ]);
 
-    // Table creation queries
     $createZeiterfassungSql = <<<SQL
 CREATE TABLE IF NOT EXISTS zeiterfassung (
     id          INTEGER      PRIMARY KEY AUTOINCREMENT,
@@ -19,7 +15,9 @@ CREATE TABLE IF NOT EXISTS zeiterfassung (
     endzeit     TEXT,
     pause       INTEGER,
     beschreibung TEXT         DEFAULT '' NULL,
-    standort    TEXT         DEFAULT '' NULL
+    standort    TEXT         DEFAULT '' NULL,
+    user_id     INTEGER      NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 SQL;
 
@@ -30,7 +28,7 @@ CREATE TABLE IF NOT EXISTS Feiertage (
 );
 SQL;
 
-$createUserSql = <<<SQL
+    $createUserSql = <<<SQL
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
@@ -39,12 +37,9 @@ CREATE TABLE IF NOT EXISTS users (
 );
 SQL;
 
-$conn->exec($createUserSql);
-
-    // Execution of table creation queries
+    $conn->exec($createUserSql);
     $conn->exec($createZeiterfassungSql);
     $conn->exec($createFeiertageSql);
 } catch (\PDOException $e) {
-    // Connection errors handling
     exit('Could not connect to the SQLite database: ' . $e->getMessage());
 }
