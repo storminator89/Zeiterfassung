@@ -7,10 +7,15 @@ if (!isset($_SESSION['user_id'])) {
 require_once 'functions.php';
 
 $user_id = $_SESSION['user_id'];
+$user_role = $_SESSION['role']; // Benutzerrolle aus der Session abrufen
+
+// Verbindung zur Datenbank herstellen
+$conn = new PDO("sqlite:assets/db/timetracking.sqlite");
 ?>
 
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <!-- Meta tags and title -->
     <meta charset="UTF-8">
@@ -59,28 +64,33 @@ $user_id = $_SESSION['user_id'];
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ml-auto">
+            <ul class="navbar-nav me-auto">
                 <li class="nav-item active">
                     <a class="nav-link" href="#"><i class="fas fa-home mr-1"></i> Home</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="dashboard.php"><i class="fas fa-tachometer-alt mr-1"></i> Dashboard</a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#settingsModal"><i class="fas fa-cog mr-1"></i> Einstellungen</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-info-circle mr-1"></i> About</a>
-                </li>              
-                <li class="nav-item">
-                    <a class="nav-link" href="logout.php"><i class="fas fa-sign-out-alt mr-1"></i> Logout</a>
+            </ul>
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="settingsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-cog"></i>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="settingsDropdown">
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#settingsModal"><i class="fas fa-cog mr-1"></i> Einstellungen</a></li>
+                        <?php if ($user_role === 'admin') : ?>
+                            <li><a class="dropdown-item" href="admin.php"><i class="fas fa-user-shield mr-1"></i> Admin</a></li>
+                        <?php endif; ?>
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-info-circle mr-1"></i> About</a></li>
+                        <li><a class="dropdown-item" href="logout.php"><i class="fas fa-sign-out-alt mr-1"></i> Logout</a></li>
+                        <li><button class="dropdown-item" onclick="toggleDarkMode()"><i class="fas fa-moon mr-1"></i> Dark Mode</button></li>
+                    </ul>
                 </li>
             </ul>
-            <button class="dark-mode-toggle me-3" onclick="toggleDarkMode()">
-                <i class="fas fa-moon fa-2x"></i>
-            </button>
         </div>
     </nav>
+
 
     <!-- Main content -->
     <div class="container mt-5 p-5">

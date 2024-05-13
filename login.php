@@ -10,12 +10,16 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-if (isset($_GET['error']) && $_GET['error'] == 'existinguser') {
-    $error = "Registrierung ist nicht möglich, da bereits ein Nutzer existiert.";
+if (isset($_GET['error'])) {
+    if ($_GET['error'] == 'existinguser') {
+        $error = "Registrierung ist nicht möglich, da bereits ein Nutzer existiert.";
+    } else {
+        $error = htmlspecialchars($_GET['error']);
+    }
 }
 
 if (isset($_GET['success'])) {
-    $successMessage = "Registrierung erfolgreich! Bitte loggen Sie sich ein.";
+    $successMessage = htmlspecialchars($_GET['success']);
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -38,6 +42,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 $_SESSION['user_id'] = $user->id;
                 $_SESSION['username'] = $user->username;
+                $_SESSION['role'] = $user->role; // Benutzerrolle speichern
 
                 header("Location: index.php");
                 exit();
@@ -50,14 +55,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 
-// Function to check if the connection is secure
-function isSecure() {
-    return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $_SERVER['SERVER_PORT'] == 443;
-}
+// Check if user registration is allowed
+$stmt = $conn->prepare("SELECT COUNT(*) as count FROM users");
+$stmt->execute();
+$totalUsers = $stmt->fetch(PDO::FETCH_OBJ)->count;
 
-if (!isSecure()) {
-    $error = "Verwenden Sie eine sichere HTTPS-Verbindung.";
-}
 ?>
 
 <!DOCTYPE html>
@@ -102,14 +104,46 @@ if (!isSecure()) {
                 <input type="password" class="form-control" id="password" name="password" required>
             </div>
             <button type="submit" class="btn btn-primary">Login</button>
-            <?php if ($successMessage) {
-                echo "<div class='alert alert-success mt-3'>$successMessage</div>";
-            } ?>
-            <a href="register.php" class="btn btn-secondary">Registrieren</a>
-            <?php if (!empty($error)) {
-                echo "<div class='alert alert-danger mt-3'>$error</div>";
-            } ?>
         </form>
+        <?php if ($totalUsers == 0): ?>
+            <a href="register.php" class="btn btn-secondary mt-3">Registrieren</a>
+        <?php endif; ?>
+    </div>
+
+    <!-- Modal for Success -->
+    <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="successModalLabel">Erfolg</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <?= $successMessage ?>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Error -->
+    <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="errorModalLabel">Fehler</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <?= $error ?>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Footer -->
@@ -118,6 +152,24 @@ if (!isSecure()) {
             <span class="text-muted">© 2023 Quodara Chrono - Zeiterfassung</span>
         </div>
     </footer>
+
+    <!-- Show modals if there are messages and redirect after close -->
+    <script>
+        $(document).ready(function() {
+            <?php if ($successMessage) : ?>
+                var successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                successModal.show();
+                $('#successModal').on('hidden.bs.modal', function () {
+                    window.location.href = 'login.php';
+                });
+            <?php endif; ?>
+
+            <?php if ($error) : ?>
+                var errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+                errorModal.show();
+            <?php endif; ?>
+        });
+    </script>
 </body>
 
 </html>
