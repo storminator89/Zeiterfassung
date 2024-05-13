@@ -11,6 +11,9 @@ In time-tracker-extension_edge folder
 ### Dashboard
 ![Main Screen](/assets/Dashboard_Screenshot.png)
 
+### Benutzerverwaltung
+![Darkmode](/assets/user_management.png)
+
 ### Darkmode
 ![Darkmode](/assets/darkmode.png)
 
@@ -24,6 +27,7 @@ In time-tracker-extension_edge folder
 - **Automatische Berechnung** der Arbeitstage in diesem Monat und **Feiertage** werden berücksichtigt
 - **Kalenderansicht** aller Arbeitszeiten für bessere Übersicht
 - **Login und Logout/ Registrierung**
+- **Admin-Bereich**
 
 ## Abhängigkeiten und Ressourcen
 
