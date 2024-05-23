@@ -274,7 +274,7 @@ $(function () {
         let col = $cell.index();
         let totalColumns = table.columns().nodes().length; // Gesamtzahl der Spalten
         let columnName = $cell.closest('table').find('th').eq(col).data('name');
-        if (col > 1 && col < totalColumns - 1 && columnName !== "dauer") { // Verhindern Sie das Hinzufügen des Icons zur "dauer" Spalte, den ersten beiden Spalten und der letzten Spalte
+        if (col > 1 && col < totalColumns && columnName !== "dauer") {
             $cell.addClass('editable').append('<i class="fa fa-pencil edit-icon"></i>'); // FontAwesome Bleistift-Icon für Bearbeitung
         }
     }).on('mouseleave', 'td', function () {

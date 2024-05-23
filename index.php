@@ -274,7 +274,7 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                             <div class="rtd-infobox-content">
                                 <ul>
                                     <?php foreach ($feiertageDieseWoche as $feiertag) : ?>
-                                        <li><?= getGermanDayName($feiertag['Datum']) ?>, <?= date("d.m.Y", strtotime($feiertag['Datum'])) ?></li>
+                                        <li><?= getGermanDayName($feiertag['datum']) ?>, <?= date("d.m.Y", strtotime($feiertag['datum'])) ?> - <?= $feiertag['name'] ?></li>
                                     <?php endforeach; ?>
                                 </ul>
                             </div>
@@ -345,13 +345,15 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                             <tr>
                                 <th>Datum</th>
                                 <th>Tag</th>
+                                <th>Name</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($feiertageThisYear as $feiertag) { ?>
                                 <tr>
-                                    <td><?= date("d.m.Y", strtotime($feiertag['Datum'])) ?></td>
-                                    <td><?= getGermanDayName($feiertag['Datum']) ?></td>
+                                    <td><?= date("d.m.Y", strtotime($feiertag['datum'])) ?></td>
+                                    <td><?= getGermanDayName(date("Y-m-d", strtotime($feiertag['datum']))) ?></td>
+                                    <td><?= $feiertag['name'] ?></td>
                                 </tr>
                             <?php } ?>
                         </tbody>
@@ -359,6 +361,7 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                 </div>
             </div>
         </div>
+
 
         <!-- Footer -->
         <footer class="footer mt-auto py-3">

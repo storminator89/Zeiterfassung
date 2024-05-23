@@ -188,22 +188,41 @@ function fetchFeiertageDB($jahr)
 
     $data = json_decode($json, true);
     if (!is_array($data)) {
-        throw new Exception("Unexpected format of holiday data.");
+        error_log("Unexpected format of holiday data for year $jahr");
+        return;
     }
 
-    $feiertage = array_map(function ($feiertag) {
-        return $feiertag['datum'] ?? null;
-    }, $data);
+    $feiertage = array_filter($data, function ($feiertag) {
+        return empty($feiertag['hinweis']);
+    });
 
-    $feiertage = array_filter($feiertage);
-    $feiertage = array_values($feiertage);
+    $feiertage = array_map(function ($feiertag, $name) {
+        return [
+            'datum' => $feiertag['datum'] ?? null,
+            'name' => $name
+        ];
+    }, $feiertage, array_keys($feiertage));
+
+    $feiertage = array_filter($feiertage, function ($feiertag) {
+        return $feiertag['datum'] !== null;
+    });
 
     if (count($feiertage) > 0) {
-        $placeholders = implode(',', array_fill(0, count($feiertage), '(?)'));
-        $stmt = $conn->prepare("INSERT INTO Feiertage (Datum) VALUES $placeholders");
-        $stmt->execute($feiertage);
+        $placeholders = implode(',', array_fill(0, count($feiertage), '(?, ?)'));
+        $stmt = $conn->prepare("INSERT INTO Feiertage (Datum, Name) VALUES $placeholders");
+
+        $flatParams = [];
+        foreach ($feiertage as $feiertag) {
+            $flatParams[] = $feiertag['datum'];
+            $flatParams[] = $feiertag['name'];
+        }
+
+        $stmt->execute($flatParams);
     }
 }
+
+
+
 
 // Calling the function at the beginning of the year
 fetchFeiertageDB($currentYear);
@@ -213,12 +232,11 @@ function fetchFeiertageDieseWoche($currentYear, $currentWeekNumber)
 {
     global $conn;
 
-    // Fetching holidays of this week from the database
     $stmt = $conn->prepare("
-        SELECT Datum
+        SELECT DATE(datum) AS datum, name
         FROM Feiertage
-        WHERE strftime('%Y', Datum) = :jahr
-        AND strftime('%W', Datum) = :weekNumber
+        WHERE strftime('%Y', datum) = :jahr
+        AND strftime('%W', datum) = :weekNumber
     ");
     $stmt->bindParam(':jahr', $currentYear);
     $stmt->bindParam(':weekNumber', $currentWeekNumber);
@@ -351,7 +369,7 @@ function getFeiertageForYear($jahr)
 {
     global $conn;
 
-    $stmt = $conn->prepare("SELECT Datum FROM Feiertage WHERE strftime('%Y', Datum) = ?");
+    $stmt = $conn->prepare("SELECT DATE(datum) AS datum, name FROM Feiertage WHERE strftime('%Y', datum) = ?");
     $stmt->execute([$jahr]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
@@ -413,14 +431,15 @@ foreach ($records as $record) {
 
 // Looping through the holidays to create events
 foreach ($feiertageThisYear as $feiertag) {
-    $feiertagDateTime = new DateTime($feiertag['Datum']);
+    $feiertagDateTime = new DateTime($feiertag['datum']); // Corrected key to 'datum'
 
     $events[] = [
-        'id' => 'feiertag_' . $feiertag['Datum'],
-        'title' => 'Feiertag',
+        'id' => 'feiertag_' . $feiertag['datum'], // Corrected key to 'datum'
+        'title' => 'Feiertag - ' . $feiertag['name'], // Including the name of the holiday
         'start' => $feiertagDateTime->format("Y-m-d"),
         'end' => $feiertagDateTime->format("Y-m-d"),
         'category' => 'allday',
         'isAllDay' => true
     ];
 }
+

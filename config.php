@@ -24,11 +24,12 @@ SQL;
 
     // SQL for creating 'Feiertage' table
     $createFeiertageSql = <<<SQL
-CREATE TABLE IF NOT EXISTS Feiertage (
-    id  INTEGER  PRIMARY KEY AUTOINCREMENT,
-    datum TEXT UNIQUE NOT NULL
-);
-SQL;
+    CREATE TABLE IF NOT EXISTS Feiertage (
+        id  INTEGER  PRIMARY KEY AUTOINCREMENT,
+        datum TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL
+    );
+    SQL;
 
     // SQL for creating 'users' table
     $createUserSql = <<<SQL
