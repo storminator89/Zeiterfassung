@@ -8,6 +8,8 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
+$user_role = isset($_SESSION['role']) ? $_SESSION['role'] : null;
+
 $error = '';
 $successMessage = '';
 
@@ -74,7 +76,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_user'])) {
         $error = "Fehler beim Aktualisieren des Benutzers: " . $e->getMessage();
     }
 }
-
 
 // Retrieve all users from the database
 $stmt = $conn->prepare("SELECT * FROM users");
