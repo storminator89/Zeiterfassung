@@ -57,16 +57,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_user'])) {
     $username = $_POST['username'];
     $email = $_POST['email'];
     $role = $_POST['role'];
+    $password = $_POST['password'];
 
     try {
-        $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ? WHERE id = ?");
-        $stmt->execute([$username, $email, $role, $user_id]);
+        if (!empty($password)) {
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ?, password = ? WHERE id = ?");
+            $stmt->execute([$username, $email, $role, $hashedPassword, $user_id]);
+        } else {
+            $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ? WHERE id = ?");
+            $stmt->execute([$username, $email, $role, $user_id]);
+        }
 
         $successMessage = "Benutzer erfolgreich aktualisiert!";
     } catch (PDOException $e) {
         $error = "Fehler beim Aktualisieren des Benutzers: " . $e->getMessage();
     }
 }
+
 
 // Retrieve all users from the database
 $stmt = $conn->prepare("SELECT * FROM users");
@@ -158,9 +166,14 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
             <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus mr-1"></i> Benutzer erstellen</button>
         </form>
 
+        <!-- Search Bar -->
+        <div class="mt-5 mb-3">
+            <input type="text" id="searchInput" class="form-control" placeholder="Benutzer suchen...">
+        </div>
+
         <!-- Users table -->
-        <h2 class="mt-5">Bestehende Benutzer</h2>
-        <table class="table table-striped mt-3">
+        <h2 class="mt-3">Bestehende Benutzer</h2>
+        <table class="table table-striped mt-3" id="usersTable">
             <thead>
                 <tr>
                     <th>ID</th>
@@ -254,6 +267,10 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                                 <option value="admin">Admin</option>
                             </select>
                         </div>
+                        <div class="mb-3 input-group">
+                            <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                            <input type="password" class="form-control" id="edit_password" name="password" placeholder="Neues Passwort (optional)">
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
@@ -296,6 +313,14 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                 modal.find('#edit_username').val(username);
                 modal.find('#edit_email').val(email);
                 modal.find('#edit_role').val(role);
+            });
+
+            // Search function
+            $("#searchInput").on("keyup", function() {
+                var value = $(this).val().toLowerCase();
+                $("#usersTable tbody tr").filter(function() {
+                    $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+                });
             });
         });
     </script>
