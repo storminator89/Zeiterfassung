@@ -111,16 +111,10 @@ include 'functions.php';
                 <canvas id="weeklyHoursChart" width="200" height="200"></canvas>
             </div>
             <div class="col-md-6">
-                <!-- Daily Hours Chart -->
-                <canvas id="dailyHoursChart" width="200" height="200"></canvas>
-            </div>
-        </div>
-        <div class="row mt-3">
-            <div class="col-md-6">
                 <!-- Monthly Hours Chart -->
-                <canvas id="monthlyHoursChart" width="400" height="200"></canvas>
+                <canvas id="monthlyHoursChart" width="200" height="200"></canvas>
             </div>
-        </div>
+        </div>        
     </div>
 
     <!-- Schedule Modal -->

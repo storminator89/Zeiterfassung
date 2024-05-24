@@ -315,11 +315,17 @@ $(function () {
         let cell = $input.closest('table').DataTable().cell($input.parent());
         let col = cell.index().column;
         let newVal = $input.val();
-        let id = $input.closest('tr').find('td:eq(1)').text(); // Zugriff auf die ID in der zweiten Spalte (Index 1)
+    
+        // Attempt to get the ID from the row's data attribute or a hidden input field
+        let row = $input.closest('tr');
+        let id = row.data('id') || row.find('input[name="id"]').val() || row.find('td:eq(1)').text().trim();
+    
         let columnName = $input.closest('table').find('th').eq(col).data('name');
-
+    
+        console.log("Updating row with ID:", id, "Column:", columnName, "New Value:", newVal); // Logging for debugging
+    
         cell.data(newVal).draw();
-
+    
         $.post('save.php', {
             update: true,
             id: id,
@@ -327,8 +333,11 @@ $(function () {
             data: newVal
         }).done(function () {
             location.reload();
+        }).fail(function () {
+            alert('Error updating the data');
         });
     });
+    
 
     // Keypress event handler for table cells
     $('.table tbody').on('keypress', 'td input', function (e) {
@@ -337,11 +346,17 @@ $(function () {
             let cell = $input.closest('table').DataTable().cell($input.parent());
             let col = cell.index().column;
             let newVal = $input.val();
-            let id = $input.closest('tr').find('input[name="id"]').val();
+    
+            // Attempt to get the ID from the row's data attribute or a hidden input field
+            let row = $input.closest('tr');
+            let id = row.data('id') || row.find('input[name="id"]').val() || row.find('td:eq(1)').text().trim();
+    
             let columnName = $input.closest('table').find('th').eq(col).data('name');
-
+    
+            console.log("Updating row with ID:", id, "Column:", columnName, "New Value:", newVal); // Logging for debugging
+    
             cell.data(newVal).draw();
-
+    
             $.post('save.php', {
                 update: true,
                 id: id,
@@ -349,8 +364,10 @@ $(function () {
                 data: newVal
             }).done(function () {
                 location.reload();
+            }).fail(function () {
+                alert('Error updating the data');
             });
-
+    
             e.preventDefault();
         }
     });
@@ -570,16 +587,9 @@ if (window.location.pathname.includes('dashboard.php')) {
                 data,
                 options
             });
-        }
+        } 
 
-        // Mock data for demonstration; replace with actual data fetching logic
-        let totalHoursThisWeek = 20; // Example total hours for the week
-        let days = ["23.05.2024", "24.05.2024"];
-        let hours = [8.383333333333333, 10]; // Example hours worked per day
-
-        // Logging fetched data for debugging
-        console.log("Days: ", days);
-        console.log("Hours: ", hours);
+        
 
         let weeklyData = {
             labels: ['Diese Woche'],
@@ -624,73 +634,7 @@ if (window.location.pathname.includes('dashboard.php')) {
             }
         };
 
-        let weeklyChart = createChart('weeklyHoursChart', 'bar', weeklyData, weeklyOptions);
-
-        let dailyData = {
-            labels: days,
-            datasets: [{
-                label: 'Arbeitsstunden pro Tag diese Woche',
-                data: hours,
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.2)',
-                    'rgba(255, 159, 64, 0.2)',
-                    'rgba(255, 205, 86, 0.2)',
-                    'rgba(75, 192, 192, 0.2)',
-                    'rgba(54, 162, 235, 0.2)',
-                    'rgba(153, 102, 255, 0.2)',
-                    'rgba(201, 203, 207, 0.2)'
-                ],
-                borderColor: [
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(255, 159, 64, 1)',
-                    'rgba(255, 205, 86, 1)',
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(153, 102, 255, 1)',
-                    'rgba(201, 203, 207, 1)'
-                ],
-                borderWidth: 1
-            }]
-        };
-
-        let dailyOptions = {
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 10,
-                    stepSize: 1,
-                    ticks: {
-                        callback(value) {
-                            return value + 'h';
-                        }
-                    }
-                }
-            },
-            plugins: {
-                annotation: {
-                    annotations: {
-                        line1: {
-                            type: 'line',
-                            scaleID: 'y',
-                            value: 8,
-                            borderColor: '#ffcc33',
-                            borderWidth: 2,
-                            label: {
-                                enabled: true,
-                                content: '8h Ziel'
-                            }
-                        }
-                    }
-                }
-            }
-        };
-
-        let dailyChart = createChart('dailyHoursChart', 'bar', dailyData, dailyOptions);
-
-        // Logging fetched data for debugging
-        console.log("Total hours this week: ", totalHoursThisWeek);
-        console.log("Days: ", days);
-        console.log("Hours: ", hours);
+        let weeklyChart = createChart('weeklyHoursChart', 'bar', weeklyData, weeklyOptions);        
 
         let monthlyData = {
             labels: ['Dieser Monat'],
