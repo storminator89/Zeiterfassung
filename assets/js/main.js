@@ -572,6 +572,15 @@ if (window.location.pathname.includes('dashboard.php')) {
             });
         }
 
+        // Mock data for demonstration; replace with actual data fetching logic
+        let totalHoursThisWeek = 20; // Example total hours for the week
+        let days = ["23.05.2024", "24.05.2024"];
+        let hours = [8.383333333333333, 10]; // Example hours worked per day
+
+        // Logging fetched data for debugging
+        console.log("Days: ", days);
+        console.log("Hours: ", hours);
+
         let weeklyData = {
             labels: ['Diese Woche'],
             datasets: [{
@@ -678,6 +687,11 @@ if (window.location.pathname.includes('dashboard.php')) {
 
         let dailyChart = createChart('dailyHoursChart', 'bar', dailyData, dailyOptions);
 
+        // Logging fetched data for debugging
+        console.log("Total hours this week: ", totalHoursThisWeek);
+        console.log("Days: ", days);
+        console.log("Hours: ", hours);
+
         let monthlyData = {
             labels: ['Dieser Monat'],
             datasets: [
@@ -738,7 +752,7 @@ if (window.location.pathname.includes('dashboard.php')) {
                 startDayOfWeek: 1
             },
             template: {
-                // hier können Sie weitere Vorlagen hinzufügen, falls benötigt
+                // Additional templates if needed
             }
         });
 
@@ -779,5 +793,4 @@ if (window.location.pathname.includes('dashboard.php')) {
             }
         });
     });
-
 }
