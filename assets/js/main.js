@@ -693,48 +693,93 @@ if (window.location.pathname.includes('dashboard.php')) {
             taskView: false,
             milestoneView: false,
             week: {
-                startDayOfWeek: 1
+                startDayOfWeek: 1,
+                daynames: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
+            },
+            month: {
+                daynames: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
+                format: 'YYYY-MM',
+                template: {
+                    monthDayname: function (dayname) {
+                        return '<span class="calendar-week-dayname">' + dayname.label + '</span>';
+                    }
+                }
             },
             template: {
-                // Additional templates if needed
+                popupIsAllDay: function () {
+                    return 'Ganztägig';
+                },
+                popupStateFree: function () {
+                    return 'Frei';
+                },
+                popupStateBusy: function () {
+                    return 'Beschäftigt';
+                },
+                titlePlaceholder: function () {
+                    return 'Titel eingeben';
+                },
+                locationPlaceholder: function () {
+                    return 'Ort eingeben';
+                },
+                startDatePlaceholder: function () {
+                    return 'Anfangsdatum';
+                },
+                endDatePlaceholder: function () {
+                    return 'Enddatum';
+                },
+                popupSave: function () {
+                    return 'Speichern';
+                },
+                popupUpdate: function () {
+                    return 'Aktualisieren';
+                },
+                popupDetailDate: function (isAllDay, start, end) {
+                    var isSameDate = moment(start).isSame(end);
+                    var endFormat = (isSameDate ? '' : 'DD.MM.YYYY ') + 'HH:mm';
+                    if (isAllDay) {
+                        return moment(start).format('DD.MM.YYYY') + (isSameDate ? '' : ' - ' + moment(end).format('DD.MM.YYYY'));
+                    }
+                    return (moment(start).format('DD.MM.YYYY HH:mm') + ' - ' + moment(end).format(endFormat));
+                }
             }
         });
-
+        
         calendar.createSchedules(allEvents);
+        
         document.getElementById('prevMonthBtn').addEventListener('click', function () {
             calendar.prev();
         });
-
+        
         document.getElementById('nextMonthBtn').addEventListener('click', function () {
             calendar.next();
         });
-
+        
         document.getElementById('todayBtn').addEventListener('click', function () {
             calendar.today();
         });
-
+        
         function formatDate(date) {
             let day = ("0" + date.getDate()).slice(-2);
             let month = ("0" + (date.getMonth() + 1)).slice(-2);
             let year = date.getFullYear();
             return day + "." + month + "." + year;
         }
-
+        
         let scheduleModal = new bootstrap.Modal(document.getElementById('scheduleModal'));
-
+        
         calendar.on('clickSchedule', function (event) {
             let schedule = event.schedule;
-
+        
             const validTitles = ['Arbeit', 'Urlaub'];
             if (validTitles.includes(schedule.title)) {
                 let startDate = new Date(schedule.start);
                 let endDate = new Date(schedule.end);
-
+        
                 document.getElementById('startTime').textContent = formatDate(startDate) + " " + startDate.toLocaleTimeString();
                 document.getElementById('endTime').textContent = formatDate(endDate) + " " + endDate.toLocaleTimeString();
-
+        
                 scheduleModal.show();
             }
-        });
+        });        
     });
 }

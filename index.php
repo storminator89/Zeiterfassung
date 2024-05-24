@@ -366,7 +366,7 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
         <!-- Footer -->
         <footer class="footer mt-auto py-3">
             <div class="container">
-                <span class="text-muted">© 2023 Quodara Chrono - Zeiterfassung</span>
+                <span class="text-muted">© 2024 Quodara Chrono - Zeiterfassung</span>
             </div>
         </footer>
 
