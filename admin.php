@@ -213,7 +213,7 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                 </select>
             </div>
             <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus mr-1"></i> Benutzer erstellen</button>
-        </form>        
+        </form>
 
         <!-- Search Bar -->
         <div class="mt-5 mb-3">
@@ -260,9 +260,13 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                 <input type="password" class="form-control" id="tokenField" value="<?= htmlspecialchars($currentUser->token ?? '') ?>" readonly>
                 <button class="btn btn-outline-secondary" type="button" id="toggleToken"><i class="fas fa-eye"></i></button>
                 <input type="hidden" name="generate_token" value="1">
-                <button type="submit" class="btn btn-success"><i class="fas fa-key mr-1"></i>  Token generieren</button>
+                <button type="submit" class="btn btn-success"><i class="fas fa-key mr-1"></i> Token generieren</button>
             </form>
+            <div class="mt-3">
+                <a href="apidoc.html" target="_blank" class="btn btn-primary"><i class="fas fa-book"></i> API Dokumentation</a>
+            </div>
         </div>
+
     </div>
 
     <!-- Modal for Success -->

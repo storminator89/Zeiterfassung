@@ -2,13 +2,12 @@
     "openapi": "3.0.0",
     "info": {
       "title": "Zeiterfassung API",
-      "version": "1.0.0"
+      "version": "1.0"
     },
     "paths": {
-      "/login": {
+      "/api.php/login": {
         "post": {
-          "summary": "Login",
-          "description": "Authentifiziert einen Benutzer und gibt einen JWT-Token zurück",
+          "summary": "User login",
           "requestBody": {
             "required": true,
             "content": {
@@ -30,17 +29,15 @@
           },
           "responses": {
             "200": {
-              "description": "Erfolgreicher Login",
+              "description": "Successful login",
               "content": {
                 "application/json": {
-                  "schema": {
-                    "type": "object",
-                    "properties": {
-                      "success": {
-                        "type": "boolean"
-                      },
-                      "token": {
-                        "type": "string"
+                  "examples": {
+                    "success": {
+                      "summary": "Successful login",
+                      "value": {
+                        "success": true,
+                        "token": "your_jwt_token_here"
                       }
                     }
                   }
@@ -48,15 +45,27 @@
               }
             },
             "401": {
-              "description": "Ungültige Anmeldedaten"
+              "description": "Invalid credentials",
+              "content": {
+                "application/json": {
+                  "examples": {
+                    "error": {
+                      "summary": "Invalid credentials",
+                      "value": {
+                        "success": false,
+                        "message": "Invalid credentials"
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }
       },
-      "/createNewWorkEntry": {
+      "/api.php/workentry": {
         "post": {
-          "summary": "Neue Arbeitszeiteintrag erstellen",
-          "description": "Erstellt einen neuen Arbeitszeiteintrag",
+          "summary": "Create new work entry",
           "requestBody": {
             "required": true,
             "content": {
@@ -65,12 +74,10 @@
                   "type": "object",
                   "properties": {
                     "startzeit": {
-                      "type": "string",
-                      "format": "date-time"
+                      "type": "string"
                     },
                     "endzeit": {
-                      "type": "string",
-                      "format": "date-time"
+                      "type": "string"
                     },
                     "pause": {
                       "type": "integer"
@@ -82,51 +89,30 @@
                       "type": "string"
                     }
                   },
-                  "required": ["startzeit", "pause", "beschreibung", "standort"]
+                  "required": ["startzeit", "endzeit", "pause", "beschreibung", "standort"]
                 }
               }
             }
           },
           "responses": {
             "200": {
-              "description": "Eintrag erfolgreich erstellt",
+              "description": "Work entry created",
               "content": {
                 "application/json": {
-                  "schema": {
-                    "type": "object",
-                    "properties": {
-                      "success": {
-                        "type": "boolean"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "data": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "integer"
-                          },
-                          "startzeit": {
-                            "type": "string",
-                            "format": "date-time"
-                          },
-                          "endzeit": {
-                            "type": "string",
-                            "format": "date-time"
-                          },
-                          "pause": {
-                            "type": "integer"
-                          },
-                          "beschreibung": {
-                            "type": "string"
-                          },
-                          "standort": {
-                            "type": "string"
-                          },
-                          "user_id": {
-                            "type": "integer"
-                          }
+                  "examples": {
+                    "success": {
+                      "summary": "Work entry created",
+                      "value": {
+                        "success": true,
+                        "message": "Eintrag erstellt",
+                        "data": {
+                          "id": 1,
+                          "startzeit": "2024-05-24T09:00:00",
+                          "endzeit": "2024-05-24T17:00:00",
+                          "pause": 60,
+                          "beschreibung": "Worked on project X",
+                          "standort": "Office",
+                          "user_id": 1
                         }
                       }
                     }
@@ -134,8 +120,37 @@
                 }
               }
             },
+            "401": {
+              "description": "Unauthorized",
+              "content": {
+                "application/json": {
+                  "examples": {
+                    "error": {
+                      "summary": "Unauthorized",
+                      "value": {
+                        "success": false,
+                        "message": "Authorization header missing"
+                      }
+                    }
+                  }
+                }
+              }
+            },
             "500": {
-              "description": "Interner Serverfehler"
+              "description": "Internal server error",
+              "content": {
+                "application/json": {
+                  "examples": {
+                    "error": {
+                      "summary": "Internal server error",
+                      "value": {
+                        "success": false,
+                        "message": "Internal server error"
+                      }
+                    }
+                  }
+                }
+              }
             }
           },
           "security": [
@@ -145,10 +160,9 @@
           ]
         }
       },
-      "/setEndzeit": {
+      "/api.php/setendzeit": {
         "post": {
-          "summary": "Endzeit setzen",
-          "description": "Aktualisiert die Endzeit eines spezifischen Eintrags",
+          "summary": "Set end time of a specific work entry",
           "requestBody": {
             "required": true,
             "content": {
@@ -167,20 +181,32 @@
           },
           "responses": {
             "200": {
-              "description": "Endzeit erfolgreich aktualisiert",
+              "description": "End time updated",
               "content": {
                 "application/json": {
-                  "schema": {
-                    "type": "object",
-                    "properties": {
-                      "success": {
-                        "type": "boolean"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "id": {
-                        "type": "integer"
+                  "examples": {
+                    "success": {
+                      "summary": "End time updated",
+                      "value": {
+                        "success": true,
+                        "message": "Endzeit aktualisiert",
+                        "id": 1
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "401": {
+              "description": "Unauthorized",
+              "content": {
+                "application/json": {
+                  "examples": {
+                    "error": {
+                      "summary": "Unauthorized",
+                      "value": {
+                        "success": false,
+                        "message": "Authorization header missing"
                       }
                     }
                   }
@@ -188,7 +214,20 @@
               }
             },
             "500": {
-              "description": "Interner Serverfehler"
+              "description": "Internal server error",
+              "content": {
+                "application/json": {
+                  "examples": {
+                    "error": {
+                      "summary": "Internal server error",
+                      "value": {
+                        "success": false,
+                        "message": "Internal server error"
+                      }
+                    }
+                  }
+                }
+              }
             }
           },
           "security": [
@@ -198,14 +237,165 @@
           ]
         }
       },
-      "/deleteWorkEntry": {
+      "/api.php/users": {
+        "get": {
+          "summary": "Get all users",
+          "responses": {
+            "200": {
+              "description": "List of users",
+              "content": {
+                "application/json": {
+                  "examples": {
+                    "success": {
+                      "summary": "List of users",
+                      "value": {
+                        "success": true,
+                        "data": [
+                          {
+                            "id": 1,
+                            "username": "admin",
+                            "email": "admin@example.com",
+                            "role": "admin"
+                          },
+                          {
+                            "id": 2,
+                            "username": "user",
+                            "email": "user@example.com",
+                            "role": "user"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "401": {
+              "description": "Unauthorized",
+              "content": {
+                "application/json": {
+                  "examples": {
+                    "error": {
+                      "summary": "Unauthorized",
+                      "value": {
+                        "success": false,
+                        "message": "Authorization header missing"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Internal server error",
+              "content": {
+                "application/json": {
+                  "examples": {
+                    "error": {
+                      "summary": "Internal server error",
+                      "value": {
+                        "success": false,
+                        "message": "Internal server error"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ]
+        }
+      },
+      "/api.php/timeentries": {
+        "get": {
+          "summary": "Get all time entries for the authenticated user",
+          "responses": {
+            "200": {
+              "description": "List of time entries",
+              "content": {
+                "application/json": {
+                  "examples": {
+                    "success": {
+                      "summary": "List of time entries",
+                      "value": {
+                        "success": true,
+                        "data": [
+                          {
+                            "id": 1,
+                            "startzeit": "2024-05-24T09:00:00",
+                            "endzeit": "2024-05-24T17:00:00",
+                            "pause": 60,
+                            "beschreibung": "Worked on project X",
+                            "standort": "Office",
+                            "user_id": 1
+                          },
+                          {
+                            "id": 2,
+                            "startzeit": "2024-05-25T09:00:00",
+                            "endzeit": "2024-05-25T17:00:00",
+                            "pause": 60,
+                            "beschreibung": "Worked on project Y",
+                            "standort": "Office",
+                            "user_id": 1
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "401": {
+              "description": "Unauthorized",
+              "content": {
+                "application/json": {
+                  "examples": {
+                    "error": {
+                      "summary": "Unauthorized",
+                      "value": {
+                        "success": false,
+                        "message": "Authorization header missing"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Internal server error",
+              "content": {
+                "application/json": {
+                  "examples": {
+                    "error": {
+                      "summary": "Internal server error",
+                      "value": {
+                        "success": false,
+                        "message": "Internal server error"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ]
+        }
+      },
+      "/api.php/timeentry/{id}": {
         "delete": {
-          "summary": "Arbeitszeiteintrag löschen",
-          "description": "Löscht einen spezifischen Arbeitszeiteintrag",
+          "summary": "Delete a specific time entry",
           "parameters": [
             {
               "name": "id",
-              "in": "query",
+              "in": "path",
               "required": true,
               "schema": {
                 "type": "integer"
@@ -214,17 +404,31 @@
           ],
           "responses": {
             "200": {
-              "description": "Eintrag erfolgreich gelöscht",
+              "description": "Time entry deleted",
               "content": {
                 "application/json": {
-                  "schema": {
-                    "type": "object",
-                    "properties": {
-                      "success": {
-                        "type": "boolean"
-                      },
-                      "message": {
-                        "type": "string"
+                  "examples": {
+                    "success": {
+                      "summary": "Time entry deleted",
+                      "value": {
+                        "success": true,
+                        "message": "Eintrag gelöscht"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "401": {
+              "description": "Unauthorized",
+              "content": {
+                "application/json": {
+                  "examples": {
+                    "error": {
+                      "summary": "Unauthorized",
+                      "value": {
+                        "success": false,
+                        "message": "Authorization header missing"
                       }
                     }
                   }
@@ -232,10 +436,52 @@
               }
             },
             "403": {
-              "description": "Nicht autorisiert"
+              "description": "Not allowed to delete",
+              "content": {
+                "application/json": {
+                  "examples": {
+                    "error": {
+                      "summary": "Not allowed to delete",
+                      "value": {
+                        "success": false,
+                        "message": "Nicht erlaubt zu löschen"
+                      }
+                    }
+                  }
+                }
+              }
             },
             "404": {
-              "description": "Eintrag nicht gefunden"
+              "description": "Entry not found",
+              "content": {
+                "application/json": {
+                  "examples": {
+                    "error": {
+                      "summary": "Entry not found",
+                      "value": {
+                        "success": false,
+                        "message": "Eintrag nicht gefunden"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Internal server error",
+              "content": {
+                "application/json": {
+                  "examples": {
+                    "error": {
+                      "summary": "Internal server error",
+                      "value": {
+                        "success": false,
+                        "message": "Internal server error"
+                      }
+                    }
+                  }
+                }
+              }
             }
           },
           "security": [

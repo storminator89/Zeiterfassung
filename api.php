@@ -23,9 +23,10 @@ function generateJWT($header, $payload, $secret) {
 
     return "$headerEncoded.$payloadEncoded.$signatureEncoded";
 }
+
 /**
  * @OA\Post(
- *     path="/login",
+ *     path="/api/login",
  *     summary="User login",
  *     @OA\RequestBody(
  *         required=true,
@@ -137,7 +138,7 @@ function validateToken() {
 
 /**
  * @OA\Post(
- *     path="/createNewWorkEntry",
+ *     path="/api/workentry",
  *     summary="Create new work entry",
  *     @OA\RequestBody(
  *         required=true,
@@ -151,7 +152,13 @@ function validateToken() {
  *     ),
  *     @OA\Response(response=200, description="Work entry created"),
  *     @OA\Response(response=401, description="Unauthorized"),
- *     @OA\Response(response=500, description="Internal server error")
+ *     @OA\Response(response=500, description="Internal server error"),
+ *     @OA\SecurityScheme(
+ *         securityScheme="bearerAuth",
+ *         type="http",
+ *         scheme="bearer",
+ *         bearerFormat="JWT"
+ *     )
  * )
  */
 function createNewWorkEntry($conn, $user_id) {
@@ -194,7 +201,7 @@ function createNewWorkEntry($conn, $user_id) {
 
 /**
  * @OA\Post(
- *     path="/setEndzeit",
+ *     path="/api/setendzeit",
  *     summary="Set end time of a specific work entry",
  *     @OA\RequestBody(
  *         required=true,
@@ -230,7 +237,7 @@ function setEndzeit($conn, $input, $user_id) {
 
 /**
  * @OA\Get(
- *     path="/getUsers",
+ *     path="/api/users",
  *     summary="Get all users",
  *     @OA\Response(response=200, description="List of users"),
  *     @OA\Response(response=401, description="Unauthorized"),
@@ -251,7 +258,7 @@ function getUsers($conn) {
 
 /**
  * @OA\Get(
- *     path="/getTimeEntries",
+ *     path="/api/timeentries",
  *     summary="Get all time entries for the authenticated user",
  *     @OA\Response(response=200, description="List of time entries"),
  *     @OA\Response(response=401, description="Unauthorized"),
@@ -272,14 +279,14 @@ function getTimeEntries($conn, $user_id) {
 }
 
 /**
- * @OA\Post(
- *     path="/deleteTimeEntry",
+ * @OA\Delete(
+ *     path="/api/timeentry/{id}",
  *     summary="Delete a specific time entry",
- *     @OA\RequestBody(
+ *     @OA\Parameter(
+ *         name="id",
+ *         in="path",
  *         required=true,
- *         @OA\JsonContent(
- *             @OA\Property(property="id", type="integer")
- *         )
+ *         @OA\Schema(type="integer")
  *     ),
  *     @OA\Response(response=200, description="Time entry deleted"),
  *     @OA\Response(response=401, description="Unauthorized"),
@@ -322,52 +329,51 @@ function deleteTimeEntry($conn, $user_id, $entry_id) {
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $inputJSON = file_get_contents('php://input');
-    $input = json_decode($inputJSON, TRUE);
-    $action = isset($input['action']) ? $input['action'] : '';
+// Parse the URL path and route the request to the appropriate function
+$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$method = $_SERVER['REQUEST_METHOD'];
 
-    switch ($action) {
-        case 'createNewWorkEntry':
+if ($method === 'POST') {
+    switch ($uri) {
+        case '/jobrouter/webcampus/zeit/zeiterfassung/api.php/login':
+            login($conn);
+            break;
+        case '/jobrouter/webcampus/zeit/zeiterfassung/api.php/workentry':
             $tokenData = validateToken();
             createNewWorkEntry($conn, $tokenData['user_id']);
             break;
-        case 'setEndzeit':
+        case '/jobrouter/webcampus/zeit/zeiterfassung/api.php/setendzeit':
             $tokenData = validateToken();
+            $inputJSON = file_get_contents('php://input');
+            $input = json_decode($inputJSON, TRUE);
             setEndzeit($conn, $input, $tokenData['user_id']);
-            break;
-        case 'login':
-            login($conn);
-            break;
-        case 'deleteTimeEntry':
-            $tokenData = validateToken();
-            $entry_id = isset($input['id']) ? $input['id'] : null;
-            if ($entry_id) {
-                deleteTimeEntry($conn, $tokenData['user_id'], $entry_id);
-            } else {
-                http_response_code(400);
-                echo json_encode(['success' => false, 'message' => 'Missing entry ID']);
-            }
             break;
         default:
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Invalid action']);
+            echo json_encode(['success' => false, 'message' => 'Invalid endpoint']);
     }
-} elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $action = isset($_GET['action']) ? $_GET['action'] : '';
-
-    switch ($action) {
-        case 'getUsers':
-            validateToken(); // Ensure the token is valid
+} elseif ($method === 'GET') {
+    switch ($uri) {
+        case '/jobrouter/webcampus/zeit/zeiterfassung/api.php/users':
+            $tokenData = validateToken();
             getUsers($conn);
             break;
-        case 'getTimeEntries':
+        case '/jobrouter/webcampus/zeit/zeiterfassung/api.php/timeentries':
             $tokenData = validateToken();
             getTimeEntries($conn, $tokenData['user_id']);
             break;
         default:
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Invalid action']);
+            echo json_encode(['success' => false, 'message' => 'Invalid endpoint']);
+    }
+} elseif ($method === 'DELETE') {
+    if (preg_match('/^\/jobrouter\/webcampus\/zeit\/zeiterfassung\/api.php\/timeentry\/(\d+)$/', $uri, $matches)) {
+        $tokenData = validateToken();
+        $entry_id = $matches[1];
+        deleteTimeEntry($conn, $tokenData['user_id'], $entry_id);
+    } else {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Invalid endpoint']);
     }
 } else {
     http_response_code(405);
