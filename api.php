@@ -44,7 +44,7 @@ function login($conn) {
             'iss' => "localhost",
             'aud' => "localhost",
             'iat' => time(),
-            'exp' => time() + 3600, // 1 hour expiration
+            'exp' => time() + (365 * 24 * 60 * 60), // 1 year expiration
             'user_id' => $user_id
         ];
 

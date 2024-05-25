@@ -13,6 +13,57 @@ $user_role = isset($_SESSION['role']) ? $_SESSION['role'] : null;
 $error = '';
 $successMessage = '';
 
+// Funktion zum Base64 URL Enkodieren
+function base64UrlEncode($data)
+{
+    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+}
+
+// Funktion zum Erzeugen des JWT
+function generateJWT($header, $payload, $secret)
+{
+    $headerEncoded = base64UrlEncode(json_encode($header));
+    $payloadEncoded = base64UrlEncode(json_encode($payload));
+
+    $signature = hash_hmac('SHA256', "$headerEncoded.$payloadEncoded", $secret, true);
+    $signatureEncoded = base64UrlEncode($signature);
+
+    return "$headerEncoded.$payloadEncoded.$signatureEncoded";
+}
+
+// Token erzeugen und anzeigen
+$token = '';
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['generate_token'])) {
+    $header = [
+        'alg' => 'HS256',
+        'typ' => 'JWT'
+    ];
+
+    $payload = [
+        'iss' => "localhost",
+        'aud' => "localhost",
+        'iat' => time(),
+        'exp' => time() + (365 * 24 * 60 * 60), // 1 year expiration
+        'user_id' => $_SESSION['user_id']
+    ];
+
+    $secret = 'your_secret_key';
+    $token = generateJWT($header, $payload, $secret);
+
+    try {
+        $stmt = $conn->prepare("UPDATE users SET token = ? WHERE id = ?");
+        $stmt->execute([$token, $_SESSION['user_id']]);
+        $successMessage = "Token erfolgreich generiert und gespeichert!";
+    } catch (PDOException $e) {
+        $error = "Fehler beim Speichern des Tokens: " . $e->getMessage();
+    }
+}
+
+// Retrieve the current user from the database
+$stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+$stmt->execute([$_SESSION['user_id']]);
+$currentUser = $stmt->fetch(PDO::FETCH_OBJ);
+
 // Benutzer hinzufügen
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
     $username = $_POST['username'];
@@ -91,13 +142,11 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Adminbereich - Benutzerverwaltung</title>
-
     <!-- Favicon and external stylesheets -->
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
-
     <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -139,7 +188,6 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
             </ul>
         </div>
     </nav>
-
     <!-- Main content -->
     <div class="container mt-5 p-5">
         <h2>Benutzerverwaltung</h2>
@@ -165,7 +213,7 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                 </select>
             </div>
             <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus mr-1"></i> Benutzer erstellen</button>
-        </form>
+        </form>        
 
         <!-- Search Bar -->
         <div class="mt-5 mb-3">
@@ -185,7 +233,7 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($users as $user): ?>
+                <?php foreach ($users as $user) : ?>
                     <tr>
                         <td><?= $user->id ?></td>
                         <td><?= htmlspecialchars($user->username) ?></td>
@@ -203,6 +251,18 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                 <?php endforeach; ?>
             </tbody>
         </table>
+
+        <h2>API - Zugriff</h2>
+
+        <!-- Generate Token Form and Display -->
+        <div class="mt-4">
+            <form method="post" class="input-group mb-3">
+                <input type="password" class="form-control" id="tokenField" value="<?= htmlspecialchars($currentUser->token ?? '') ?>" readonly>
+                <button class="btn btn-outline-secondary" type="button" id="toggleToken"><i class="fas fa-eye"></i></button>
+                <input type="hidden" name="generate_token" value="1">
+                <button type="submit" class="btn btn-success"><i class="fas fa-key mr-1"></i>  Token generieren</button>
+            </form>
+        </div>
     </div>
 
     <!-- Modal for Success -->
@@ -285,7 +345,7 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
     <!-- Footer -->
     <footer class="footer mt-auto py-3">
         <div class="container">
-            <span class="text-muted">© 2023 Quodara Chrono - Zeiterfassung</span>
+            <span class="text-muted">© 2024 Quodara Chrono - Zeiterfassung</span>
         </div>
     </footer>
 
@@ -322,6 +382,21 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                 $("#usersTable tbody tr").filter(function() {
                     $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
                 });
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const toggleButton = document.getElementById('toggleToken');
+            const tokenField = document.getElementById('tokenField');
+
+            toggleButton.addEventListener('click', () => {
+                if (tokenField.type === 'password') {
+                    tokenField.type = 'text';
+                    toggleButton.innerHTML = '<i class="fas fa-eye-slash"></i>';
+                } else {
+                    tokenField.type = 'password';
+                    toggleButton.innerHTML = '<i class="fas fa-eye"></i>';
+                }
             });
         });
     </script>
