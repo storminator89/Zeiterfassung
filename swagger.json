@@ -1,0 +1,259 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+      "title": "Zeiterfassung API",
+      "version": "1.0.0"
+    },
+    "paths": {
+      "/login": {
+        "post": {
+          "summary": "Login",
+          "description": "Authentifiziert einen Benutzer und gibt einen JWT-Token zurück",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "username": {
+                      "type": "string"
+                    },
+                    "password": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["username", "password"]
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Erfolgreicher Login",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "success": {
+                        "type": "boolean"
+                      },
+                      "token": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "401": {
+              "description": "Ungültige Anmeldedaten"
+            }
+          }
+        }
+      },
+      "/createNewWorkEntry": {
+        "post": {
+          "summary": "Neue Arbeitszeiteintrag erstellen",
+          "description": "Erstellt einen neuen Arbeitszeiteintrag",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "startzeit": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "endzeit": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "pause": {
+                      "type": "integer"
+                    },
+                    "beschreibung": {
+                      "type": "string"
+                    },
+                    "standort": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["startzeit", "pause", "beschreibung", "standort"]
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Eintrag erfolgreich erstellt",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "success": {
+                        "type": "boolean"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "startzeit": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "endzeit": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "pause": {
+                            "type": "integer"
+                          },
+                          "beschreibung": {
+                            "type": "string"
+                          },
+                          "standort": {
+                            "type": "string"
+                          },
+                          "user_id": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Interner Serverfehler"
+            }
+          },
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ]
+        }
+      },
+      "/setEndzeit": {
+        "post": {
+          "summary": "Endzeit setzen",
+          "description": "Aktualisiert die Endzeit eines spezifischen Eintrags",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": ["id"]
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Endzeit erfolgreich aktualisiert",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "success": {
+                        "type": "boolean"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "integer"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Interner Serverfehler"
+            }
+          },
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ]
+        }
+      },
+      "/deleteWorkEntry": {
+        "delete": {
+          "summary": "Arbeitszeiteintrag löschen",
+          "description": "Löscht einen spezifischen Arbeitszeiteintrag",
+          "parameters": [
+            {
+              "name": "id",
+              "in": "query",
+              "required": true,
+              "schema": {
+                "type": "integer"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Eintrag erfolgreich gelöscht",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "success": {
+                        "type": "boolean"
+                      },
+                      "message": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "403": {
+              "description": "Nicht autorisiert"
+            },
+            "404": {
+              "description": "Eintrag nicht gefunden"
+            }
+          },
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ]
+        }
+      }
+    },
+    "components": {
+      "securitySchemes": {
+        "bearerAuth": {
+          "type": "http",
+          "scheme": "bearer",
+          "bearerFormat": "JWT"
+        }
+      }
+    }
+  }
+  

@@ -6,6 +6,10 @@ include 'config.php';
 $conn = new PDO("sqlite:$database");
 $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+/**
+ * @OA\Info(title="Zeiterfassung API", version="1.0")
+ */
+
 function base64UrlEncode($data) {
     return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
 }
@@ -19,7 +23,21 @@ function generateJWT($header, $payload, $secret) {
 
     return "$headerEncoded.$payloadEncoded.$signatureEncoded";
 }
-
+/**
+ * @OA\Post(
+ *     path="/login",
+ *     summary="User login",
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(
+ *             @OA\Property(property="username", type="string"),
+ *             @OA\Property(property="password", type="string")
+ *         )
+ *     ),
+ *     @OA\Response(response=200, description="Successful login"),
+ *     @OA\Response(response=401, description="Invalid credentials")
+ * )
+ */
 function login($conn) {
     $inputJSON = file_get_contents('php://input');
     $input = json_decode($inputJSON, TRUE);
@@ -117,7 +135,25 @@ function validateToken() {
     return $payload;
 }
 
-// Function to insert a new work entry into the time tracking table
+/**
+ * @OA\Post(
+ *     path="/createNewWorkEntry",
+ *     summary="Create new work entry",
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(
+ *             @OA\Property(property="startzeit", type="string"),
+ *             @OA\Property(property="endzeit", type="string"),
+ *             @OA\Property(property="pause", type="integer"),
+ *             @OA\Property(property="beschreibung", type="string"),
+ *             @OA\Property(property="standort", type="string")
+ *         )
+ *     ),
+ *     @OA\Response(response=200, description="Work entry created"),
+ *     @OA\Response(response=401, description="Unauthorized"),
+ *     @OA\Response(response=500, description="Internal server error")
+ * )
+ */
 function createNewWorkEntry($conn, $user_id) {
     $inputJSON = file_get_contents('php://input');
     $input = json_decode($inputJSON, TRUE);
@@ -156,7 +192,21 @@ function createNewWorkEntry($conn, $user_id) {
     }
 }
 
-// Function to update endzeit of specific row
+/**
+ * @OA\Post(
+ *     path="/setEndzeit",
+ *     summary="Set end time of a specific work entry",
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(
+ *             @OA\Property(property="id", type="integer")
+ *         )
+ *     ),
+ *     @OA\Response(response=200, description="End time updated"),
+ *     @OA\Response(response=401, description="Unauthorized"),
+ *     @OA\Response(response=500, description="Internal server error")
+ * )
+ */
 function setEndzeit($conn, $input, $user_id) {
     $id = $input['id'];
     $endzeit = date('Y-m-d\TH:i:s'); 
@@ -172,6 +222,100 @@ function setEndzeit($conn, $input, $user_id) {
         } else {
             echo json_encode(['success' => false, 'message' => 'Error updating endzeit']);
         }
+    } catch (\Exception $exception) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Internal server error']);
+    }
+}
+
+/**
+ * @OA\Get(
+ *     path="/getUsers",
+ *     summary="Get all users",
+ *     @OA\Response(response=200, description="List of users"),
+ *     @OA\Response(response=401, description="Unauthorized"),
+ *     @OA\Response(response=500, description="Internal server error")
+ * )
+ */
+function getUsers($conn) {
+    try {
+        $stmt = $conn->prepare("SELECT id, username, email, role FROM users");
+        $stmt->execute();
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode(['success' => true, 'data' => $users]);
+    } catch (\Exception $exception) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Internal server error']);
+    }
+}
+
+/**
+ * @OA\Get(
+ *     path="/getTimeEntries",
+ *     summary="Get all time entries for the authenticated user",
+ *     @OA\Response(response=200, description="List of time entries"),
+ *     @OA\Response(response=401, description="Unauthorized"),
+ *     @OA\Response(response=500, description="Internal server error")
+ * )
+ */
+function getTimeEntries($conn, $user_id) {
+    try {
+        $stmt = $conn->prepare("SELECT * FROM zeiterfassung WHERE user_id = :user_id");
+        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+        $stmt->execute();
+        $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode(['success' => true, 'data' => $entries]);
+    } catch (\Exception $exception) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Internal server error']);
+    }
+}
+
+/**
+ * @OA\Post(
+ *     path="/deleteTimeEntry",
+ *     summary="Delete a specific time entry",
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(
+ *             @OA\Property(property="id", type="integer")
+ *         )
+ *     ),
+ *     @OA\Response(response=200, description="Time entry deleted"),
+ *     @OA\Response(response=401, description="Unauthorized"),
+ *     @OA\Response(response=403, description="Not allowed to delete"),
+ *     @OA\Response(response=404, description="Entry not found"),
+ *     @OA\Response(response=500, description="Internal server error")
+ * )
+ */
+function deleteTimeEntry($conn, $user_id, $entry_id) {
+    try {
+        // Check if the entry exists
+        $stmt = $conn->prepare("SELECT * FROM zeiterfassung WHERE id = :id");
+        $stmt->bindParam(':id', $entry_id, PDO::PARAM_INT);
+        $stmt->execute();
+        $entry = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$entry) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Eintrag nicht gefunden']);
+            return;
+        }
+
+        // Check if the entry belongs to the user
+        if ($entry['user_id'] != $user_id) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Nicht erlaubt zu löschen']);
+            return;
+        }
+
+        // Entry exists and belongs to the user, proceed with deletion
+        $stmt = $conn->prepare("DELETE FROM zeiterfassung WHERE id = :id AND user_id = :user_id");
+        $stmt->bindParam(':id', $entry_id, PDO::PARAM_INT);
+        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        echo json_encode(['success' => true, 'message' => 'Eintrag gelöscht']);
     } catch (\Exception $exception) {
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Internal server error']);
@@ -195,6 +339,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'login':
             login($conn);
             break;
+        case 'deleteTimeEntry':
+            $tokenData = validateToken();
+            $entry_id = isset($input['id']) ? $input['id'] : null;
+            if ($entry_id) {
+                deleteTimeEntry($conn, $tokenData['user_id'], $entry_id);
+            } else {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Missing entry ID']);
+            }
+            break;
+        default:
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Invalid action']);
+    }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $action = isset($_GET['action']) ? $_GET['action'] : '';
+
+    switch ($action) {
+        case 'getUsers':
+            validateToken(); // Ensure the token is valid
+            getUsers($conn);
+            break;
+        case 'getTimeEntries':
+            $tokenData = validateToken();
+            getTimeEntries($conn, $tokenData['user_id']);
+            break;
         default:
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Invalid action']);
@@ -203,3 +373,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'message' => 'Method Not Allowed']);
 }
+?>
