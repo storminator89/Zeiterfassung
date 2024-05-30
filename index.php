@@ -1,5 +1,13 @@
 <?php
 session_start();
+
+if (isset($_GET['lang'])) {
+    $_SESSION['lang'] = $_GET['lang'];
+}
+
+$lang = $_SESSION['lang'] ?? 'de';
+require_once "languages/$lang.php";
+
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
@@ -14,13 +22,13 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
 ?>
 
 <!DOCTYPE html>
-<html lang="de">
+<html lang="<?= $lang ?>">
 
 <head>
     <!-- Meta tags and title -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quodara Chrono - Time Tracking</title>
+    <title><?= TITLE ?></title>
 
     <!-- Favicon and external stylesheets -->
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
@@ -60,16 +68,22 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
         <a class="navbar-brand" href="index.php">
             <img class="pl-3" src="assets/kolibri_icon_weiß.png" alt="Time Tracking" height="50">
         </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+        <!-- Sprachwahl -->
+        <ul class="navbar-nav me-auto">
+            <li class="nav-item">
+                <a class="nav-link" href="?lang=de">DE</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="?lang=en">EN</a>
+            </li>
+        </ul>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item active">
-                    <a class="nav-link" href="#"><i class="fas fa-home mr-1"></i> Home</a>
+                    <a class="nav-link" href="#"><i class="fas fa-home mr-1"></i> <?= NAV_HOME ?></a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="dashboard.php"><i class="fas fa-tachometer-alt mr-1"></i> Dashboard</a>
+                    <a class="nav-link" href="dashboard.php"><i class="fas fa-tachometer-alt mr-1"></i> <?= NAV_DASHBOARD ?></a>
                 </li>
             </ul>
             <ul class="navbar-nav ms-auto">
@@ -78,25 +92,24 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                         <i class="fas fa-cog"></i>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="settingsDropdown">
-                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#settingsModal"><i class="fas fa-cog mr-1"></i> Einstellungen</a></li>
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#settingsModal"><i class="fas fa-cog mr-1"></i> <?= NAV_SETTINGS ?></a></li>
                         <?php if ($user_role === 'admin') : ?>
                             <li><a class="dropdown-item" href="admin.php"><i class="fas fa-user-shield mr-1"></i> Admin</a></li>
                         <?php endif; ?>
-                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-info-circle mr-1"></i> About</a></li>
-                        <li><a class="dropdown-item" href="logout.php"><i class="fas fa-sign-out-alt mr-1"></i> Logout</a></li>
-                        <li><button class="dropdown-item" onclick="toggleDarkMode()"><i class="fas fa-moon mr-1"></i> Dark Mode</button></li>
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-info-circle mr-1"></i> <?= NAV_ABOUT ?></a></li>
+                        <li><a class="dropdown-item" href="logout.php"><i class="fas fa-sign-out-alt mr-1"></i> <?= NAV_LOGOUT ?></a></li>
+                        <li><button class="dropdown-item" onclick="toggleDarkMode()"><i class="fas fa-moon mr-1"></i> <?= NAV_DARK_MODE ?></button></li>
                     </ul>
                 </li>
             </ul>
         </div>
     </nav>
 
-
     <!-- Main content -->
     <div class="container mt-5 p-5">
         <h2 class="fancy-title">
             <img src="assets/kolibri_icon.png" alt="Quodara Chrono Logo" style="width: 80px; height: 80px; margin-right: 10px;">
-            Quodara Chrono - Zeiterfassung
+            <?= TITLE ?>
         </h2>
         <div class="row">
             <div class="col-md-12">
@@ -105,14 +118,14 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                     <div class="row mb-3">
                         <div class="col" style="display: none;">
                             <div class="form-group position-relative">
-                                <label for="startzeit"><i class="fas fa-play mr-2"></i> Startzeit</label>
+                                <label for="startzeit"><i class="fas fa-play mr-2"></i> <?= FORM_START_TIME ?></label>
                                 <input type="datetime-local" id="startzeit" name="startzeit" class="form-control" required>
                             </div>
                         </div>
 
                         <div class="col" style="display: none;">
                             <div class="form-group">
-                                <label for="endzeit"><i class="fas fa-stop mr-2"></i> Endzeit</label>
+                                <label for="endzeit"><i class="fas fa-stop mr-2"></i> <?= FORM_END_TIME ?></label>
                                 <input type="datetime-local" id="endzeit" name="endzeit" class="form-control">
                             </div>
                         </div>
@@ -120,29 +133,29 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                         <div class="row">
                             <div class="col">
                                 <div class="form-group mb-4">
-                                    <button type="button" id="startButton" class="btn btn-primary btn-block btn-lg"><i class="fas fa-sign-in-alt"></i> Kommen</button>
+                                    <button type="button" id="startButton" class="btn btn-primary btn-block btn-lg"><i class="fas fa-sign-in-alt"></i> <?= FORM_COME ?></button>
                                 </div>
                             </div>
 
                             <div class="col">
                                 <div class="form-group mb-4">
-                                    <button type="button" id="endButton" class="btn btn-success btn-block btn-lg"><i class="fas fa-sign-out-alt"></i> Gehen</button>
+                                    <button type="button" id="endButton" class="btn btn-success btn-block btn-lg"><i class="fas fa-sign-out-alt"></i> <?= FORM_GO ?></button>
                                 </div>
                             </div>
                         </div>
 
                         <div class="col">
                             <div class="form-group">
-                                <label for="pauseManuell"><i class="fas fa-pause mr-2"></i> Pause (manuell)</label>
-                                <input type="number" id="pauseManuell" class="form-control" placeholder="Manuelle Eingabe (Minuten)">
+                                <label for="pauseManuell"><i class="fas fa-pause mr-2"></i> <?= FORM_BREAK_MANUAL ?></label>
+                                <input type="number" id="pauseManuell" class="form-control" placeholder="<?= FORM_BREAK_MANUAL ?>">
                             </div>
                         </div>
                         <div class="col">
                             <div class="form-group">
-                                <label for="pauseDisplay"><i class="fas fa-clock mr-2"></i> Pause (Minuten)</label>
+                                <label for="pauseDisplay"><i class="fas fa-clock mr-2"></i> <?= FORM_BREAK_MINUTES ?></label>
                                 <input type="text" id="pauseDisplay" class="form-control" placeholder="MM:SS" readonly>
                                 <input type="hidden" id="pauseInput" name="pause">
-                                <button id="pauseButton" type="button" class="btn btn-secondary mt-2"><i class="fas fa-pause-circle mr-1"></i> Start/Ende Pause</button>
+                                <button id="pauseButton" type="button" class="btn btn-secondary mt-2"><i class="fas fa-pause-circle mr-1"></i> <?= FORM_START_BREAK ?></button>
                             </div>
                         </div>
                     </div>
@@ -151,7 +164,7 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                     <div class="row mb-3">
                         <div class="col">
                             <div class="form-group">
-                                <label for="standort"><i class="fas fa-map-marker-alt mr-2"></i> Standort</label>
+                                <label for="standort"><i class="fas fa-map-marker-alt mr-2"></i> <?= FORM_LOCATION ?></label>
                                 <select name="standort" class="form-control" required>
                                     <option value="">-</option>
                                     <option value="Büro">Büro</option>
@@ -162,8 +175,8 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                         </div>
                         <div class="col">
                             <div class="form-group">
-                                <label for="beschreibung"><i class="fas fa-info-circle mr-2"></i> Kommentar</label>
-                                <textarea name="beschreibung" class="form-control" rows="4" placeholder="Hier können Sie einen Kommentar hinterlassen..."></textarea>
+                                <label for="beschreibung"><i class="fas fa-info-circle mr-2"></i> <?= FORM_COMMENT ?></label>
+                                <textarea name="beschreibung" class="form-control" rows="4" placeholder="<?= FORM_COMMENT ?>"></textarea>
                             </div>
                         </div>
                     </div>
@@ -171,19 +184,19 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                     <div class="row mb-3">
                         <div class="col">
                             <div class="form-group">
-                                <label><i class="fas fa-calendar-check mr-2"></i> Ereignistyp:</label>
+                                <label><i class="fas fa-calendar-check mr-2"></i> <?= FORM_EVENT_TYPE ?>:</label>
                                 <div class="d-flex justify-content-start">
                                     <div class="form-check form-check-inline">
                                         <input type="radio" id="urlaub" name="ereignistyp" value="Urlaub" class="form-check-input" checked>
-                                        <label class="form-check-label" for="urlaub"><i class="fas fa-umbrella-beach mr-2"></i> Urlaub</label>
+                                        <label class="form-check-label" for="urlaub"><i class="fas fa-umbrella-beach mr-2"></i> <?= EVENT_VACATION ?></label>
                                     </div>
                                     <div class="form-check form-check-inline">
                                         <input type="radio" id="feiertag" name="ereignistyp" value="Feiertag" class="form-check-input">
-                                        <label class="form-check-label" for="feiertag"><i class="fas fa-gift mr-2"></i> Feiertag</label>
+                                        <label class="form-check-label" for="feiertag"><i class="fas fa-gift mr-2"></i> <?= EVENT_HOLIDAY ?></label>
                                     </div>
                                     <div class="form-check form-check-inline">
                                         <input type="radio" id="krank" name="ereignistyp" value="Krank" class="form-check-input">
-                                        <label class="form-check-label" for="krank"><i class="fas fa-bed mr-2"></i> Krank</label>
+                                        <label class="form-check-label" for="krank"><i class="fas fa-bed mr-2"></i> <?= EVENT_SICK ?></label>
                                     </div>
                                 </div>
                             </div>
@@ -193,27 +206,27 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                     <div class="row mb-3">
                         <div class="col">
                             <div class="form-group">
-                                <label for="urlaubStart"><i class="fas fa-calendar-alt mr-2"></i> Beginn:</label>
+                                <label for="urlaubStart"><i class="fas fa-calendar-alt mr-2"></i> <?= FORM_START ?>:</label>
                                 <input type="date" name="urlaubStart" id="urlaubStart" class="form-control" required>
                             </div>
                         </div>
                         <div class="col">
                             <div class="form-group">
-                                <label for="urlaubEnde"><i class="fas fa-calendar-alt mr-2"></i> Ende:</label>
+                                <label for="urlaubEnde"><i class="fas fa-calendar-alt mr-2"></i> <?= FORM_END ?>:</label>
                                 <input type="date" name="urlaubEnde" id="urlaubEnde" class="form-control" required>
                             </div>
                         </div>
                     </div>
 
                     <button type="button" id="datenEintragenButton" class="btn btn-primary">
-                        <i class="fas fa-plane-departure mr-2"></i> Daten eintragen
+                        <i class="fas fa-plane-departure mr-2"></i> <?= BUTTON_SUBMIT_DATA ?>
                     </button>
 
                     <!-- Third row of the form -->
                     <div class="row mb-3">
                         <div class="col">
                             <div class="form-group">
-                                <button type="submit" id="addButton" class="btn btn-primary" style="display: none;"><i class="fas fa-plus-circle mr-1"></i> Buchen</button>
+                                <button type="submit" id="addButton" class="btn btn-primary" style="display: none;"><i class="fas fa-plus-circle mr-1"></i> <?= BUTTON_ADD_BOOKING ?></button>
                             </div>
                         </div>
                     </div>
@@ -222,7 +235,7 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                         <div class="modal-dialog" role="document">
                             <div class="modal-content">
                                 <div class="modal-header">
-                                    <h5 class="modal-title" id="importModalLabel">Datenbank importieren</h5>
+                                    <h5 class="modal-title" id="importModalLabel"><?= BUTTON_IMPORT_DB ?></h5>
                                     <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
                                         <span aria-hidden="true">&times;</span>
                                     </button>
@@ -230,12 +243,12 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                                 <div class="modal-body">
                                     <form id="importForm" enctype="multipart/form-data">
                                         <div class="form-group">
-                                            <label for="dbFile">Datenbankdatei auswählen</label>
+                                            <label for="dbFile"><?= BUTTON_IMPORT_DB ?></label>
                                             <input type="file" class="form-control-file" id="dbFile" name="dbFile">
                                         </div>
                                         <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
-                                            <button type="submit" class="btn btn-primary" id="importButton">Importieren</button>
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= BUTTON_CLOSE ?></button>
+                                            <button type="submit" class="btn btn-primary" id="importButton"><?= BUTTON_IMPORT ?></button>
                                         </div>
                                     </form>
                                 </div>
@@ -251,12 +264,12 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
         <div class="row mt-4">
             <div class="col-12">
                 <div class="form-group">
-                    <h3><i class="fas fa-chart-bar mr-2"></i> Statistik Arbeitszeiten</h3>
+                    <h3><i class="fas fa-chart-bar mr-2"></i> <?= STATISTICS_WORKING_TIMES ?></h3>
                     <table class="details-tablestats">
                         <thead>
                             <tr>
-                                <th>Arbeitstage <?= $currentMonthName ?></th>
-                                <th>Gesamtüberstunden</th>
+                                <th><?= TABLE_HEADER_WORKING_DAYS ?> <?= $currentMonthName ?></th>
+                                <th><?= TABLE_HEADER_TOTAL_OVERTIME ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -270,7 +283,7 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                     </table>
                     <?php if (!empty($feiertageDieseWoche)) : ?>
                         <div class="rtd-infobox">
-                            <div class="rtd-infobox-header"><i class="fas fa-info-circle"></i> Feiertage diese Woche:</div>
+                            <div class="rtd-infobox-header"><i class="fas fa-info-circle"></i> <?= HOLIDAYS_THIS_WEEK ?>:</div>
                             <div class="rtd-infobox-content">
                                 <ul>
                                     <?php foreach ($feiertageDieseWoche as $feiertag) : ?>
@@ -284,19 +297,19 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
             </div>
         </div>
 
-        <h3 class="mt-4"><i class="fas fa-business-time mr-2"></i> Arbeitszeiten</h3>
+        <h3 class="mt-4"><i class="fas fa-business-time mr-2"></i> <?= STATISTICS_WORKING_TIMES ?></h3>
         <table class="table">
             <thead>
                 <tr>
                     <th><input type="checkbox" id="selectAll"></th>
-                    <th data-name="id">ID</th>
-                    <th data-name="kalenderwoche">KW</th>
-                    <th data-name="startzeit">Startzeit</th>
-                    <th data-name="endzeit">Endzeit</th>
-                    <th data-name="dauer">Dauer</th>
-                    <th data-name="pause">Pause (Min.)</th>
-                    <th data-name="standort">Standort</th>
-                    <th data-name="beschreibung">Bemerkung</th>
+                    <th data-name="id"><?= TABLE_HEADER_ID ?></th>
+                    <th data-name="kalenderwoche"><?= TABLE_HEADER_WEEK ?></th>
+                    <th data-name="startzeit"><?= TABLE_HEADER_START_TIME ?></th>
+                    <th data-name="endzeit"><?= TABLE_HEADER_END_TIME ?></th>
+                    <th data-name="dauer"><?= TABLE_HEADER_DURATION ?></th>
+                    <th data-name="pause"><?= TABLE_HEADER_BREAK ?></th>
+                    <th data-name="standort"><?= TABLE_HEADER_LOCATION ?></th>
+                    <th data-name="beschreibung"><?= TABLE_HEADER_COMMENT ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -332,7 +345,7 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
             </tbody>
         </table>
 
-        <button type="button" id="deleteSelected" class="btn btn-danger">Auswahl löschen</button>
+        <button type="button" id="deleteSelected" class="btn btn-danger"><?= BUTTON_DELETE_SELECTED ?></button>
 
         <div class="row">
             <div class="col-4">
@@ -362,11 +375,10 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
             </div>
         </div>
 
-
         <!-- Footer -->
         <footer class="footer mt-auto py-3">
             <div class="container">
-                <span class="text-muted">© 2024 Quodara Chrono - Zeiterfassung</span>
+                <span class="text-muted"><?= FOOTER_TEXT ?></span>
             </div>
         </footer>
 
@@ -378,10 +390,10 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                         <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
-                        <h4 class="modal-title" id="aboutModalLabel">About</h4>
+                        <h4 class="modal-title" id="aboutModalLabel"><?= NAV_ABOUT ?></h4>
                     </div>
                     <div class="modal-body">
-                        <p>Das Tool hilft für die Arbeitszeiterfassung</p>
+                        <p><?= ABOUT_TOOL_TEXT ?></p>
                     </div>
                 </div>
             </div>
@@ -392,7 +404,7 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
             <div class="modal-dialog modal-dialog-centered" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="settingsModalLabel">Einstellungen</h5>
+                        <h5 class="modal-title" id="settingsModalLabel"><?= NAV_SETTINGS ?></h5>
                         <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
@@ -400,11 +412,11 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                     <div class="modal-body">
                         <a href="download.php" id="downloadDbButton" class="btn btn-secondary">
                             <i class="fas fa-download mr-2"></i>
-                            Datenbank Backup Download
+                            <?= BUTTON_DOWNLOAD_BACKUP ?>
                         </a>
                         <button type="button" id="importDbButton" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#importModal">
                             <i class="fas fa-file-upload mr-2"></i>
-                            Datenbank importieren
+                            <?= BUTTON_IMPORT_DB ?>
                         </button>
                     </div>
                 </div>
