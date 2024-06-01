@@ -1,75 +1,78 @@
-# Arbeitszeiterfassung
+# Time Tracking Tool
 
-Das Tool unterstützt Sie bei der Erfassung Ihrer Arbeitszeiten. 
+This tool assists you in tracking your working hours.
+
 ![Main Screen](/assets/mainPage_Screenshot.png)
 ![Main Screen](/assets/mainPage_Screenshot2.png)
 
 ## Browser Plugin
+
 ![Browser Plugin](/assets/erweiterung_edge.png) 
-In time-tracker-extension_edge folder
+Located in the `time-tracker-extension_edge` folder.
 
 ### Dashboard
-![Main Screen](/assets/Dashboard_Screenshot.png)
 
-### Benutzerverwaltung
-![Darkmode](/assets/user_management.png)
+![Dashboard](/assets/Dashboard_Screenshot.png)
 
-### Darkmode
-![Darkmode](/assets/darkmode.png)
+### User Management
 
-## Hauptfunktionen
+![User Management](/assets/user_management.png)
 
-- **Erfassung von Arbeitszeiten:** Nutzer können die Startzeit, Endzeit und Pausenzeit (manuell oder mit Timer) eingeben.
-- **Auswahl des Standortes:** Nutzer können auswählen, ob sie im Büro, im Home Office oder auf Dienstreise arbeiten.
-- **Beschreibung hinzufügen:** Optionen wie Urlaub, Feiertag und Krankheit sind verfügbar.
-- **Statistik:** Es werden Statistiken über die Arbeitszeit für den aktuellen Monat und das Jahr angezeigt mit Dashboard
-- **Übersicht der Arbeitszeiten:** Eine detaillierte Tabelle mit allen Arbeitszeiten, die der Benutzer eingibt.
-- **Automatische Berechnung** der Arbeitstage in diesem Monat und **Feiertage** werden berücksichtigt
-- **Kalenderansicht** aller Arbeitszeiten für bessere Übersicht
-- **Login und Logout/ Registrierung**
-- **Admin-Bereich**
+### Dark Mode
 
-## Abhängigkeiten und Ressourcen
+![Dark Mode](/assets/darkmode.png)
 
-- **Bootstrap:** Für das Styling und die Benutzeroberfläche.
-- **jQuery:** Für die Interaktion und Funktionsfähigkeit.
-- **DataTables:** Für das Rendern und Managen von Tabellen.
-- **Chart.js:** Für das Zeichnen von Diagrammen (wenn implementiert).
-- **PDFMake und JSZip:** Für das Erstellen von PDF-Dateien und das Zippen von Daten.
-- **SQL Lite** SQLlite für die Speicherung der Daten
+## Main Features
+
+- ⏰ **Work Time Tracking:** Users can enter start time, end time, and break time (manually or using a timer).
+- 📍 **Location Selection:** Users can select whether they are working in the office, from home, or on a business trip.
+- ✏️ **Add Descriptions:** Options like vacation, holiday, and sickness are available.
+- 📊 **Statistics:** Displays work time statistics for the current month and year on the dashboard.
+- 📋 **Work Time Overview:** A detailed table of all work times entered by the user.
+- 🧮 **Automatic Calculation** of workdays in the current month, including **holidays**.
+- 📅 **Calendar View** for a better overview of all work times.
+- 🔑 **Login and Logout/ Registration**
+- ⚙️ **Admin Area**
+
+## Dependencies and Resources
+
+- **Bootstrap:** For styling and the user interface.
+- **jQuery:** For interaction and functionality.
+- **DataTables:** For rendering and managing tables.
+- **Chart.js:** For drawing charts (if implemented).
+- **PDFMake and JSZip:** For creating PDF files and zipping data.
+- **SQLite:** For data storage.
 
 ## Installation
 
-- Kopieren Sie alle Dateien in Ihr gewünschtes Verzeichnis
+- Copy all files to your desired directory.
 
-## Datenbank Konfiguration
+## Database Configuration
 
-Schreibrechte auf Hauptverzeichnis, damit die sqllite Datei angelegt wird
+Ensure write permissions on the main directory to allow the SQLite file to be created.
 
 # REST API
-an `/api.php` POST Request
-```json
-{
-  "action": "createNewWorkEntry",
-  "startzeit": "2023-11-15T08:00:00", 
-  "endzeit": "2023-11-15T16:00:00", 
-  "pause": 30
-}
-```
 
-# Dockerfile
-Alle Dateien in gleiches Verzeichnis wie Dockerfile
-`docker build -t zeitwerk .`
+The REST API is available at `/api.php`
 
-z.B. `docker run  --name zeitwerk -d -p 8000:80 -v /root/Docker/zeitwerk/db:/var/www/html/timetracking zeitwerk`
+## Endpoints
 
-manuelles Kopieren der SQL-Lite DB:
-`docker cp zeitwerk:/var/www/html/timetracking.sqlite /root/Docker/zeitwerk/db`
+- **POST /api.php/login:** User login. Requires `username` and `password`.
+- **POST /api.php/workentry:** Create a new work entry. Requires `startzeit`, `endzeit`, `pause`, `beschreibung`, and `standort`.
+- **POST /api.php/setendzeit:** Set end time for a specific work entry. Requires `id`.
+- **GET /api.php/users:** Get a list of all users.
+- **GET /api.php/timeentries:** Get all time entries for the authenticated user.
+- **DELETE /api.php/timeentry/{id}:** Delete a specific time entry.
 
-und andersherum von Docker zu Host:
-`docker cp /root/Docker/zeitwerk/db/timetracking.sqlite zeitwerk:/var/www/html/timetracking.sqlite`
+## Authentication
 
+The API uses JWT (JSON Web Tokens) for authentication. Upon successful login, a token is returned which must be included in the `Authorization` header of subsequent requests.
 
+## Example Usage
 
+```sh
+# Example of logging in and receiving a JWT token
+curl -X POST -H "Content-Type: application/json" -d '{"username":"your_username", "password":"your_password"}' https://yourdomain.com/api.php/login
 
-
+# Example of creating a new work entry
+curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer your_jwt_token" -d '{"startzeit":"2023-11-15T08:00:00", "endzeit":"2023-11-15T16:00:00", "pause":30, "beschreibung":"Project work", "standort":"Home Office"}' https://yourdomain.com/api.php/workentry
