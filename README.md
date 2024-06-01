@@ -1,7 +1,22 @@
-# Time Tracking Tool
+# Time Tracking Tool Quodara Chrono
 
 This tool assists you in tracking your working hours.
 
+## Main Features
+
+- ⏰ **Work Time Tracking:** Users can enter start time, end time, and break time (manually or using a timer). This allows for precise tracking of working hours and breaks.
+- 📍 **Location Selection:** Users can select whether they are working in the office, from home, or on a business trip. This helps document and analyze the work environment.
+- ✏️ **Add Descriptions:** Options like vacation, holiday, and sickness are available. Users can add descriptions to better categorize their working hours.
+- 📊 **Statistics:** Displays work time statistics for the current month and year on the dashboard. This includes total working hours, averages, and more.
+- 📋 **Work Time Overview:** A detailed table of all work times entered by the user. This table provides an easy overview and management of work time entries.
+- 🧮 **Automatic Calculation:** Automatic calculation of workdays in the current month, including holidays. This simplifies planning and monitoring.
+- 📅 **Calendar View:** For a better overview of all work times. The calendar view allows users to see their work entries in a familiar calendar format.
+- 🔑 **Login and Logout/ Registration:** Secure user authentication with the ability to register new accounts, log in, and log out.
+- ⚙️ **Admin Area:** An administration area for managing users and settings. Admins can oversee user activities and configure system settings.
+- 🌐 **Multilingual Support:** Currently supports both German and English languages. Users can switch between languages based on their preference.
+- 🌍 **Webhook for Geolocation-based Time Booking:** Allows users to book times based on their geolocation via a webhook. This feature automates time tracking when users enter or leave specific locations.
+
+# Screenshots
 ![Main Screen](/assets/mainPage_Screenshot.png)
 ![Main Screen](/assets/mainPage_Screenshot2.png)
 
@@ -22,17 +37,7 @@ Located in the `time-tracker-extension_edge` folder.
 
 ![Dark Mode](/assets/darkmode.png)
 
-## Main Features
 
-- ⏰ **Work Time Tracking:** Users can enter start time, end time, and break time (manually or using a timer).
-- 📍 **Location Selection:** Users can select whether they are working in the office, from home, or on a business trip.
-- ✏️ **Add Descriptions:** Options like vacation, holiday, and sickness are available.
-- 📊 **Statistics:** Displays work time statistics for the current month and year on the dashboard.
-- 📋 **Work Time Overview:** A detailed table of all work times entered by the user.
-- 🧮 **Automatic Calculation** of workdays in the current month, including **holidays**.
-- 📅 **Calendar View** for a better overview of all work times.
-- 🔑 **Login and Logout/ Registration**
-- ⚙️ **Admin Area**
 
 ## Dependencies and Resources
 
