@@ -3,6 +3,8 @@ include 'config.php';
 session_start();
 
 $user_id = $_SESSION['user_id'];
+$lang = $_SESSION['lang'] ?? 'de';
+require_once "languages/$lang.php";
 
 // Update request handler
 if (isset($_POST["update"]) && $_POST["update"] == true) {

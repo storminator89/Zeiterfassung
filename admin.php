@@ -2,7 +2,11 @@
 session_start();
 include 'config.php';
 
-// Check if the user is logged in and is an admin
+// Sprachdateien laden
+$lang = $_SESSION['lang'] ?? 'de';
+require_once "languages/$lang.php";
+
+// Überprüfen, ob der Benutzer eingeloggt und ein Admin ist
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: login.php");
     exit();
@@ -43,7 +47,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['generate_token'])) {
         'iss' => "localhost",
         'aud' => "localhost",
         'iat' => time(),
-        'exp' => time() + (365 * 24 * 60 * 60), // 1 year expiration
+        'exp' => time() + (365 * 24 * 60 * 60), // 1 Jahr Ablaufzeit
         'user_id' => $_SESSION['user_id']
     ];
 
@@ -53,13 +57,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['generate_token'])) {
     try {
         $stmt = $conn->prepare("UPDATE users SET token = ? WHERE id = ?");
         $stmt->execute([$token, $_SESSION['user_id']]);
-        $successMessage = "Token erfolgreich generiert und gespeichert!";
+        $successMessage = TOKEN_GENERATED_SUCCESS;
     } catch (PDOException $e) {
-        $error = "Fehler beim Speichern des Tokens: " . $e->getMessage();
+        $error = TOKEN_GENERATED_ERROR . $e->getMessage();
     }
 }
 
-// Retrieve the current user from the database
+// Aktuellen Benutzer aus der Datenbank abrufen
 $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
 $stmt->execute([$_SESSION['user_id']]);
 $currentUser = $stmt->fetch(PDO::FETCH_OBJ);
@@ -71,20 +75,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
     $email = $_POST['email'];
     $role = $_POST['role'];
 
-    // Validate the inputs
+    // Eingaben validieren
     if (empty($username) || empty($password) || empty($email) || empty($role)) {
-        $error = "Alle Felder sind erforderlich!";
+        $error = ERROR_ALL_FIELDS_REQUIRED;
     } else {
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
         try {
-            // Prepare and execute the statement to insert the new user
+            // Statement vorbereiten und ausführen, um den neuen Benutzer einzufügen
             $stmt = $conn->prepare("INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)");
             $stmt->execute([$username, $hashedPassword, $email, $role]);
 
-            $successMessage = "Benutzer erfolgreich erstellt!";
+            $successMessage = USER_CREATED_SUCCESS;
         } catch (PDOException $e) {
-            $error = "Fehler beim Erstellen des Benutzers: " . $e->getMessage();
+            $error = USER_CREATED_ERROR . $e->getMessage();
         }
     }
 }
@@ -94,13 +98,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_user'])) {
     $user_id = $_POST['user_id'];
 
     try {
-        // Prepare and execute the statement to delete the user
+        // Statement vorbereiten und ausführen, um den Benutzer zu löschen
         $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
         $stmt->execute([$user_id]);
 
-        $successMessage = "Benutzer erfolgreich gelöscht!";
+        $successMessage = USER_DELETED_SUCCESS;
     } catch (PDOException $e) {
-        $error = "Fehler beim Löschen des Benutzers: " . $e->getMessage();
+        $error = USER_DELETED_ERROR . $e->getMessage();
     }
 }
 
@@ -122,26 +126,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_user'])) {
             $stmt->execute([$username, $email, $role, $user_id]);
         }
 
-        $successMessage = "Benutzer erfolgreich aktualisiert!";
+        $successMessage = USER_UPDATED_SUCCESS;
     } catch (PDOException $e) {
-        $error = "Fehler beim Aktualisieren des Benutzers: " . $e->getMessage();
+        $error = USER_UPDATED_ERROR . $e->getMessage();
     }
 }
 
-// Retrieve all users from the database
+// Alle Benutzer aus der Datenbank abrufen
 $stmt = $conn->prepare("SELECT * FROM users");
 $stmt->execute();
 $users = $stmt->fetchAll(PDO::FETCH_OBJ);
 ?>
 
 <!DOCTYPE html>
-<html lang="de">
+<html lang="<?= $lang ?>">
 
 <head>
     <!-- Meta tags and title -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Adminbereich - Benutzerverwaltung</title>
+    <title><?= ADMIN_PAGE_TITLE ?></title>
     <!-- Favicon and external stylesheets -->
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -164,10 +168,10 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item active">
-                    <a class="nav-link" href="index.php"><i class="fas fa-home mr-1"></i> Home</a>
+                    <a class="nav-link" href="index.php"><i class="fas fa-home mr-1"></i> <?= NAV_HOME ?></a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="dashboard.php"><i class="fas fa-tachometer-alt mr-1"></i> Dashboard</a>
+                    <a class="nav-link" href="dashboard.php"><i class="fas fa-tachometer-alt mr-1"></i> <?= NAV_DASHBOARD ?></a>
                 </li>
             </ul>
             <ul class="navbar-nav ms-auto">
@@ -176,13 +180,13 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                         <i class="fas fa-cog"></i>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="settingsDropdown">
-                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#settingsModal"><i class="fas fa-cog mr-1"></i> Einstellungen</a></li>
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#settingsModal"><i class="fas fa-cog mr-1"></i> <?= NAV_SETTINGS ?></a></li>
                         <?php if ($user_role === 'admin') : ?>
-                            <li><a class="dropdown-item" href="admin.php"><i class="fas fa-user-shield mr-1"></i> Admin</a></li>
+                            <li><a class="dropdown-item" href="admin.php"><i class="fas fa-user-shield mr-1"></i> <?= NAV_ADMIN ?></a></li>
                         <?php endif; ?>
-                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-info-circle mr-1"></i> About</a></li>
-                        <li><a class="dropdown-item" href="logout.php"><i class="fas fa-sign-out-alt mr-1"></i> Logout</a></li>
-                        <li><button class="dropdown-item" onclick="toggleDarkMode()"><i class="fas fa-moon mr-1"></i> Dark Mode</button></li>
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-info-circle mr-1"></i> <?= NAV_ABOUT ?></a></li>
+                        <li><a class="dropdown-item" href="logout.php"><i class="fas fa-sign-out-alt mr-1"></i> <?= NAV_LOGOUT ?></a></li>
+                        <li><button class="dropdown-item" onclick="toggleDarkMode()"><i class="fas fa-moon mr-1"></i> <?= NAV_DARK_MODE ?></button></li>
                     </ul>
                 </li>
             </ul>
@@ -190,46 +194,46 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
     </nav>
     <!-- Main content -->
     <div class="container mt-5 p-5">
-        <h2>Benutzerverwaltung</h2>
+        <h2><?= USER_MANAGEMENT_TITLE ?></h2>
         <form method="post" class="mt-4">
             <input type="hidden" name="add_user" value="1">
             <div class="mb-3 input-group">
                 <span class="input-group-text"><i class="fas fa-user"></i></span>
-                <input type="text" class="form-control" id="username" name="username" placeholder="Benutzername" required>
+                <input type="text" class="form-control" id="username" name="username" placeholder="<?= FORM_USERNAME ?>" required>
             </div>
             <div class="mb-3 input-group">
                 <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                <input type="password" class="form-control" id="password" name="password" placeholder="Passwort" required>
+                <input type="password" class="form-control" id="password" name="password" placeholder="<?= FORM_PASSWORD ?>" required>
             </div>
             <div class="mb-3 input-group">
                 <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                <input type="email" class="form-control" id="email" name="email" placeholder="E-Mail" required>
+                <input type="email" class="form-control" id="email" name="email" placeholder="<?= FORM_EMAIL ?>" required>
             </div>
             <div class="mb-3 input-group">
                 <span class="input-group-text"><i class="fas fa-user-tag"></i></span>
                 <select class="form-control" id="role" name="role" required>
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
+                    <option value="user"><?= FORM_ROLE_USER ?></option>
+                    <option value="admin"><?= FORM_ROLE_ADMIN ?></option>
                 </select>
             </div>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus mr-1"></i> Benutzer erstellen</button>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus mr-1"></i> <?= BUTTON_CREATE_USER ?></button>
         </form>
 
         <!-- Search Bar -->
         <div class="mt-5 mb-3">
-            <input type="text" id="searchInput" class="form-control" placeholder="Benutzer suchen...">
+            <input type="text" id="searchInput" class="form-control" placeholder="<?= FORM_SEARCH_USER ?>">
         </div>
 
         <!-- Users table -->
-        <h2 class="mt-3">Bestehende Benutzer</h2>
+        <h2 class="mt-3"><?= EXISTING_USERS_TITLE ?></h2>
         <table class="table table-striped mt-3" id="usersTable">
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>Benutzername</th>
-                    <th>E-Mail</th>
-                    <th>Rolle</th>
-                    <th>Aktionen</th>
+                    <th><?= TABLE_HEADER_ID ?></th>
+                    <th><?= TABLE_HEADER_USERNAME ?></th>
+                    <th><?= TABLE_HEADER_EMAIL ?></th>
+                    <th><?= TABLE_HEADER_ROLE ?></th>
+                    <th><?= TABLE_HEADER_ACTIONS ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -240,11 +244,11 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                         <td><?= htmlspecialchars($user->email) ?></td>
                         <td><?= htmlspecialchars($user->role) ?></td>
                         <td>
-                            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editUserModal" data-userid="<?= $user->id ?>" data-username="<?= htmlspecialchars($user->username) ?>" data-email="<?= htmlspecialchars($user->email) ?>" data-role="<?= htmlspecialchars($user->role) ?>"><i class="fas fa-edit mr-1"></i> Bearbeiten</button>
+                            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editUserModal" data-userid="<?= $user->id ?>" data-username="<?= htmlspecialchars($user->username) ?>" data-email="<?= htmlspecialchars($user->email) ?>" data-role="<?= htmlspecialchars($user->role) ?>"><i class="fas fa-edit mr-1"></i> <?= BUTTON_EDIT ?></button>
                             <form method="post" class="d-inline">
                                 <input type="hidden" name="delete_user" value="1">
                                 <input type="hidden" name="user_id" value="<?= $user->id ?>">
-                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Möchten Sie diesen Benutzer wirklich löschen?')"><i class="fas fa-trash-alt mr-1"></i> Löschen</button>
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('<?= CONFIRM_DELETE_USER ?>')"><i class="fas fa-trash-alt mr-1"></i> <?= BUTTON_DELETE ?></button>
                             </form>
                         </td>
                     </tr>
@@ -252,7 +256,7 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
             </tbody>
         </table>
 
-        <h2>API - Zugriff</h2>
+        <h2><?= API_ACCESS_TITLE ?></h2>
 
         <!-- Generate Token Form and Display -->
         <div class="mt-4">
@@ -260,10 +264,10 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                 <input type="password" class="form-control" id="tokenField" value="<?= htmlspecialchars($currentUser->token ?? '') ?>" readonly>
                 <button class="btn btn-outline-secondary" type="button" id="toggleToken"><i class="fas fa-eye"></i></button>
                 <input type="hidden" name="generate_token" value="1">
-                <button type="submit" class="btn btn-success"><i class="fas fa-key mr-1"></i> Token generieren</button>
+                <button type="submit" class="btn btn-success"><i class="fas fa-key mr-1"></i> <?= BUTTON_GENERATE_TOKEN ?></button>
             </form>
             <div class="mt-3">
-                <a href="apidoc.html" target="_blank" class="btn btn-primary"><i class="fas fa-book"></i> API Dokumentation</a>
+                <a href="apidoc.html" target="_blank" class="btn btn-primary"><i class="fas fa-book"></i> <?= BUTTON_API_DOC ?></a>
             </div>
         </div>
 
@@ -274,14 +278,14 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="successModalLabel">Erfolg</h5>
+                    <h5 class="modal-title" id="successModalLabel"><?= MODAL_TITLE_SUCCESS ?></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <?= $successMessage ?>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= MODAL_BUTTON_CLOSE ?></button>
                 </div>
             </div>
         </div>
@@ -292,14 +296,14 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="errorModalLabel">Fehler</h5>
+                    <h5 class="modal-title" id="errorModalLabel"><?= MODAL_TITLE_ERROR ?></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <?= $error ?>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= MODAL_BUTTON_CLOSE ?></button>
                 </div>
             </div>
         </div>
@@ -311,7 +315,7 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
             <div class="modal-content">
                 <form method="post">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="editUserModalLabel">Benutzer bearbeiten</h5>
+                        <h5 class="modal-title" id="editUserModalLabel"><?= MODAL_TITLE_EDIT_USER ?></h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -328,18 +332,18 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                         <div class="mb-3 input-group">
                             <span class="input-group-text"><i class="fas fa-user-tag"></i></span>
                             <select class="form-control" id="edit_role" name="role" required>
-                                <option value="user">User</option>
-                                <option value="admin">Admin</option>
+                                <option value="user"><?= FORM_ROLE_USER ?></option>
+                                <option value="admin"><?= FORM_ROLE_ADMIN ?></option>
                             </select>
                         </div>
                         <div class="mb-3 input-group">
                             <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                            <input type="password" class="form-control" id="edit_password" name="password" placeholder="Neues Passwort (optional)">
+                            <input type="password" class="form-control" id="edit_password" name="password" placeholder="<?= FORM_NEW_PASSWORD ?>">
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
-                        <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Änderungen speichern</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= MODAL_BUTTON_CLOSE ?></button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i> <?= BUTTON_SAVE_CHANGES ?></button>
                     </div>
                 </form>
             </div>
@@ -349,7 +353,7 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
     <!-- Footer -->
     <footer class="footer mt-auto py-3">
         <div class="container">
-            <span class="text-muted">© 2024 Quodara Chrono - Zeiterfassung</span>
+            <span class="text-muted"><?= FOOTER_TEXT ?></span>
         </div>
     </footer>
 
@@ -380,7 +384,7 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                 modal.find('#edit_role').val(role);
             });
 
-            // Search function
+            // Suchfunktion
             $("#searchInput").on("keyup", function() {
                 var value = $(this).val().toLowerCase();
                 $("#usersTable tbody tr").filter(function() {

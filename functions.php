@@ -35,26 +35,26 @@ try {
     die("Datenbankfehler: " . $e->getMessage());
 }
 
-$germanMonths = [
-    "01" => "Januar",
-    "02" => "Februar",
-    "03" => "März",
-    "04" => "April",
-    "05" => "Mai",
-    "06" => "Juni",
-    "07" => "Juli",
-    "08" => "August",
-    "09" => "September",
-    "10" => "Oktober",
-    "11" => "November",
-    "12" => "Dezember"
+$months = [
+    "01" => MONTH_JANUARY,
+    "02" => MONTH_FEBRUARY,
+    "03" => MONTH_MARCH,
+    "04" => MONTH_APRIL,
+    "05" => MONTH_MAY,
+    "06" => MONTH_JUNE,
+    "07" => MONTH_JULY,
+    "08" => MONTH_AUGUST,
+    "09" => MONTH_SEPTEMBER,
+    "10" => MONTH_OCTOBER,
+    "11" => MONTH_NOVEMBER,
+    "12" => MONTH_DECEMBER
 ];
 
 // Getting current date details
 $currentWeekNumber = date("W");
 $currentYear = date("Y");
 $currentMonth = date("m");
-$currentMonthName = $germanMonths[$currentMonth];
+$currentMonthName = $months[$currentMonth];
 
 // Calculate total worked minutes this week excluding breaks
 try {

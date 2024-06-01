@@ -58,6 +58,10 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
         var totalHoursThisWeek = <?= $totalHoursThisWeek ?>;
         var days = <?= json_encode($days) ?>;
         var hours = <?= json_encode($hours) ?>;
+        var BUTTON_PAUSE_START = "<?= BUTTON_PAUSE_START ?>";
+        var BUTTON_PAUSE_RESUME = "<?= BUTTON_PAUSE_RESUME ?>";
+        var BUTTON_PAUSE_END = "<?= BUTTON_PAUSE_END ?>";
+        var currentLang = "<?= $lang ?>";
     </script>
     <script src="./assets/js/main.js"></script>
 </head>
@@ -96,9 +100,9 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                         <?php if ($user_role === 'admin') : ?>
                             <li><a class="dropdown-item" href="admin.php"><i class="fas fa-user-shield mr-1"></i> Admin</a></li>
                         <?php endif; ?>
+                        <li><button class="dropdown-item" onclick="toggleDarkMode()"><i class="fas fa-moon mr-1"></i> <?= NAV_DARK_MODE ?></button></li>
                         <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-info-circle mr-1"></i> <?= NAV_ABOUT ?></a></li>
                         <li><a class="dropdown-item" href="logout.php"><i class="fas fa-sign-out-alt mr-1"></i> <?= NAV_LOGOUT ?></a></li>
-                        <li><button class="dropdown-item" onclick="toggleDarkMode()"><i class="fas fa-moon mr-1"></i> <?= NAV_DARK_MODE ?></button></li>
                     </ul>
                 </li>
             </ul>
@@ -155,7 +159,9 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                                 <label for="pauseDisplay"><i class="fas fa-clock mr-2"></i> <?= FORM_BREAK_MINUTES ?></label>
                                 <input type="text" id="pauseDisplay" class="form-control" placeholder="MM:SS" readonly>
                                 <input type="hidden" id="pauseInput" name="pause">
-                                <button id="pauseButton" type="button" class="btn btn-secondary mt-2"><i class="fas fa-pause-circle mr-1"></i> <?= FORM_START_BREAK ?></button>
+                                <button id="pauseButton" type="button" class="btn btn-secondary mt-2">
+                                    <i class="fas fa-pause-circle mr-1"></i> <?= BUTTON_PAUSE_START ?>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -167,9 +173,9 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                                 <label for="standort"><i class="fas fa-map-marker-alt mr-2"></i> <?= FORM_LOCATION ?></label>
                                 <select name="standort" class="form-control" required>
                                     <option value="">-</option>
-                                    <option value="Büro">Büro</option>
-                                    <option value="Home Office">Home Office</option>
-                                    <option value="Dienstreise">Dienstreise</option>
+                                    <option value="<?= LOCATION_OFFICE_VALUE ?>"><?= LOCATION_OFFICE ?></option>
+                                    <option value="<?= LOCATION_HOME_OFFICE_VALUE ?>"><?= LOCATION_HOME_OFFICE ?></option>
+                                    <option value="<?= LOCATION_BUSINESS_TRIP_VALUE ?>"><?= LOCATION_BUSINESS_TRIP ?></option>
                                 </select>
                             </div>
                         </div>
@@ -192,11 +198,11 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                                     </div>
                                     <div class="form-check form-check-inline">
                                         <input type="radio" id="feiertag" name="ereignistyp" value="Feiertag" class="form-check-input">
-                                        <label class="form-check-label" for="feiertag"><i class="fas fa-gift mr-2"></i> <?= EVENT_HOLIDAY ?></label>
+                                        <label class="form-check-label" for="feiertag"><i class="fas fa-calendar-day mr-2"></i> <?= EVENT_HOLIDAY ?></label>
                                     </div>
                                     <div class="form-check form-check-inline">
                                         <input type="radio" id="krank" name="ereignistyp" value="Krank" class="form-check-input">
-                                        <label class="form-check-label" for="krank"><i class="fas fa-bed mr-2"></i> <?= EVENT_SICK ?></label>
+                                        <label class="form-check-label" for="krank"><i class="fas fa-stethoscope mr-2"></i> <?= EVENT_SICK ?></label>
                                     </div>
                                 </div>
                             </div>
@@ -287,7 +293,11 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                             <div class="rtd-infobox-content">
                                 <ul>
                                     <?php foreach ($feiertageDieseWoche as $feiertag) : ?>
-                                        <li><?= getGermanDayName($feiertag['datum']) ?>, <?= date("d.m.Y", strtotime($feiertag['datum'])) ?> - <?= $feiertag['name'] ?></li>
+                                        <?php if ($lang === 'de') : ?>
+                                            <li><?= getGermanDayName($feiertag['datum']) ?>, <?= date("d.m.Y", strtotime($feiertag['datum'])) ?> - <?= $feiertag['name'] ?></li>
+                                        <?php else : ?>
+                                            <li><?= date("l, d/m/Y", strtotime($feiertag['datum'])) ?> - <?= $feiertag['name'] ?></li>
+                                        <?php endif; ?>
                                     <?php endforeach; ?>
                                 </ul>
                             </div>
@@ -297,7 +307,7 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
             </div>
         </div>
 
-        <h3 class="mt-4"><i class="fas fa-business-time mr-2"></i> <?= STATISTICS_WORKING_TIMES ?></h3>
+        <h3 class="mt-4"><i class="fas fa-clock mr-2"></i> <?= ACTUAL_WORKED_TIMES ?></h3>
         <table class="table">
             <thead>
                 <tr>
@@ -328,14 +338,14 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                     $gesamtMinuten = ($interval->h * 60 + $interval->i) - $pauseMinuten;
                     $stunden = floor($gesamtMinuten / 60);
                     $minuten = $gesamtMinuten % 60;
-                    $dauer = "{$stunden} Stunden {$minuten} Minuten";
+                    $dauer = "{$stunden} " . LABEL_HOURS . " {$minuten} " . LABEL_MINUTES;
                 ?>
                     <tr>
                         <td><input type="checkbox" class="selectRow" data-id="<?= $record['id'] ?>"></td>
                         <td><?= $record['id'] ?></td>
                         <td><?= $record['weekNumber'] ?></td>
-                        <td><?= date("d.m.Y H:i:s", strtotime($record['startzeit'])) ?></td>
-                        <td><?= $record['endzeit'] ? date("d.m.Y H:i:s", strtotime($record['endzeit'])) : '-' ?></td>
+                        <td><?= date($lang === 'de' ? "d.m.Y H:i:s" : "d/m/Y H:i:s", strtotime($record['startzeit'])) ?></td>
+                        <td><?= $record['endzeit'] ? date($lang === 'de' ? "d.m.Y H:i:s" : "d/m/Y H:i:s", strtotime($record['endzeit'])) : '-' ?></td>
                         <td><?= $dauer ?></td>
                         <td><?= $record['pause'] ?></td>
                         <td><?= $record['standort'] ?></td>
@@ -345,20 +355,20 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
             </tbody>
         </table>
 
-        <button type="button" id="deleteSelected" class="btn btn-danger"><?= BUTTON_DELETE_SELECTED ?></button>
+        <button type="button" id="deleteSelected" class="btn btn-danger mb-4"><?= BUTTON_DELETE_SELECTED ?></button>
 
         <div class="row">
             <div class="col-4">
                 <h3 class="main-title">
-                    <i class="fas fa-chevron-down mr-2"></i> Feiertage
+                    <i class="fas fa-chevron-down mr-2"></i> <?= HOLIDAYS ?>
                 </h3>
                 <div class="toggle-content">
                     <table class="details-table">
                         <thead>
                             <tr>
-                                <th>Datum</th>
-                                <th>Tag</th>
-                                <th>Name</th>
+                                <th><?= TABLE_HEADER_DATE ?></th>
+                                <th><?= TABLE_HEADER_DAY ?></th>
+                                <th><?= TABLE_HEADER_NAME ?></th>
                             </tr>
                         </thead>
                         <tbody>

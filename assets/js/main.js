@@ -208,7 +208,7 @@ $(function () {
         {
             extend: 'copyHtml5',
             exportOptions,
-            text: '<i class="fas fa-copy"></i> Kopieren'
+            text: '<i class="fas fa-copy"></i> Copy'
         },
         {
             extend: 'excelHtml5',
@@ -253,7 +253,16 @@ $(function () {
         localStorage.setItem("firstWeekNotified", "true");
     }
 
-    $.fn.dataTable.moment('DD.MM.YYYY HH:mm:ss');
+    if (currentLang === 'de') {
+        $.fn.dataTable.moment('DD.MM.YYYY HH:mm:ss');
+    } else if (currentLang === 'en') {
+        $.fn.dataTable.moment('DD/MM/YYYY HH:mm:ss');
+    }
+
+    // Set the language URL based on the current language
+    let languageUrl = (currentLang === 'de') ?
+        "https://cdn.datatables.net/plug-ins/1.13.6/i18n/de-DE.json" :
+        "https://cdn.datatables.net/plug-ins/1.13.6/i18n/en-GB.json";
 
     // Initialize the DataTable
     let table = $('.table').DataTable({
@@ -263,11 +272,12 @@ $(function () {
             { className: "text-center", "targets": [0, 1, 5] }
         ],
         language: {
-            url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/de-DE.json"
+            url: languageUrl
         },
         order: [[3, 'desc']],
         paging: true
     });
+
 
     $('.table tbody').on('mouseenter', 'td', function () {
         let $cell = $(this);
@@ -315,17 +325,17 @@ $(function () {
         let cell = $input.closest('table').DataTable().cell($input.parent());
         let col = cell.index().column;
         let newVal = $input.val();
-    
+
         // Attempt to get the ID from the row's data attribute or a hidden input field
         let row = $input.closest('tr');
         let id = row.data('id') || row.find('input[name="id"]').val() || row.find('td:eq(1)').text().trim();
-    
+
         let columnName = $input.closest('table').find('th').eq(col).data('name');
-    
+
         console.log("Updating row with ID:", id, "Column:", columnName, "New Value:", newVal); // Logging for debugging
-    
+
         cell.data(newVal).draw();
-    
+
         $.post('save.php', {
             update: true,
             id: id,
@@ -337,7 +347,7 @@ $(function () {
             alert('Error updating the data');
         });
     });
-    
+
 
     // Keypress event handler for table cells
     $('.table tbody').on('keypress', 'td input', function (e) {
@@ -346,17 +356,17 @@ $(function () {
             let cell = $input.closest('table').DataTable().cell($input.parent());
             let col = cell.index().column;
             let newVal = $input.val();
-    
+
             // Attempt to get the ID from the row's data attribute or a hidden input field
             let row = $input.closest('tr');
             let id = row.data('id') || row.find('input[name="id"]').val() || row.find('td:eq(1)').text().trim();
-    
+
             let columnName = $input.closest('table').find('th').eq(col).data('name');
-    
+
             console.log("Updating row with ID:", id, "Column:", columnName, "New Value:", newVal); // Logging for debugging
-    
+
             cell.data(newVal).draw();
-    
+
             $.post('save.php', {
                 update: true,
                 id: id,
@@ -367,7 +377,7 @@ $(function () {
             }).fail(function () {
                 alert('Error updating the data');
             });
-    
+
             e.preventDefault();
         }
     });
@@ -465,18 +475,18 @@ $(function () {
 
     if (startTime) {
         interval = setInterval(updatePause, 1000);
-        pauseBtn.text('Pause beenden');
+        pauseBtn.text(BUTTON_PAUSE_END);
     } else if (elapsedPause > 0) {
-        pauseBtn.text('Pause fortsetzen');
+        pauseBtn.text(BUTTON_PAUSE_RESUME);
     } else {
-        pauseBtn.text('Pause starten');
+        pauseBtn.text(BUTTON_PAUSE_START);
     }
 
     pauseBtn.click(function () {
         if (isPaused) {
             startTime = Date.now();
             localStorage.setItem('startTime', startTime);
-            pauseBtn.text('Pause beenden');
+            pauseBtn.text(BUTTON_PAUSE_END);
             interval = setInterval(updatePause, 1000);
             isPaused = false;
         } else {
@@ -492,7 +502,7 @@ $(function () {
             localStorage.removeItem('startTime');
             startTime = null;
 
-            pauseBtn.text('Pause starten');
+            pauseBtn.text(BUTTON_PAUSE_START);
             isPaused = true;
         }
     });
@@ -587,9 +597,9 @@ if (window.location.pathname.includes('dashboard.php')) {
                 data,
                 options
             });
-        } 
+        }
 
-        
+
 
         let weeklyData = {
             labels: ['Diese Woche'],
@@ -634,7 +644,7 @@ if (window.location.pathname.includes('dashboard.php')) {
             }
         };
 
-        let weeklyChart = createChart('weeklyHoursChart', 'bar', weeklyData, weeklyOptions);        
+        let weeklyChart = createChart('weeklyHoursChart', 'bar', weeklyData, weeklyOptions);
 
         let monthlyData = {
             labels: ['Dieser Monat'],
@@ -743,43 +753,43 @@ if (window.location.pathname.includes('dashboard.php')) {
                 }
             }
         });
-        
+
         calendar.createSchedules(allEvents);
-        
+
         document.getElementById('prevMonthBtn').addEventListener('click', function () {
             calendar.prev();
         });
-        
+
         document.getElementById('nextMonthBtn').addEventListener('click', function () {
             calendar.next();
         });
-        
+
         document.getElementById('todayBtn').addEventListener('click', function () {
             calendar.today();
         });
-        
+
         function formatDate(date) {
             let day = ("0" + date.getDate()).slice(-2);
             let month = ("0" + (date.getMonth() + 1)).slice(-2);
             let year = date.getFullYear();
             return day + "." + month + "." + year;
         }
-        
+
         let scheduleModal = new bootstrap.Modal(document.getElementById('scheduleModal'));
-        
+
         calendar.on('clickSchedule', function (event) {
             let schedule = event.schedule;
-        
+
             const validTitles = ['Arbeit', 'Urlaub'];
             if (validTitles.includes(schedule.title)) {
                 let startDate = new Date(schedule.start);
                 let endDate = new Date(schedule.end);
-        
+
                 document.getElementById('startTime').textContent = formatDate(startDate) + " " + startDate.toLocaleTimeString();
                 document.getElementById('endTime').textContent = formatDate(endDate) + " " + endDate.toLocaleTimeString();
-        
+
                 scheduleModal.show();
             }
-        });        
+        });
     });
 }

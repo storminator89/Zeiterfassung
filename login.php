@@ -2,6 +2,23 @@
 session_start();
 include 'config.php';
 
+// Supported languages
+$supported_languages = ['de', 'en'];
+
+// Detect browser language if not set
+if (!isset($_SESSION['lang'])) {
+    $lang = substr($_SERVER['HTTP_ACCEPT_LANGUAGE'], 0, 2);
+    $_SESSION['lang'] = in_array($lang, $supported_languages) ? $lang : 'de';
+}
+
+// Allow manual language change
+if (isset($_GET['lang'])) {
+    $_SESSION['lang'] = in_array($_GET['lang'], $supported_languages) ? $_GET['lang'] : $_SESSION['lang'];
+}
+
+$lang = $_SESSION['lang'];
+require_once "languages/$lang.php";
+
 $error = '';
 $successMessage = '';
 
@@ -12,7 +29,7 @@ if (empty($_SESSION['csrf_token'])) {
 
 if (isset($_GET['error'])) {
     if ($_GET['error'] == 'existinguser') {
-        $error = "Registrierung ist nicht möglich, da bereits ein Nutzer existiert.";
+        $error = ERROR_EXISTING_USER;
     } else {
         $error = htmlspecialchars($_GET['error']);
     }
@@ -25,7 +42,7 @@ if (isset($_GET['success'])) {
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // CSRF Token validation
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        $error = "Ungültiges CSRF-Token.";
+        $error = ERROR_INVALID_CSRF;
     } else {
         $username = trim($_POST['username']);
         $password = trim($_POST['password']);
@@ -47,10 +64,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 header("Location: index.php");
                 exit();
             } else {
-                $error = "Benutzername oder Passwort falsch!";
+                $error = ERROR_INVALID_CREDENTIALS;
             }
         } else {
-            $error = "Bitte alle Felder ausfüllen!";
+            $error = ERROR_ALL_FIELDS_REQUIRED;
         }
     }
 }
@@ -63,13 +80,13 @@ $totalUsers = $stmt->fetch(PDO::FETCH_OBJ)->count;
 ?>
 
 <!DOCTYPE html>
-<html lang="de">
+<html lang="<?= $lang ?>">
 
 <head>
     <!-- Meta tags and title -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Quodara Chrono</title>
+    <title><?= LOGIN_TITLE ?></title>
 
     <!-- Favicon and external stylesheets -->
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
@@ -88,25 +105,38 @@ $totalUsers = $stmt->fetch(PDO::FETCH_OBJ)->count;
         <a class="navbar-brand" href="#">
             <img class="pl-3" src="assets/kolibri_icon_weiß.png" alt="Time Tracking" height="50">
         </a>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <!-- Additional nav items can be added here -->
+            </ul>
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="?lang=de">DE</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="?lang=en">EN</a>
+                </li>
+            </ul>
+        </div>
     </nav>
 
     <!-- Main content -->
     <div class="container mt-5 p-5">
-        <h2>Login</h2>
+        <h2><?= LOGIN_PAGE_TITLE ?></h2>
         <form method="post" class="mt-4">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
             <div class="mb-3">
-                <label for="username" class="form-label">Benutzername</label>
+                <label for="username" class="form-label"><?= USERNAME_LABEL ?></label>
                 <input type="text" class="form-control" id="username" name="username" required>
             </div>
             <div class="mb-3">
-                <label for="password" class="form-label">Passwort</label>
+                <label for="password" class="form-label"><?= PASSWORD_LABEL ?></label>
                 <input type="password" class="form-control" id="password" name="password" required>
             </div>
-            <button type="submit" class="btn btn-primary">Login</button>
+            <button type="submit" class="btn btn-primary"><?= LOGIN_BUTTON ?></button>
         </form>
         <?php if ($totalUsers == 0): ?>
-            <a href="register.php" class="btn btn-secondary mt-3">Registrieren</a>
+            <a href="register.php" class="btn btn-secondary mt-3"><?= REGISTER_BUTTON ?></a>
         <?php endif; ?>
     </div>
 
@@ -115,14 +145,14 @@ $totalUsers = $stmt->fetch(PDO::FETCH_OBJ)->count;
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="successModalLabel">Erfolg</h5>
+                    <h5 class="modal-title" id="successModalLabel"><?= SUCCESS_MODAL_TITLE ?></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <?= $successMessage ?>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= BUTTON_CLOSE ?></button>
                 </div>
             </div>
         </div>
@@ -133,14 +163,14 @@ $totalUsers = $stmt->fetch(PDO::FETCH_OBJ)->count;
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="errorModalLabel">Fehler</h5>
+                    <h5 class="modal-title" id="errorModalLabel"><?= ERROR_MODAL_TITLE ?></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <?= $error ?>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= BUTTON_CLOSE ?></button>
                 </div>
             </div>
         </div>
@@ -149,7 +179,7 @@ $totalUsers = $stmt->fetch(PDO::FETCH_OBJ)->count;
     <!-- Footer -->
     <footer class="footer mt-auto py-3">
         <div class="container">
-            <span class="text-muted">© 2023 Quodara Chrono - Zeiterfassung</span>
+            <span class="text-muted"><?= FOOTER_TEXT ?></span>
         </div>
     </footer>
 
