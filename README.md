@@ -4,8 +4,6 @@ This tool assists you in tracking your working hours.
 
 ## Main Features
 
-## Main Features
-
 ⏰ **Work Time Tracking:** Users can enter start time, end time, and break time (manually or using a timer). This allows for precise tracking of working hours and breaks.
 
 📍 **Location Selection:** Users can select whether they are working in the office, from home, or on a business trip. This helps document and analyze the work environment.
