@@ -1,35 +1,55 @@
 <!DOCTYPE html>
 <html>
-    <meta charset="UTF-8">
 <head>
+    <meta charset="UTF-8">
     <title>Zeiterfassung</title>
+    <link rel="stylesheet" href="bootstrap.min.css">
     <link rel="stylesheet" type="text/css" href="popup.css">
 </head>
-<body>
-    <h1>Zeiterfassungs-Plugin</h1>
-    <div id="settingsContainer">
-        <input type="text" id="apiUrl" placeholder="API URL eingeben">
-        <button id="saveUrlButton">Speichern</button>        
+<body class="container">
+    <h1 class="text-center my-4">Quodara Chrono - Zeiterfassung</h1>
+    <div class="tab-content">
+        <div id="loginTab" class="tab-pane fade show active">
+            <div id="settingsContainer" class="form-group">
+                <input type="text" id="apiUrl" class="form-control" placeholder="API URL eingeben">
+                <button id="saveUrlButton" class="btn btn-success btn-block mt-2">Speichern</button>        
+            </div>
+            <div id="loginContainer" class="form-group">
+                <input type="text" id="username" class="form-control" placeholder="Benutzername">
+                <input type="password" id="password" class="form-control mt-2" placeholder="Passwort">
+                <button id="loginButton" class="btn btn-success btn-block mt-2">Login</button>
+            </div>
+        </div>
+        <div id="zeitbuchungTab" class="tab-pane fade">
+            <div id="standortContainer" class="form-group">
+                <select id="standort" class="form-control">
+                    <option value="">-</option>
+                    <option value="Büro">Büro</option>
+                    <option value="Home Office">Home Office</option>
+                    <option value="Dienstreise">Dienstreise</option>
+                </select>
+            </div>
+            <div id="beschreibungContainer" class="form-group">
+                <input type="text" id="beschreibung" class="form-control" placeholder="Beschreibung eingeben">
+            </div>
+            <div id="buttonContainer" class="form-group">
+                <button id="kommButton" class="btn btn-primary btn-block">Kommen</button>
+                <button id="gehenButton" class="btn btn-primary btn-block mt-2">Gehen</button>
+            </div>
+            <div id="response" class="mt-3 table-responsive"></div>
+        </div>
     </div>
-    <div id="standortContainer">
-        <select id="standort" class="form-control">
-            <option value="">-</option>
-            <option value="Büro">Büro</option>
-            <option value="Home Office">Home Office</option>
-            <option value="Dienstreise">Dienstreise</option>
-        </select>
-    </div>
-    <div id="pauseContainer">
-        <input type="text" id="pause" placeholder="Pause in Minuten">
-        <button id="startPauseButton">Pause Starten</button>
-        <button id="stopPauseButton">Pause Stoppen</button>
-    </div>
-    
-    <div id="buttonContainer">
-        <button id="kommButton">Kommen</button>
-        <button id="gehenButton">Gehen</button>
-    </div>
-    <div id="response"></div>
+    <ul class="nav nav-tabs fixed-bottom justify-content-center">
+        <li class="nav-item">
+            <a class="nav-link active" data-toggle="tab" href="#loginTab">Login</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-toggle="tab" href="#zeitbuchungTab">Zeitbuchung</a>
+        </li>
+    </ul>
+    <script src="jquery-3.5.1.slim.min.js"></script>
+    <script src="popper.min.js"></script>
+    <script src="bootstrap.min.js"></script>
     <script src="popup.js"></script>
 </body>
 </html>

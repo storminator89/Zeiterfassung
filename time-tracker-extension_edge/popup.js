@@ -1,5 +1,4 @@
-let pauseTimer = null;
-let pauseSeconds = 0;
+let authToken = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     const savedUrl = localStorage.getItem('apiUrl');
@@ -9,27 +8,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const currentDate = new Date().toDateString();
     const lastAccessDate = localStorage.getItem('lastAccessDate');
 
-    if (lastAccessDate !== currentDate) {       
+    if (lastAccessDate !== currentDate) {
         localStorage.removeItem('latestEntryId');
     }
 
     localStorage.setItem('lastAccessDate', currentDate);
 
-    const savedPause = localStorage.getItem('pauseSeconds');
-    const pauseStart = localStorage.getItem('pauseStart');
-    const timerActive = localStorage.getItem('timerActive');
+    authToken = localStorage.getItem('authToken');
 
-    if (savedPause) {
-        pauseSeconds = parseInt(savedPause, 10);
-        updatePauseDisplay();
+    const savedUsername = localStorage.getItem('username');
+    const savedPassword = localStorage.getItem('password');
+
+    if (savedUsername) {
+        document.getElementById('username').value = savedUsername;
     }
 
-    // Starten Sie den Timer nur, wenn er aktiv war, als das Fenster geschlossen wurde
-    if (pauseStart && timerActive === 'true') {
-        const now = new Date().getTime();
-        const elapsed = Math.floor((now - parseInt(pauseStart, 10)) / 1000);
-        pauseSeconds += elapsed;
-        startPauseTimer();
+    if (savedPassword) {
+        document.getElementById('password').value = savedPassword;
+    }
+
+    if (authToken) {
+        fetchLatestTimeEntry();
     }
 });
 
@@ -39,36 +38,132 @@ document.getElementById('saveUrlButton').addEventListener('click', function() {
     alert('API URL gespeichert.');
 });
 
-
-function sendStartTime() {
-    const startzeit = new Date().toISOString();
+document.getElementById('loginButton').addEventListener('click', function() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
     const apiUrl = localStorage.getItem('apiUrl');
-    const standort = document.getElementById('standort').value; 
-    const pauseStr = document.getElementById('pause').value;      
-    const pause = convertTimeToMinutes(pauseStr);
 
-    fetch(apiUrl, {  
+    console.log('Login attempt:', username, apiUrl);
+
+    fetch(`${apiUrl}/login`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+            username: username,
+            password: password
+        }),
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            authToken = data.token;
+            localStorage.setItem('authToken', authToken);
+            localStorage.setItem('username', username);
+            localStorage.setItem('password', password);
+            alert('Login erfolgreich.');
+            fetchLatestTimeEntry();
+        } else {
+            alert('Login fehlgeschlagen: ' + data.message);
+        }
+    })
+    .catch((error) => {
+        console.error('Error:', error);
+        document.getElementById('response').textContent = 'Fehler: ' + error.message;
+    });
+});
+
+function fetchLatestTimeEntry() {
+    const apiUrl = localStorage.getItem('apiUrl');
+    fetch(`${apiUrl}/timeentries`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${authToken}`
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.data.length > 0) {
+            const latestEntry = data.data.reduce((max, entry) => entry.id > max.id ? entry : max);
+            displayLatestTimeEntry(latestEntry);
+        } else {
+            document.getElementById('response').textContent = 'Keine Einträge gefunden.';
+        }
+    })
+    .catch((error) => {
+        console.error('Error:', error);
+        document.getElementById('response').textContent = 'Fehler: ' + error.message;
+    });
+}
+
+function displayLatestTimeEntry(entry) {
+    const formatDate = (dateString) => {
+        const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+        return new Date(dateString).toLocaleDateString('de-DE', options);
+    };
+
+    let tableContent = `
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Startzeit</th>
+                    <th>Endzeit</th>
+                    <th>Pause</th>
+                    <th>Beschreibung</th>
+                    <th>Standort</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>${entry.id}</td>
+                    <td>${formatDate(entry.startzeit)}</td>
+                    <td>${entry.endzeit ? formatDate(entry.endzeit) : ''}</td>
+                    <td>${entry.pause}</td>
+                    <td>${entry.beschreibung}</td>
+                    <td>${entry.standort}</td>
+                </tr>
+            </tbody>
+        </table>
+    `;
+    document.getElementById('response').innerHTML = tableContent;
+}
+
+function sendStartTime() {
+    const startzeit = new Date().toISOString();
+    const apiUrl = localStorage.getItem('apiUrl');
+    const standort = document.getElementById('standort').value;
+    const beschreibung = document.getElementById('beschreibung').value;
+
+    fetch(`${apiUrl}/workentry`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
             action: 'createNewWorkEntry',
             startzeit: startzeit,
             endzeit: startzeit,
-            pause: pause,
+            pause: 0,
+            beschreibung: beschreibung,
             standort: standort
         }),
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success) {        
-            localStorage.setItem('latestEntryId', data.data.id);   
+        if (data.success) {
+            localStorage.setItem('latestEntryId', data.data.id);
             let entryDetails = 'Eintrag Details:<br>';
             for (const key in data.data) {
                 entryDetails += `${key}: ${data.data[key]}<br>`;
             }
-    
             document.getElementById('response').innerHTML = entryDetails;
         } else {
             document.getElementById('response').textContent = 'Fehler: ' + data.message;
@@ -80,7 +175,6 @@ function sendStartTime() {
     });
 }
 
-
 document.getElementById('kommButton').addEventListener('click', sendStartTime);
 
 function sendEndTime() {
@@ -91,12 +185,12 @@ function sendEndTime() {
         return;
     }
     const apiUrl = localStorage.getItem('apiUrl');
-    
 
-    fetch(apiUrl, {
+    fetch(`${apiUrl}/setendzeit`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
         },
         body: JSON.stringify({
             action: 'setEndzeit',
@@ -107,6 +201,7 @@ function sendEndTime() {
     .then(data => {
         if (data.success) {
             document.getElementById('response').textContent = 'Endzeit aktualisiert für Eintrag-ID: ' + id;
+            fetchLatestTimeEntry(); 
         } else {
             document.getElementById('response').textContent = 'Fehler: ' + data.message;
         }
@@ -118,46 +213,3 @@ function sendEndTime() {
 }
 
 document.getElementById('gehenButton').addEventListener('click', sendEndTime);
-
-document.getElementById('startPauseButton').addEventListener('click', function() {
-    const now = new Date().getTime();
-    localStorage.setItem('pauseStart', now.toString());
-    startPauseTimer(); // Rufen Sie die Funktion hier auf
-});
-
-
-
-document.getElementById('stopPauseButton').addEventListener('click', function() {
-    if (pauseTimer) {
-        clearInterval(pauseTimer);
-        pauseTimer = null;
-        localStorage.setItem('pauseSeconds', pauseSeconds.toString());
-        localStorage.removeItem('pauseStart'); // Entfernen des Startzeitpunkts
-        localStorage.setItem('timerActive', 'false'); // Speichern, dass der Timer nicht aktiv ist
-    }
-});
-
-
-function updatePauseDisplay() {
-    const minutes = Math.floor(pauseSeconds / 60);
-    const seconds = pauseSeconds % 60;
-    document.getElementById('pause').value = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-}
-
-
-function startPauseTimer() {
-    if (!pauseTimer) {
-        pauseTimer = setInterval(function() {
-            pauseSeconds++;
-            updatePauseDisplay();
-        }, 1000);
-        localStorage.setItem('timerActive', 'true'); // Speichern, dass der Timer aktiv ist
-    }
-}
-function convertTimeToMinutes(timeStr) {
-    const parts = timeStr.split(':');
-    const minutes = parseInt(parts[0], 10);
-    const seconds = parseInt(parts[1], 10);
-
-    return seconds > 0 ? minutes + 1 : minutes; // Aufrunden, wenn Sekunden > 0
-}

@@ -2,14 +2,13 @@ body {
     font-family: Open Sans, sans-serif;
     margin: 0;
     padding: 20px;
+    padding-bottom: 60px; /* Platz für die Tabs unten */
     text-align: center;
-    width: 470px; 
-    height: 400px;
+    width: 100%; 
 }
 
 h1 {
     color: #333;
-    margin-bottom: 20px;
 }
 
 button {
@@ -36,56 +35,33 @@ button:hover {
     text-align: left; 
 }
 
-
-#buttonContainer {
-    display: flex;    
-    gap: 10px; 
+.table-responsive {
+    max-height: 300px; 
+    overflow-y: auto;
 }
 
-#settingsContainer, #standortContainer {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 20px;
+.nav-tabs.fixed-bottom {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background-color: #fff;
+    border-top: 1px solid #ddd;
+    z-index: 1000;
 }
 
-#pauseContainer {
-    display: flex;
-    align-items: center;
-    margin-bottom: 20px;
-    width: 100%; /* Container nimmt die volle Breite ein */
-    justify-content: flex-start; /* Inhalte nach links ausrichten */
-}
-
-#apiUrl, #standort {
-    padding: 10px;
-    margin-right: 10px;
-    border-radius: 4px;
-    border: 1px solid #ddd;
-    width: 70%;
-}
-
-#pause {
-    padding: 10px;
-    border-radius: 4px;
-    border: 1px solid #ddd;
-    width: auto; /* Automatische Breite basierend auf dem Inhalt */
-}
-
-#saveUrlButton {
-    padding: 10px 20px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    cursor: pointer;
-    border-radius: 4px;
-}
-
-#saveUrlButton:hover {
-    background-color: #45a049;
-}
-
-.form-control {
+.nav-tabs .nav-item {
     flex: 1;
+    text-align: center;
 }
 
+.nav-tabs .nav-item .nav-link {
+    color: #333;
+    border: none;
+    padding: 15px 0;
+}
+
+.nav-tabs .nav-item .nav-link.active {
+    color: #007bff;
+    background-color: #f8f9fa;
+    border: none;
+}
