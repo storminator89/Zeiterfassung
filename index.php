@@ -72,15 +72,7 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
         <a class="navbar-brand" href="index.php">
             <img class="pl-3" src="assets/kolibri_icon_weiß.png" alt="Time Tracking" height="50">
         </a>
-        <!-- Sprachwahl -->
-        <ul class="navbar-nav me-auto">
-            <li class="nav-item">
-                <a class="nav-link" href="?lang=de">DE</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="?lang=en">EN</a>
-            </li>
-        </ul>
+
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item active">
@@ -96,7 +88,7 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                         <i class="fas fa-cog"></i>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="settingsDropdown">
-                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#settingsModal"><i class="fas fa-cog mr-1"></i> <?= NAV_SETTINGS ?></a></li>
+                        <li><a class="dropdown-item" href="settings.php"><i class="fas fa-cog mr-1"></i> <?= NAV_SETTINGS ?></a></li>
                         <?php if ($user_role === 'admin') : ?>
                             <li><a class="dropdown-item" href="admin.php"><i class="fas fa-user-shield mr-1"></i> Admin</a></li>
                         <?php endif; ?>
@@ -404,10 +396,12 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                     </div>
                     <div class="modal-body">
                         <p><?= ABOUT_TOOL_TEXT ?></p>
+                        <p><strong>Version:</strong> 0.2-alpha</p>
                     </div>
                 </div>
             </div>
         </div>
+
 
         <!-- Setting modal -->
         <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
