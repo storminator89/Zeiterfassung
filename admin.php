@@ -68,23 +68,77 @@ $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
 $stmt->execute([$_SESSION['user_id']]);
 $currentUser = $stmt->fetch(PDO::FETCH_OBJ);
 
+// Abteilungen und Vorgesetzte aus der Datenbank abrufen
+$stmt = $conn->prepare("SELECT id, name FROM departments");
+$stmt->execute();
+$departments = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+$stmt = $conn->prepare("SELECT id, username FROM users");
+$stmt->execute();
+$allUsers = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+// Abteilung löschen
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_department'])) {
+    $department_id = $_POST['department_id'];
+
+    try {
+        // Statement vorbereiten und ausführen, um die Abteilung zu löschen
+        $stmt = $conn->prepare("DELETE FROM departments WHERE id = ?");
+        $stmt->execute([$department_id]);
+
+        $successMessage = DEPARTMENT_DELETED_SUCCESS;
+
+        // Seite nach erfolgreichem Löschen neu laden
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit();
+    } catch (PDOException $e) {
+        $error = DEPARTMENT_DELETED_ERROR . $e->getMessage();
+    }
+}
+
+// Abteilung hinzufügen
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_department'])) {
+    $department_name = $_POST['department_name'];
+
+    // Eingaben validieren
+    if (empty($department_name)) {
+        $error = ERROR_ALL_FIELDS_REQUIRED;
+    } else {
+        try {
+            // Statement vorbereiten und ausführen, um die neue Abteilung einzufügen
+            $stmt = $conn->prepare("INSERT INTO departments (name) VALUES (?)");
+            $stmt->execute([$department_name]);
+
+            $successMessage = DEPARTMENT_CREATED_SUCCESS;
+
+            // Seite nach erfolgreichem Hinzufügen neu laden
+            header("Location: " . $_SERVER['PHP_SELF']);
+            exit();
+        } catch (PDOException $e) {
+            $error = DEPARTMENT_CREATED_ERROR . $e->getMessage();
+        }
+    }
+}
+
 // Benutzer hinzufügen
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
     $username = $_POST['username'];
     $password = $_POST['password'];
     $email = $_POST['email'];
     $role = $_POST['role'];
+    $department_id = $_POST['department'];
+    $supervisor = $_POST['supervisor'];
 
     // Eingaben validieren
-    if (empty($username) || empty($password) || empty($email) || empty($role)) {
+    if (empty($username) || empty($password) || empty($email) || empty($role) || empty($department_id)) {
         $error = ERROR_ALL_FIELDS_REQUIRED;
     } else {
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
         try {
             // Statement vorbereiten und ausführen, um den neuen Benutzer einzufügen
-            $stmt = $conn->prepare("INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$username, $hashedPassword, $email, $role]);
+            $stmt = $conn->prepare("INSERT INTO users (username, password, email, role, department_id, supervisor_id) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$username, $hashedPassword, $email, $role, $department_id, $supervisor]);
 
             $successMessage = USER_CREATED_SUCCESS;
         } catch (PDOException $e) {
@@ -115,15 +169,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_user'])) {
     $email = $_POST['email'];
     $role = $_POST['role'];
     $password = $_POST['password'];
+    $department_id = $_POST['department'];
+    $supervisor = $_POST['supervisor'];
 
     try {
         if (!empty($password)) {
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ?, password = ? WHERE id = ?");
-            $stmt->execute([$username, $email, $role, $hashedPassword, $user_id]);
+            $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ?, password = ?, department_id = ?, supervisor_id = ? WHERE id = ?");
+            $stmt->execute([$username, $email, $role, $hashedPassword, $department_id, $supervisor, $user_id]);
         } else {
-            $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ? WHERE id = ?");
-            $stmt->execute([$username, $email, $role, $user_id]);
+            $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ?, department_id = ?, supervisor_id = ? WHERE id = ?");
+            $stmt->execute([$username, $email, $role, $department_id, $supervisor, $user_id]);
         }
 
         $successMessage = USER_UPDATED_SUCCESS;
@@ -132,10 +188,38 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_user'])) {
     }
 }
 
+// Abteilung bearbeiten
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_department'])) {
+    $department_id = $_POST['department_id'];
+    $department_name = $_POST['department_name'];
+
+    try {
+        $stmt = $conn->prepare("UPDATE departments SET name = ? WHERE id = ?");
+        $stmt->execute([$department_name, $department_id]);
+
+        $successMessage = DEPARTMENT_UPDATED_SUCCESS;
+
+        // Seite nach erfolgreichem Bearbeiten neu laden
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit();
+    } catch (PDOException $e) {
+        $error = DEPARTMENT_UPDATED_ERROR . $e->getMessage();
+    }
+}
+
 // Alle Benutzer aus der Datenbank abrufen
-$stmt = $conn->prepare("SELECT * FROM users");
+$stmt = $conn->prepare("SELECT users.*, departments.name as department_name, supervisors.username as supervisor_name
+                        FROM users
+                        LEFT JOIN departments ON users.department_id = departments.id
+                        LEFT JOIN users as supervisors ON users.supervisor_id = supervisors.id");
 $stmt->execute();
 $users = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+// Alle Abteilungen aus der Datenbank abrufen
+$stmt = $conn->prepare("SELECT * FROM departments");
+$stmt->execute();
+$departments = $stmt->fetchAll(PDO::FETCH_OBJ);
+
 ?>
 
 <!DOCTYPE html>
@@ -218,6 +302,24 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                     <option value="admin"><?= FORM_ROLE_ADMIN ?></option>
                 </select>
             </div>
+            <div class="mb-3 input-group">
+                <span class="input-group-text"><i class="fas fa-building"></i></span>
+                <select class="form-control" id="department" name="department" required>
+                    <option value=""><?= FORM_SELECT_DEPARTMENT ?></option>
+                    <?php foreach ($departments as $department) : ?>
+                        <option value="<?= htmlspecialchars($department->id) ?>"><?= htmlspecialchars($department->name) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="mb-3 input-group">
+                <span class="input-group-text"><i class="fas fa-user-tie"></i></span>
+                <select class="form-control" id="supervisor" name="supervisor">
+                    <option value=""><?= FORM_SELECT_SUPERVISOR ?></option>
+                    <?php foreach ($allUsers as $user) : ?>
+                        <option value="<?= $user->id ?>"><?= htmlspecialchars($user->username) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
             <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus mr-1"></i> <?= BUTTON_CREATE_USER ?></button>
         </form>
 
@@ -235,6 +337,8 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                     <th><?= TABLE_HEADER_USERNAME ?></th>
                     <th><?= TABLE_HEADER_EMAIL ?></th>
                     <th><?= TABLE_HEADER_ROLE ?></th>
+                    <th><?= TABLE_HEADER_DEPARTMENT ?></th>
+                    <th><?= TABLE_HEADER_SUPERVISOR ?></th>
                     <th><?= TABLE_HEADER_ACTIONS ?></th>
                 </tr>
             </thead>
@@ -245,12 +349,50 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                         <td><?= htmlspecialchars($user->username) ?></td>
                         <td><?= htmlspecialchars($user->email) ?></td>
                         <td><?= htmlspecialchars($user->role) ?></td>
+                        <td><?= htmlspecialchars($user->department_name) ?></td>
+                        <td><?= htmlspecialchars($user->supervisor_name) ?></td>
                         <td>
-                            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editUserModal" data-userid="<?= $user->id ?>" data-username="<?= htmlspecialchars($user->username) ?>" data-email="<?= htmlspecialchars($user->email) ?>" data-role="<?= htmlspecialchars($user->role) ?>"><i class="fas fa-edit mr-1"></i> <?= BUTTON_EDIT ?></button>
+                            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editUserModal" data-userid="<?= $user->id ?>" data-username="<?= htmlspecialchars($user->username) ?>" data-email="<?= htmlspecialchars($user->email) ?>" data-role="<?= htmlspecialchars($user->role) ?>" data-department="<?= htmlspecialchars($user->department_id) ?>" data-supervisor="<?= htmlspecialchars($user->supervisor_id) ?>"><i class="fas fa-edit mr-1"></i> <?= BUTTON_EDIT ?></button>
                             <form method="post" class="d-inline">
                                 <input type="hidden" name="delete_user" value="1">
                                 <input type="hidden" name="user_id" value="<?= $user->id ?>">
                                 <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('<?= CONFIRM_DELETE_USER ?>')"><i class="fas fa-trash-alt mr-1"></i> <?= BUTTON_DELETE ?></button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <!-- Departments table -->
+        <h2 class="mt-3"><?= DEPARTMENT_MANAGEMENT_TITLE ?></h2>
+        <form method="post" class="mt-4 mb-4">
+            <input type="hidden" name="add_department" value="1">
+            <div class="mb-3 input-group">
+                <span class="input-group-text"><i class="fas fa-building"></i></span>
+                <input type="text" class="form-control" id="department_name" name="department_name" placeholder="<?= FORM_NEW_DEPARTMENT ?>" required>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-plus mr-1"></i> <?= BUTTON_ADD_DEPARTMENT ?></button>
+            </div>
+        </form>
+        <table class="table table-striped mt-3" id="departmentsTable">
+            <thead>
+                <tr>
+                    <th><?= TABLE_HEADER_DEPARTMENT_ID ?></th>
+                    <th><?= TABLE_HEADER_DEPARTMENT_NAME ?></th>
+                    <th><?= TABLE_HEADER_ACTIONS ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($departments as $department) : ?>
+                    <tr>
+                        <td><?= $department->id ?></td>
+                        <td><?= htmlspecialchars($department->name) ?></td>
+                        <td>
+                            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editDepartmentModal" data-departmentid="<?= $department->id ?>" data-departmentname="<?= htmlspecialchars($department->name) ?>"><i class="fas fa-edit mr-1"></i> <?= BUTTON_EDIT ?></button>
+                            <form method="post" class="d-inline">
+                                <input type="hidden" name="delete_department" value="1">
+                                <input type="hidden" name="department_id" value="<?= $department->id ?>">
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('<?= CONFIRM_DELETE_DEPARTMENT ?>')"><i class="fas fa-trash-alt mr-1"></i> <?= BUTTON_DELETE ?></button>
                             </form>
                         </td>
                     </tr>
@@ -272,7 +414,6 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                 <a href="apidoc.html" target="_blank" class="btn btn-primary"><i class="fas fa-book"></i> <?= BUTTON_API_DOC ?></a>
             </div>
         </div>
-
     </div>
 
     <!-- Modal for Success -->
@@ -339,8 +480,52 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                             </select>
                         </div>
                         <div class="mb-3 input-group">
+                            <span class="input-group-text"><i class="fas fa-building"></i></span>
+                            <select class="form-control" id="edit_department" name="department" required>
+                                <option value=""><?= FORM_SELECT_DEPARTMENT ?></option>
+                                <?php foreach ($departments as $department) : ?>
+                                    <option value="<?= htmlspecialchars($department->id) ?>"><?= htmlspecialchars($department->name) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="mb-3 input-group">
+                            <span class="input-group-text"><i class="fas fa-user-tie"></i></span>
+                            <select class="form-control" id="edit_supervisor" name="supervisor">
+                                <option value=""><?= FORM_SELECT_SUPERVISOR ?></option>
+                                <?php foreach ($allUsers as $user) : ?>
+                                    <option value="<?= $user->id ?>"><?= htmlspecialchars($user->username) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="mb-3 input-group">
                             <span class="input-group-text"><i class="fas fa-lock"></i></span>
                             <input type="password" class="form-control" id="edit_password" name="password" placeholder="<?= FORM_NEW_PASSWORD ?>">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= MODAL_BUTTON_CLOSE ?></button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i> <?= BUTTON_SAVE_CHANGES ?></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Editing Department -->
+    <div class="modal fade" id="editDepartmentModal" tabindex="-1" aria-labelledby="editDepartmentModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editDepartmentModalLabel"><?= MODAL_TITLE_EDIT_DEPARTMENT ?></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="edit_department" value="1">
+                        <input type="hidden" name="department_id" id="edit_department_id">
+                        <div class="mb-3 input-group">
+                            <span class="input-group-text"><i class="fas fa-building"></i></span>
+                            <input type="text" class="form-control" id="edit_department_name" name="department_name" required>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -378,12 +563,26 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                 var username = button.data('username');
                 var email = button.data('email');
                 var role = button.data('role');
+                var department = button.data('department');
+                var supervisor = button.data('supervisor');
 
                 var modal = $(this);
                 modal.find('#edit_user_id').val(userId);
                 modal.find('#edit_username').val(username);
                 modal.find('#edit_email').val(email);
                 modal.find('#edit_role').val(role);
+                modal.find('#edit_department').val(department);
+                modal.find('#edit_supervisor').val(supervisor);
+            });
+
+            $('#editDepartmentModal').on('show.bs.modal', function(event) {
+                var button = $(event.relatedTarget);
+                var departmentId = button.data('departmentid');
+                var departmentName = button.data('departmentname');
+
+                var modal = $(this);
+                modal.find('#edit_department_id').val(departmentId);
+                modal.find('#edit_department_name').val(departmentName);
             });
 
             // Suchfunktion
@@ -392,6 +591,23 @@ $users = $stmt->fetchAll(PDO::FETCH_OBJ);
                 $("#usersTable tbody tr").filter(function() {
                     $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
                 });
+            });
+
+            // Zeige/hide neue Abteilungseingabe basierend auf der Auswahl
+            $('#department').change(function() {
+                if ($(this).val() === 'new_department') {
+                    $('#new_department_group').show();
+                } else {
+                    $('#new_department_group').hide();
+                }
+            });
+
+            $('#edit_department').change(function() {
+                if ($(this).val() === 'new_department') {
+                    $('#edit_new_department_group').show();
+                } else {
+                    $('#edit_new_department_group').hide();
+                }
             });
         });
 

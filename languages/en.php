@@ -118,6 +118,25 @@ define('FORM_NEW_PASSWORD', 'New Password (optional)');
 define('TABLE_HEADER_USERNAME', 'Username');
 define('TABLE_HEADER_EMAIL', 'Email');
 define('TABLE_HEADER_ROLE', 'Role');
+define('FORM_SELECT_DEPARTMENT', '-');
+define('FORM_ADD_NEW_DEPARTMENT', 'Add new department');
+define('FORM_NEW_DEPARTMENT', 'New department');
+define('FORM_SELECT_SUPERVISOR', 'Select supervisor');
+define('TABLE_HEADER_DEPARTMENT', 'Department');
+define('TABLE_HEADER_SUPERVISOR', 'Supervisor');
+define('CONFIRM_DELETE_DEPARTMENT', 'Are you sure you want to delete this department?');
+define('DEPARTMENT_DELETED_SUCCESS', 'Department deleted successfully.');
+define('DEPARTMENT_DELETED_ERROR', 'Error deleting department: ');
+define('DEPARTMENT_MANAGEMENT_TITLE', 'Department Management');
+define('TABLE_HEADER_DEPARTMENT_ID', 'ID');
+define('TABLE_HEADER_DEPARTMENT_NAME', 'Department Name');
+define('BUTTON_ADD_DEPARTMENT', 'Add Department');
+define('MODAL_TITLE_EDIT_DEPARTMENT', 'Edit Department');
+define('DEPARTMENT_CREATED_SUCCESS', 'Department created successfully.');
+define('DEPARTMENT_UPDATED_SUCCESS', 'Department updated successfully.');
+define('DEPARTMENT_CREATED_ERROR', 'Error creating department.');
+define('DEPARTMENT_UPDATED_ERROR', 'Error updating department.');
+define('MODAL_BUTTON_SAVE_CHANGES', 'Save Changes');
 
 //Login page
 define('LOGIN_TITLE', 'Login - Quodara Chrono');

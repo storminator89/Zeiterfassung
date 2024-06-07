@@ -253,6 +253,13 @@ td.editable:hover .edit-icon {
     }
 }
 
+.input-group-text {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 40px; 
+}
+
 .tui-full-calendar-weekday-schedule,
 .tui-full-calendar-time-schedule {
     border-bottom-left-radius: 2px;

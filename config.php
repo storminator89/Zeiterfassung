@@ -39,7 +39,19 @@ SQL;
         password TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
         role TEXT NOT NULL DEFAULT 'user',
-        token TEXT
+        token TEXT,
+        department_id INTEGER,
+        supervisor_id INTEGER,
+        FOREIGN KEY (department_id) REFERENCES departments(id),
+        FOREIGN KEY (supervisor_id) REFERENCES users(id)
+    );
+    SQL;
+
+    // SQL for creating 'departments' table
+    $createDepartmentsSql = <<<SQL
+    CREATE TABLE IF NOT EXISTS departments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE
     );
     SQL;
 
@@ -47,15 +59,11 @@ SQL;
     $conn->exec($createUserSql);
     $conn->exec($createZeiterfassungSql);
     $conn->exec($createFeiertageSql);
-
-    // Check if the 'role' column exists in the 'users' table
+    $conn->exec($createDepartmentsSql);
+    
     $result = $conn->query("PRAGMA table_info(users)")->fetchAll();
     $columns = array_column($result, 'name');
-
-    if (!in_array('role', $columns)) {
-        // Add the 'role' column if it doesn't exist
-        $conn->exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'");
-    }
+   
 } catch (\PDOException $e) {
     exit('Could not connect to the SQLite database: ' . $e->getMessage());
 }

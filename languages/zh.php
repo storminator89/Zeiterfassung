@@ -118,6 +118,26 @@ define('FORM_NEW_PASSWORD', '新密碼（可選）');
 define('TABLE_HEADER_USERNAME', '用戶名');
 define('TABLE_HEADER_EMAIL', '電子郵件');
 define('TABLE_HEADER_ROLE', '角色');
+define('FORM_SELECT_DEPARTMENT', '-');
+define('FORM_ADD_NEW_DEPARTMENT', '新增部門');
+define('FORM_NEW_DEPARTMENT', '新部門');
+define('FORM_SELECT_SUPERVISOR', '選擇主管');
+define('TABLE_HEADER_DEPARTMENT', '部門');
+define('TABLE_HEADER_SUPERVISOR', '主管');
+define('CONFIRM_DELETE_DEPARTMENT', '您確定要刪除此部門嗎？');
+define('DEPARTMENT_DELETED_SUCCESS', '部門刪除成功。');
+define('DEPARTMENT_DELETED_ERROR', '刪除部門時出錯：');
+define('DEPARTMENT_MANAGEMENT_TITLE', '部門管理');
+define('TABLE_HEADER_DEPARTMENT_ID', 'ID');
+define('TABLE_HEADER_DEPARTMENT_NAME', '部門名稱');
+define('BUTTON_ADD_DEPARTMENT', '新增部門');
+define('MODAL_TITLE_EDIT_DEPARTMENT', '編輯部門');
+define('DEPARTMENT_CREATED_SUCCESS', '部門創建成功。');
+define('DEPARTMENT_UPDATED_SUCCESS', '部門更新成功。');
+define('DEPARTMENT_CREATED_ERROR', '創建部門時出錯。');
+define('DEPARTMENT_UPDATED_ERROR', '更新部門時出錯。');
+define('MODAL_BUTTON_SAVE_CHANGES', '保存變更');
+
 
 //Login page
 define('LOGIN_TITLE', '登錄 - Quodara Chrono');
