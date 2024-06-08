@@ -300,6 +300,7 @@ $departments = $stmt->fetchAll(PDO::FETCH_OBJ);
                 <select class="form-control" id="role" name="role" required>
                     <option value="user"><?= FORM_ROLE_USER ?></option>
                     <option value="admin"><?= FORM_ROLE_ADMIN ?></option>
+                    <option value="supervisor"><?= FORM_ROLE_SUPERVISOR ?></option>
                 </select>
             </div>
             <div class="mb-3 input-group">
@@ -477,6 +478,7 @@ $departments = $stmt->fetchAll(PDO::FETCH_OBJ);
                             <select class="form-control" id="edit_role" name="role" required>
                                 <option value="user"><?= FORM_ROLE_USER ?></option>
                                 <option value="admin"><?= FORM_ROLE_ADMIN ?></option>
+                                <option value="supervisor"><?= FORM_ROLE_SUPERVISOR ?></option>
                             </select>
                         </div>
                         <div class="mb-3 input-group">

@@ -72,11 +72,13 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
         <a class="navbar-brand" href="index.php">
             <img class="pl-3" src="assets/kolibri_icon_weiß.png" alt="Time Tracking" height="50">
         </a>
-
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item active">
-                    <a class="nav-link" href="#"><i class="fas fa-home mr-1"></i> <?= NAV_HOME ?></a>
+                    <a class="nav-link" href="index.php"><i class="fas fa-home mr-1"></i> <?= NAV_HOME ?></a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="dashboard.php"><i class="fas fa-tachometer-alt mr-1"></i> <?= NAV_DASHBOARD ?></a>
@@ -91,6 +93,9 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
                         <li><a class="dropdown-item" href="settings.php"><i class="fas fa-cog mr-1"></i> <?= NAV_SETTINGS ?></a></li>
                         <?php if ($user_role === 'admin') : ?>
                             <li><a class="dropdown-item" href="admin.php"><i class="fas fa-user-shield mr-1"></i> Admin</a></li>
+                        <?php endif; ?>
+                        <?php if ($user_role === 'supervisor' || $user_role === 'admin') : ?>
+                            <li><a class="dropdown-item" href="supervisor.php"><i class="fas fa-user-tie mr-1"></i> <?= NAV_SUPERVISOR ?></a></li>
                         <?php endif; ?>
                         <li><button class="dropdown-item" onclick="toggleDarkMode()"><i class="fas fa-moon mr-1"></i> <?= NAV_DARK_MODE ?></button></li>
                         <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-info-circle mr-1"></i> <?= NAV_ABOUT ?></a></li>

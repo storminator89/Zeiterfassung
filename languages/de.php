@@ -7,6 +7,7 @@ define('NAV_ABOUT', 'Über');
 define('NAV_LOGOUT', 'Logout');
 define('NAV_DARK_MODE', 'Dark Mode');
 define('NAV_ADMIN', 'Admin');
+define('NAV_SUPERVISOR', 'Übersicht Vorgesetzte');
 define('SETTINGS_TITLE', 'Einstellungen'); 
 define('LANGUAGE_SELECTION', 'Sprache auswählen');
 define('IMPORT_DATABASE', 'Datenbank importieren');
@@ -91,6 +92,7 @@ define('FORM_PASSWORD', 'Passwort');
 define('FORM_EMAIL', 'E-Mail');
 define('FORM_ROLE_USER', 'User');
 define('FORM_ROLE_ADMIN', 'Admin');
+define('FORM_ROLE_SUPERVISOR', 'Vorgesetzter');
 define('FORM_SEARCH_USER', 'Benutzer suchen...');
 define('EXISTING_USERS_TITLE', 'Bestehende Benutzer');
 define('TABLE_HEADER_ACTIONS', 'Aktionen');
@@ -151,5 +153,12 @@ define('ERROR_INVALID_CSRF', 'Ungültiges CSRF-Token.');
 define('ERROR_INVALID_CREDENTIALS', 'Benutzername oder Passwort falsch!');
 define('ERROR_EXISTING_USER', 'Registrierung ist nicht möglich, da bereits ein Nutzer existiert.');
 define('SUCCESS_REGISTRATION', 'Registrierung erfolgreich! Sie können sich jetzt anmelden.');
+
+//Supervisor Page
+define('SUPERVISOR_TIMES_TITLE', 'Zeiterfassungsübersicht für Vorgesetzte');
+define('NOT_SUPERVISOR_MESSAGE', 'Sie sind kein Vorgesetzter und haben keine Berechtigung, diese Seite zu sehen.');
+define('NO_ENTRIES_FOUND', 'Keine Einträge gefunden.');
+define('TABLE_HEADER_OVERTIME', 'Überstunden');
+define('TOTAL_OVERTIME_TITLE', 'Gesamtüberstunden');
 
 ?>

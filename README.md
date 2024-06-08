@@ -1,4 +1,6 @@
 # Time Tracking Tool Quodara Chrono
+![Version](https://img.shields.io/badge/version-0.2-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
 
 This tool assists you in tracking your working hours.
 
