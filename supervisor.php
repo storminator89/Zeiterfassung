@@ -49,7 +49,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
 
         $gesamtMinuten = ($interval->h * 60 + $interval->i) - $pauseMinuten;
         $workHoursByUser[$userId]['days'][$day] += $gesamtMinuten;
-    }    
+    }
 
     // Berechnung der Gesamtüberstunden pro Benutzer
     $regularWorkingMinutesPerDay = 8 * 60; // 8 Stunden pro Tag in Minuten
@@ -70,7 +70,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
             'username' => $data['username'],
             'ueberstunden' => ($isNegative ? '-' : '') . sprintf("%02d:%02d", $totalOverHours, $totalOverMinutes)
         ];
-    }   
+    }
 }
 ?>
 
@@ -82,11 +82,20 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= SUPERVISOR_TIMES_TITLE ?></title>
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
+    <link href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.flash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
+    <script src="./assets/js/main.js"></script>    
 </head>
 
 <body>
@@ -134,10 +143,9 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
             </div>
         <?php else : ?>
             <h3 class="mt-4"><i class="fas fa-clock mr-2"></i> <?= ACTUAL_WORKED_TIMES ?></h3>
-            <table class="table">
+            <table class="table table-striped table-bordered" id="zeitenTable">
                 <thead>
-                    <tr>
-                        <th><input type="checkbox" id="selectAll"></th>
+                    <tr>                       
                         <th><?= TABLE_HEADER_ID ?></th>
                         <th><?= TABLE_HEADER_USERNAME ?></th>
                         <th><?= TABLE_HEADER_WEEK ?></th>
@@ -158,23 +166,22 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
                     <?php else : ?>
                         <?php foreach ($zeiten as $zeit) : ?>
                             <?php
-                                $start = new DateTime($zeit['startzeit']);
-                                $end = new DateTime($zeit['endzeit']);
-                                $interval = $start->diff($end);
-                                $pauseMinuten = intval($zeit['pause']) ?: 0;
+                            $start = new DateTime($zeit['startzeit']);
+                            $end = new DateTime($zeit['endzeit']);
+                            $interval = $start->diff($end);
+                            $pauseMinuten = intval($zeit['pause']) ?: 0;
 
-                                $gesamtMinuten = ($interval->h * 60 + $interval->i) - $pauseMinuten;
-                                $stunden = floor($gesamtMinuten / 60);
-                                $minuten = $gesamtMinuten % 60;
-                                $dauer = "{$stunden} " . LABEL_HOURS . " {$minuten} " . LABEL_MINUTES;
+                            $gesamtMinuten = ($interval->h * 60 + $interval->i) - $pauseMinuten;
+                            $stunden = floor($gesamtMinuten / 60);
+                            $minuten = $gesamtMinuten % 60;
+                            $dauer = "{$stunden} " . LABEL_HOURS . " {$minuten} " . LABEL_MINUTES;
 
-                                $ueberstunden = $gesamtMinuten - (8 * 60); // Annahme: 8 Stunden reguläre Arbeitszeit pro Tag
-                                $ueberstundenStunden = floor(abs($ueberstunden) / 60);
-                                $ueberstundenMinuten = abs($ueberstunden % 60);
-                                $ueberstundenFormat = ($ueberstunden < 0 ? '-' : '') . sprintf("%02d:%02d", $ueberstundenStunden, $ueberstundenMinuten);
+                            $ueberstunden = $gesamtMinuten - (8 * 60); // Annahme: 8 Stunden reguläre Arbeitszeit pro Tag
+                            $ueberstundenStunden = floor(abs($ueberstunden) / 60);
+                            $ueberstundenMinuten = abs($ueberstunden % 60);
+                            $ueberstundenFormat = ($ueberstunden < 0 ? '-' : '') . sprintf("%02d:%02d", $ueberstundenStunden, $ueberstundenMinuten);
                             ?>
-                            <tr>
-                                <td><input type="checkbox" class="selectRow" data-id="<?= $zeit['id'] ?>"></td>
+                            <tr>                                
                                 <td><?= htmlspecialchars($zeit['id']) ?></td>
                                 <td><?= htmlspecialchars($zeit['username']) ?></td>
                                 <td><?= htmlspecialchars($zeit['weekNumber']) ?></td>
@@ -192,7 +199,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
             </table>
 
             <h3 class="mt-4"><i class="fas fa-hourglass mr-2"></i> <?= TOTAL_OVERTIME_TITLE ?></h3>
-            <table class="table">
+            <table class="table table-striped table-bordered" id="ueberstundenTable">
                 <thead>
                     <tr>
                         <th><?= TABLE_HEADER_USERNAME ?></th>
@@ -216,6 +223,22 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
             </table>
         <?php endif; ?>
     </div>
+    <script>
+        $('#zeitenTable').DataTable({
+            dom: 'Bfrtip',
+            buttons: [
+                'copy', 'csv', 'excel', 'pdf', 'print'
+            ],
+            columnDefs: [{
+                className: "text-center",
+                "targets": [0, 1, 5]
+            }],
+            order: [
+                [3, 'desc']
+            ],
+            paging: true
+        });
+    </script>
 </body>
 
 </html>
