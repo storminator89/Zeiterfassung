@@ -4,6 +4,28 @@
 
 This tool assists you in tracking your working hours.
 
+# Contents
+
+- [Time Tracking Tool Quodara Chrono](#time-tracking-tool-quodara-chrono)
+  - [Main Features](#main-features)
+  - [Screenshots](#screenshots)
+    - [Main Screen](#main-screen)
+    - [Browser Plugin](#browser-plugin)
+    - [Dashboard](#dashboard)
+    - [User Management](#user-management)
+    - [Supervisor](#supervisor)
+    - [Settings](#settings)
+    - [Dark Mode](#dark-mode)
+  - [Dependencies and Resources](#dependencies-and-resources)
+  - [Installation](#installation)
+  - [Database Configuration](#database-configuration)
+  - [REST API](#rest-api)
+    - [Endpoints](#endpoints)
+    - [Authentication](#authentication)
+    - [Example Usage](#example-usage)
+
+---
+
 ## Main Features
 
 ⏰ **Work Time Tracking:** Users can enter start time, end time, and break time (manually or using a timer). This allows
