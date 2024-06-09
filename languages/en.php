@@ -63,6 +63,8 @@ define('HOLIDAYS', 'Holidays');
 define('TABLE_HEADER_DATE', 'Date');
 define('TABLE_HEADER_DAY', 'Day');
 define('TABLE_HEADER_NAME', 'Name');
+define('TABLE_HEADER_REGULAR_WORKING_HOURS', 'Regular working hours');
+define('LABEL_HOURS_PER_DAY', 'Hours per day');
 define('ACTUAL_WORKED_TIMES', 'Actual Worked Times');
 define('BUTTON_TODAY', 'Today');
 define('MODAL_TITLE_SCHEDULE', 'Work Schedule');
@@ -160,5 +162,12 @@ define('NOT_SUPERVISOR_MESSAGE', 'You are not a supervisor and are not authorize
 define('NO_ENTRIES_FOUND', 'No entries found.');
 define('TABLE_HEADER_OVERTIME', 'Overtime');
 define('TOTAL_OVERTIME_TITLE', 'Total Overtime');
+
+//Settings Page
+define('SETTINGS_LANGUAGE', 'Language Settings');
+define('SETTINGS_REGULAR_WORKING_HOURS', 'Regular Working Hours');
+define('SETTINGS_IMPORT_DATABASE', 'Import Database');
+define('SETTINGS_DOWNLOAD_DATABASE', 'Download Database');
+define('BUTTON_SAVE_REGULAR_WORKING_HOURS', 'Save working hours');
 
 ?>

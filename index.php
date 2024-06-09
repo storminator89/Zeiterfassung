@@ -1,5 +1,16 @@
 <?php
 include 'header.php';
+
+// Fetch user's regular working hours
+try {
+    $stmt = $conn->prepare('SELECT regelarbeitszeit FROM users WHERE id = :user_id');
+    $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $userRegularWorkingHours = $stmt->fetchColumn() ?? 8; // Default to 8 hours if not set
+} catch (PDOException $e) {
+    // Handle query error
+    die("Datenbankfehler: " . $e->getMessage());
+}
 ?>
 
 <!-- Main content -->
@@ -169,6 +180,7 @@ include 'header.php';
                         <tr>
                             <th><?= TABLE_HEADER_WORKING_DAYS ?> <?= $currentMonthName ?></th>
                             <th><?= TABLE_HEADER_TOTAL_OVERTIME ?></th>
+                            <th><?= TABLE_HEADER_REGULAR_WORKING_HOURS ?></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -177,6 +189,7 @@ include 'header.php';
                             <td class="<?= $totalOverHours > 0 ? 'positive-overhours' : 'negative-overhours'; ?>" style="font-weight: bold;">
                                 <?= $totalOverHoursFormatted ?>
                             </td>
+                            <td><?= $userRegularWorkingHours ?> <?= LABEL_HOURS_PER_DAY ?></td>
                         </tr>
                     </tbody>
                 </table>
@@ -303,7 +316,6 @@ include 'header.php';
         </div>
     </div>
 
-
     <!-- Setting modal -->
     <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
@@ -328,6 +340,6 @@ include 'header.php';
         </div>
     </div>
 
-    </body>
+</body>
 
-    </html>
+</html>

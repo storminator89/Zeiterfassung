@@ -18,29 +18,34 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+$user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['role'] ?? null;
 $error = '';
 $successMessage = '';
 $showSuccessModal = false;
 
+// Benutzerinformationen laden
+$userInfo = $conn->query("SELECT * FROM users WHERE id = $user_id")->fetch();
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['lang'])) {
         $_SESSION['lang'] = $_POST['lang'];
-        header("Location: settings.php");
-        exit();
     }
 
-    if ($user_role === 'admin' && isset($_FILES['dbFile']) && $_FILES['dbFile']['error'] == 0) {
-        $databasePath = __DIR__ . '/assets/db/timetracking.sqlite';
-        if (move_uploaded_file($_FILES["dbFile"]["tmp_name"], $databasePath)) {
-            $successMessage = 'Datenbank erfolgreich importiert!';
-            $showSuccessModal = true;
-        } else {
-            $error = 'Fehler beim Verschieben der hochgeladenen Datei!';
-        }
-    } else if (isset($_FILES['dbFile'])) {
-        $error = 'Keine Datei hochgeladen oder Fehler beim Hochladen!';
+    if (isset($_POST['regelarbeitszeit'])) {
+        $regelarbeitszeit = floatval($_POST['regelarbeitszeit']);
+        $updateSql = "UPDATE users SET regelarbeitszeit = :regelarbeitszeit WHERE id = :id";
+        $stmt = $conn->prepare($updateSql);
+        $stmt->execute([':regelarbeitszeit' => $regelarbeitszeit, ':id' => $user_id]);
+        $userInfo->regelarbeitszeit = $regelarbeitszeit; // Lokale Variable aktualisieren
     }
+
+    $successMessage = 'Einstellungen erfolgreich aktualisiert!';
+    $showSuccessModal = true;
+
+    // Reload the page to apply language changes
+    header("Location: settings.php");
+    exit();
 }
 ?>
 
@@ -122,21 +127,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="row">
             <div class="col-md-12">
-                <!-- Form to change language -->
+                <!-- Form to update language and regular working hours -->
+                <h4><?= SETTINGS_TITLE ?></h4>
                 <form method="post" class="mb-4">
-                    <div class="mb-3 input-group">
-                        <span class="input-group-text"><i class="fas fa-language"></i></span>
+                    <div class="mb-3">
+                        <label for="lang" class="form-label"><i class="fas fa-language"></i> <?= SETTINGS_LANGUAGE ?></label>
                         <select name="lang" class="form-control" id="lang">
                             <option value="de" <?= $lang == 'de' ? 'selected' : '' ?>>Deutsch</option>
                             <option value="en" <?= $lang == 'en' ? 'selected' : '' ?>>English</option>
                             <option value="zh" <?= $lang == 'zh' ? 'selected' : '' ?>>中文</option>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i> <?= BUTTON_SUBMIT_DATA ?></button>
+                    <div class="mb-3">
+                        <label for="regelarbeitszeit" class="form-label"><i class="fas fa-clock"></i> <?= SETTINGS_REGULAR_WORKING_HOURS ?></label>
+                        <input type="number" step="0.1" class="form-control" id="regelarbeitszeit" name="regelarbeitszeit" value="<?= $userInfo->regelarbeitszeit ?>" min="0" max="24">
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i> <?= BUTTON_SAVE_CHANGES ?></button>
                 </form>
 
-                <!-- Form to import database, visible only to admins -->
+                <!-- Datenbank importieren -->
                 <?php if ($user_role === 'admin'): ?>
+                <h4><?= SETTINGS_IMPORT_DATABASE ?></h4>
                 <form method="post" enctype="multipart/form-data" action="settings.php" class="mb-4">
                     <div class="mb-3 input-group">
                         <span class="input-group-text"><i class="fas fa-database"></i></span>
@@ -146,7 +157,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </form>
                 <?php endif; ?>
 
-                <!-- Download database backup button -->
+                <!-- Datenbank sichern -->
+                <h4><?= SETTINGS_DOWNLOAD_DATABASE ?></h4>
                 <a href="download.php" class="btn btn-secondary"><i class="fas fa-download mr-1"></i> <?= DOWNLOAD_DATABASE ?></a>
             </div>
         </div>

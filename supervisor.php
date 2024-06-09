@@ -19,7 +19,7 @@ $user_role = $_SESSION['role'] ?? '';
 $zeiten = [];
 $ueberstundenListe = [];
 if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf kann der Admin hier auch berücksichtigt werden
-    $stmt = $conn->prepare("SELECT z.*, u.username, u.id as user_id, strftime('%Y-%m-%d', z.startzeit) AS day, strftime('%W', z.startzeit) AS weekNumber 
+    $stmt = $conn->prepare("SELECT z.*, u.username, u.id as user_id, u.regelarbeitszeit, strftime('%Y-%m-%d', z.startzeit) AS day, strftime('%W', z.startzeit) AS weekNumber 
                             FROM zeiterfassung z
                             JOIN users u ON z.user_id = u.id
                             WHERE u.supervisor_id = ?");
@@ -31,10 +31,13 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
     foreach ($zeiten as $zeit) {
         $userId = $zeit['user_id'];
         $day = $zeit['day'];
+        $regelarbeitszeit = $zeit['regelarbeitszeit'] ?? 8.0; // Standard: 8 Stunden
+        
         if (!isset($workHoursByUser[$userId])) {
             $workHoursByUser[$userId] = [
                 'username' => $zeit['username'],
-                'days' => []
+                'days' => [],
+                'regelarbeitszeit' => $regelarbeitszeit
             ];
         }
 
@@ -52,11 +55,12 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
     }
 
     // Berechnung der Gesamtüberstunden pro Benutzer
-    $regularWorkingMinutesPerDay = 8 * 60; // 8 Stunden pro Tag in Minuten
-
     foreach ($workHoursByUser as $userId => $data) {
         $totalOverMinutes = 0;
+        $regelarbeitszeit = $data['regelarbeitszeit'];
         foreach ($data['days'] as $day => $totalMinutes) {
+            $regularWorkingMinutesPerDay = $regelarbeitszeit * 60; // Regelarbeitszeit pro Tag in Minuten
+
             $overMinutes = $totalMinutes - $regularWorkingMinutesPerDay;
             $totalOverMinutes += $overMinutes;
         }
@@ -176,7 +180,9 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
                             $minuten = $gesamtMinuten % 60;
                             $dauer = "{$stunden} " . LABEL_HOURS . " {$minuten} " . LABEL_MINUTES;
 
-                            $ueberstunden = $gesamtMinuten - (8 * 60); // Annahme: 8 Stunden reguläre Arbeitszeit pro Tag
+                            $regelarbeitszeit = $zeit['regelarbeitszeit'] ?? 8.0; // Standard: 8 Stunden
+                            $regularWorkingMinutesPerDay = $regelarbeitszeit * 60; // Regelarbeitszeit pro Tag in Minuten
+                            $ueberstunden = $gesamtMinuten - $regularWorkingMinutesPerDay;
                             $ueberstundenStunden = floor(abs($ueberstunden) / 60);
                             $ueberstundenMinuten = abs($ueberstunden % 60);
                             $ueberstundenFormat = ($ueberstunden < 0 ? '-' : '') . sprintf("%02d:%02d", $ueberstundenStunden, $ueberstundenMinuten);

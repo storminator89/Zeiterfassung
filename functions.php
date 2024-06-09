@@ -19,6 +19,17 @@ try {
     die("Verbindungsfehler: " . $e->getMessage());
 }
 
+// Fetch user's regular working hours
+try {
+    $stmt = $conn->prepare('SELECT regelarbeitszeit FROM users WHERE id = :user_id');
+    $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $userRegularWorkingHours = $stmt->fetchColumn() ?? 8; // Default to 8 hours if not set
+} catch (PDOException $e) {
+    // Handle query error
+    die("Datenbankfehler: " . $e->getMessage());
+}
+
 // Fetch all entries from 'zeiterfassung' for the current user, adding week number
 try {
     $stmt = $conn->prepare('
@@ -92,7 +103,7 @@ $totalHoursThisWeek = $totalHours + ($remainingMinutes / 60);
 $currentMonthStart = "{$currentYear}-{$currentMonth}-01";
 $currentMonthEnd = date("Y-m-t"); // Last day of the current month
 
-$workingHoursThisMonth = getWorkingHours($currentMonthStart, $currentMonthEnd);
+$workingHoursThisMonth = getWorkingHours($currentMonthStart, $currentMonthEnd, $userRegularWorkingHours);
 
 // Getting today's date
 $currentDate = date("Y-m-d");
@@ -162,10 +173,9 @@ function getWorkingDays($startDate, $endDate)
 }
 
 // Function to get working hours between two dates
-function getWorkingHours($startDate, $endDate)
+function getWorkingHours($startDate, $endDate, $hoursPerDay)
 {
     $workingDays = getWorkingDays($startDate, $endDate);
-    $hoursPerDay = 8; // 40 hours per week divided by 5 days
     return $workingDays * $hoursPerDay;
 }
 
@@ -221,9 +231,6 @@ function fetchFeiertageDB($jahr)
     }
 }
 
-
-
-
 // Calling the function at the beginning of the year
 fetchFeiertageDB($currentYear);
 
@@ -254,7 +261,6 @@ $firstDayOfTheMonth = "{$currentYear}-{$currentMonth}-01";
 $lastDayOfTheMonth = date("Y-m-t", strtotime($currentMonthStart));
 $workingDaysThisMonth = getWorkingDays($firstDayOfTheMonth, $lastDayOfTheMonth);
 
-$regularWorkingHours = 8; // Regular working hours per day
 $totalOverHours = 0; // Gesamtüberstunden
 $workHoursByDate = []; // Speichert Arbeitsstunden pro Datum
 
@@ -282,7 +288,7 @@ $totalOverHours = 0;
 foreach ($workHoursByDate as $datum => $hours) {
     $wochentag = date('N', strtotime($datum));
     if ($wochentag >= 1 && $wochentag <= 5) { // Montag bis Freitag
-        $totalOverHours += $hours - $regularWorkingHours;
+        $totalOverHours += $hours - $userRegularWorkingHours;
     } else {
         $totalOverHours += $hours; // Wochenendarbeit als Überstunden
     }
@@ -341,7 +347,7 @@ $totalHoursThisYearFromRecords = floor($totalMinutesThisYearFromRecords / 60);
 // 2. Expected working hours of the year
 $firstDayOfTheYear = "{$currentYear}-01-01";
 $lastDayOfTheYear = "{$currentYear}-12-31";
-$workingHoursThisYear = getWorkingHours($firstDayOfTheYear, $lastDayOfTheYear);
+$workingHoursThisYear = getWorkingHours($firstDayOfTheYear, $lastDayOfTheYear, $userRegularWorkingHours);
 
 // Calculating over hours for the year
 $overHoursThisYear = $totalHoursThisYearFromRecords - $workingHoursThisYear;
@@ -350,13 +356,13 @@ $overHoursThisYear = $totalHoursThisYearFromRecords - $workingHoursThisYear;
 $firstDayOfWeek = date('Y-m-d', strtotime('Monday this week'));
 $lastWorkingDayOfWeek = date('Y-m-d', strtotime('Friday this week'));
 
-$expectedHoursThisWeek = 40;
+$expectedHoursThisWeek = 5 * $userRegularWorkingHours; // 5 Arbeitstage pro Woche
 
 // Checking each day of the working week if it's a holiday
 $currentDate = $firstDayOfWeek;
 while (strtotime($currentDate) <= strtotime($lastWorkingDayOfWeek)) {
     if (istFeiertag($currentDate)) {
-        $expectedHoursThisWeek -= 8;
+        $expectedHoursThisWeek -= $userRegularWorkingHours;
     }
     $currentDate = date('Y-m-d', strtotime("+1 day", strtotime($currentDate)));
 }
@@ -442,4 +448,4 @@ foreach ($feiertageThisYear as $feiertag) {
         'isAllDay' => true
     ];
 }
-
+?>
