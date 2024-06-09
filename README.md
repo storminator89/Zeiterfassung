@@ -58,10 +58,16 @@ Located in the `time-tracker-extension_edge` folder.
 
 ![User Management](/assets/user_management.png)
 
+### Supervisor
+
+![Supervisor](/assets/supervisor.png)
+
+### Settings
+
+![Settings](/assets/settings.png)
 ### Dark Mode
 
 ![Dark Mode](/assets/darkmode.png)
-
 
 
 ## Dependencies and Resources
@@ -79,7 +85,7 @@ Located in the `time-tracker-extension_edge` folder.
 
 ## Database Configuration
 
-Ensure write permissions on the main directory to allow the SQLite file to be created.
+Ensure write permissions on the main directory (assets/db) to allow the SQLite file to be created.
 
 # REST API
 
