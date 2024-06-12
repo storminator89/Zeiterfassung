@@ -75,6 +75,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['generate_token'])) {
     }
 }
 
+function getUidFromDn($dn) {
+    $parts = ldap_explode_dn($dn, 1);
+    foreach ($parts as $part) {
+        if (strpos($part, 'uid=') === 0) {
+            return substr($part, 4); // 'uid=' entfernen
+        }
+    }
+    return null;
+}
+
+
 // LDAP-Synchronisation
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
     $ldapHost = $_POST['ldap_host'];
@@ -90,7 +101,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
             ldap_set_option($ldapConn, LDAP_OPT_PROTOCOL_VERSION, 3);
             if (ldap_bind($ldapConn, $ldapUser, $ldapPass)) {
                 $searchFilter = "(objectClass=inetOrgPerson)";
-                $attributes = ["uid", "cn", "sn", "mail"];
+                $attributes = ["uid", "cn", "sn", "mail", "ou", "manager"];
                 $result = ldap_search($ldapConn, $ldapBaseDN, $searchFilter, $attributes);
                 if ($result) {
                     $entries = ldap_get_entries($ldapConn, $result);
@@ -100,6 +111,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
                             $email = $entry["mail"][0];
                             $cn = isset($entry["cn"][0]) ? $entry["cn"][0] : '';
                             $sn = isset($entry["sn"][0]) ? $entry["sn"][0] : '';
+                            $department = isset($entry["ou"][0]) ? $entry["ou"][0] : '';
+                            $managerDn = isset($entry["manager"][0]) ? $entry["manager"][0] : '';
 
                             // Prüfen, ob der Benutzer bereits in der SQLite-Datenbank existiert
                             $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username");
@@ -107,21 +120,51 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
                             $stmt->execute();
                             $user = $stmt->fetch();
 
+                            // Vorgesetzten-ID aus der Datenbank abrufen
+                            $supervisorId = null;
+                            if ($managerDn) {
+                                $managerUsername = getUidFromDn($managerDn); // Extrahiere den Benutzernamen aus dem DN
+                                $stmt = $conn->prepare("SELECT id FROM users WHERE username = :username");
+                                $stmt->bindParam(':username', $managerUsername);
+                                $stmt->execute();
+                                $supervisor = $stmt->fetch(PDO::FETCH_OBJ);
+                                $supervisorId = $supervisor ? $supervisor->id : null;
+                            }
+
+                            // Abteilungs-ID aus der Datenbank abrufen oder erstellen
+                            $stmt = $conn->prepare("SELECT id FROM departments WHERE name = :name");
+                            $stmt->bindParam(':name', $department);
+                            $stmt->execute();
+                            $dept = $stmt->fetch(PDO::FETCH_OBJ);
+                            $departmentId = $dept ? $dept->id : null;
+
+                            if (!$departmentId && $department) {
+                                // Abteilung einfügen, falls nicht vorhanden
+                                $stmt = $conn->prepare("INSERT INTO departments (name) VALUES (:name)");
+                                $stmt->bindParam(':name', $department);
+                                $stmt->execute();
+                                $departmentId = $conn->lastInsertId();
+                            }
+
                             if ($user) {
                                 // Benutzerinformationen aktualisieren
-                                $updateSql = "UPDATE users SET email = :email WHERE username = :username";
+                                $updateSql = "UPDATE users SET email = :email, department_id = :department_id, supervisor_id = :supervisor_id WHERE username = :username";
                                 $stmt = $conn->prepare($updateSql);
                                 $stmt->bindParam(':email', $email);
+                                $stmt->bindParam(':department_id', $departmentId);
+                                $stmt->bindParam(':supervisor_id', $supervisorId);
                                 $stmt->bindParam(':username', $username);
                                 $stmt->execute();
                             } else {
                                 // Neuen Benutzer einfügen
-                                $insertSql = "INSERT INTO users (username, password, email, role) VALUES (:username, :password, :email, 'user')";
+                                $insertSql = "INSERT INTO users (username, password, email, role, department_id, supervisor_id) VALUES (:username, :password, :email, 'user', :department_id, :supervisor_id)";
                                 $stmt = $conn->prepare($insertSql);
                                 $passwordHash = password_hash("defaultpassword", PASSWORD_BCRYPT);
                                 $stmt->bindParam(':username', $username);
                                 $stmt->bindParam(':password', $passwordHash);
                                 $stmt->bindParam(':email', $email);
+                                $stmt->bindParam(':department_id', $departmentId);
+                                $stmt->bindParam(':supervisor_id', $supervisorId);
                                 $stmt->execute();
                             }
                         }
