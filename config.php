@@ -56,15 +56,26 @@ SQL;
     );
     SQL;
 
+    $createLdapSettingsSql = <<<SQL
+    CREATE TABLE IF NOT EXISTS ldap_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ldap_host TEXT NOT NULL,
+    ldap_port INTEGER NOT NULL,
+    ldap_user TEXT NOT NULL,
+    ldap_pass TEXT NOT NULL,
+    ldap_base_dn TEXT NOT NULL
+    );
+    SQL;
+
     // Execute the SQL statements
     $conn->exec($createUserSql);
     $conn->exec($createZeiterfassungSql);
     $conn->exec($createFeiertageSql);
     $conn->exec($createDepartmentsSql);
-    
+    $conn->exec($createLdapSettingsSql);
+
     $result = $conn->query("PRAGMA table_info(users)")->fetchAll();
     $columns = array_column($result, 'name');
-   
 } catch (\PDOException $e) {
     exit('Could not connect to the SQLite database: ' . $e->getMessage());
 }

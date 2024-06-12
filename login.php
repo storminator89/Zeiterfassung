@@ -48,6 +48,73 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $password = trim($_POST['password']);
 
         if (!empty($username) && !empty($password)) {
+            // LDAP-Verbindungsdetails aus der Datenbank abrufen
+            $stmt = $conn->prepare("SELECT * FROM ldap_settings ORDER BY id DESC LIMIT 1");
+            $stmt->execute();
+            $ldapSettings = $stmt->fetch(PDO::FETCH_OBJ);
+
+            if ($ldapSettings) {
+                $ldapHost = $ldapSettings->ldap_host;
+                $ldapPort = $ldapSettings->ldap_port;
+                $ldapUser = $ldapSettings->ldap_user;
+                $ldapPass = $ldapSettings->ldap_pass;
+                $ldapBaseDN = $ldapSettings->ldap_base_dn;
+
+                // Check LDAP first
+                $ldapConn = ldap_connect($ldapHost, $ldapPort);
+
+                if ($ldapConn) {
+                    ldap_set_option($ldapConn, LDAP_OPT_PROTOCOL_VERSION, 3);
+                    $ldapRdn = "uid=$username,$ldapBaseDN";
+
+                    if (@ldap_bind($ldapConn, $ldapRdn, $password)) {
+                        // User authenticated via LDAP
+                        // Fetch user details from LDAP and proceed
+                        $search = ldap_search($ldapConn, $ldapBaseDN, "(uid=$username)");
+                        $entries = ldap_get_entries($ldapConn, $search);
+
+                        if ($entries["count"] > 0) {
+                            $ldapUser = $entries[0];
+                            $email = $ldapUser["mail"][0];
+
+                            // Check if user exists in local database
+                            $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username");
+                            $stmt->bindParam(':username', $username, PDO::PARAM_STR);
+                            $stmt->execute();
+                            $user = $stmt->fetch(PDO::FETCH_OBJ);
+
+                            if (!$user) {
+                                // If user doesn't exist locally, insert the user
+                                $stmt = $conn->prepare("INSERT INTO users (username, password, email, role) VALUES (:username, :password, :email, 'user')");
+                                $hashedPassword = password_hash($password, PASSWORD_DEFAULT); // Store a hashed password
+                                $stmt->bindParam(':username', $username);
+                                $stmt->bindParam(':password', $hashedPassword);
+                                $stmt->bindParam(':email', $email);
+                                $stmt->execute();
+
+                                // Fetch the newly inserted user
+                                $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username");
+                                $stmt->bindParam(':username', $username, PDO::PARAM_STR);
+                                $stmt->execute();
+                                $user = $stmt->fetch(PDO::FETCH_OBJ);
+                            }
+
+                            // Regenerate session ID to prevent session fixation
+                            session_regenerate_id(true);
+
+                            $_SESSION['user_id'] = $user->id;
+                            $_SESSION['username'] = $user->username;
+                            $_SESSION['role'] = $user->role; // Benutzerrolle speichern
+
+                            header("Location: index.php");
+                            exit();
+                        }
+                    }
+                    ldap_close($ldapConn);
+                }
+            }
+
+            // If LDAP authentication fails, check local database
             $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username");
             $stmt->bindParam(':username', $username, PDO::PARAM_STR);
             $stmt->execute();

@@ -141,6 +141,17 @@ define('DEPARTMENT_UPDATED_SUCCESS', 'Abteilung erfolgreich aktualisiert');
 define('DEPARTMENT_CREATED_ERROR', 'Fehler beim Erstellen der Abteilung');
 define('DEPARTMENT_UPDATED_ERROR', 'Fehler beim Aktualisieren der Abteilung');
 define('MODAL_BUTTON_SAVE_CHANGES', 'Änderungen speichern');
+define('LDAP_HOST', 'LDAP-Host');
+define('LDAP_PORT', 'LDAP-Port');
+define('LDAP_USER', 'LDAP-Benutzer');
+define('LDAP_PASS', 'LDAP-Passwort');
+define('LDAP_BASE_DN', 'LDAP-Basis-DN');
+define('LDAP_SYNC_TITLE', 'LDAP-Synchronisation');
+define('BUTTON_SYNC_LDAP', 'LDAP synchronisieren');
+define('LDAP_SYNC_SUCCESS', 'LDAP-Synchronisation erfolgreich.');
+define('LDAP_BIND_FAILED', 'LDAP-Bind fehlgeschlagen.');
+define('LDAP_CONNECTION_FAILED', 'Verbindung zum LDAP-Server konnte nicht hergestellt werden.');
+define('DATABASE_CONNECTION_FAILED', 'Verbindung zur SQLite-Datenbank konnte nicht hergestellt werden: ');
 
 //Login page
 define('LOGIN_TITLE', 'Login - Quodara Chrono');

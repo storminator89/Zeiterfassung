@@ -17,6 +17,18 @@ $user_role = isset($_SESSION['role']) ? $_SESSION['role'] : null;
 $error = '';
 $successMessage = '';
 
+// LDAP-Einstellungen aus der Datenbank abrufen
+$stmt = $conn->prepare("SELECT * FROM ldap_settings ORDER BY id DESC LIMIT 1");
+$stmt->execute();
+$ldapSettings = $stmt->fetch(PDO::FETCH_OBJ);
+
+$ldapHost = $ldapSettings->ldap_host ?? '';
+$ldapPort = $ldapSettings->ldap_port ?? '';
+$ldapUser = $ldapSettings->ldap_user ?? '';
+$ldapPass = $ldapSettings->ldap_pass ?? '';
+$ldapBaseDN = $ldapSettings->ldap_base_dn ?? '';
+
+
 // Funktion zum Base64 URL Enkodieren
 function base64UrlEncode($data)
 {
@@ -60,6 +72,76 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['generate_token'])) {
         $successMessage = TOKEN_GENERATED_SUCCESS;
     } catch (PDOException $e) {
         $error = TOKEN_GENERATED_ERROR . $e->getMessage();
+    }
+}
+
+// LDAP-Synchronisation
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
+    $ldapHost = $_POST['ldap_host'];
+    $ldapPort = $_POST['ldap_port'];
+    $ldapUser = $_POST['ldap_user'];
+    $ldapPass = $_POST['ldap_pass'];
+    $ldapBaseDN = $_POST['ldap_base_dn'];
+
+    try {
+        // LDAP-Verbindung herstellen
+        $ldapConn = ldap_connect($ldapHost, $ldapPort);
+        if ($ldapConn) {
+            ldap_set_option($ldapConn, LDAP_OPT_PROTOCOL_VERSION, 3);
+            if (ldap_bind($ldapConn, $ldapUser, $ldapPass)) {
+                $searchFilter = "(objectClass=inetOrgPerson)";
+                $attributes = ["uid", "cn", "sn", "mail"];
+                $result = ldap_search($ldapConn, $ldapBaseDN, $searchFilter, $attributes);
+                if ($result) {
+                    $entries = ldap_get_entries($ldapConn, $result);
+                    foreach ($entries as $entry) {
+                        if (isset($entry["uid"][0]) && isset($entry["mail"][0])) {
+                            $username = $entry["uid"][0];
+                            $email = $entry["mail"][0];
+                            $cn = isset($entry["cn"][0]) ? $entry["cn"][0] : '';
+                            $sn = isset($entry["sn"][0]) ? $entry["sn"][0] : '';
+
+                            // Prüfen, ob der Benutzer bereits in der SQLite-Datenbank existiert
+                            $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username");
+                            $stmt->bindParam(':username', $username);
+                            $stmt->execute();
+                            $user = $stmt->fetch();
+
+                            if ($user) {
+                                // Benutzerinformationen aktualisieren
+                                $updateSql = "UPDATE users SET email = :email WHERE username = :username";
+                                $stmt = $conn->prepare($updateSql);
+                                $stmt->bindParam(':email', $email);
+                                $stmt->bindParam(':username', $username);
+                                $stmt->execute();
+                            } else {
+                                // Neuen Benutzer einfügen
+                                $insertSql = "INSERT INTO users (username, password, email, role) VALUES (:username, :password, :email, 'user')";
+                                $stmt = $conn->prepare($insertSql);
+                                $passwordHash = password_hash("defaultpassword", PASSWORD_BCRYPT);
+                                $stmt->bindParam(':username', $username);
+                                $stmt->bindParam(':password', $passwordHash);
+                                $stmt->bindParam(':email', $email);
+                                $stmt->execute();
+                            }
+                        }
+                    }
+
+                    // Speichern der LDAP-Einstellungen in der Datenbank
+                    $stmt = $conn->prepare("INSERT INTO ldap_settings (ldap_host, ldap_port, ldap_user, ldap_pass, ldap_base_dn) VALUES (?, ?, ?, ?, ?)");
+                    $stmt->execute([$ldapHost, $ldapPort, $ldapUser, $ldapPass, $ldapBaseDN]);
+
+                    $successMessage = LDAP_SYNC_SUCCESS;
+                }
+                ldap_unbind($ldapConn);
+            } else {
+                $error = LDAP_BIND_FAILED;
+            }
+        } else {
+            $error = LDAP_CONNECTION_FAILED;
+        }
+    } catch (\PDOException $e) {
+        $error = DATABASE_CONNECTION_FAILED . $e->getMessage();
     }
 }
 
@@ -323,6 +405,35 @@ $departments = $stmt->fetchAll(PDO::FETCH_OBJ);
             </div>
             <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus mr-1"></i> <?= BUTTON_CREATE_USER ?></button>
         </form>
+
+        <!-- LDAP Synchronization Form -->
+        <!-- LDAP Synchronization Form -->
+        <h2 class="container mt-4"><?= LDAP_SYNC_TITLE ?></h2>
+        <form method="post" class="mt-4">
+            <input type="hidden" name="sync_ldap" value="1">
+            <div class="mb-3 input-group">
+                <span class="input-group-text"><i class="fas fa-server"></i></span>
+                <input type="text" class="form-control" id="ldap_host" name="ldap_host" placeholder="<?= LDAP_HOST ?> e.g. ldap://ldap.forumsys.com" value="<?= htmlspecialchars($ldapHost) ?>" required>
+            </div>
+            <div class="mb-3 input-group">
+                <span class="input-group-text"><i class="fas fa-network-wired"></i></span>
+                <input type="number" class="form-control" id="ldap_port" name="ldap_port" placeholder="<?= LDAP_PORT ?> 389" value="<?= htmlspecialchars($ldapPort) ?>" required>
+            </div>
+            <div class="mb-3 input-group">
+                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                <input type="text" class="form-control" id="ldap_user" name="ldap_user" placeholder="<?= LDAP_USER ?> e.g. cn=read-only-admin,dc=example,dc=com" value="<?= htmlspecialchars($ldapUser) ?>" required>
+            </div>
+            <div class="mb-3 input-group">
+                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                <input type="password" class="form-control" id="ldap_pass" name="ldap_pass" placeholder="<?= LDAP_PASS ?>" value="<?= htmlspecialchars($ldapPass) ?>" required>
+            </div>
+            <div class="mb-3 input-group">
+                <span class="input-group-text"><i class="fas fa-sitemap"></i></span>
+                <input type="text" class="form-control" id="ldap_base_dn" name="ldap_base_dn" placeholder="<?= LDAP_BASE_DN ?> dc=example,dc=com" value="<?= htmlspecialchars($ldapBaseDN) ?>" required>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-sync-alt mr-1"></i> <?= BUTTON_SYNC_LDAP ?></button>
+        </form>
+
 
         <!-- Search Bar -->
         <div class="mt-5 mb-3">
