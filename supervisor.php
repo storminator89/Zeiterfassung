@@ -32,7 +32,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
         $userId = $zeit['user_id'];
         $day = $zeit['day'];
         $regelarbeitszeit = $zeit['regelarbeitszeit'] ?? 8.0; // Standard: 8 Stunden
-        
+
         if (!isset($workHoursByUser[$userId])) {
             $workHoursByUser[$userId] = [
                 'username' => $zeit['username'],
@@ -99,11 +99,11 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
-    <script src="./assets/js/main.js"></script>    
+    <script src="./assets/js/main.js"></script>
 </head>
 
 <body>
-<nav class="navbar navbar-expand-lg navbar-dark navbar-custom pl-3">
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom pl-3">
         <a class="navbar-brand" href="index.php">
             <img class="pl-3" src="assets/kolibri_icon_weiß.png" alt="Time Tracking" height="50">
         </a>
@@ -150,7 +150,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
             <h3 class="mt-4"><i class="fas fa-clock mr-2"></i> <?= ACTUAL_WORKED_TIMES ?></h3>
             <table class="table table-striped table-bordered" id="zeitenTable">
                 <thead>
-                    <tr>                       
+                    <tr>
                         <th><?= TABLE_HEADER_ID ?></th>
                         <th><?= TABLE_HEADER_USERNAME ?></th>
                         <th><?= TABLE_HEADER_WEEK ?></th>
@@ -188,7 +188,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
                             $ueberstundenMinuten = abs($ueberstunden % 60);
                             $ueberstundenFormat = ($ueberstunden < 0 ? '-' : '') . sprintf("%02d:%02d", $ueberstundenStunden, $ueberstundenMinuten);
                             ?>
-                            <tr>                                
+                            <tr>
                                 <td><?= htmlspecialchars($zeit['id']) ?></td>
                                 <td><?= htmlspecialchars($zeit['username']) ?></td>
                                 <td><?= htmlspecialchars($zeit['weekNumber']) ?></td>
@@ -231,21 +231,26 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
         <?php endif; ?>
     </div>
     <script>
-        $('#zeitenTable').DataTable({
-            dom: 'Bfrtip',
-            buttons: [
-                'copy', 'csv', 'excel', 'pdf', 'print'
-            ],
-            columnDefs: [{
-                className: "text-center",
-                "targets": [0, 1, 5]
-            }],
-            order: [
-                [3, 'desc']
-            ],
-            paging: true
+        $(document).ready(function() {
+            <?php if (!empty($zeiten)) : ?>
+                $('#zeitenTable').DataTable({
+                    dom: 'Bfrtip',
+                    buttons: [
+                        'copy', 'csv', 'excel', 'pdf', 'print'
+                    ],
+                    columnDefs: [{
+                        className: "text-center",
+                        "targets": "_all"
+                    }],
+                    order: [
+                        [3, 'desc']
+                    ],
+                    paging: true
+                });
+            <?php endif; ?>
         });
     </script>
+
 </body>
 
 </html>
