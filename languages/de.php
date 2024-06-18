@@ -152,6 +152,13 @@ define('LDAP_SYNC_SUCCESS', 'LDAP-Synchronisation erfolgreich.');
 define('LDAP_BIND_FAILED', 'LDAP-Bind fehlgeschlagen.');
 define('LDAP_CONNECTION_FAILED', 'Verbindung zum LDAP-Server konnte nicht hergestellt werden.');
 define('DATABASE_CONNECTION_FAILED', 'Verbindung zur SQLite-Datenbank konnte nicht hergestellt werden: ');
+define('PAUSE_SETTINGS_TITLE', 'Pauseneinstellungen');
+define('HOURS_THRESHOLD', 'Stunden Schwellenwert');
+define('MINIMUM_PAUSE', 'Minimale Pausenzeit (Minuten)');
+define('ACTIONS', 'Aktionen');
+define('ADD_ROW', 'Zeile hinzufügen');
+define('SAVE_SETTINGS', 'Einstellungen speichern');
+
 
 //Login page
 define('LOGIN_TITLE', 'Login - Quodara Chrono');

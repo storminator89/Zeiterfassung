@@ -6,6 +6,14 @@ $user_id = $_SESSION['user_id'];
 $lang = $_SESSION['lang'] ?? 'de';
 require_once "languages/$lang.php";
 
+// Funktion, um die Mindestpausendauer basierend auf der Arbeitszeit abzurufen
+function getPauseDuration($totalHours) {
+    global $conn;
+    $stmt = $conn->prepare("SELECT minimum_pause FROM pause_settings WHERE hours_threshold <= ? ORDER BY hours_threshold DESC LIMIT 1");
+    $stmt->execute([$totalHours]);
+    return $stmt->fetchColumn();
+}
+
 // Update request handler
 if (isset($_POST["update"]) && $_POST["update"] == true) {
     $forbiddenColumns = ["dauer", "id", "aktion"];
@@ -18,7 +26,42 @@ if (isset($_POST["update"]) && $_POST["update"] == true) {
         exit;
     }
 
-    $stmt = $conn->prepare("UPDATE zeiterfassung SET $column = :data WHERE id = :id AND user_id = :user_id");
+    if ($column === 'endzeit' || $column === 'startzeit') {
+        // Fetch the start time and end time from the database
+        $stmt = $conn->prepare("SELECT startzeit, endzeit, pause FROM zeiterfassung WHERE id = :id AND user_id = :user_id");
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+        $stmt->execute();
+        $times = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $startzeit_raw = $times['startzeit'];
+        $endzeit_raw = ($column === 'endzeit') ? $data : $times['endzeit'];
+        $startzeit_raw = ($column === 'startzeit') ? $data : $times['startzeit'];
+        $current_pause = $times['pause'];
+
+        if ($startzeit_raw && $endzeit_raw) {
+            $startzeit_iso = new DateTime($startzeit_raw);
+            $endzeit_iso = new DateTime($endzeit_raw);
+
+            // Calculate the total work duration
+            $totalDuration = $endzeit_iso->diff($startzeit_iso);
+            $totalHours = $totalDuration->h + ($totalDuration->i / 60);
+
+            // Determine the pause duration if not set or below the minimum required pause
+            if (!$current_pause || $current_pause < getPauseDuration($totalHours)) {
+                $pause = getPauseDuration($totalHours);
+                $stmt = $conn->prepare("UPDATE zeiterfassung SET $column = :data, pause = :pause WHERE id = :id AND user_id = :user_id");
+                $stmt->bindParam(':pause', $pause);
+            } else {
+                $stmt = $conn->prepare("UPDATE zeiterfassung SET $column = :data WHERE id = :id AND user_id = :user_id");
+            }
+        } else {
+            $stmt = $conn->prepare("UPDATE zeiterfassung SET $column = :data WHERE id = :id AND user_id = :user_id");
+        }
+    } else {
+        $stmt = $conn->prepare("UPDATE zeiterfassung SET $column = :data WHERE id = :id AND user_id = :user_id");
+    }
+
     $stmt->bindParam(':data', $data);
     $stmt->bindParam(':id', $id);
     $stmt->bindParam(':user_id', $user_id);
@@ -43,25 +86,48 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["startzeit"]) && isset(
 
 if (isset($_POST["aktion"]) && $_POST["aktion"] === "gehen" && isset($_POST["id"])) {
     $id = $_POST["id"];
-    $startzeit_raw = $_POST["startzeit"];
     $endzeit_raw = $_POST["endzeit"] ?? null;
     $beschreibung = $_POST["beschreibung"] ?? '';
-    $pause = $_POST["pause"] ?? 0;
     $standort = $_POST["standort"] ?? '';
 
-    $startzeit_iso = date('Y-m-d\TH:i:s', strtotime($startzeit_raw));
-    $endzeit_iso = $endzeit_raw ? date('Y-m-d\TH:i:s', strtotime($endzeit_raw)) : null;
-
-    $stmt = $conn->prepare("UPDATE zeiterfassung SET endzeit = :endzeit, beschreibung = :beschreibung, pause = :pause, standort = :standort WHERE id = :id AND user_id = :user_id");
-    $stmt->bindParam(':endzeit', $endzeit_iso);
-    $stmt->bindParam(':beschreibung', $beschreibung);
-    $stmt->bindParam(':pause', $pause);
-    $stmt->bindParam(':standort', $standort);
-    $stmt->bindParam(':id', $id);
-    $stmt->bindParam(':user_id', $user_id);
+    // Fetch the start time from the database
+    $stmt = $conn->prepare("SELECT startzeit, pause FROM zeiterfassung WHERE id = :id AND user_id = :user_id");
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
     $stmt->execute();
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $startzeit_raw = $result['startzeit'];
+    $current_pause = $result['pause'];
 
-    header("Location: index.php");
+    if ($startzeit_raw) {
+        $startzeit_iso = new DateTime($startzeit_raw);
+        $endzeit_iso = new DateTime($endzeit_raw);
+
+        // Calculate the total work duration
+        $totalDuration = $endzeit_iso->diff($startzeit_iso);
+        $totalHours = $totalDuration->h + ($totalDuration->i / 60);
+
+        // Determine the pause duration if not set or below the minimum required pause
+        if (!$current_pause || $current_pause < getPauseDuration($totalHours)) {
+            $pause = getPauseDuration($totalHours);
+        } else {
+            $pause = $current_pause; // Keep the current pause if it meets the requirements
+        }
+
+        $stmt = $conn->prepare("UPDATE zeiterfassung SET endzeit = :endzeit, beschreibung = :beschreibung, pause = :pause, standort = :standort WHERE id = :id AND user_id = :user_id");
+        $stmt->bindParam(':endzeit', $endzeit_iso->format('Y-m-d\TH:i:s'));
+        $stmt->bindParam(':beschreibung', $beschreibung);
+        $stmt->bindParam(':pause', $pause);
+        $stmt->bindParam(':standort', $standort);
+        $stmt->bindParam(':id', $id);
+        $stmt->bindParam(':user_id', $user_id);
+        $stmt->execute();
+
+        header("Location: index.php");
+        exit();
+    } else {
+        echo "Fehler: Startzeit nicht gefunden.";
+    }
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["urlaubStart"]) && isset($_POST["urlaubEnde"]) && isset($_POST["ereignistyp"])) {
@@ -89,3 +155,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["urlaubStart"]) && isse
 } else {
     // handle other cases
 }
+?>

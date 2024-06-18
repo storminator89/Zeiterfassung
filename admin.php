@@ -28,6 +28,32 @@ $ldapUser = $ldapSettings->ldap_user ?? '';
 $ldapPass = $ldapSettings->ldap_pass ?? '';
 $ldapBaseDN = $ldapSettings->ldap_base_dn ?? '';
 
+// Pauseneinstellungen aus der Datenbank abrufen
+$stmt = $conn->prepare("SELECT * FROM pause_settings ORDER BY hours_threshold ASC");
+$stmt->execute();
+$pauseSettings = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+// Pauseneinstellungen aktualisieren
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_pause_settings'])) {
+    $hoursThresholds = $_POST['hours_threshold'];
+    $minimumPauses = $_POST['minimum_pause'];
+
+    try {
+        $stmt = $conn->prepare("DELETE FROM pause_settings");
+        $stmt->execute();
+
+        foreach ($hoursThresholds as $index => $hoursThreshold) {
+            $stmt = $conn->prepare("INSERT INTO pause_settings (hours_threshold, minimum_pause) VALUES (?, ?)");
+            $stmt->execute([$hoursThreshold, $minimumPauses[$index]]);
+        }
+
+        $successMessage = "Pauseneinstellungen erfolgreich aktualisiert.";
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit();
+    } catch (PDOException $e) {
+        $error = "Fehler beim Aktualisieren der Pauseneinstellungen: " . $e->getMessage();
+    }
+}
 
 // Funktion zum Base64 URL Enkodieren
 function base64UrlEncode($data)
@@ -75,7 +101,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['generate_token'])) {
     }
 }
 
-function getUidFromDn($dn) {
+function getUidFromDn($dn)
+{
     $parts = ldap_explode_dn($dn, 1);
     foreach ($parts as $part) {
         if (strpos($part, 'uid=') === 0) {
@@ -84,7 +111,6 @@ function getUidFromDn($dn) {
     }
     return null;
 }
-
 
 // LDAP-Synchronisation
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
@@ -450,7 +476,6 @@ $departments = $stmt->fetchAll(PDO::FETCH_OBJ);
         </form>
 
         <!-- LDAP Synchronization Form -->
-        <!-- LDAP Synchronization Form -->
         <h2 class="container mt-4"><?= LDAP_SYNC_TITLE ?></h2>
         <form method="post" class="mt-4">
             <input type="hidden" name="sync_ldap" value="1">
@@ -475,6 +500,40 @@ $departments = $stmt->fetchAll(PDO::FETCH_OBJ);
                 <input type="text" class="form-control" id="ldap_base_dn" name="ldap_base_dn" placeholder="<?= LDAP_BASE_DN ?> dc=example,dc=com" value="<?= htmlspecialchars($ldapBaseDN) ?>" required>
             </div>
             <button type="submit" class="btn btn-primary"><i class="fas fa-sync-alt mr-1"></i> <?= BUTTON_SYNC_LDAP ?></button>
+        </form>
+
+        <!-- Pauseneinstellungen Form -->
+        <h2 class="container mt-4"><?= PAUSE_SETTINGS_TITLE ?></h2>
+        <form method="post" class="mt-4">
+            <input type="hidden" name="update_pause_settings" value="1">
+            <div class="mb-3">
+                <table class="table table-bordered" id="pauseSettingsTable">
+                    <thead>
+                        <tr>
+                            <th><?= HOURS_THRESHOLD ?></th>
+                            <th><?= MINIMUM_PAUSE ?></th>
+                            <th><?= ACTIONS ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($pauseSettings as $setting) : ?>
+                            <tr>
+                                <td>
+                                    <input type="number" name="hours_threshold[]" class="form-control" value="<?= htmlspecialchars($setting->hours_threshold) ?>" required>
+                                </td>
+                                <td>
+                                    <input type="number" name="minimum_pause[]" class="form-control" value="<?= htmlspecialchars($setting->minimum_pause) ?>" required>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-danger btn-sm remove-row"><i class="fas fa-trash-alt"></i></button>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <button type="button" class="btn btn-secondary btn-sm" id="addRow"><i class="fas fa-plus"></i> <?= ADD_ROW ?></button>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <?= SAVE_SETTINGS ?></button>
         </form>
 
 
@@ -764,6 +823,21 @@ $departments = $stmt->fetchAll(PDO::FETCH_OBJ);
                 } else {
                     $('#edit_new_department_group').hide();
                 }
+            });
+
+            // Pauseneinstellungen Zeile hinzufügen
+            $('#addRow').click(function() {
+                var newRow = `<tr>
+                    <td><input type="number" name="hours_threshold[]" class="form-control" required></td>
+                    <td><input type="number" name="minimum_pause[]" class="form-control" required></td>
+                    <td><button type="button" class="btn btn-danger btn-sm remove-row"><i class="fas fa-trash-alt"></i></button></td>
+                </tr>`;
+                $('#pauseSettingsTable tbody').append(newRow);
+            });
+
+            // Pauseneinstellungen Zeile entfernen
+            $('#pauseSettingsTable').on('click', '.remove-row', function() {
+                $(this).closest('tr').remove();
             });
         });
 

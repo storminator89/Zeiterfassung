@@ -141,6 +141,25 @@ define('DEPARTMENT_UPDATED_SUCCESS', 'Department successfully updated');
 define('DEPARTMENT_CREATED_ERROR', 'Error creating department');
 define('DEPARTMENT_UPDATED_ERROR', 'Error updating department');
 define('MODAL_BUTTON_SAVE_CHANGES', 'Save Changes');
+define('LDAP_HOST', 'LDAP Host');
+define('LDAP_PORT', 'LDAP Port');
+define('LDAP_USER', 'LDAP User');
+define('LDAP_PASS', 'LDAP Password');
+define('LDAP_BASE_DN', 'LDAP Base DN');
+define('LDAP_SYNC_TITLE', 'LDAP Sync');
+define('BUTTON_SYNC_LDAP', 'Sync LDAP');
+define('LDAP_SYNC_SUCCESS', 'LDAP synchronization successful.');
+define('LDAP_BIND_FAILED', 'LDAP bind failed.');
+define('LDAP_CONNECTION_FAILED', 'Failed to connect to the LDAP server.');
+define('DATABASE_CONNECTION_FAILED', 'Failed to connect to SQLite database: ');
+define('PAUSE_SETTINGS_TITLE', 'Pause Settings');
+define('HOURS_THRESHOLD', 'Hours Threshold');
+define('MINIMUM_PAUSE', 'Minimum Break Time (Minutes)');
+define('ACTIONS', 'Actions');
+define('ADD_ROW', 'Add Row');
+define('SAVE_SETTINGS', 'Save Settings');
+
+
 
 // Login page
 define('LOGIN_TITLE', 'Login - Quodara Chrono');
