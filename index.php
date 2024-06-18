@@ -310,7 +310,7 @@ try {
                 </div>
                 <div class="modal-body">
                     <p><?= ABOUT_TOOL_TEXT ?></p>
-                    <p><strong>Version:</strong> 0.2-alpha</p>
+                    <p><strong>Version:</strong> 0.3-alpha</p>
                 </div>
             </div>
         </div>
