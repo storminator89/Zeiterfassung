@@ -7,12 +7,13 @@ define('NAV_ABOUT', '關於');
 define('NAV_LOGOUT', '登出');
 define('NAV_DARK_MODE', '黑暗模式');
 define('NAV_ADMIN', '管理員');
-define('FORM_START_TIME', '開始時間');
-define('FORM_END_TIME', '結束時間');
+define('NAV_SUPERVISOR', '主管概覽');
 define('SETTINGS_TITLE', '設定'); 
 define('LANGUAGE_SELECTION', '選擇語言');
 define('IMPORT_DATABASE', '導入數據庫');
 define('DOWNLOAD_DATABASE', '下載數據庫');
+define('FORM_START_TIME', '開始時間');
+define('FORM_END_TIME', '結束時間');
 define('FORM_COME', '簽到');
 define('FORM_GO', '簽退');
 define('LABEL_HOURS', '小時');
@@ -62,6 +63,8 @@ define('HOLIDAYS', '假期');
 define('TABLE_HEADER_DATE', '日期');
 define('TABLE_HEADER_DAY', '日');
 define('TABLE_HEADER_NAME', '名稱');
+define('TABLE_HEADER_REGULAR_WORKING_HOURS', '每日工作時間');
+define('LABEL_HOURS_PER_DAY', '每日工時');
 define('ACTUAL_WORKED_TIMES', '實際工作時間');
 define('BUTTON_TODAY', '今天');
 define('MODAL_TITLE_SCHEDULE', '工作時間');
@@ -91,6 +94,7 @@ define('FORM_PASSWORD', '密碼');
 define('FORM_EMAIL', '電子郵件');
 define('FORM_ROLE_USER', '用戶');
 define('FORM_ROLE_ADMIN', '管理員');
+define('FORM_ROLE_SUPERVISOR', '主管');
 define('FORM_SEARCH_USER', '搜索用戶...');
 define('EXISTING_USERS_TITLE', '現有用戶');
 define('TABLE_HEADER_ACTIONS', '操作');
@@ -137,7 +141,23 @@ define('DEPARTMENT_UPDATED_SUCCESS', '部門更新成功。');
 define('DEPARTMENT_CREATED_ERROR', '創建部門時出錯。');
 define('DEPARTMENT_UPDATED_ERROR', '更新部門時出錯。');
 define('MODAL_BUTTON_SAVE_CHANGES', '保存變更');
-
+define('LDAP_HOST', 'LDAP主機');
+define('LDAP_PORT', 'LDAP端口');
+define('LDAP_USER', 'LDAP用戶');
+define('LDAP_PASS', 'LDAP密碼');
+define('LDAP_BASE_DN', 'LDAP基礎DN');
+define('LDAP_SYNC_TITLE', 'LDAP同步');
+define('BUTTON_SYNC_LDAP', '同步LDAP');
+define('LDAP_SYNC_SUCCESS', 'LDAP同步成功。');
+define('LDAP_BIND_FAILED', 'LDAP綁定失敗。');
+define('LDAP_CONNECTION_FAILED', '無法連接到LDAP服務器。');
+define('DATABASE_CONNECTION_FAILED', '無法連接到SQLite數據庫：');
+define('PAUSE_SETTINGS_TITLE', '休息設定');
+define('HOURS_THRESHOLD', '小時門檻');
+define('MINIMUM_PAUSE', '最小休息時間（分鐘）');
+define('ACTIONS', '操作');
+define('ADD_ROW', '新增行');
+define('SAVE_SETTINGS', '保存設定');
 
 //Login page
 define('LOGIN_TITLE', '登錄 - Quodara Chrono');
@@ -153,4 +173,17 @@ define('ERROR_INVALID_CREDENTIALS', '無效的用戶名或密碼！');
 define('ERROR_EXISTING_USER', '由於用戶已存在，註冊不可能。');
 define('SUCCESS_REGISTRATION', '註冊成功！你現在可以登錄了。');
 
+//Supervisor Page
+define('SUPERVISOR_TIMES_TITLE', '主管時間追踪概覽');
+define('NOT_SUPERVISOR_MESSAGE', '您不是主管，無權查看此頁面。');
+define('NO_ENTRIES_FOUND', '未找到任何條目。');
+define('TABLE_HEADER_OVERTIME', '加班');
+define('TOTAL_OVERTIME_TITLE', '總加班時間');
+
+//Settings Page
+define('SETTINGS_LANGUAGE', '語言設定');
+define('SETTINGS_REGULAR_WORKING_HOURS', '正常工作時間');
+define('SETTINGS_IMPORT_DATABASE', '導入數據庫');
+define('SETTINGS_DOWNLOAD_DATABASE', '下載數據庫');
+define('BUTTON_SAVE_REGULAR_WORKING_HOURS', '保存工作時間');
 ?>
