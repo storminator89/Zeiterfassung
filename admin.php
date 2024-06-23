@@ -143,8 +143,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
     try {
         // Speichern der LDAP-Einstellungen in der Datenbank, bevor der LDAP-Bind ausgeführt wird
         $encryptedLdapPass = encryptData($ldapPass, ENCRYPTION_KEY, ENCRYPTION_METHOD);
-        $stmt = $conn->prepare("INSERT INTO ldap_settings (ldap_host, ldap_port, ldap_user, ldap_pass, ldap_base_dn) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$ldapHost, $ldapPort, $ldapUser, $encryptedLdapPass, $ldapBaseDN]);
+        
+        // Überprüfen, ob bereits ein Eintrag existiert
+        $stmt = $conn->prepare("SELECT COUNT(*) FROM ldap_settings");
+        $stmt->execute();
+        $count = $stmt->fetchColumn();
+
+        if ($count > 0) {
+            // Eintrag aktualisieren
+            $stmt = $conn->prepare("UPDATE ldap_settings SET ldap_host = ?, ldap_port = ?, ldap_user = ?, ldap_pass = ?, ldap_base_dn = ? WHERE id = (SELECT id FROM ldap_settings ORDER BY id DESC LIMIT 1)");
+            $stmt->execute([$ldapHost, $ldapPort, $ldapUser, $encryptedLdapPass, $ldapBaseDN]);
+        } else {
+            // Neuer Eintrag erstellen
+            $stmt = $conn->prepare("INSERT INTO ldap_settings (ldap_host, ldap_port, ldap_user, ldap_pass, ldap_base_dn) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$ldapHost, $ldapPort, $ldapUser, $encryptedLdapPass, $ldapBaseDN]);
+        }
 
         // LDAP-Verbindung herstellen
         $ldapConn = ldap_connect($ldapHost, $ldapPort);
@@ -234,6 +247,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
         $error = DATABASE_CONNECTION_FAILED . $e->getMessage();
     }
 }
+
 
 
 // Aktuellen Benutzer aus der Datenbank abrufen
