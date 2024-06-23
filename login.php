@@ -157,113 +157,198 @@ $totalUsers = $stmt->fetch(PDO::FETCH_OBJ)->count;
 
     <!-- Favicon and external stylesheets -->
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 
-    <!-- Scripts -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" type="text/css" href="assets/css/main.css">
+
+    <style>
+        :root {
+            --primary-color: #0366d6;
+            --background-color: #ededed;
+            --card-background: #ffffff;
+            --text-color: #333333;
+        }
+
+        body {
+            font-family: 'Source Sans Pro', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .login-container {
+            background-color: var(--card-background);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            width: 100%;
+            max-width: 400px;
+            transition: all 0.3s ease;
+            margin: 1rem;
+            box-sizing: border-box;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .login-header img {
+            width: 80px;
+            height: auto;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin: 0;
+            font-size: 1.75rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .form-group i {
+            position: absolute;
+            left: 10px;
+            top: 58%;
+            color: var(--text-color);
+            font-size: 1.2rem;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+            margin-top: 0.5rem;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s ease;
+            box-sizing: border-box;
+            margin-top: 0.5rem;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .register-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s ease;
+            box-sizing: border-box;
+            margin-top: 1rem;
+            text-align: center;
+            display: block;
+            text-decoration: none;
+        }
+
+        .register-button:hover {
+            background-color: #0056b3;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .social-login-buttons .btn {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+    </style>
 </head>
 
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom pl-3">
-        <a class="navbar-brand" href="#">
-            <img class="pl-3" src="assets/kolibri_icon_weiß.png" alt="Time Tracking" height="50">
-        </a>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto">
-                <!-- Additional nav items can be added here -->
-            </ul>
-            <ul class="navbar-nav ms-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="?lang=de">DE</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="?lang=en">EN</a>
-                </li>
-            </ul>
+    <div class="login-container">
+        <div class="login-header">
+            <img src="assets/kolibri_icon.png" alt="Quodara Chrono Logo">
+            <h1><?= LOGIN_TITLE ?></h1>
         </div>
-    </nav>
-
-    <!-- Main content -->
-    <div class="container mt-5 p-5">
-        <h2><?= LOGIN_PAGE_TITLE ?></h2>
-        <form method="post" class="mt-4">
+        <form method="post">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-            <div class="mb-3">
-                <label for="username" class="form-label"><?= USERNAME_LABEL ?></label>
-                <input type="text" class="form-control" id="username" name="username" required>
+            <div class="form-group">
+                <i class="fas fa-user"></i>
+                <label for="username"><?= USERNAME_LABEL ?></label>
+                <input type="text" id="username" name="username" required>
             </div>
-            <div class="mb-3">
-                <label for="password" class="form-label"><?= PASSWORD_LABEL ?></label>
-                <input type="password" class="form-control" id="password" name="password" required>
+            <div class="form-group">
+                <i class="fas fa-lock"></i>
+                <label for="password"><?= PASSWORD_LABEL ?></label>
+                <input type="password" id="password" name="password" required>
             </div>
-            <button type="submit" class="btn btn-primary"><?= LOGIN_BUTTON ?></button>
+            <button type="submit"><?= LOGIN_BUTTON ?></button>
         </form>
-        <?php if ($totalUsers == 0): ?>
-            <a href="register.php" class="btn btn-secondary mt-3"><?= REGISTER_BUTTON ?></a>
+        
+        <div class="social-login-buttons">
+            <button class="btn btn-danger">
+                <i class="fab fa-google"></i> Login via Google
+            </button>
+            <button class="btn btn-dark">
+                <i class="fab fa-github"></i> Login via GitHub
+            </button>
+            <button class="btn btn-secondary">
+                <i class="fab fa-apple"></i> Login via Apple
+            </button>
+        </div>
+
+        <?php if ($totalUsers == 0) : ?>
+            <a href="register.php" class="register-button"><?= REGISTER_BUTTON ?></a>
         <?php endif; ?>
-    </div>
-
-    <!-- Modal for Success -->
-    <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="successModalLabel"><?= SUCCESS_MODAL_TITLE ?></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <?= $successMessage ?>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= BUTTON_CLOSE ?></button>
-                </div>
-            </div>
+        <div class="footer">
+            © 2024 Quodara Chrono - Zeiterfassung
         </div>
     </div>
-
-    <!-- Modal for Error -->
-    <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="errorModalLabel"><?= ERROR_MODAL_TITLE ?></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <?= $error ?>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= BUTTON_CLOSE ?></button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="footer mt-auto py-3">
-        <div class="container">
-            <span class="text-muted"><?= FOOTER_TEXT ?></span>
-        </div>
-    </footer>
 
     <!-- Show modals if there are messages and redirect after close -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script>
         $(document).ready(function() {
             <?php if ($successMessage) : ?>
-                var successModal = new bootstrap.Modal(document.getElementById('successModal'));
-                successModal.show();
-                $('#successModal').on('hidden.bs.modal', function () {
-                    window.location.href = 'login.php';
-                });
+                alert('<?= $successMessage ?>');
             <?php endif; ?>
 
             <?php if ($error) : ?>
-                var errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
-                errorModal.show();
+                alert('<?= $error ?>');
             <?php endif; ?>
         });
     </script>
