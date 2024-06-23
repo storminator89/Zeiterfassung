@@ -175,24 +175,27 @@ try {
         <div class="col-12">
             <div class="form-group">
                 <h3><i class="fas fa-chart-bar mr-2"></i> <?= STATISTICS_WORKING_TIMES ?></h3>
-                <table class="details-tablestats">
-                    <thead>
-                        <tr>
-                            <th><?= TABLE_HEADER_WORKING_DAYS ?> <?= $currentMonthName ?></th>
-                            <th><?= TABLE_HEADER_TOTAL_OVERTIME ?></th>
-                            <th><?= TABLE_HEADER_REGULAR_WORKING_HOURS ?></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><?= $workingDaysThisMonth ?></td>
-                            <td class="<?= $totalOverHours > 0 ? 'positive-overhours' : 'negative-overhours'; ?>" style="font-weight: bold;">
-                                <?= $totalOverHoursFormatted ?>
-                            </td>
-                            <td><?= $userRegularWorkingHours ?> <?= LABEL_HOURS_PER_DAY ?></td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="details-tablestats">
+                        <thead>
+                            <tr>
+                                <th><?= TABLE_HEADER_WORKING_DAYS ?> <?= $currentMonthName ?></th>
+                                <th><?= TABLE_HEADER_TOTAL_OVERTIME ?></th>
+                                <th><?= TABLE_HEADER_REGULAR_WORKING_HOURS ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><?= $workingDaysThisMonth ?></td>
+                                <td class="<?= $totalOverHours > 0 ? 'positive-overhours' : 'negative-overhours'; ?>" style="font-weight: bold;">
+                                    <?= $totalOverHoursFormatted ?>
+                                </td>
+                                <td><?= $userRegularWorkingHours ?> <?= LABEL_HOURS_PER_DAY ?></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
                 <?php if (!empty($feiertageDieseWoche)) : ?>
                     <div class="rtd-infobox">
                         <div class="rtd-infobox-header"><i class="fas fa-info-circle"></i> <?= HOLIDAYS_THIS_WEEK ?>:</div>
@@ -214,52 +217,54 @@ try {
     </div>
 
     <h3 class="mt-4"><i class="fas fa-clock mr-2"></i> <?= ACTUAL_WORKED_TIMES ?></h3>
-    <table class="table">
-        <thead>
-            <tr>
-                <th><input type="checkbox" id="selectAll"></th>
-                <th data-name="id"><?= TABLE_HEADER_ID ?></th>
-                <th data-name="kalenderwoche"><?= TABLE_HEADER_WEEK ?></th>
-                <th data-name="startzeit"><?= TABLE_HEADER_START_TIME ?></th>
-                <th data-name="endzeit"><?= TABLE_HEADER_END_TIME ?></th>
-                <th data-name="dauer"><?= TABLE_HEADER_DURATION ?></th>
-                <th data-name="pause"><?= TABLE_HEADER_BREAK ?></th>
-                <th data-name="standort"><?= TABLE_HEADER_LOCATION ?></th>
-                <th data-name="beschreibung"><?= TABLE_HEADER_COMMENT ?></th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php
-            // Aktualisieren Sie die Abfrage, um benutzerspezifische Zeiterfassungen anzuzeigen
-            $stmt = $conn->prepare("SELECT *, strftime('%W', startzeit) AS weekNumber FROM zeiterfassung WHERE user_id = ?");
-            $stmt->execute([$user_id]);
-            $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            foreach ($records as $record) {
-                $start = new DateTime($record['startzeit']);
-                $end = new DateTime($record['endzeit']);
-                $interval = $start->diff($end);
-                $pauseMinuten = intval($record['pause']);
-
-                $gesamtMinuten = ($interval->h * 60 + $interval->i) - $pauseMinuten;
-                $stunden = floor($gesamtMinuten / 60);
-                $minuten = $gesamtMinuten % 60;
-                $dauer = "{$stunden} " . LABEL_HOURS . " {$minuten} " . LABEL_MINUTES;
-            ?>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
                 <tr>
-                    <td><input type="checkbox" class="selectRow" data-id="<?= $record['id'] ?>"></td>
-                    <td><?= $record['id'] ?></td>
-                    <td><?= $record['weekNumber'] ?></td>
-                    <td><?= date($lang === 'de' ? "d.m.Y H:i:s" : "d/m/Y H:i:s", strtotime($record['startzeit'])) ?></td>
-                    <td><?= $record['endzeit'] ? date($lang === 'de' ? "d.m.Y H:i:s" : "d/m/Y H:i:s", strtotime($record['endzeit'])) : '-' ?></td>
-                    <td><?= $dauer ?></td>
-                    <td><?= $record['pause'] ?></td>
-                    <td><?= $record['standort'] ?></td>
-                    <td><?= $record['beschreibung'] ?></td>
+                    <th><input type="checkbox" id="selectAll"></th>
+                    <th data-name="id"><?= TABLE_HEADER_ID ?></th>
+                    <th data-name="kalenderwoche"><?= TABLE_HEADER_WEEK ?></th>
+                    <th data-name="startzeit"><?= TABLE_HEADER_START_TIME ?></th>
+                    <th data-name="endzeit"><?= TABLE_HEADER_END_TIME ?></th>
+                    <th data-name="dauer"><?= TABLE_HEADER_DURATION ?></th>
+                    <th data-name="pause"><?= TABLE_HEADER_BREAK ?></th>
+                    <th data-name="standort"><?= TABLE_HEADER_LOCATION ?></th>
+                    <th data-name="beschreibung"><?= TABLE_HEADER_COMMENT ?></th>
                 </tr>
-            <?php } ?>
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                <?php
+                // Aktualisieren Sie die Abfrage, um benutzerspezifische Zeiterfassungen anzuzeigen
+                $stmt = $conn->prepare("SELECT *, strftime('%W', startzeit) AS weekNumber FROM zeiterfassung WHERE user_id = ?");
+                $stmt->execute([$user_id]);
+                $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($records as $record) {
+                    $start = new DateTime($record['startzeit']);
+                    $end = new DateTime($record['endzeit']);
+                    $interval = $start->diff($end);
+                    $pauseMinuten = intval($record['pause']);
+
+                    $gesamtMinuten = ($interval->h * 60 + $interval->i) - $pauseMinuten;
+                    $stunden = floor($gesamtMinuten / 60);
+                    $minuten = $gesamtMinuten % 60;
+                    $dauer = "{$stunden} " . LABEL_HOURS . " {$minuten} " . LABEL_MINUTES;
+                ?>
+                    <tr>
+                        <td><input type="checkbox" class="selectRow" data-id="<?= $record['id'] ?>"></td>
+                        <td><?= $record['id'] ?></td>
+                        <td><?= $record['weekNumber'] ?></td>
+                        <td><?= date($lang === 'de' ? "d.m.Y H:i:s" : "d/m/Y H:i:s", strtotime($record['startzeit'])) ?></td>
+                        <td><?= $record['endzeit'] ? date($lang === 'de' ? "d.m.Y H:i:s" : "d/m/Y H:i:s", strtotime($record['endzeit'])) : '-' ?></td>
+                        <td><?= $dauer ?></td>
+                        <td><?= $record['pause'] ?></td>
+                        <td><?= $record['standort'] ?></td>
+                        <td><?= $record['beschreibung'] ?></td>
+                    </tr>
+                <?php } ?>
+            </tbody>
+        </table>
+    </div>
 
     <button type="button" id="deleteSelected" class="btn btn-danger mb-4"><?= BUTTON_DELETE_SELECTED ?></button>
 
@@ -340,6 +345,6 @@ try {
         </div>
     </div>
 
-</body>
+    </body>
 
-</html>
+    </html>
