@@ -17,6 +17,19 @@ $user_role = isset($_SESSION['role']) ? $_SESSION['role'] : null;
 $error = '';
 $successMessage = '';
 
+function encryptData($data, $key, $method)
+{
+    $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($method));
+    $encrypted = openssl_encrypt($data, $method, $key, 0, $iv);
+    return base64_encode($encrypted . '::' . $iv);
+}
+
+function decryptData($data, $key, $method)
+{
+    list($encryptedData, $iv) = explode('::', base64_decode($data), 2);
+    return openssl_decrypt($encryptedData, $method, $key, 0, $iv);
+}
+
 // LDAP-Einstellungen aus der Datenbank abrufen
 $stmt = $conn->prepare("SELECT * FROM ldap_settings ORDER BY id DESC LIMIT 1");
 $stmt->execute();
@@ -25,8 +38,15 @@ $ldapSettings = $stmt->fetch(PDO::FETCH_OBJ);
 $ldapHost = $ldapSettings->ldap_host ?? '';
 $ldapPort = $ldapSettings->ldap_port ?? '';
 $ldapUser = $ldapSettings->ldap_user ?? '';
-$ldapPass = $ldapSettings->ldap_pass ?? '';
+$ldapPass = isset($ldapSettings->ldap_pass) ? decryptData($ldapSettings->ldap_pass, ENCRYPTION_KEY, ENCRYPTION_METHOD) : '';
 $ldapBaseDN = $ldapSettings->ldap_base_dn ?? '';
+
+// Debugging-Ausgabe
+error_log("LDAP Host: $ldapHost");
+error_log("LDAP Port: $ldapPort");
+error_log("LDAP User: $ldapUser");
+error_log("LDAP Pass: $ldapPass");
+error_log("LDAP Base DN: $ldapBaseDN");
 
 // Pauseneinstellungen aus der Datenbank abrufen
 $stmt = $conn->prepare("SELECT * FROM pause_settings ORDER BY hours_threshold ASC");
@@ -121,6 +141,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
     $ldapBaseDN = $_POST['ldap_base_dn'];
 
     try {
+        // Speichern der LDAP-Einstellungen in der Datenbank, bevor der LDAP-Bind ausgeführt wird
+        $encryptedLdapPass = encryptData($ldapPass, ENCRYPTION_KEY, ENCRYPTION_METHOD);
+        $stmt = $conn->prepare("INSERT INTO ldap_settings (ldap_host, ldap_port, ldap_user, ldap_pass, ldap_base_dn) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$ldapHost, $ldapPort, $ldapUser, $encryptedLdapPass, $ldapBaseDN]);
+
         // LDAP-Verbindung herstellen
         $ldapConn = ldap_connect($ldapHost, $ldapPort);
         if ($ldapConn) {
@@ -196,10 +221,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
                         }
                     }
 
-                    // Speichern der LDAP-Einstellungen in der Datenbank
-                    $stmt = $conn->prepare("INSERT INTO ldap_settings (ldap_host, ldap_port, ldap_user, ldap_pass, ldap_base_dn) VALUES (?, ?, ?, ?, ?)");
-                    $stmt->execute([$ldapHost, $ldapPort, $ldapUser, $ldapPass, $ldapBaseDN]);
-
                     $successMessage = LDAP_SYNC_SUCCESS;
                 }
                 ldap_unbind($ldapConn);
@@ -213,6 +234,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
         $error = DATABASE_CONNECTION_FAILED . $e->getMessage();
     }
 }
+
 
 // Aktuellen Benutzer aus der Datenbank abrufen
 $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
@@ -438,46 +460,28 @@ $departments = $stmt->fetchAll(PDO::FETCH_OBJ);
 
         <div id="userForm" style="display: none;">
             <form method="post" class="mt-4">
-                <input type="hidden" name="add_user" value="1">
+                <input type="hidden" name="sync_ldap" value="1">
+                <div class="mb-3 input-group">
+                    <span class="input-group-text"><i class="fas fa-server"></i></span>
+                    <input type="text" class="form-control" id="ldap_host" name="ldap_host" placeholder="<?= LDAP_HOST ?> e.g. ldap://ldap.forumsys.com" value="<?= htmlspecialchars($ldapHost) ?>" required>
+                </div>
+                <div class="mb-3 input-group">
+                    <span class="input-group-text"><i class="fas fa-network-wired"></i></span>
+                    <input type="number" class="form-control" id="ldap_port" name="ldap_port" placeholder="<?= LDAP_PORT ?> 389" value="<?= htmlspecialchars($ldapPort) ?>" required>
+                </div>
                 <div class="mb-3 input-group">
                     <span class="input-group-text"><i class="fas fa-user"></i></span>
-                    <input type="text" class="form-control" id="username" name="username" placeholder="<?= FORM_USERNAME ?>" required>
+                    <input type="text" class="form-control" id="ldap_user" name="ldap_user" placeholder="<?= LDAP_USER ?> e.g. cn=read-only-admin,dc=example,dc=com" value="<?= htmlspecialchars($ldapUser) ?>" required>
                 </div>
                 <div class="mb-3 input-group">
                     <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                    <input type="password" class="form-control" id="password" name="password" placeholder="<?= FORM_PASSWORD ?>" required>
+                    <input type="password" class="form-control" id="ldap_pass" name="ldap_pass" placeholder="<?= LDAP_PASS ?>" value="<?= htmlspecialchars($ldapPass) ?>" required>
                 </div>
                 <div class="mb-3 input-group">
-                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                    <input type="email" class="form-control" id="email" name="email" placeholder="<?= FORM_EMAIL ?>" required>
+                    <span class="input-group-text"><i class="fas fa-sitemap"></i></span>
+                    <input type="text" class="form-control" id="ldap_base_dn" name="ldap_base_dn" placeholder="<?= LDAP_BASE_DN ?> dc=example,dc=com" value="<?= htmlspecialchars($ldapBaseDN) ?>" required>
                 </div>
-                <div class="mb-3 input-group">
-                    <span class="input-group-text"><i class="fas fa-user-tag"></i></span>
-                    <select class="form-control" id="role" name="role" required>
-                        <option value="user"><?= FORM_ROLE_USER ?></option>
-                        <option value="admin"><?= FORM_ROLE_ADMIN ?></option>
-                        <option value="supervisor"><?= FORM_ROLE_SUPERVISOR ?></option>
-                    </select>
-                </div>
-                <div class="mb-3 input-group">
-                    <span class="input-group-text"><i class="fas fa-building"></i></span>
-                    <select class="form-control" id="department" name="department" required>
-                        <option value=""><?= FORM_SELECT_DEPARTMENT ?></option>
-                        <?php foreach ($departments as $department) : ?>
-                            <option value="<?= htmlspecialchars($department->id) ?>"><?= htmlspecialchars($department->name) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="mb-3 input-group">
-                    <span class="input-group-text"><i class="fas fa-user-tie"></i></span>
-                    <select class="form-control" id="supervisor" name="supervisor">
-                        <option value=""><?= FORM_SELECT_SUPERVISOR ?></option>
-                        <?php foreach ($allUsers as $user) : ?>
-                            <option value="<?= $user->id ?>"><?= htmlspecialchars($user->username) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus mr-1"></i> <?= BUTTON_CREATE_USER ?></button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-sync-alt mr-1"></i> <?= BUTTON_SYNC_LDAP ?></button>
             </form>
         </div>
 

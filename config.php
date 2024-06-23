@@ -1,6 +1,9 @@
 <?php
 
 $database = __DIR__ . '/assets/db/timetracking.sqlite';
+define('ENCRYPTION_KEY', 'your-encryption-key'); 
+define('ENCRYPTION_METHOD', 'aes-256-cbc'); 
+
 
 try {
     $conn = new PDO("sqlite:{$database}", null, null, [
