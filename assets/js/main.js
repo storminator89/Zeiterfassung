@@ -751,43 +751,94 @@ if (window.location.pathname.includes('dashboard.php')) {
                     }
                     return (moment(start).format('DD.MM.YYYY HH:mm') + ' - ' + moment(end).format(endFormat));
                 }
+            },
+            theme: {
+                // Dark mode Farben
+                'common.border': '1px solid #3c3f43',
+                'common.backgroundColor': '#2c2c2c',
+                'common.holiday.color': '#ff9999',
+                'common.saturday.color': '#b3e0ff',
+                'common.dayname.color': '#ffffff',
+                'common.today.color': '#ffff00',
+        
+                // Gitter
+                'week.dayGridSchedule.borderColor': '#3c3f43',
+                'week.timegridSchedule.borderColor': '#3c3f43',
+                'week.timegridSchedule.backgroundColor': '#363636',
+                'week.timegridSchedule.textColor': '#ffffff',
+                
+                // Zeitanzeige
+                'week.timegridLeft.backgroundColor': '#2c2c2c',
+                'week.timegridLeft.textColor': '#ffffff',
+                'week.timegridLeftAdditionalTimezone.backgroundColor': '#2c2c2c',
+                'week.timegridLeftAdditionalTimezone.textColor': '#ffffff',
+                
+                // Entfernen aller horizontalen Linien
+                'week.timegridOneHour.borderBottom': 'none',
+                'week.timegridHalfHour.borderBottom': 'none',
+                
+                // Vertikale Linien zwischen den Tagen
+                'week.timegridVerticalLine.border': '1px solid #3c3f43',
+                'week.daygridLeft.borderRight': '1px solid #3c3f43',
+        
+                // Heute Hervorhebung
+                'week.today.backgroundColor': 'rgba(255, 255, 0, 0.1)',
+                'week.weekend.backgroundColor': 'rgba(255, 255, 255, 0.05)',
+        
+                // Monat-Ansicht
+                'month.holidayExceptThisMonth.color': '#ff9999',
+                'month.dayExceptThisMonth.color': '#bbb',
+                'month.weekend.backgroundColor': 'rgba(255, 255, 255, 0.05)',
+                'month.day.color': '#ffffff',
+                'month.today.color': '#ffff00',
+                'month.gridSelection.backgroundColor': 'rgba(255, 255, 255, 0.1)',
+        
+                // Farben für verschiedene Kalenderereignisse
+                'schedule.bgColor': '#2c2c2c',
+                'schedule.color': '#ffffff',
+                'schedule.bgColorDarker': '#222222',
+                'schedule.colorDarker': '#ffffff',
+                'schedule.colorLighten': '#ffffff',
+                'schedule.borderColor': '#3c3f43',
+                'schedule.dragBackgroundColor': 'rgba(255, 255, 255, 0.1)',
             }
         });
-
+        
+        // Der Rest des Codes bleibt unverändert
         calendar.createSchedules(allEvents);
-
+        
         document.getElementById('prevMonthBtn').addEventListener('click', function () {
             calendar.prev();
         });
-
+        
         document.getElementById('nextMonthBtn').addEventListener('click', function () {
             calendar.next();
         });
-
+        
         document.getElementById('todayBtn').addEventListener('click', function () {
             calendar.today();
         });
-
+        
         function formatDate(date) {
             let day = ("0" + date.getDate()).slice(-2);
             let month = ("0" + (date.getMonth() + 1)).slice(-2);
             let year = date.getFullYear();
             return day + "." + month + "." + year;
         }
-
+        
         let scheduleModal = new bootstrap.Modal(document.getElementById('scheduleModal'));
-
+        
         calendar.on('clickSchedule', function (event) {
             let schedule = event.schedule;
-
+        
             const validTitles = ['Arbeit', 'Urlaub'];
             if (validTitles.includes(schedule.title)) {
                 let startDate = new Date(schedule.start);
                 let endDate = new Date(schedule.end);
-
+        
                 document.getElementById('startTime').textContent = formatDate(startDate) + " " + startDate.toLocaleTimeString();
                 document.getElementById('endTime').textContent = formatDate(endDate) + " " + endDate.toLocaleTimeString();
-
+        
                 scheduleModal.show();
             }
         });

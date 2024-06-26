@@ -16,7 +16,7 @@ try {
 <!-- Main content -->
 <div class="container mt-5 p-5">
     <h2 class="fancy-title">
-        <img src="assets/kolibri_icon.png" alt="Quodara Chrono Logo" style="width: 80px; height: 80px; margin-right: 10px;">
+    <img src="<?= $kolibri_icon ?>" alt="Quodara Chrono Logo" style="width: 80px; height: 80px; margin-right: 10px;">
         <?= TITLE ?>
     </h2>
     <div class="row">
@@ -296,13 +296,6 @@ try {
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="footer mt-auto py-3">
-        <div class="container">
-            <span class="text-muted"><?= FOOTER_TEXT ?></span>
-        </div>
-    </footer>
-
     <!-- About modal -->
     <div class="modal fade" id="aboutModal" tabindex="-1" role="dialog" aria-labelledby="aboutModalLabel">
         <div class="modal-dialog" role="document">
@@ -344,7 +337,14 @@ try {
             </div>
         </div>
     </div>
+</div>
+<!-- Footer -->
+<footer class="footer mt-auto py-3">
+    <div class="container">
+        <span class="text-muted"><?= FOOTER_TEXT ?></span>
+    </div>
+</footer>
 
-    </body>
+</body>
 
-    </html>
+</html>

@@ -4,7 +4,13 @@ include 'config.php';
 
 // Sprachdateien laden
 $lang = $_SESSION['lang'] ?? 'de';
-require_once "languages/$lang.php";
+$langFile = "languages/$lang.php";
+
+if (file_exists($langFile)) {
+    require_once $langFile;
+} else {
+    die("Sprachdatei nicht gefunden!");
+}
 
 // Überprüfen, ob der Benutzer eingeloggt und ein Admin ist
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
@@ -13,6 +19,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 }
 
 $user_role = isset($_SESSION['role']) ? $_SESSION['role'] : null;
+$theme_mode = $_SESSION['theme_mode'] ?? 'system'; // Default to system preference
 
 $error = '';
 $successMessage = '';
@@ -248,8 +255,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
     }
 }
 
-
-
 // Aktuellen Benutzer aus der Datenbank abrufen
 $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
 $stmt->execute([$_SESSION['user_id']]);
@@ -427,12 +432,12 @@ $departments = $stmt->fetchAll(PDO::FETCH_OBJ);
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 
-<body>
+<body class="<?= $theme_mode === 'dark' ? 'dark-mode' : '' ?>">
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom pl-3">
         <div class="container-fluid">
             <a class="navbar-brand" href="index.php">
-                <img src="assets/kolibri_icon_weiß.png" alt="Time Tracking" height="50">
+                <img src="<?= $theme_mode === 'dark' ? 'assets/kolibri_icon_weiß.png' : 'assets/kolibri_icon.png' ?>" alt="Time Tracking" height="50">
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
@@ -581,7 +586,6 @@ $departments = $stmt->fetchAll(PDO::FETCH_OBJ);
             </div>
             <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <?= SAVE_SETTINGS ?></button>
         </form>
-
 
         <!-- Search Bar -->
         <div class="mt-5 mb-3">

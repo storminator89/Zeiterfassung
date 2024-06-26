@@ -40,6 +40,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $userInfo->regelarbeitszeit = $regelarbeitszeit; // Lokale Variable aktualisieren
     }
 
+    if (isset($_POST['theme_mode'])) {
+        $_SESSION['theme_mode'] = $_POST['theme_mode'];
+    }
+
     $successMessage = 'Einstellungen erfolgreich aktualisiert!';
     $showSuccessModal = true;
 
@@ -47,6 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header("Location: settings.php");
     exit();
 }
+
+$theme_mode = $_SESSION['theme_mode'] ?? 'system'; // Default to system preference
 ?>
 
 <!DOCTYPE html>
@@ -95,7 +101,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php if ($user_role === 'supervisor' || $user_role === 'admin') : ?>
                             <li><a class="dropdown-item" href="supervisor.php"><i class="fas fa-user-tie mr-1"></i> <?= NAV_SUPERVISOR ?></a></li>
                         <?php endif; ?>
-                        <li><button class="dropdown-item" onclick="toggleDarkMode()"><i class="fas fa-moon mr-1"></i> <?= NAV_DARK_MODE ?></button></li>
                         <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-info-circle mr-1"></i> <?= NAV_ABOUT ?></a></li>
                         <li><a class="dropdown-item" href="logout.php"><i class="fas fa-sign-out-alt mr-1"></i> <?= NAV_LOGOUT ?></a></li>
                     </ul>
@@ -142,6 +147,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="mb-3">
                         <label for="regelarbeitszeit" class="form-label"><i class="fas fa-clock"></i> <?= SETTINGS_REGULAR_WORKING_HOURS ?></label>
                         <input type="number" step="0.1" class="form-control" id="regelarbeitszeit" name="regelarbeitszeit" value="<?= $userInfo->regelarbeitszeit ?>" min="0" max="24">
+                    </div>
+                    <div class="mb-3">
+                        <label for="theme_mode" class="form-label"><i class="fas fa-adjust"></i> <?= NAV_DARK_MODE ?></label>
+                        <select name="theme_mode" class="form-control" id="theme_mode">
+                            <option value="light" <?= $theme_mode == 'light' ? 'selected' : '' ?>>Hell</option>
+                            <option value="dark" <?= $theme_mode == 'dark' ? 'selected' : '' ?>>Dunkel</option>
+                            <option value="system" <?= $theme_mode == 'system' ? 'selected' : '' ?>>System</option>
+                        </select>
                     </div>
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i> <?= BUTTON_SAVE_CHANGES ?></button>
                 </form>
@@ -190,7 +203,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </footer>
 
-    <!-- Bootstrap Scripts -->
+    <!-- Darkmode Scripts -->
+    <script>
+        function applyDarkModePreference() {
+            var themeMode = '<?= $theme_mode ?>';
+            var darkMode = false;
+
+            if (themeMode === 'dark') {
+                darkMode = true;
+            } else if (themeMode === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                darkMode = true;
+            }
+
+            if (darkMode) {
+                document.body.classList.add('dark-mode');
+                document.querySelector('.fancy-title img').src = 'assets/kolibri_icon_weiß.png';
+            } else {
+                document.body.classList.remove('dark-mode');
+                document.querySelector('.fancy-title img').src = 'assets/kolibri_icon.png';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', applyDarkModePreference);
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>

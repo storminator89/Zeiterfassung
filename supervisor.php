@@ -4,7 +4,13 @@ include 'config.php';
 
 // Sprachdateien laden
 $lang = $_SESSION['lang'] ?? 'de';
-require_once "languages/$lang.php";
+$langFile = "languages/$lang.php";
+
+if (file_exists($langFile)) {
+    require_once $langFile;
+} else {
+    die("Sprachdatei nicht gefunden!");
+}
 
 // Überprüfen, ob der Benutzer eingeloggt ist
 if (!isset($_SESSION['user_id'])) {
@@ -14,6 +20,7 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['role'] ?? '';
+$theme_mode = $_SESSION['theme_mode'] ?? 'system'; // Default to system preference
 
 // Zeiten der unterstellten Benutzer aus der Datenbank abrufen
 $zeiten = [];
@@ -102,10 +109,10 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
     <script src="./assets/js/main.js"></script>
 </head>
 
-<body>
+<body class="<?= $theme_mode === 'dark' ? 'dark-mode' : '' ?>">
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom pl-3">
         <a class="navbar-brand" href="index.php">
-            <img class="pl-3" src="assets/kolibri_icon_weiß.png" alt="Time Tracking" height="50">
+            <img class="pl-3" src="<?= $theme_mode === 'dark' ? 'assets/kolibri_icon_weiß.png' : 'assets/kolibri_icon.png' ?>" alt="Time Tracking" height="50">
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -132,7 +139,6 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
                         <?php if ($user_role === 'supervisor' || $user_role === 'admin') : ?>
                             <li><a class="dropdown-item" href="supervisor.php"><i class="fas fa-user-tie mr-1"></i> <?= NAV_SUPERVISOR ?></a></li>
                         <?php endif; ?>
-                        <li><button class="dropdown-item" onclick="toggleDarkMode()"><i class="fas fa-moon mr-1"></i> <?= NAV_DARK_MODE ?></button></li>
                         <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-info-circle mr-1"></i> <?= NAV_ABOUT ?></a></li>
                         <li><a class="dropdown-item" href="logout.php"><i class="fas fa-sign-out-alt mr-1"></i> <?= NAV_LOGOUT ?></a></li>
                     </ul>

@@ -19,10 +19,30 @@ $user_role = $_SESSION['role']; // Benutzerrolle aus der Session abrufen
 
 // Verbindung zur Datenbank herstellen
 $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
+
+// Fetch theme mode from session
+$theme_mode = $_SESSION['theme_mode'] ?? 'system'; // Default to system preference
+$dark_mode_class = '';
+$kolibri_icon = 'assets/kolibri_icon.png'; // Standard icon
+
+if ($theme_mode === 'dark') {
+    $dark_mode_class = 'dark-mode';
+    $kolibri_icon = 'assets/kolibri_icon_weiß.png';
+} elseif ($theme_mode === 'light') {
+    $dark_mode_class = 'light-mode';
+    $kolibri_icon = 'assets/kolibri_icon.png';
+} elseif ($theme_mode === 'system') {
+    if (isset($_SERVER['HTTP_USER_AGENT'])) {
+        if (preg_match('/(prefers-color-scheme: dark)/i', $_SERVER['HTTP_USER_AGENT'])) {
+            $dark_mode_class = 'dark-mode';
+            $kolibri_icon = 'assets/kolibri_icon_weiß.png';
+        }
+    }
+}
 ?>
 
 <!DOCTYPE html>
-<html lang="<?= $lang ?>">
+<html lang="<?= $lang ?>" class="<?= $dark_mode_class ?>">
 
 <head>
     <!-- Meta tags and title -->
@@ -67,11 +87,10 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
     <script src="./assets/js/main.js"></script>
 </head>
 
-<body>
-
+<body class="<?= $dark_mode_class ?>">
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom pl-3">
         <a class="navbar-brand" href="index.php">
-            <img class="pl-3" src="assets/kolibri_icon_weiß.png" alt="Time Tracking" height="50">
+            <img class="pl-3" src="<?= $kolibri_icon ?>" alt="Time Tracking" height="50">
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -106,3 +125,6 @@ $conn = new PDO("sqlite:assets/db/timetracking.sqlite");
             </ul>
         </div>
     </nav>
+</body>
+
+</html>

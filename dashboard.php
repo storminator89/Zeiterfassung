@@ -25,11 +25,34 @@ $months = [
     "12" => MONTH_DECEMBER
 ];
 
+// Fetch theme mode from session
+$theme_mode = $_SESSION['theme_mode'] ?? 'system'; // Default to system preference
+$dark_mode_class = '';
+$kolibri_icon = 'assets/kolibri_icon.png'; // Standard icon
+
+if ($theme_mode === 'dark') {
+    $dark_mode_class = 'dark-mode';
+    $kolibri_icon = 'assets/kolibri_icon_weiß.png';
+} elseif ($theme_mode === 'light') {
+    $dark_mode_class = 'light-mode';
+    $kolibri_icon = 'assets/kolibri_icon.png';
+} elseif ($theme_mode === 'system') {
+    if (isset($_SERVER['HTTP_USER_AGENT'])) {
+        if (preg_match('/(prefers-color-scheme: dark)/i', $_SERVER['HTTP_USER_AGENT'])) {
+            $dark_mode_class = 'dark-mode';
+            $kolibri_icon = 'assets/kolibri_icon_weiß.png';
+        }
+    }
+}
+
 // Getting current date details
 $currentWeekNumber = date("W");
 $currentYear = date("Y");
 $currentMonth = date("m");
 $currentMonthName = $months[$currentMonth];
+
+// Theme Mode aus der Session lesen
+$theme_mode = $_SESSION['theme_mode'] ?? 'system'; // Default to system preference
 ?>
 
 <!DOCTYPE html>
@@ -40,7 +63,7 @@ $currentMonthName = $months[$currentMonth];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= TITLE ?></title>
-    <link rel="icon" href="assets\kolibri_icon.png" type="image/png">
+    <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
 
     <!-- Toast UI Components -->
     <script src="https://uicdn.toast.com/tui.code-snippet/latest/tui-code-snippet.js"></script>
@@ -82,14 +105,15 @@ $currentMonthName = $months[$currentMonth];
         var days = <?= json_encode($days) ?>;
         var hours = <?= json_encode($hours) ?>;
         var allEvents = <?= json_encode($events) ?>;
+        var themeMode = '<?= $theme_mode ?>';
     </script>
 </head>
 
-<body>
-   <!-- Navigation -->
-   <nav class="navbar navbar-expand-lg navbar-dark navbar-custom pl-3">
+<body class="<?= $dark_mode_class ?>">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom pl-3">
         <a class="navbar-brand" href="index.php">
-            <img class="pl-3" src="assets/kolibri_icon_weiß.png" alt="Time Tracking" height="50">
+            <img class="pl-3" src="<?= $kolibri_icon ?>" alt="Time Tracking" height="50">
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -129,7 +153,7 @@ $currentMonthName = $months[$currentMonth];
     <div class="container mt-5">
         <!-- Title -->
         <h2 class="fancy-title">
-            <img src="assets/kolibri_icon.png" alt="Logo" style="width: 70px; height: 70px; margin-right: 10px;">
+            <img src="<?= $kolibri_icon ?>" alt="Quodara Chrono Logo" style="width: 80px; height: 80px; margin-right: 10px;">
             <?= TITLE ?>
         </h2>
 
@@ -160,7 +184,7 @@ $currentMonthName = $months[$currentMonth];
                 <!-- Monthly Hours Chart -->
                 <canvas id="monthlyHoursChart" width="200" height="200"></canvas>
             </div>
-        </div>        
+        </div>
     </div>
 
     <!-- Schedule Modal -->
@@ -193,6 +217,28 @@ $currentMonthName = $months[$currentMonth];
             </div>
         </div>
     </div>
+
+    <!-- Darkmode Scripts -->
+    <script>
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            var themeMode = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+            $.post('settings.php', {
+                theme_mode: themeMode
+            });
+        }
+
+        function applyDarkModePreference() {
+            var themeMode = '<?= $theme_mode ?>';
+            if (themeMode === 'dark' || (themeMode === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', applyDarkModePreference);
+    </script>
 </body>
 
 </html>

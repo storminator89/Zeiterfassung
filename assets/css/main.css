@@ -1,5 +1,5 @@
 body {
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    background-color: #ededed;
     font-family: 'Source Sans Pro', sans-serif;
 }
 
@@ -282,68 +282,68 @@ td.editable:hover .edit-icon {
 }
 
 .dark-mode {
-    background-color: #1e1c1cdf; /* Dark background */
-    color: #ffffff; /* Light text */
+    background-color: #1e1c1cdf !important; 
+    color: #ffffff; 
 }
 
 .dark-mode label, .dark-mode .navbar-custom, .dark-mode .rtd-infobox-header, .dark-mode .alert-success, .dark-mode .tui-full-calendar-weekday-schedule,
 .dark-mode .tui-full-calendar-time-schedule {
-    color: #ffffff; /* Light text for specific elements */
+    color: #ffffff; 
 }
 
 .dark-mode .details-table th, .dark-mode .details-table td {
-    border-color: #444; /* Darker borders for tables */
+    border-color: #444; 
 }
 
 .dark-mode .details-table th {
-    background-color: #333; /* Darker header for tables */
+    background-color: #333; 
 }
 
 .dark-mode .rtd-infobox-content {
-    background-color: #333; /* Dark background for info boxes */
-    color: #ddd; /* Light text for info boxes */
+    background-color: #333; 
+    color: #ddd; /
 }
 
 .dark-mode .navbar-custom {
-    background-color: #222; /* Dark background for navbar */
+    background-color: #222; 
 }
 
 .dark-mode .fancy-title {
-    color: #ccc; /* Lighter text for titles */
-    text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.1); /* Adjust text shadow */
+    color: #ccc; 
+    text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.1); 
 }
 
 .dark-mode label {
-    color: #ffffff; /* Light color for readability */
+    color: #ffffff; 
 }
 
 .dark-mode .fas {
-    color: #ffffff; /* Ensures icons within labels are also light colored */
+    color: #ffffff; 
 }
 
 
 .dark-mode .mt-5 {
-    background-color: #333; /* Darker background for dark mode */
-    color: #fff; /* Light text color for readability */
-    box-shadow: 0 4px 8px rgba(255, 255, 255, 0.2); /* Adjust box shadow for dark mode */
+    background-color: #333;
+    color: #fff; 
+    box-shadow: 0 4px 8px rgba(255, 255, 255, 0.2);
 }
 
 .dark-mode .table thead th {
-    background-color: #454545; /* Darker background for headers */
-    color: #ffffff; /* Light text color */
+    background-color: #454545; 
+    color: #ffffff; 
 }
 
 .dark-mode .table tbody tr {
-    background-color: #333333; /* Slightly lighter than header */
+    background-color: #333333; 
 }
 
 .dark-mode .table tbody tr td {
-    color: #ffffff; /* Light text color */
-    border-color: #555555; /* Slightly darker border */
+    color: #ffffff; 
+    border-color: #555555; 
 }
 
 .dark-mode .table tbody tr:hover {
-    background-color: #383838; /* Slightly lighter for hover state */
+    background-color: #383838; 
 }
 
 .dark-mode .details-tablestats td {
@@ -356,15 +356,15 @@ td.editable:hover .edit-icon {
 }
 
 .dark-mode .dt-button {
-    color: #ffffff; /* Light color for text */
-    background-color: #444444; /* Darker background for the button */
-    border-color: #666666; /* Optional: if you want to change the border color */
+    color: #ffffff; 
+    background-color: #444444; 
+    border-color: #666666; 
 }
 
 .dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button {
-    color: #ffffff; /* Light color for text */
-    background-color: #333333; /* Darker background for the button */
-    border-color: #555555; /* Dark border color */
+    color: #ffffff; 
+    background-color: #333333; 
+    border-color: #555555; 
 }
 
 .dark-mode input[type="date"]::-webkit-calendar-picker-indicator {
@@ -373,9 +373,9 @@ td.editable:hover .edit-icon {
 
 /* Style for non-active buttons */
 .dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button {
-    color: #ffffff !important; /* Light color for text */
-    background-color: #333333; /* Darker background */
-    border-color: #555555; /* Dark border */
+    color: #ffffff !important; 
+    background-color: #333333; 
+    border-color: #555555; 
 }
 
 
@@ -404,10 +404,10 @@ td.editable:hover .edit-icon {
 .dark-mode input[type="search"],
 .dark-mode select,
 .dark-mode textarea {
-    background-color: #222222; /* Dark background */
-    color: #ffffff; /* Light text */
-    border: 1px solid #555555; /* Adjusted border color */
-    padding: 5px; /* Optional: Adjust padding if needed */
+    background-color: #222222;
+    color: #ffffff;
+    border: 1px solid #555555; 
+    padding: 5px; 
 }
 
 .dark-mode input[type="text"]:focus,
@@ -419,22 +419,24 @@ td.editable:hover .edit-icon {
 .dark-mode input[type="search"]:focus,
 .dark-mode select:focus,
 .dark-mode textarea:focus {
-    border-color: #888888; /* Different border color on focus */
-    outline: none; /* Optional: Removes the default outline */
+    border-color: #888888;
+    outline: none; 
 }
 
 .dark-mode select option {
-    background-color: #333333; /* Dark background */
-    color: #ffffff; /* Light text */
+    background-color: #333333; 
+    color: #ffffff; 
 }
 
 .dark-mode .positive-overhours {
-    color: lightgreen !important; /* Brighter green color */
+    color: lightgreen !important; 
 }
 
 .dark-mode .negative-overhours {
-    color: #ff6666 !important; /* Brighter red color */
+    color: #ff6666 !important; 
 }
+
+
 
 .navbar .dark-mode-toggle {
     border: none;
