@@ -186,4 +186,5 @@ define('SETTINGS_REGULAR_WORKING_HOURS', '正常工作時間');
 define('SETTINGS_IMPORT_DATABASE', '導入數據庫');
 define('SETTINGS_DOWNLOAD_DATABASE', '下載數據庫');
 define('BUTTON_SAVE_REGULAR_WORKING_HOURS', '保存工作時間');
+define('SETTINGS_OVERTIME', '加班时间');
 ?>

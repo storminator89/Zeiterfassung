@@ -5,7 +5,6 @@ include 'config.php';
 // Sprachdateien laden
 $lang = $_SESSION['lang'] ?? 'de';
 $langFile = "languages/$lang.php";
-
 if (file_exists($langFile)) {
     require_once $langFile;
 } else {
@@ -31,7 +30,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['lang'])) {
         $_SESSION['lang'] = $_POST['lang'];
     }
-
     if (isset($_POST['regelarbeitszeit'])) {
         $regelarbeitszeit = floatval($_POST['regelarbeitszeit']);
         $updateSql = "UPDATE users SET regelarbeitszeit = :regelarbeitszeit WHERE id = :id";
@@ -39,11 +37,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([':regelarbeitszeit' => $regelarbeitszeit, ':id' => $user_id]);
         $userInfo->regelarbeitszeit = $regelarbeitszeit; // Lokale Variable aktualisieren
     }
-
+    if (isset($_POST['ueberstunden']) && $user_role === 'admin') {
+        $ueberstunden = floatval($_POST['ueberstunden']);
+        $updateSql = "UPDATE users SET ueberstunden = :ueberstunden WHERE id = :id";
+        $stmt = $conn->prepare($updateSql);
+        $stmt->execute([':ueberstunden' => $ueberstunden, ':id' => $user_id]);
+        $userInfo->ueberstunden = $ueberstunden; // Lokale Variable aktualisieren
+    }
     if (isset($_POST['theme_mode'])) {
         $_SESSION['theme_mode'] = $_POST['theme_mode'];
     }
-
     $successMessage = 'Einstellungen erfolgreich aktualisiert!';
     $showSuccessModal = true;
 
@@ -54,16 +57,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $theme_mode = $_SESSION['theme_mode'] ?? 'system'; // Default to system preference
 ?>
-
 <!DOCTYPE html>
 <html lang="<?= $lang ?>">
 
 <head>
-    <!-- Meta tags and title -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= SETTINGS_TITLE ?></title>
-    <!-- Favicon and external stylesheets -->
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
@@ -71,7 +71,6 @@ $theme_mode = $_SESSION['theme_mode'] ?? 'system'; // Default to system preferen
 </head>
 
 <body>
-    <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom pl-3">
         <a class="navbar-brand" href="index.php">
             <img class="pl-3" src="assets/kolibri_icon_weiß.png" alt="Time Tracking" height="50">
@@ -108,21 +107,17 @@ $theme_mode = $_SESSION['theme_mode'] ?? 'system'; // Default to system preferen
             </ul>
         </div>
     </nav>
-
-    <!-- Main content -->
     <div class="container mt-5 p-5">
         <h2 class="fancy-title">
             <img src="assets/kolibri_icon.png" alt="Quodara Chrono Logo" style="width: 80px; height: 80px; margin-right: 10px;">
             <?= SETTINGS_TITLE ?>
         </h2>
-
-        <?php if ($error): ?>
+        <?php if ($error) : ?>
             <div class="alert alert-danger" role="alert">
                 <?= $error ?>
             </div>
         <?php endif; ?>
-
-        <?php if ($successMessage && $showSuccessModal): ?>
+        <?php if ($successMessage && $showSuccessModal) : ?>
             <script>
                 document.addEventListener('DOMContentLoaded', function() {
                     var successModal = new bootstrap.Modal(document.getElementById('successModal'));
@@ -130,10 +125,8 @@ $theme_mode = $_SESSION['theme_mode'] ?? 'system'; // Default to system preferen
                 });
             </script>
         <?php endif; ?>
-
         <div class="row">
             <div class="col-md-12">
-                <!-- Form to update language and regular working hours -->
                 <h4><?= SETTINGS_TITLE ?></h4>
                 <form method="post" class="mb-4">
                     <div class="mb-3">
@@ -148,6 +141,12 @@ $theme_mode = $_SESSION['theme_mode'] ?? 'system'; // Default to system preferen
                         <label for="regelarbeitszeit" class="form-label"><i class="fas fa-clock"></i> <?= SETTINGS_REGULAR_WORKING_HOURS ?></label>
                         <input type="number" step="0.1" class="form-control" id="regelarbeitszeit" name="regelarbeitszeit" value="<?= $userInfo->regelarbeitszeit ?>" min="0" max="24">
                     </div>
+                    <?php if ($user_role === 'admin') : ?>
+                        <div class="mb-3">
+                            <label for="ueberstunden" class="form-label"><i class="fas fa-hourglass"></i> <?= SETTINGS_OVERTIME ?></label>
+                            <input type="number" step="0.1" class="form-control" id="ueberstunden" name="ueberstunden" value="<?= $userInfo->ueberstunden ?>" min="0">
+                        </div>
+                    <?php endif; ?>
                     <div class="mb-3">
                         <label for="theme_mode" class="form-label"><i class="fas fa-adjust"></i> <?= NAV_DARK_MODE ?></label>
                         <select name="theme_mode" class="form-control" id="theme_mode">
@@ -158,27 +157,21 @@ $theme_mode = $_SESSION['theme_mode'] ?? 'system'; // Default to system preferen
                     </div>
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i> <?= BUTTON_SAVE_CHANGES ?></button>
                 </form>
-
-                <!-- Datenbank importieren -->
-                <?php if ($user_role === 'admin'): ?>
-                <h4><?= SETTINGS_IMPORT_DATABASE ?></h4>
-                <form method="post" enctype="multipart/form-data" action="settings.php" class="mb-4">
-                    <div class="mb-3 input-group">
-                        <span class="input-group-text"><i class="fas fa-database"></i></span>
-                        <input type="file" class="form-control" id="dbFile" name="dbFile">
-                    </div>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-upload mr-1"></i> <?= BUTTON_IMPORT ?></button>
-                </form>
+                <?php if ($user_role === 'admin') : ?>
+                    <h4><?= SETTINGS_IMPORT_DATABASE ?></h4>
+                    <form method="post" enctype="multipart/form-data" action="settings.php" class="mb-4">
+                        <div class="mb-3 input-group">
+                            <span class="input-group-text"><i class="fas fa-database"></i></span>
+                            <input type="file" class="form-control" id="dbFile" name="dbFile">
+                        </div>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-upload mr-1"></i> <?= BUTTON_IMPORT ?></button>
+                    </form>
                 <?php endif; ?>
-
-                <!-- Datenbank sichern -->
                 <h4><?= SETTINGS_DOWNLOAD_DATABASE ?></h4>
                 <a href="download.php" class="btn btn-secondary"><i class="fas fa-download mr-1"></i> <?= DOWNLOAD_DATABASE ?></a>
             </div>
         </div>
     </div>
-
-    <!-- Success Modal -->
     <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -195,26 +188,20 @@ $theme_mode = $_SESSION['theme_mode'] ?? 'system'; // Default to system preferen
             </div>
         </div>
     </div>
-
-    <!-- Footer -->
     <footer class="footer mt-auto py-3">
         <div class="container">
             <span class="text-muted"><?= FOOTER_TEXT ?></span>
         </div>
     </footer>
-
-    <!-- Darkmode Scripts -->
     <script>
         function applyDarkModePreference() {
             var themeMode = '<?= $theme_mode ?>';
             var darkMode = false;
-
             if (themeMode === 'dark') {
                 darkMode = true;
             } else if (themeMode === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
                 darkMode = true;
             }
-
             if (darkMode) {
                 document.body.classList.add('dark-mode');
                 document.querySelector('.fancy-title img').src = 'assets/kolibri_icon_weiß.png';
@@ -223,7 +210,6 @@ $theme_mode = $_SESSION['theme_mode'] ?? 'system'; // Default to system preferen
                 document.querySelector('.fancy-title img').src = 'assets/kolibri_icon.png';
             }
         }
-
         document.addEventListener('DOMContentLoaded', applyDarkModePreference);
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>

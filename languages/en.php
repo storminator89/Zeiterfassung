@@ -158,8 +158,8 @@ define('MINIMUM_PAUSE', 'Minimum Break Time (Minutes)');
 define('ACTIONS', 'Actions');
 define('ADD_ROW', 'Add Row');
 define('SAVE_SETTINGS', 'Save Settings');
-
-
+define('FORM_REGULAR_WORKING_HOURS', 'Regular Working Hours');
+define('FORM_OVERTIME', 'Overtime');
 
 // Login page
 define('LOGIN_TITLE', 'Login - Quodara Chrono');
@@ -188,5 +188,7 @@ define('SETTINGS_REGULAR_WORKING_HOURS', 'Regular Working Hours');
 define('SETTINGS_IMPORT_DATABASE', 'Import Database');
 define('SETTINGS_DOWNLOAD_DATABASE', 'Download Database');
 define('BUTTON_SAVE_REGULAR_WORKING_HOURS', 'Save working hours');
+define('SETTINGS_OVERTIME', 'Overtime from other systems');
+
 
 ?>

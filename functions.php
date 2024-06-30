@@ -19,12 +19,14 @@ try {
     die("Verbindungsfehler: " . $e->getMessage());
 }
 
-// Fetch user's regular working hours
+// Fetch user's regular working hours and previous overtime
 try {
-    $stmt = $conn->prepare('SELECT regelarbeitszeit FROM users WHERE id = :user_id');
+    $stmt = $conn->prepare('SELECT regelarbeitszeit, ueberstunden FROM users WHERE id = :user_id');
     $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
     $stmt->execute();
-    $userRegularWorkingHours = $stmt->fetchColumn() ?? 8; // Default to 8 hours if not set
+    $userData = $stmt->fetch(PDO::FETCH_ASSOC);
+    $userRegularWorkingHours = $userData['regelarbeitszeit'] ?? 8; // Default to 8 hours if not set
+    $previousOvertime = $userData['ueberstunden'] ?? 0.0; // Default to 0 if not set
 } catch (PDOException $e) {
     // Handle query error
     die("Datenbankfehler: " . $e->getMessage());
@@ -293,6 +295,9 @@ foreach ($workHoursByDate as $datum => $hours) {
         $totalOverHours += $hours; // Wochenendarbeit als Überstunden
     }
 }
+
+// Hinzufügen der vorherigen Überstunden
+$totalOverHours += $previousOvertime;
 
 // Berechnung der Gesamtüberstunden in Stunden und Minuten
 if ($totalOverHours < 0) {

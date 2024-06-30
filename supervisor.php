@@ -26,7 +26,7 @@ $theme_mode = $_SESSION['theme_mode'] ?? 'system'; // Default to system preferen
 $zeiten = [];
 $ueberstundenListe = [];
 if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf kann der Admin hier auch berücksichtigt werden
-    $stmt = $conn->prepare("SELECT z.*, u.username, u.id as user_id, u.regelarbeitszeit, strftime('%Y-%m-%d', z.startzeit) AS day, strftime('%W', z.startzeit) AS weekNumber 
+    $stmt = $conn->prepare("SELECT z.*, u.username, u.id as user_id, u.regelarbeitszeit, u.ueberstunden as vorherige_ueberstunden, strftime('%Y-%m-%d', z.startzeit) AS day, strftime('%W', z.startzeit) AS weekNumber 
                             FROM zeiterfassung z
                             JOIN users u ON z.user_id = u.id
                             WHERE u.supervisor_id = ?");
@@ -39,12 +39,14 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
         $userId = $zeit['user_id'];
         $day = $zeit['day'];
         $regelarbeitszeit = $zeit['regelarbeitszeit'] ?? 8.0; // Standard: 8 Stunden
+        $vorherige_ueberstunden = $zeit['vorherige_ueberstunden'] ?? 0.0; // Vorher erfasste Überstunden
 
         if (!isset($workHoursByUser[$userId])) {
             $workHoursByUser[$userId] = [
                 'username' => $zeit['username'],
                 'days' => [],
-                'regelarbeitszeit' => $regelarbeitszeit
+                'regelarbeitszeit' => $regelarbeitszeit,
+                'vorherige_ueberstunden' => $vorherige_ueberstunden
             ];
         }
 
@@ -71,6 +73,9 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
             $overMinutes = $totalMinutes - $regularWorkingMinutesPerDay;
             $totalOverMinutes += $overMinutes;
         }
+
+        // Hinzufügen der vorher erfassten Überstunden
+        $totalOverMinutes += ($data['vorherige_ueberstunden'] * 60);
 
         $isNegative = $totalOverMinutes < 0;
         $totalOverHours = floor(abs($totalOverMinutes) / 60);
@@ -249,7 +254,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') { // Je nach Bedarf k
                         "targets": "_all"
                     }],
                     order: [
-                        [3, 'desc']
+                        [0, 'desc']
                     ],
                     paging: true
                 });

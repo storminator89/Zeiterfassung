@@ -363,15 +363,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_user'])) {
     $password = $_POST['password'];
     $department_id = $_POST['department'];
     $supervisor = $_POST['supervisor'];
+    $regelarbeitszeit = $_POST['regelarbeitszeit'];
+    $ueberstunden = $_POST['ueberstunden'];
 
     try {
         if (!empty($password)) {
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ?, password = ?, department_id = ?, supervisor_id = ? WHERE id = ?");
-            $stmt->execute([$username, $email, $role, $hashedPassword, $department_id, $supervisor, $user_id]);
+            $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ?, password = ?, department_id = ?, supervisor_id = ?, regelarbeitszeit = ?, ueberstunden = ? WHERE id = ?");
+            $stmt->execute([$username, $email, $role, $hashedPassword, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden, $user_id]);
         } else {
-            $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ?, department_id = ?, supervisor_id = ? WHERE id = ?");
-            $stmt->execute([$username, $email, $role, $department_id, $supervisor, $user_id]);
+            $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ?, department_id = ?, supervisor_id = ?, regelarbeitszeit = ?, ueberstunden = ? WHERE id = ?");
+            $stmt->execute([$username, $email, $role, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden, $user_id]);
         }
 
         $successMessage = USER_UPDATED_SUCCESS;
@@ -603,6 +605,8 @@ $departments = $stmt->fetchAll(PDO::FETCH_OBJ);
                     <th><?= TABLE_HEADER_ROLE ?></th>
                     <th><?= TABLE_HEADER_DEPARTMENT ?></th>
                     <th><?= TABLE_HEADER_SUPERVISOR ?></th>
+                    <th><?= TABLE_HEADER_REGULAR_WORKING_HOURS ?></th>
+                    <th><?= TABLE_HEADER_OVERTIME ?></th>
                     <th><?= TABLE_HEADER_ACTIONS ?></th>
                 </tr>
             </thead>
@@ -615,8 +619,10 @@ $departments = $stmt->fetchAll(PDO::FETCH_OBJ);
                         <td><?= htmlspecialchars($user->role) ?></td>
                         <td><?= htmlspecialchars($user->department_name) ?></td>
                         <td><?= htmlspecialchars($user->supervisor_name) ?></td>
+                        <td><?= htmlspecialchars($user->regelarbeitszeit) ?> Stunden</td>
+                        <td><?= htmlspecialchars($user->ueberstunden) ?> Stunden</td>
                         <td>
-                            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editUserModal" data-userid="<?= $user->id ?>" data-username="<?= htmlspecialchars($user->username) ?>" data-email="<?= htmlspecialchars($user->email) ?>" data-role="<?= htmlspecialchars($user->role) ?>" data-department="<?= htmlspecialchars($user->department_id) ?>" data-supervisor="<?= htmlspecialchars($user->supervisor_id) ?>"><i class="fas fa-edit mr-1"></i> <?= BUTTON_EDIT ?></button>
+                            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editUserModal" data-userid="<?= $user->id ?>" data-username="<?= htmlspecialchars($user->username) ?>" data-email="<?= htmlspecialchars($user->email) ?>" data-role="<?= htmlspecialchars($user->role) ?>" data-department="<?= htmlspecialchars($user->department_id) ?>" data-supervisor="<?= htmlspecialchars($user->supervisor_id) ?>" data-regelarbeitszeit="<?= htmlspecialchars($user->regelarbeitszeit) ?>" data-ueberstunden="<?= htmlspecialchars($user->ueberstunden) ?>"><i class="fas fa-edit mr-1"></i> <?= BUTTON_EDIT ?></button>
                             <form method="post" class="d-inline">
                                 <input type="hidden" name="delete_user" value="1">
                                 <input type="hidden" name="user_id" value="<?= $user->id ?>">
@@ -763,6 +769,14 @@ $departments = $stmt->fetchAll(PDO::FETCH_OBJ);
                             </select>
                         </div>
                         <div class="mb-3 input-group">
+                            <span class="input-group-text"><i class="fas fa-clock"></i></span>
+                            <input type="number" class="form-control" id="edit_regelarbeitszeit" name="regelarbeitszeit" placeholder="<?= FORM_REGULAR_WORKING_HOURS ?>" step="0.1" required>
+                        </div>
+                        <div class="mb-3 input-group">
+                            <span class="input-group-text"><i class="fas fa-hourglass"></i></span>
+                            <input type="number" class="form-control" id="edit_ueberstunden" name="ueberstunden" placeholder="<?= FORM_OVERTIME ?>" step="0.1" required>
+                        </div>
+                        <div class="mb-3 input-group">
                             <span class="input-group-text"><i class="fas fa-lock"></i></span>
                             <input type="password" class="form-control" id="edit_password" name="password" placeholder="<?= FORM_NEW_PASSWORD ?>">
                         </div>
@@ -830,6 +844,8 @@ $departments = $stmt->fetchAll(PDO::FETCH_OBJ);
                 var role = button.data('role');
                 var department = button.data('department');
                 var supervisor = button.data('supervisor');
+                var regelarbeitszeit = button.data('regelarbeitszeit');
+                var ueberstunden = button.data('ueberstunden');
 
                 var modal = $(this);
                 modal.find('#edit_user_id').val(userId);
@@ -838,6 +854,8 @@ $departments = $stmt->fetchAll(PDO::FETCH_OBJ);
                 modal.find('#edit_role').val(role);
                 modal.find('#edit_department').val(department);
                 modal.find('#edit_supervisor').val(supervisor);
+                modal.find('#edit_regelarbeitszeit').val(regelarbeitszeit);
+                modal.find('#edit_ueberstunden').val(ueberstunden);
             });
 
             $('#editDepartmentModal').on('show.bs.modal', function(event) {

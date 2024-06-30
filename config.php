@@ -46,6 +46,7 @@ SQL;
         department_id INTEGER,
         supervisor_id INTEGER,
         regelarbeitszeit REAL DEFAULT 8.0,
+        ueberstunden REAL DEFAULT 0.0,
         FOREIGN KEY (department_id) REFERENCES departments(id),
         FOREIGN KEY (supervisor_id) REFERENCES users(id)
     );
