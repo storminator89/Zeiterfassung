@@ -4,54 +4,33 @@ session_start();
 
 // Ensure the user is logged in
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
+    echo json_encode(['success' => false, 'message' => 'User not logged in']);
     exit();
 }
 
 $user_id = $_SESSION['user_id'];
 
-// Check if an ID has been sent
-if (isset($_POST['id'])) {
-    $id = $_POST['id'];
+// Get the raw POST data
+$rawData = file_get_contents("php://input");
+$data = json_decode($rawData, true);
 
-    // Prepare a statement to delete the record with the given ID and user_id
-    $stmt = $conn->prepare('DELETE FROM zeiterfassung WHERE id = :id AND user_id = :user_id');
-    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-    $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
-
-    // Execute the statement and check if the execution was successful
-    if ($stmt->execute()) {
-        // Check if any rows were affected
-        $affectedRows = $stmt->rowCount();
-        if ($affectedRows == 0) {
-            die("No record found with ID $id or you don't have permission to delete this record.");
-        }
-    } else {
-        // Error handling for failed deletion
-        die("Error deleting the record: " . $stmt->errorInfo()[2]);
-    }
-
-    // Redirect to the main page after successful deletion
-    header("Location: index.php");
-    exit;
-} elseif (isset($_POST["ids"])) {
+if (isset($data['ids']) && is_array($data['ids'])) {
     // Delete multiple records
-    $ids = $_POST["ids"];
-
-    // Prepare a statement to delete records with the given IDs and user_id
+    $ids = $data['ids'];
     $stmt = $conn->prepare("DELETE FROM zeiterfassung WHERE id = ? AND user_id = ?");
+    $deletedCount = 0;
 
     foreach ($ids as $id) {
-        $stmt->bindParam(1, $id, PDO::PARAM_INT);
-        $stmt->bindParam(2, $user_id, PDO::PARAM_INT);
-        $stmt->execute();
+        $stmt->execute([$id, $user_id]);
+        $deletedCount += $stmt->rowCount();
     }
 
-    // Redirect to the main page after successful deletion
-    header("Location: index.php");
-    exit;
+    if ($deletedCount > 0) {
+        echo json_encode(['success' => true, 'message' => "$deletedCount record(s) deleted successfully"]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'No records were deleted. They may not exist or you don\'t have permission.']);
+    }
 } else {
-    // Handling the case when no ID is provided
-    die("ID not provided.");
+    echo json_encode(['success' => false, 'message' => 'No valid IDs provided']);
 }
 ?>

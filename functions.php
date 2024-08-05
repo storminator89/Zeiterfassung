@@ -453,4 +453,20 @@ foreach ($feiertageThisYear as $feiertag) {
         'isAllDay' => true
     ];
 }
+
+function calculateDuration($startzeit, $endzeit, $pause) {
+    if (empty($startzeit) || empty($endzeit)) {
+        return '-';
+    }
+
+    $start = new DateTime($startzeit);
+    $end = new DateTime($endzeit);
+    $interval = $start->diff($end);
+
+    $totalMinutes = ($interval->days * 24 * 60) + ($interval->h * 60) + $interval->i - intval($pause);
+    $hours = floor($totalMinutes / 60);
+    $minutes = $totalMinutes % 60;
+
+    return sprintf("%02d:%02d", $hours, $minutes);
+}
 ?>

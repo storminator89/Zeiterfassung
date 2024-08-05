@@ -564,24 +564,7 @@ $(function () {
 
 });
 
-function toggleDarkMode() {
-    document.body.classList.toggle('dark-mode');
-    var icon = document.querySelector('.fancy-title img');
-    if (document.body.classList.contains('dark-mode')) {
-        icon.src = 'assets/kolibri_icon_weiß.png';
-    } else {
-        icon.src = 'assets/kolibri_icon.png';
-    }
-}
 
-function checkDarkModePreference() {
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.body.classList.add('dark-mode');
-        var icon = document.querySelector('.fancy-title img');
-        icon.src = 'assets/kolibri_icon_weiß.png';
-    }
-}
-document.addEventListener('DOMContentLoaded', checkDarkModePreference);
 
 
 

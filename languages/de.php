@@ -160,6 +160,7 @@ define('ADD_ROW', 'Zeile hinzufügen');
 define('SAVE_SETTINGS', 'Einstellungen speichern');
 define('FORM_REGULAR_WORKING_HOURS', 'Regelarbeitszeit');
 define('FORM_OVERTIME', 'Überstunden');
+define('FORM_DATE_RANGE', 'Zeitraum auswählen');
 
 //Login page
 define('LOGIN_TITLE', 'Login - Quodara Chrono');
