@@ -1,19 +1,10 @@
 /* Grundlegende Stile */
-:root {
-    --primary-color: #4a90e2;
-    --secondary-color: #50c878;
-    --action-button-color: #e85454;
-    --background-start: #f0f4f8;
-    --background-end: #e1e8ed;
-    --text-color: #333;
-    --card-background: #ffffff;
-    --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
 body {
     font-family: 'Source Sans Pro', sans-serif;
     line-height: 1.6;
     min-height: 100vh;
+    background-color: hsl(var(--b2));
+    color: hsl(var(--bc));
 }
 
 /* Container und Karten */
@@ -24,26 +15,18 @@ body {
 }
 
 .card {
-    background-color: var(--card-background);
-    border-radius: 8px;
-    box-shadow: var(--card-shadow);
     transition: box-shadow 0.3s ease;
-    border: none;
 }
 
 .card:hover {
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--tw-shadow-lg);
 }
 
 /* Überschriften */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+h1, h2, h3, h4, h5, h6 {
     font-weight: 600;
     margin-bottom: 1rem;
+    color: hsl(var(--bc));
 }
 
 /* Buttons */
@@ -55,29 +38,25 @@ h6 {
 }
 
 .btn-primary {
-    background-color: var(--action-button-color);
-    border-color: var(--action-button-color);
-    color: white;
+    background-color: hsl(var(--p));
+    border-color: hsl(var(--p));
+    color: hsl(var(--pc));
 }
 
 .btn-primary:hover {
-    background-color: darken(var(--action-button-color), 10%);
-    border-color: darken(var(--action-button-color), 10%);
+    background-color: hsl(var(--pf));
+    border-color: hsl(var(--pf));
 }
 
-#startButton,
-#endButton,
-#datenEintragenButton {
-    background-color: var(--action-button-color);
-    border-color: var(--action-button-color);
-    color: white;
+.btn-action {
+    background-color: hsl(var(--er));
+    border-color: hsl(var(--er));
+    color: hsl(var(--erc));
 }
 
-#startButton:hover,
-#endButton:hover,
-#datenEintragenButton:hover {
-    background-color: darken(var(--action-button-color), 10%);
-    border-color: darken(var(--action-button-color), 10%);
+.btn-action:hover {
+    background-color: hsl(var(--er) / 90%);
+    border-color: hsl(var(--er) / 90%);
 }
 
 /* Formulare */
@@ -86,8 +65,8 @@ h6 {
 }
 
 .form-control:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+    border-color: hsl(var(--p));
+    box-shadow: 0 0 0 0.2rem hsl(var(--p) / 25%);
 }
 
 /* Tabellen */
@@ -105,25 +84,25 @@ h6 {
 }
 
 .table thead th {
-    background-color: #313440;
-    color: white;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border-bottom: 2px solid #4a4f5e;
     text-align: center;
+    background-color: hsl(var(--b3));
+    color: hsl(var(--bc));
+    border-bottom: 2px solid hsl(var(--b3));
 }
 
 .table-striped tbody tr:nth-of-type(odd) {
-    background-color: rgba(0, 0, 0, 0.02);
+    background-color: hsl(var(--b2) / 50%);
 }
 
 .table tbody tr:hover {
-    background-color: rgba(49, 52, 64, 0.05);
+    background-color: hsl(var(--b3) / 50%);
 }
 
 .table td {
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid hsl(var(--b3));
 }
 
 /* Responsive Tabelle */
@@ -148,11 +127,13 @@ h6 {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    color: hsl(var(--bc) / 60%);
 }
 
 .stat-value {
     font-size: 2rem;
     font-weight: 700;
+    color: hsl(var(--bc));
 }
 
 /* Responsive Design */
@@ -173,13 +154,8 @@ h6 {
 
 /* Animationen */
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .fade-in {
@@ -189,7 +165,7 @@ h6 {
 /* Zusätzliche Verbesserungen */
 .navbar {
     backdrop-filter: blur(10px);
-    background-color: rgba(255, 255, 255, 0.8);
+    background-color: hsl(var(--b1) / 80%);
 }
 
 .tooltip {
@@ -200,8 +176,8 @@ h6 {
 .tooltip .tooltiptext {
     visibility: hidden;
     width: 120px;
-    background-color: #555;
-    color: #fff;
+    background-color: hsl(var(--n));
+    color: hsl(var(--nc));
     text-align: center;
     border-radius: 6px;
     padding: 5px 0;
@@ -234,18 +210,24 @@ h6 {
     border: none;
 }
 
-/* Action Buttons */
-#startButton,
-#endButton,
-#datenEintragenButton {
-    background-color: #e85454;
-    border-color: #e85454;
-    color: white;
+/* Dark mode spezifische Anpassungen */
+[data-theme="dark"] .navbar {
+    background-color: hsl(var(--n) / 80%);
 }
 
-#startButton:hover,
-#endButton:hover,
-#datenEintragenButton:hover {
-    background-color: #d64545;
-    border-color: #d64545;
+[data-theme="dark"] .table thead th {
+    background-color: hsl(var(--n));
+    border-bottom-color: hsl(var(--n));
+}
+
+[data-theme="dark"] .table-striped tbody tr:nth-of-type(odd) {
+    background-color: hsl(var(--n) / 50%);
+}
+
+[data-theme="dark"] .table tbody tr:hover {
+    background-color: hsl(var(--n) / 70%);
+}
+
+[data-theme="dark"] .table td {
+    border-bottom-color: hsl(var(--n));
 }

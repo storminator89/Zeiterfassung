@@ -66,7 +66,6 @@ define('TABLE_HEADER_NAME', 'Name');
 define('TABLE_HEADER_REGULAR_WORKING_HOURS', 'Tägliche Arbeitszeit');
 define('LABEL_HOURS_PER_DAY', 'Stunden pro Tag');
 define('ACTUAL_WORKED_TIMES', 'Tatsächlich gearbeitete Zeiten');
-define('BUTTON_TODAY', 'Heute');
 define('MODAL_TITLE_SCHEDULE', 'Arbeitszeiten');
 define('MODAL_BUTTON_CLOSE', 'Schließen');
 define('BUTTON_PREV_MONTH', 'Vorheriger Monat');
@@ -85,6 +84,69 @@ define('MONTH_SEPTEMBER', 'September');
 define('MONTH_OCTOBER', 'Oktober');
 define('MONTH_NOVEMBER', 'November');
 define('MONTH_DECEMBER', 'Dezember');
+define('DASHBOARD_TITLE', 'Dashboard');
+define('DASHBOARD_PROGRESS', 'Fortschritt');
+define('DASHBOARD_CURRENT_WEEK', 'Aktuelle Woche %s');
+define('DASHBOARD_HOURS_OF', '%s von %s Stunden');
+define('DASHBOARD_CALENDAR', 'Kalender');
+define('BUTTON_PREV_WEEK', 'Vorherige Woche');
+define('BUTTON_NEXT_WEEK', 'Nächste Woche');
+define('BUTTON_TODAY', 'Heute');
+define('USER_INFO', 'Benutzerinformationen');
+define('USERNAME', 'Benutzername');
+define('EMAIL', 'E-Mail');
+define('DEPARTMENT', 'Abteilung');
+define('REGULAR_WORKING_HOURS', 'Reguläre Arbeitszeit');
+define('OVERTIME', 'Überstunden');
+define('HOURS', 'Stunden');
+define('RECENT_TIME_ENTRIES', 'Letzte Zeiteinträge');
+define('START_TIME', 'Startzeit');
+define('END_TIME', 'Endzeit');
+define('DESCRIPTION', 'Beschreibung');
+define('LOCATION', 'Standort');
+define('PAUSE_SETTINGS', 'Pauseneinstellungen');
+define('PAUSE_RULE', 'Bei %s Stunden Arbeitszeit: Mindestens %s Minuten Pause');
+
+// Wöchentliche Übersicht
+define('DASHBOARD_WEEKLY_OVERVIEW', 'Wöchentliche Übersicht');
+define('DASHBOARD_WEEKLY_HOURS', 'Wochenstunden');
+define('DASHBOARD_REMAINING_HOURS_WEEK', 'Verbleibende Stunden diese Woche');
+
+// Monatliche Übersicht
+define('DASHBOARD_MONTHLY_OVERVIEW', 'Monatliche Übersicht');
+define('DASHBOARD_MONTHLY_HOURS', 'Monatsstunden');
+define('DASHBOARD_AVERAGE_DAILY_HOURS', 'Durchschnittliche Tagesstunden');
+define('DASHBOARD_PRODUCTIVITY_SCORE', 'Produktivitätsscore');
+define('DASHBOARD_WORKED_DAYS_THIS_MONTH', 'Basierend auf %d Arbeitstagen');
+define('DASHBOARD_WEEKLY_PRODUCTIVITY', 'Wöchentliche Produktivität');
+define('DASHBOARD_MONTHLY_HOURS_PROGRESS', '%s von %s diesen Monat');
+
+// Gesamtstatistik
+define('DASHBOARD_OVERALL_STATS', 'Gesamtstatistik');
+define('DASHBOARD_REGULAR_HOURS', 'Regelarbeitszeit');
+define('DASHBOARD_HOURS_PER_DAY', 'Stunden pro Tag');
+define('DASHBOARD_WEEKS_WORKED', 'Gearbeitete Wochen');
+define('DASHBOARD_FIRST_WEEK', 'Erste Woche!');
+define('DASHBOARD_KEEP_GOING', 'Weiter so!');
+define('DASHBOARD_TOTAL_OVERTIME', 'Gesamte Überstunden');
+define('DASHBOARD_OVER_HOURS_YEAR', 'Überstunden dieses Jahr: %s');
+
+// Wochentage
+define('SUNDAY', 'Sonntag');
+define('MONDAY', 'Montag');
+define('TUESDAY', 'Dienstag');
+define('WEDNESDAY', 'Mittwoch');
+define('THURSDAY', 'Donnerstag');
+define('FRIDAY', 'Freitag');
+define('SATURDAY', 'Samstag');
+
+// Ereignistypen
+define('WORK', 'Arbeit');
+define('VACATION', 'Urlaub');
+
+
+
+
 
 // Admin Page
 define('ADMIN_PAGE_TITLE', 'Adminbereich - Benutzerverwaltung');

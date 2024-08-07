@@ -85,6 +85,11 @@ define('MONTH_SEPTEMBER', 'September');
 define('MONTH_OCTOBER', 'October');
 define('MONTH_NOVEMBER', 'November');
 define('MONTH_DECEMBER', 'December');
+define('DASHBOARD_WEEKLY_HOURS', 'Weekly Hours');
+define('DASHBOARD_MONTHLY_HOURS', 'Monthly Hours');
+define('DASHBOARD_CALENDAR', 'Calendar');
+define('CHART_HOURS_WORKED', 'Hours Worked');
+define('CHART_REMAINING_HOURS', 'Remaining Hours');
 
 // Admin Page
 define('ADMIN_PAGE_TITLE', 'Admin Area - User Management');

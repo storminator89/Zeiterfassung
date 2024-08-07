@@ -55,11 +55,7 @@ $kolibri_icon = 'assets/kolibri_icon.png';
     }
 </script>
 
-    <style>
-        .navbar {
-            background-color: #313440;
-        }
-    </style>
+ 
 </head>
 
 <body>
