@@ -94,7 +94,7 @@ if (isset($_POST['update']) && $_POST['update'] == 'true') {
 // Hinzufügen eines neuen Eintrags oder Beenden eines Eintrags
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["action"])) {
     $action = $_POST["action"];
-    
+
     if ($action === 'start') {
         $startzeit_iso = date('Y-m-d H:i:s', strtotime($_POST["startzeit"]));
         $standort = $_POST["standort"];
@@ -103,7 +103,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["action"])) {
         $stmt->bindParam(':startzeit', $startzeit_iso);
         $stmt->bindParam(':standort', $standort);
         $stmt->bindParam(':user_id', $user_id);
-        
+
         if ($stmt->execute()) {
             $_SESSION['success_message'] = "Arbeitszeit erfolgreich gestartet!";
         } else {
@@ -111,7 +111,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["action"])) {
         }
     } elseif ($action === 'end') {
         $endzeit_iso = date('Y-m-d H:i:s', strtotime($_POST["endzeit"]));
-        
+
         $stmt = $conn->prepare("SELECT id, startzeit FROM zeiterfassung WHERE user_id = :user_id AND endzeit IS NULL ORDER BY startzeit DESC LIMIT 1");
         $stmt->bindParam(':user_id', $user_id);
         $stmt->execute();
@@ -128,7 +128,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["action"])) {
             $stmt->bindParam(':endzeit', $endzeit_iso);
             $stmt->bindParam(':pause', $pause);
             $stmt->bindParam(':id', $record['id']);
-            
+
             if ($stmt->execute()) {
                 $_SESSION['success_message'] = "Arbeitszeit erfolgreich beendet!";
             } else {
@@ -138,10 +138,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["action"])) {
             $_SESSION['success_message'] = "Kein offener Arbeitszeitentrageintrag gefunden.";
         }
     }
-    
+
     header("Location: index.php");
     exit();
 }
+
 
 // Hinzufügen von Sondertagen (Urlaub, Feiertag, Krankheit)
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["urlaubStart"]) && isset($_POST["urlaubEnde"]) && isset($_POST["ereignistyp"])) {
@@ -172,4 +173,3 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["urlaubStart"]) && isse
 
     echo "{$ereignistyp} von {$start->format('d.m.Y')} bis {$end->modify('-1 day')->format('d.m.Y')} wurde eingetragen. {$eingetragene_tage} Tage wurden erfasst.";
 }
-?>

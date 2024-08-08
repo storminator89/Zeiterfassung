@@ -11,6 +11,11 @@ try {
     die("Datenbankfehler: " . $e->getMessage());
 }
 
+// Check if there's an active session (Kommen without Gehen)
+$stmt = $conn->prepare("SELECT id, startzeit FROM zeiterfassung WHERE user_id = ? AND endzeit IS NULL ORDER BY startzeit DESC LIMIT 1");
+$stmt->execute([$user_id]);
+$activeSession = $stmt->fetch(PDO::FETCH_ASSOC);
+
 // Pagination
 $itemsPerPage = 10;
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
@@ -42,238 +47,248 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/de.js"></script>
+    <style>
+        #timer {
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+    </style>
 </head>
 
 <body class="bg-gradient-to-br from-base-200 to-base-300 min-h-screen">
-    <div class="container mx-auto px-4 py-8">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Main Form Card -->
-            <div class="lg:col-span-2">
-                <div class="card bg-base-100 shadow-xl">
-                    <div class="card-body">
-                        <h2 class="card-title text-3xl mb-6 flex items-center">
-                            <img src="<?= $kolibri_icon ?>" alt="Quodara Chrono Logo" class="w-12 h-12 mr-4">
-                            <?= TITLE ?>
-                        </h2>
-
-                        <form action="save.php" method="post" id="mainForm" class="space-y-6">
-                            <input type="hidden" id="action" name="action" value="">
-                            <div class="hidden">
-                                <input type="datetime-local" id="startzeit" name="startzeit" required>
-                                <input type="datetime-local" id="endzeit" name="endzeit">
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-4">
-                                <button type="button" id="startButton" class="btn btn-primary btn-lg"><i class="fas fa-sign-in-alt mr-2"></i><?= FORM_COME ?></button>
-                                <button type="button" id="endButton" class="btn btn-secondary btn-lg"><i class="fas fa-sign-out-alt mr-2"></i><?= FORM_GO ?></button>
-                            </div>
-
-                            <div class="divider"></div>
-
-                            <div class="form-control">
-                                <label class="label" for="pauseManuell">
-                                    <span class="label-text"><i class="fas fa-pause mr-2"></i><?= FORM_BREAK_MANUAL ?></span>
-                                </label>
-                                <input type="number" id="pauseManuell" name="pause" class="input input-bordered w-full" placeholder="<?= FORM_BREAK_MANUAL ?>">
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="form-control">
-                                    <label class="label" for="standort">
-                                        <span class="label-text"><i class="fas fa-map-marker-alt mr-2"></i><?= FORM_LOCATION ?></span>
-                                    </label>
-                                    <select name="standort" class="select select-bordered w-full" required>
-                                        <option value="">-</option>
-                                        <option value="<?= LOCATION_OFFICE_VALUE ?>"><?= LOCATION_OFFICE ?></option>
-                                        <option value="<?= LOCATION_HOME_OFFICE_VALUE ?>"><?= LOCATION_HOME_OFFICE ?></option>
-                                        <option value="<?= LOCATION_BUSINESS_TRIP_VALUE ?>"><?= LOCATION_BUSINESS_TRIP ?></option>
-                                    </select>
-                                </div>
-
-                                <div class="form-control">
-                                    <label class="label" for="beschreibung">
-                                        <span class="label-text"><i class="fas fa-info-circle mr-2"></i><?= FORM_COMMENT ?></span>
-                                    </label>
-                                    <textarea name="beschreibung" class="textarea textarea-bordered h-24" placeholder="<?= FORM_COMMENT ?>"></textarea>
-                                </div>
-                            </div>
-
-                            <div class="form-control">
-                                <label class="label">
-                                    <span class="label-text"><i class="fas fa-calendar-check mr-2"></i><?= FORM_EVENT_TYPE ?></span>
-                                </label>
-                                <div class="flex flex-wrap gap-4">
-                                    <label class="label cursor-pointer">
-                                        <input type="radio" id="urlaub" name="ereignistyp" value="Urlaub" class="radio radio-primary">
-                                        <span class="label-text ml-2"><i class="fas fa-umbrella-beach mr-2"></i><?= EVENT_VACATION ?></span>
-                                    </label>
-                                    <label class="label cursor-pointer">
-                                        <input type="radio" id="feiertag" name="ereignistyp" value="Feiertag" class="radio radio-primary">
-                                        <span class="label-text ml-2"><i class="fas fa-calendar-day mr-2"></i><?= EVENT_HOLIDAY ?></span>
-                                    </label>
-                                    <label class="label cursor-pointer">
-                                        <input type="radio" id="krank" name="ereignistyp" value="Krank" class="radio radio-primary">
-                                        <span class="label-text ml-2"><i class="fas fa-stethoscope mr-2"></i><?= EVENT_SICK ?></span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="form-control">
-                                    <label class="label" for="dateRange">
-                                        <span class="label-text"><i class="fas fa-calendar-alt mr-2"></i>Datumsbereich</span>
-                                    </label>
-                                    <input type="text" id="dateRange" name="dateRange" class="input input-bordered w-full" readonly>
-                                </div>
-
-                                <div class="form-control">
-                                    <label class="label" for="datenEintragenButton">
-                                        <span class="label-text">&nbsp;</span>
-                                    </label>
-                                    <button type="button" id="datenEintragenButton" class="btn btn-primary w-full">
-                                        <i class="fas fa-calendar-plus mr-2"></i><?= BUTTON_SUBMIT_DATA ?>
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Statistics Card -->
-            <div>
-                <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300">
-                    <div class="card-body">
-                        <h3 class="card-title text-2xl mb-4"><i class="fas fa-chart-bar mr-2"></i><?= STATISTICS_WORKING_TIMES ?></h3>
-                        <div class="stats stats-vertical shadow">
-                            <div class="stat">
-                                <div class="stat-figure text-primary">
-                                    <i class="fas fa-calendar-day fa-2x"></i>
-                                </div>
-                                <div class="stat-title"><?= TABLE_HEADER_WORKING_DAYS ?></div>
-                                <div class="stat-value"><?= $workingDaysThisMonth ?></div>
-                                <div class="stat-desc"><?= $currentMonthName ?></div>
-                            </div>
-
-                            <div class="stat">
-                                <div class="stat-figure text-primary">
-                                    <i class="fas fa-clock fa-2x"></i>
-                                </div>
-                                <div class="stat-title"><?= TABLE_HEADER_TOTAL_OVERTIME ?></div>
-                                <div class="stat-value <?= $totalOverHours > 0 ? 'text-success' : 'text-error'; ?>">
-                                    <?= $totalOverHoursFormatted ?>
-                                </div>
-                            </div>
-
-                            <div class="stat">
-                                <div class="stat-figure text-primary">
-                                    <i class="fas fa-business-time fa-2x"></i>
-                                </div>
-                                <div class="stat-title"><?= TABLE_HEADER_REGULAR_WORKING_HOURS ?></div>
-                                <div class="stat-value"><?= $userRegularWorkingHours ?></div>
-                                <div class="stat-desc"><?= LABEL_HOURS_PER_DAY ?></div>
-                            </div>
-                        </div>
-
-                        <?php if (!empty($feiertageDieseWoche)) : ?>
-                            <div class="alert alert-info mt-4">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                <div>
-                                    <h3 class="font-bold"><?= HOLIDAYS_THIS_WEEK ?></h3>
-                                    <div class="text-xs">
-                                        <?php foreach ($feiertageDieseWoche as $feiertag) : ?>
-                                            <?php if ($lang === 'de') : ?>
-                                                <p><?= getGermanDayName($feiertag['datum']) ?>, <?= date("d.m.Y", strtotime($feiertag['datum'])) ?> - <?= $feiertag['name'] ?></p>
-                                            <?php else : ?>
-                                                <p><?= date("l, d/m/Y", strtotime($feiertag['datum'])) ?> - <?= $feiertag['name'] ?></p>
-                                            <?php endif; ?>
-                                        <?php endforeach; ?>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
+    <div class="navbar bg-base-300 fixed top-0 left-0 right-0 z-50">
+        <div class="navbar-start">
+            <a class="btn btn-ghost normal-case text-xl" href="index.php">
+                <img src="<?= $kolibri_icon ?>" alt="Time Tracking" class="h-8 w-8 mr-2">
+                <?= TITLE ?>
+            </a>
+        </div>
+        <div class="navbar-center hidden lg:flex">
+            <ul class="menu menu-horizontal px-1">
+                <li><a href="index.php"><i class="fas fa-home mr-2"></i><?= NAV_HOME ?></a></li>
+                <li><a href="dashboard.php"><i class="fas fa-tachometer-alt mr-2"></i><?= NAV_DASHBOARD ?></a></li>
+            </ul>
+        </div>
+        <div class="navbar-end">
+            <div id="timer" class="mr-4 <?php echo $activeSession ? '' : 'hidden'; ?>">00:00:00</div>
+            <button id="startButton" class="btn btn-primary btn-sm mr-2">
+                <i class="fas fa-sign-in-alt mr-2"></i>Kommen
+            </button>
+            <button id="endButton" class="btn btn-secondary btn-sm mr-4" style="display: none;">
+                <i class="fas fa-sign-out-alt mr-2"></i>Gehen
+            </button>
+            <div class="dropdown dropdown-end">
+                <label tabindex="0" class="btn btn-ghost btn-circle">
+                    <i class="fas fa-cog"></i>
+                </label>
+                <ul tabindex="0" class="menu menu-compact dropdown-content mt-3 p-2 shadow bg-base-100 rounded-box w-52">
+                    <li><a href="settings.php"><i class="fas fa-cog mr-2"></i>Einstellungen</a></li>
+                    <li><a onclick="showAboutModal()"><i class="fas fa-info-circle mr-2"></i>Über</a></li>
+                    <li><a href="logout.php"><i class="fas fa-sign-out-alt mr-2"></i>Logout</a></li>
+                </ul>
             </div>
         </div>
 
-        <!-- Time Records Table -->
-        <div class="card bg-base-100 shadow-xl mt-8">
-            <div class="card-body">
-                <h3 class="card-title text-2xl mb-4"><i class="fas fa-clock mr-2"></i><?= ACTUAL_WORKED_TIMES ?></h3>
-                <div class="overflow-x-auto">
-                    <table class="table table-zebra w-full">
-                        <thead>
-                            <tr>
-                                <th><?= TABLE_HEADER_ID ?></th>
-                                <th><?= TABLE_HEADER_WEEK ?></th>
-                                <th><?= TABLE_HEADER_START_TIME ?></th>
-                                <th><?= TABLE_HEADER_END_TIME ?></th>
-                                <th><?= TABLE_HEADER_DURATION ?></th>
-                                <th><?= TABLE_HEADER_BREAK ?></th>
-                                <th><?= TABLE_HEADER_LOCATION ?></th>
-                                <th><?= TABLE_HEADER_COMMENT ?></th>
-                                <th><?= TABLE_HEADER_ACTIONS ?></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($records as $record) : ?>
-                                <tr>
-                                    <td><?= $record['id'] ?></td>
-                                    <td><?= $record['weekNumber'] ?></td>
-                                    <td>
-                                        <input type="datetime-local" class="input input-bordered w-full max-w-xs editable" data-id="<?= $record['id'] ?>" data-field="startzeit" value="<?= date('Y-m-d\TH:i', strtotime($record['startzeit'])) ?>">
-                                    </td>
-                                    <td>
-                                        <input type="datetime-local" class="input input-bordered w-full max-w-xs editable" data-id="<?= $record['id'] ?>" data-field="endzeit" value="<?= date('Y-m-d\TH:i', strtotime($record['endzeit'])) ?>">
-                                    </td>
-                                    <td><?= calculateDuration($record['startzeit'], $record['endzeit'], $record['pause']) ?></td>
-                                    <td>
-                                        <input type="number" class="input input-bordered w-full max-w-xs editable" data-id="<?= $record['id'] ?>" data-field="pause" value="<?= $record['pause'] ?>">
-                                    </td>
-                                    <td>
-                                        <select class="select select-bordered w-full max-w-xs editable" data-id="<?= $record['id'] ?>" data-field="standort">
-                                            <option value="<?= LOCATION_OFFICE_VALUE ?>" <?= $record['standort'] == LOCATION_OFFICE_VALUE ? 'selected' : '' ?>><?= LOCATION_OFFICE ?></option>
-                                            <option value="<?= LOCATION_HOME_OFFICE_VALUE ?>" <?= $record['standort'] == LOCATION_HOME_OFFICE_VALUE ? 'selected' : '' ?>><?= LOCATION_HOME_OFFICE ?></option>
-                                            <option value="<?= LOCATION_BUSINESS_TRIP_VALUE ?>" <?= $record['standort'] == LOCATION_BUSINESS_TRIP_VALUE ? 'selected' : '' ?>><?= LOCATION_BUSINESS_TRIP ?></option>
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <input type="text" class="input input-bordered w-full max-w-xs editable" data-id="<?= $record['id'] ?>" data-field="beschreibung" value="<?= htmlspecialchars($record['beschreibung']) ?>">
-                                    </td>
-                                    <td>
-                                        <button class="btn btn-error btn-sm deleteRow" data-id="<?= $record['id'] ?>">
-                                            <i class="fas fa-trash-alt"></i>
+    </div>
+
+    <div class="pt-16">
+        <div class="container mx-auto px-4 py-8">
+            <div class="grid lg:grid-cols-3 gap-6">
+                <!-- Main Form Card -->
+                <div class="lg:col-span-2 h-full">
+                    <div class="card bg-base-100 shadow-xl h-full">
+                        <div class="card-body p-4 sm:p-6">
+                            <header class="flex items-center justify-between mb-4">
+                                <div class="flex items-center space-x-3">
+                                    <img src="<?= $kolibri_icon ?>" alt="Quodara Chrono Logo" class="w-10 h-10">
+                                    <h1 class="text-xl font-bold text-primary"><?= TITLE ?></h1>
+                                </div>
+                            </header>
+
+                            <p class="text-lg mb-6">
+                                Willkommen zurück! Klicken Sie oben auf "Kommen" zum Starten oder buchen Sie hier spezielle Ereignisse.
+                            </p>
+
+                            <form id="mainForm" class="space-y-6">
+                                <input type="hidden" id="action" name="action" value="">
+                                <input type="datetime-local" id="startzeit" name="startzeit" class="hidden">
+                                <input type="datetime-local" id="endzeit" name="endzeit" class="hidden">
+
+                                <div>
+                                    <h2 class="text-lg font-semibold mb-3">Ereignistyp</h2>
+                                    <div class="grid grid-cols-3 gap-3">
+                                        <label class="flex items-center justify-start p-3 border rounded transition-all hover:bg-base-200 cursor-pointer">
+                                            <input type="radio" id="urlaub" name="ereignistyp" value="Urlaub" class="radio radio-primary mr-3">
+                                            <i class="fas fa-umbrella-beach text-xl mr-2"></i>
+                                            <span class="text-sm"><?= EVENT_VACATION ?></span>
+                                        </label>
+                                        <label class="flex items-center justify-start p-3 border rounded transition-all hover:bg-base-200 cursor-pointer">
+                                            <input type="radio" id="feiertag" name="ereignistyp" value="Feiertag" class="radio radio-primary mr-3">
+                                            <i class="fas fa-calendar-day text-xl mr-2"></i>
+                                            <span class="text-sm"><?= EVENT_HOLIDAY ?></span>
+                                        </label>
+                                        <label class="flex items-center justify-start p-3 border rounded transition-all hover:bg-base-200 cursor-pointer">
+                                            <input type="radio" id="krank" name="ereignistyp" value="Krank" class="radio radio-primary mr-3">
+                                            <i class="fas fa-stethoscope text-xl mr-2"></i>
+                                            <span class="text-sm"><?= EVENT_SICK ?></span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h2 class="text-lg font-semibold mb-3">Datumsbereich</h2>
+                                    <div class="flex space-x-3">
+                                        <input type="text" id="dateRange" name="dateRange" class="input input-bordered flex-grow" placeholder="Datumsbereich auswählen" readonly>
+                                        <button type="button" id="datenEintragenButton" class="btn btn-primary whitespace-nowrap">
+                                            <?= BUTTON_SUBMIT_DATA ?>
                                         </button>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Pagination -->
-                <div class="flex justify-center mt-4">
-                    <div class="btn-group">
-                        <?php if ($page > 1) : ?>
-                            <a href="?page=1" class="btn">«</a>
-                            <a href="?page=<?= $page - 1 ?>" class="btn">‹</a>
-                        <?php endif; ?>
 
-                        <?php
-                        $start = max(1, $page - 2);
-                        $end = min($totalPages, $page + 2);
-                        for ($i = $start; $i <= $end; $i++) :
-                        ?>
-                            <a href="?page=<?= $i ?>" class="btn <?= $i === $page ? 'btn-active' : '' ?>"><?= $i ?></a>
-                        <?php endfor; ?>
+                <!-- Statistics Card -->
+                <div class="h-full">
+                    <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300 h-full">
+                        <div class="card-body flex flex-col justify-between">
+                            <h3 class="card-title text-2xl mb-4"><i class="fas fa-chart-bar mr-2"></i><?= STATISTICS_WORKING_TIMES ?></h3>
+                            <div class="stats stats-vertical shadow">
+                                <div class="stat">
+                                    <div class="stat-figure text-primary">
+                                        <i class="fas fa-calendar-day fa-2x"></i>
+                                    </div>
+                                    <div class="stat-title"><?= TABLE_HEADER_WORKING_DAYS ?></div>
+                                    <div class="stat-value"><?= $workingDaysThisMonth ?></div>
+                                    <div class="stat-desc"><?= $currentMonthName ?></div>
+                                </div>
 
-                        <?php if ($page < $totalPages) : ?>
-                            <a href="?page=<?= $page + 1 ?>" class="btn">›</a>
-                            <a href="?page=<?= $totalPages ?>" class="btn">»</a>
-                        <?php endif; ?>
+                                <div class="stat">
+                                    <div class="stat-figure text-primary">
+                                        <i class="fas fa-clock fa-2x"></i>
+                                    </div>
+                                    <div class="stat-title"><?= TABLE_HEADER_TOTAL_OVERTIME ?></div>
+                                    <div class="stat-value <?= $totalOverHours > 0 ? 'text-success' : 'text-error'; ?>">
+                                        <?= $totalOverHoursFormatted ?>
+                                    </div>
+                                </div>
+
+                                <div class="stat">
+                                    <div class="stat-figure text-primary">
+                                        <i class="fas fa-business-time fa-2x"></i>
+                                    </div>
+                                    <div class="stat-title"><?= TABLE_HEADER_REGULAR_WORKING_HOURS ?></div>
+                                    <div class="stat-value"><?= $userRegularWorkingHours ?></div>
+                                    <div class="stat-desc"><?= LABEL_HOURS_PER_DAY ?></div>
+                                </div>
+                            </div>
+
+                            <?php if (!empty($feiertageDieseWoche)) : ?>
+                                <div class="alert alert-info mt-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <div>
+                                        <h3 class="font-bold"><?= HOLIDAYS_THIS_WEEK ?></h3>
+                                        <div class="text-xs">
+                                            <?php foreach ($feiertageDieseWoche as $feiertag) : ?>
+                                                <?php if ($lang === 'de') : ?>
+                                                    <p><?= getGermanDayName($feiertag['datum']) ?>, <?= date("d.m.Y", strtotime($feiertag['datum'])) ?> - <?= $feiertag['name'] ?></p>
+                                                <?php else : ?>
+                                                    <p><?= date("l, d/m/Y", strtotime($feiertag['datum'])) ?> - <?= $feiertag['name'] ?></p>
+                                                <?php endif; ?>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time Records Table -->
+            <div class="card bg-base-100 shadow-xl mt-8">
+                <div class="card-body">
+                    <h3 class="card-title text-2xl mb-4"><i class="fas fa-clock mr-2"></i><?= ACTUAL_WORKED_TIMES ?></h3>
+                    <div class="overflow-x-auto">
+                        <table class="table table-zebra w-full" id="timeRecordsTable">
+                            <thead>
+                                <tr>
+                                    <th class="text-left"><?= TABLE_HEADER_ID ?></th>
+                                    <th class="text-left"><?= TABLE_HEADER_WEEK ?></th>
+                                    <th class="text-left"><?= TABLE_HEADER_START_TIME ?></th>
+                                    <th class="text-left"><?= TABLE_HEADER_END_TIME ?></th>
+                                    <th class="text-left"><?= TABLE_HEADER_DURATION ?></th>
+                                    <th class="text-left"><?= TABLE_HEADER_BREAK ?></th>
+                                    <th class="text-left"><?= TABLE_HEADER_LOCATION ?></th>
+                                    <th class="text-left"><?= TABLE_HEADER_COMMENT ?></th>
+                                    <th class="text-left"><?= TABLE_HEADER_ACTIONS ?></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($records as $record) : ?>
+                                    <tr>
+                                        <td><?= $record['id'] ?></td>
+                                        <td><?= $record['weekNumber'] ?></td>
+                                        <td>
+                                            <input type="datetime-local" class="input input-bordered w-full max-w-xs editable" data-id="<?= $record['id'] ?>" data-field="startzeit" value="<?= date('Y-m-d\TH:i', strtotime($record['startzeit'])) ?>">
+                                        </td>
+                                        <td>
+                                            <?php if ($record['endzeit'] !== null): ?>
+                                                <input type="datetime-local" class="input input-bordered w-full max-w-xs editable" data-id="<?= $record['id'] ?>" data-field="endzeit" value="<?= date('Y-m-d\TH:i', strtotime($record['endzeit'])) ?>">
+                                            <?php else: ?>
+                                                <span>-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><?= calculateDuration($record['startzeit'], $record['endzeit'], $record['pause']) ?></td>
+                                        <td>
+                                            <input type="number" class="input input-bordered w-full max-w-xs editable" data-id="<?= $record['id'] ?>" data-field="pause" value="<?= $record['pause'] ?>">
+                                        </td>
+                                        <td>
+                                            <select class="select select-bordered w-full max-w-xs editable" data-id="<?= $record['id'] ?>" data-field="standort">
+                                                <option value="<?= LOCATION_OFFICE_VALUE ?>" <?= $record['standort'] == LOCATION_OFFICE_VALUE ? 'selected' : '' ?>><?= LOCATION_OFFICE ?></option>
+                                                <option value="<?= LOCATION_HOME_OFFICE_VALUE ?>" <?= $record['standort'] == LOCATION_HOME_OFFICE_VALUE ? 'selected' : '' ?>><?= LOCATION_HOME_OFFICE ?></option>
+                                                <option value="<?= LOCATION_BUSINESS_TRIP_VALUE ?>" <?= $record['standort'] == LOCATION_BUSINESS_TRIP_VALUE ? 'selected' : '' ?>><?= LOCATION_BUSINESS_TRIP ?></option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="text" class="input input-bordered w-full max-w-xs editable" data-id="<?= $record['id'] ?>" data-field="beschreibung" value="<?= htmlspecialchars($record['beschreibung']) ?>">
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-ghost btn-sm text-black hover:bg-black hover:text-white transition-colors duration-300 deleteRow" data-id="<?= $record['id'] ?>">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="flex justify-center mt-4">
+                        <div class="btn-group">
+                            <?php if ($page > 1) : ?>
+                                <button onclick="updateTimeRecordsTable(1)" class="btn">«</button>
+                                <button onclick="updateTimeRecordsTable(<?= $page - 1 ?>)" class="btn">‹</button>
+                            <?php endif; ?>
+
+                            <?php
+                            $start = max(1, $page - 2);
+                            $end = min($totalPages, $page + 2);
+                            for ($i = $start; $i <= $end; $i++) :
+                            ?>
+                                <button onclick="updateTimeRecordsTable(<?= $i ?>)" class="btn <?= $i === $page ? 'btn-active' : '' ?>"><?= $i ?></button>
+                            <?php endfor; ?>
+
+                            <?php if ($page < $totalPages) : ?>
+                                <button onclick="updateTimeRecordsTable(<?= $page + 1 ?>)" class="btn">›</button>
+                                <button onclick="updateTimeRecordsTable(<?= $totalPages ?>)" class="btn">»</button>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -281,87 +296,166 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 
     <script>
-        // Time tracking functionality
         let startButton = document.getElementById('startButton');
         let endButton = document.getElementById('endButton');
         let mainForm = document.getElementById('mainForm');
+        let timerElement = document.getElementById('timer');
+        let timerInterval;
+        let startTime;
 
-        startButton.addEventListener('click', function() {
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const remainingSeconds = seconds % 60;
+            return [hours, minutes, remainingSeconds]
+                .map(v => v < 10 ? "0" + v : v)
+                .join(":");
+        }
+
+        function updateButtonVisibility(isActive) {
+            if (isActive) {
+                startButton.style.display = 'none';
+                endButton.style.display = '';
+                timerElement.classList.remove('hidden');
+            } else {
+                startButton.style.display = '';
+                endButton.style.display = 'none';
+                timerElement.classList.add('hidden');
+            }
+        }
+
+        function startTimer(initialTime = null) {
+            startTime = initialTime ? new Date(initialTime).getTime() : new Date().getTime();
+            updateButtonVisibility(true);
+            timerInterval = setInterval(() => {
+                const currentTime = new Date().getTime();
+                const elapsedTime = Math.floor((currentTime - startTime) / 1000);
+                timerElement.textContent = formatTime(elapsedTime);
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            updateButtonVisibility(false);
+        }
+
+        function submitForm(action) {
             let now = new Date();
             let localISOTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-            document.getElementById('startzeit').value = localISOTime;
-            document.getElementById('endzeit').value = ''; // Ensure endzeit is empty
-            document.getElementById('action').value = 'start';
-            mainForm.submit();
-        });
+            let formData = new FormData();
+            formData.append('action', action);
 
-        endButton.addEventListener('click', function() {
-            let now = new Date();
-            let localISOTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-            document.getElementById('endzeit').value = localISOTime;
-            document.getElementById('action').value = 'end';
-            mainForm.submit();
-        });
+            if (action === 'start') {
+                formData.append('startzeit', localISOTime);
+            } else if (action === 'end') {
+                formData.append('endzeit', localISOTime);
+            }
 
-        // Delete row functionality
-        document.querySelectorAll('.deleteRow').forEach(button => {
-            button.addEventListener('click', function() {
-                const id = this.dataset.id;
-                if (confirm('Are you sure you want to delete this record?')) {
+            fetch('save.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.text())
+                .then(data => {
+                    console.log(data);
+                    updateTimeRecordsTable();
+                    if (action === 'start') {
+                        startTimer();
+                    } else if (action === 'end') {
+                        stopTimer();
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    alert('Error submitting form');
+                });
+        }
+
+        function updateTimeRecordsTable(page = 1) {
+            fetch(`get_time_records.php?page=${page}`)
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('timeRecordsTable').innerHTML = data;
+                    attachEventListeners();
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    alert('Error updating time records table');
+                });
+        }
+
+        function attachEventListeners() {
+            // Delete row functionality
+            document.querySelectorAll('.deleteRow').forEach(button => {
+                button.addEventListener('click', function() {
+                    const id = this.dataset.id;
+                    if (confirm('Are you sure you want to delete this record?')) {
+                        fetch('save.php', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                },
+                                body: `delete=true&id=${id}`,
+                            })
+                            .then(response => response.text())
+                            .then(data => {
+                                if (data === "Successfully deleted") {
+                                    updateTimeRecordsTable();
+                                } else {
+                                    alert(data);
+                                }
+                            })
+                            .catch((error) => {
+                                console.error('Error:', error);
+                                alert('Error deleting record');
+                            });
+                    }
+                });
+            });
+
+            // Inline editing functionality
+            document.querySelectorAll('.editable').forEach(input => {
+                input.addEventListener('change', function() {
+                    const id = this.dataset.id;
+                    const field = this.dataset.field;
+                    const value = this.value;
+
                     fetch('save.php', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/x-www-form-urlencoded',
                             },
-                            body: `delete=true&id=${id}`,
+                            body: `update=true&id=${id}&column=${field}&data=${encodeURIComponent(value)}`,
                         })
                         .then(response => response.text())
                         .then(data => {
-                            if (data === "Successfully deleted") {
-                                location.reload();
+                            if (data === "Successfully updated") {
+                                console.log('Update successful');
+                                updateTimeRecordsTable();
                             } else {
                                 alert(data);
+                                // Revert the input to its original value
+                                this.value = this.defaultValue;
                             }
                         })
                         .catch((error) => {
                             console.error('Error:', error);
-                            alert('Error deleting record');
-                        });
-                }
-            });
-        });
-
-        // Inline editing functionality
-        document.querySelectorAll('.editable').forEach(input => {
-            input.addEventListener('change', function() {
-                const id = this.dataset.id;
-                const field = this.dataset.field;
-                const value = this.value;
-
-                fetch('save.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: `update=true&id=${id}&column=${field}&data=${encodeURIComponent(value)}`,
-                    })
-                    .then(response => response.text())
-                    .then(data => {
-                        if (data === "Successfully updated") {
-                            console.log('Update successful');
-                        } else {
-                            alert(data);
+                            alert('Error updating record');
                             // Revert the input to its original value
                             this.value = this.defaultValue;
-                        }
-                    })
-                    .catch((error) => {
-                        console.error('Error:', error);
-                        alert('Error updating record');
-                        // Revert the input to its original value
-                        this.value = this.defaultValue;
-                    });
+                        });
+                });
             });
+        }
+
+        startButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            submitForm('start');
+        });
+
+        endButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            submitForm('end');
         });
 
         // Date range picker initialization
@@ -409,7 +503,7 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         .then(response => response.text())
                         .then(data => {
                             alert(data);
-                            location.reload();
+                            updateTimeRecordsTable();
                         })
                         .catch((error) => {
                             console.error('Error:', error);
@@ -422,7 +516,20 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 alert('Bitte wählen Sie einen Datumsbereich aus.');
             }
         });
+
+        // Initial attachment of event listeners
+        attachEventListeners();
+
+        // Initial setup
+        document.addEventListener('DOMContentLoaded', function() {
+            <?php if ($activeSession): ?>
+                startTimer('<?= $activeSession['startzeit'] ?>');
+            <?php else: ?>
+                updateButtonVisibility(false);
+            <?php endif; ?>
+        });
     </script>
+
 </body>
 
 </html>

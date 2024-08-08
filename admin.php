@@ -19,7 +19,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 }
 
 $user_role = isset($_SESSION['role']) ? $_SESSION['role'] : null;
-$theme_mode = $_SESSION['theme_mode'] ?? 'system'; // Default to system preference
+$theme_mode = $_SESSION['theme_mode'] ?? 'system';
 
 $error = '';
 $successMessage = '';
@@ -47,13 +47,6 @@ $ldapPort = $ldapSettings->ldap_port ?? '';
 $ldapUser = $ldapSettings->ldap_user ?? '';
 $ldapPass = isset($ldapSettings->ldap_pass) ? decryptData($ldapSettings->ldap_pass, ENCRYPTION_KEY, ENCRYPTION_METHOD) : '';
 $ldapBaseDN = $ldapSettings->ldap_base_dn ?? '';
-
-// Debugging-Ausgabe
-error_log("LDAP Host: $ldapHost");
-error_log("LDAP Port: $ldapPort");
-error_log("LDAP User: $ldapUser");
-error_log("LDAP Pass: $ldapPass");
-error_log("LDAP Base DN: $ldapBaseDN");
 
 // Pauseneinstellungen aus der Datenbank abrufen
 $stmt = $conn->prepare("SELECT * FROM pause_settings ORDER BY hours_threshold ASC");
@@ -320,17 +313,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
     $role = $_POST['role'];
     $department_id = $_POST['department'];
     $supervisor = $_POST['supervisor'];
+    $regelarbeitszeit = $_POST['regelarbeitszeit'];
+    $ueberstunden = $_POST['ueberstunden'];
 
     // Eingaben validieren
-    if (empty($username) || empty($password) || empty($email) || empty($role) || empty($department_id)) {
+    if (empty($username) || empty($password) || empty($email) || empty($role) || empty($department_id) || empty($regelarbeitszeit)) {
         $error = ERROR_ALL_FIELDS_REQUIRED;
     } else {
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
         try {
             // Statement vorbereiten und ausführen, um den neuen Benutzer einzufügen
-            $stmt = $conn->prepare("INSERT INTO users (username, password, email, role, department_id, supervisor_id) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$username, $hashedPassword, $email, $role, $department_id, $supervisor]);
+            $stmt = $conn->prepare("INSERT INTO users (username, password, email, role, department_id, supervisor_id, regelarbeitszeit, ueberstunden) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$username, $hashedPassword, $email, $role, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden]);
 
             $successMessage = USER_CREATED_SUCCESS;
         } catch (PDOException $e) {
@@ -401,551 +396,594 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_department'])) {
     }
 }
 
-// Alle Benutzer aus der Datenbank abrufen
-$stmt = $conn->prepare("SELECT users.*, departments.name as department_name, supervisors.username as supervisor_name
-                        FROM users
-                        LEFT JOIN departments ON users.department_id = departments.id
-                        LEFT JOIN users as supervisors ON users.supervisor_id = supervisors.id");
+// Suchparameter und Paginierung
+$search = isset($_GET['search']) ? $_GET['search'] : '';
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$perPage = 10; // Anzahl der Benutzer pro Seite
+
+// Benutzer aus der Datenbank abrufen (mit Suche und Paginierung)
+$stmt = $conn->prepare("
+    SELECT users.*, departments.name as department_name, supervisors.username as supervisor_name
+    FROM users
+    LEFT JOIN departments ON users.department_id = departments.id
+    LEFT JOIN users as supervisors ON users.supervisor_id = supervisors.id
+    WHERE users.username LIKE :search OR users.email LIKE :search
+    ORDER BY users.username
+    LIMIT :offset, :perPage
+");
+
+$searchParam = "%$search%";
+$offset = ($page - 1) * $perPage;
+
+$stmt->bindParam(':search', $searchParam, PDO::PARAM_STR);
+$stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+$stmt->bindParam(':perPage', $perPage, PDO::PARAM_INT);
 $stmt->execute();
 $users = $stmt->fetchAll(PDO::FETCH_OBJ);
 
-// Alle Abteilungen aus der Datenbank abrufen
-$stmt = $conn->prepare("SELECT * FROM departments");
+// Gesamtanzahl der Benutzer für die Paginierung
+$stmt = $conn->prepare("
+    SELECT COUNT(*) 
+    FROM users 
+    WHERE username LIKE :search OR email LIKE :search
+");
+$stmt->bindParam(':search', $searchParam, PDO::PARAM_STR);
 $stmt->execute();
-$departments = $stmt->fetchAll(PDO::FETCH_OBJ);
+$totalUsers = $stmt->fetchColumn();
 
+$totalPages = ceil($totalUsers / $perPage);
+
+// Header einbinden
+include 'header.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="<?= $lang ?>">
+<div class="drawer lg:drawer-open">
+    <input id="my-drawer" type="checkbox" class="drawer-toggle" />
+    <div class="drawer-content flex flex-col bg-base-100 text-base-content">
+        <!-- Hauptinhalt -->
+        <div class="p-4">
+            <?php if ($error): ?>
+                <div class="alert alert-error shadow-lg mb-4">
+                    <div>
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span><?= $error ?></span>
+                    </div>
+                </div>
+            <?php endif; ?>
 
-<head>
-    <!-- Meta tags and title -->
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= ADMIN_PAGE_TITLE ?></title>
-    <!-- Favicon and external stylesheets -->
-    <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
-    <!-- Scripts -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
-</head>
+            <?php if ($successMessage): ?>
+                <div class="alert alert-success shadow-lg mb-4">
+                    <div>
+                        <i class="fas fa-check-circle"></i>
+                        <span><?= $successMessage ?></span>
+                    </div>
+                </div>
+            <?php endif; ?>
 
-<body class="<?= $theme_mode === 'dark' ? 'dark-mode' : '' ?>">
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom pl-3">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="index.php">
-                <img src="<?= $theme_mode === 'dark' ? 'assets/kolibri_icon_weiß.png' : 'assets/kolibri_icon.png' ?>" alt="Time Tracking" height="50">
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item active">
-                        <a class="nav-link" href="index.php"><i class="fas fa-home mr-1"></i> <?= NAV_HOME ?></a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="dashboard.php"><i class="fas fa-tachometer-alt mr-1"></i> <?= NAV_DASHBOARD ?></a>
-                    </li>
-                </ul>
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="settingsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-cog"></i>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="settingsDropdown">
-                            <li><a class="dropdown-item" href="settings.php"><i class="fas fa-cog mr-1"></i> <?= NAV_SETTINGS ?></a></li>
-                            <?php if ($user_role === 'admin') : ?>
-                                <li><a class="dropdown-item" href="admin.php"><i class="fas fa-user-shield mr-1"></i> <?= NAV_ADMIN ?></a></li>
-                            <?php endif; ?>
-                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="fas fa-info-circle mr-1"></i> <?= NAV_ABOUT ?></a></li>
-                            <li><a class="dropdown-item" href="logout.php"><i class="fas fa-sign-out-alt mr-1"></i> <?= NAV_LOGOUT ?></a></li>
-                            <li><button class="dropdown-item" onclick="toggleDarkMode()"><i class="fas fa-moon mr-1"></i> <?= NAV_DARK_MODE ?></button></li>
-                        </ul>
-                    </li>
-                </ul>
+            <!-- Benutzerverwaltung -->
+            <div id="user-management" class="card bg-base-100 shadow-xl mb-8">
+                <div class="card-body">
+                    <h2 class="card-title text-2xl mb-4"><?= USER_MANAGEMENT_TITLE ?></h2>
+                    <button class="btn btn-primary mb-4" id="toggleUserForm">
+                        <i class="fas fa-plus mr-2"></i><?= BUTTON_CREATE_USER ?>
+                    </button>
+                    <div id="userForm" class="hidden mb-6">
+                        <form method="post" class="space-y-4">
+                            <input type="hidden" name="add_user" value="1">
+                            <div class="form-control">
+                                <label class="label" for="username">
+                                    <span class="label-text"><?= FORM_USERNAME ?></span>
+                                </label>
+                                <input type="text" id="username" name="username" class="input input-bordered" required>
+                            </div>
+                            <div class="form-control">
+                                <label class="label" for="password">
+                                    <span class="label-text"><?= FORM_PASSWORD ?></span>
+                                </label>
+                                <input type="password" id="password" name="password" class="input input-bordered" required>
+                            </div>
+                            <div class="form-control">
+                                <label class="label" for="email">
+                                    <span class="label-text"><?= FORM_EMAIL ?></span>
+                                </label>
+                                <input type="email" id="email" name="email" class="input input-bordered" required>
+                            </div>
+                            <div class="form-control">
+                                <label class="label" for="role">
+                                    <span class="label-text"><?= FORM_ROLE ?></span>
+                                </label>
+                                <select id="role" name="role" class="select select-bordered" required>
+                                    <option value="user"><?= FORM_ROLE_USER ?></option>
+                                    <option value="admin"><?= FORM_ROLE_ADMIN ?></option>
+                                    <option value="supervisor"><?= FORM_ROLE_SUPERVISOR ?></option>
+                                </select>
+                            </div>
+                            <div class="form-control">
+                                <label class="label" for="department">
+                                    <span class="label-text"><?= FORM_DEPARTMENT ?></span>
+                                </label>
+                                <select id="department" name="department" class="select select-bordered" required>
+                                    <?php foreach ($departments as $department): ?>
+                                        <option value="<?= $department->id ?>"><?= htmlspecialchars($department->name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="form-control">
+                                <label class="label" for="supervisor">
+                                    <span class="label-text"><?= FORM_SUPERVISOR ?></span>
+                                </label>
+                                <select id="supervisor" name="supervisor" class="select select-bordered">
+                                    <option value=""><?= FORM_NO_SUPERVISOR ?></option>
+                                    <?php foreach ($users as $user): ?>
+                                        <?php if ($user->role === 'supervisor' || $user->role === 'admin'): ?>
+                                            <option value="<?= $user->id ?>"><?= htmlspecialchars($user->username) ?></option>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="form-control">
+                                <label class="label" for="regelarbeitszeit">
+                                    <span class="label-text"><?= FORM_REGULAR_WORKING_HOURS ?></span>
+                                </label>
+                                <input type="number" id="regelarbeitszeit" name="regelarbeitszeit" class="input input-bordered" step="0.01" required>
+                            </div>
+                            <div class="form-control">
+                                <label class="label" for="ueberstunden">
+                                    <span class="label-text"><?= FORM_OVERTIME ?></span>
+                                </label>
+                                <input type="number" id="ueberstunden" name="ueberstunden" class="input input-bordered" step="0.01" value="0">
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-user-plus mr-2"></i><?= BUTTON_CREATE_USER ?>
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Suchfeld für Benutzer -->
+                    <form action="" method="GET" class="mb-4">
+                        <div class="form-control">
+                            <div class="input-group">
+                                <input type="text" name="search" id="userSearch" class="input input-bordered" placeholder="<?= SEARCH_USERS ?>" value="<?= htmlspecialchars($search) ?>">
+                                <button class="btn btn-square" type="submit">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                    
+                    <!-- Benutzertabelle -->
+                    <div class="overflow-x-auto">
+                        <table class="table w-full">
+                            <thead>
+                                <tr>
+                                    <th class="text-left"><?= TABLE_HEADER_USERNAME ?></th>
+                                    <th class="text-left"><?= TABLE_HEADER_EMAIL ?></th>
+                                    <th class="text-left"><?= TABLE_HEADER_ROLE ?></th>
+                                    <th class="text-left"><?= TABLE_HEADER_DEPARTMENT ?></th>
+                                    <th class="text-left"><?= TABLE_HEADER_SUPERVISOR ?></th>
+                                    <th class="text-left"><?= TABLE_HEADER_REGULAR_WORKING_HOURS ?></th>
+                                    <th class="text-left"><?= TABLE_HEADER_OVERTIME ?></th>
+                                    <th class="text-left"><?= TABLE_HEADER_ACTIONS ?></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($users as $user): ?>
+                                    <tr>
+                                        <td><?= htmlspecialchars($user->username) ?></td>
+                                        <td><?= htmlspecialchars($user->email) ?></td>
+                                        <td><?= htmlspecialchars($user->role) ?></td>
+                                        <td><?= htmlspecialchars($user->department_name) ?></td>
+                                        <td><?= htmlspecialchars($user->supervisor_name) ?></td>
+                                        <td><?= htmlspecialchars($user->regelarbeitszeit) ?></td>
+                                        <td><?= htmlspecialchars($user->ueberstunden) ?></td>
+                                        <td>
+                                            <button class="btn btn-ghost btn-sm" onclick="editUser(<?= $user->id ?>)" title="<?= BUTTON_EDIT ?>">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <form method="post" class="inline" onsubmit="return confirm('<?= CONFIRM_DELETE_USER ?>')">
+                                                <input type="hidden" name="delete_user" value="1">
+                                                <input type="hidden" name="user_id" value="<?= $user->id ?>">
+                                                <button type="submit" class="btn btn-ghost btn-sm" title="<?= BUTTON_DELETE ?>">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginierung -->
+                    <div class="btn-group mt-4">
+                        <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                            <a href="?page=<?= $i ?>&search=<?= urlencode($search) ?>" class="btn <?= $i === $page ? 'btn-active' : '' ?>"><?= $i ?></a>
+                        <?php endfor; ?>
+                    </div>
+                </div>
             </div>
-        </div>
-    </nav>
-    <!-- Main content -->
-    <div class="container mt-5 p-5">
-        <h2><?= USER_MANAGEMENT_TITLE ?></h2>
-        <!-- Plus-Symbol für Benutzer anlegen -->
 
-        <button class="btn btn-secondary" id="toggleUserForm"><i class="fas fa-plus"></i> <?= BUTTON_CREATE_USER ?></button>
-
-        <div id="userForm" style="display: none;">
-            <form method="post" class="mt-4">
-                <input type="hidden" name="add_user" value="1">
-                <div class="mb-3 input-group">
-                    <span class="input-group-text"><i class="fas fa-user"></i></span>
-                    <input type="text" class="form-control" id="username" name="username" placeholder="<?= FORM_USERNAME ?>" required>
-                </div>
-                <div class="mb-3 input-group">
-                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                    <input type="password" class="form-control" id="password" name="password" placeholder="<?= FORM_PASSWORD ?>" required>
-                </div>
-                <div class="mb-3 input-group">
-                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                    <input type="email" class="form-control" id="email" name="email" placeholder="<?= FORM_EMAIL ?>" required>
-                </div>
-                <div class="mb-3 input-group">
-                    <span class="input-group-text"><i class="fas fa-user-tag"></i></span>
-                    <select class="form-control" id="role" name="role" required>
-                        <option value="user"><?= FORM_ROLE_USER ?></option>
-                        <option value="admin"><?= FORM_ROLE_ADMIN ?></option>
-                        <option value="supervisor"><?= FORM_ROLE_SUPERVISOR ?></option>
-                    </select>
-                </div>
-                <div class="mb-3 input-group">
-                    <span class="input-group-text"><i class="fas fa-building"></i></span>
-                    <select class="form-control" id="department" name="department" required>
-                        <option value=""><?= FORM_SELECT_DEPARTMENT ?></option>
-                        <?php foreach ($departments as $department) : ?>
-                            <option value="<?= htmlspecialchars($department->id) ?>"><?= htmlspecialchars($department->name) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="mb-3 input-group">
-                    <span class="input-group-text"><i class="fas fa-user-tie"></i></span>
-                    <select class="form-control" id="supervisor" name="supervisor">
-                        <option value=""><?= FORM_SELECT_SUPERVISOR ?></option>
-                        <?php foreach ($allUsers as $user) : ?>
-                            <option value="<?= $user->id ?>"><?= htmlspecialchars($user->username) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus mr-1"></i> <?= BUTTON_CREATE_USER ?></button>
-            </form>
-        </div>
-
-        <!-- LDAP Synchronization Form -->
-        <h2 class="container mt-4"><?= LDAP_SYNC_TITLE ?></h2>
-        <button class="btn btn-secondary" id="toggleLdapForm"><i class="fas fa-plus"></i> <?= LDAP_SYNC_TITLE ?></button>
-        <div id="ldapForm" style="display: none;">
-            <h2 class="container mt-4"><?= LDAP_SYNC_TITLE ?></h2>
-            <form method="post" class="mt-4">
-                <input type="hidden" name="sync_ldap" value="1">
-                <div class="mb-3 input-group">
-                    <span class="input-group-text"><i class="fas fa-server"></i></span>
-                    <input type="text" class="form-control" id="ldap_host" name="ldap_host" placeholder="<?= LDAP_HOST ?> e.g. ldap://ldap.forumsys.com" value="<?= htmlspecialchars($ldapHost) ?>" required>
-                </div>
-                <div class="mb-3 input-group">
-                    <span class="input-group-text"><i class="fas fa-network-wired"></i></span>
-                    <input type="number" class="form-control" id="ldap_port" name="ldap_port" placeholder="<?= LDAP_PORT ?> 389" value="<?= htmlspecialchars($ldapPort) ?>" required>
-                </div>
-                <div class="mb-3 input-group">
-                    <span class="input-group-text"><i class="fas fa-user"></i></span>
-                    <input type="text" class="form-control" id="ldap_user" name="ldap_user" placeholder="<?= LDAP_USER ?> e.g. cn=read-only-admin,dc=example,dc=com" value="<?= htmlspecialchars($ldapUser) ?>" required>
-                </div>
-                <div class="mb-3 input-group">
-                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                    <input type="password" class="form-control" id="ldap_pass" name="ldap_pass" placeholder="<?= LDAP_PASS ?>" value="<?= htmlspecialchars($ldapPass) ?>" required>
-                </div>
-                <div class="mb-3 input-group">
-                    <span class="input-group-text"><i class="fas fa-sitemap"></i></span>
-                    <input type="text" class="form-control" id="ldap_base_dn" name="ldap_base_dn" placeholder="<?= LDAP_BASE_DN ?> dc=example,dc=com" value="<?= htmlspecialchars($ldapBaseDN) ?>" required>
-                </div>
-                <button type="submit" class="btn btn-primary"><i class="fas fa-sync-alt mr-1"></i> <?= BUTTON_SYNC_LDAP ?></button>
-            </form>
-        </div>
-
-        <!-- Pauseneinstellungen Form -->
-        <h2 class="container mt-4"><?= PAUSE_SETTINGS_TITLE ?></h2>
-        <form method="post" class="mt-4">
-            <input type="hidden" name="update_pause_settings" value="1">
-            <div class="mb-3">
-                <table class="table table-bordered" id="pauseSettingsTable">
-                    <thead>
-                        <tr>
-                            <th><?= HOURS_THRESHOLD ?></th>
-                            <th><?= MINIMUM_PAUSE ?></th>
-                            <th><?= ACTIONS ?></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($pauseSettings as $setting) : ?>
+             <!-- Abteilungsverwaltung -->
+             <div id="department-management" class="card bg-base-100 shadow-xl mb-8">
+                <div class="card-body">
+                    <h2 class="card-title text-2xl mb-4"><?= DEPARTMENT_MANAGEMENT_TITLE ?></h2>
+                    <form method="post" class="flex space-x-2 mb-4">
+                        <input type="hidden" name="add_department" value="1">
+                        <input type="text" name="department_name" class="input input-bordered flex-grow" placeholder="<?= FORM_NEW_DEPARTMENT ?>" required>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus mr-2"></i><?= BUTTON_ADD_DEPARTMENT ?>
+                        </button>
+                    </form>
+                    <!-- Suchfeld für Abteilungen -->
+                    <div class="form-control mb-4">
+                        <input type="text" id="departmentSearch" class="input input-bordered" placeholder="<?= SEARCH_DEPARTMENTS ?>">
+                    </div>
+                    <table class="table w-full">
+                        <thead>
                             <tr>
-                                <td>
-                                    <input type="number" name="hours_threshold[]" class="form-control" value="<?= htmlspecialchars($setting->hours_threshold) ?>" required>
-                                </td>
-                                <td>
-                                    <input type="number" name="minimum_pause[]" class="form-control" value="<?= htmlspecialchars($setting->minimum_pause) ?>" required>
-                                </td>
-                                <td>
-                                    <button type="button" class="btn btn-danger btn-sm remove-row"><i class="fas fa-trash-alt"></i></button>
-                                </td>
+                                <th class="text-left"><?= TABLE_HEADER_DEPARTMENT_ID ?></th>
+                                <th class="text-left"><?= TABLE_HEADER_DEPARTMENT_NAME ?></th>
+                                <th class="text-left"><?= TABLE_HEADER_ACTIONS ?></th>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-                <button type="button" class="btn btn-secondary btn-sm" id="addRow"><i class="fas fa-plus"></i> <?= ADD_ROW ?></button>
-            </div>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> <?= SAVE_SETTINGS ?></button>
-        </form>
-
-        <!-- Search Bar -->
-        <div class="mt-5 mb-3">
-            <input type="text" id="searchInput" class="form-control" placeholder="<?= FORM_SEARCH_USER ?>">
-        </div>
-
-        <!-- Users table -->
-        <h2 class="mt-3"><?= EXISTING_USERS_TITLE ?></h2>
-        <table class="table table-striped mt-3" id="usersTable">
-            <thead>
-                <tr>
-                    <th><?= TABLE_HEADER_ID ?></th>
-                    <th><?= TABLE_HEADER_USERNAME ?></th>
-                    <th><?= TABLE_HEADER_EMAIL ?></th>
-                    <th><?= TABLE_HEADER_ROLE ?></th>
-                    <th><?= TABLE_HEADER_DEPARTMENT ?></th>
-                    <th><?= TABLE_HEADER_SUPERVISOR ?></th>
-                    <th><?= TABLE_HEADER_REGULAR_WORKING_HOURS ?></th>
-                    <th><?= TABLE_HEADER_OVERTIME ?></th>
-                    <th><?= TABLE_HEADER_ACTIONS ?></th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($users as $user) : ?>
-                    <tr>
-                        <td><?= $user->id ?></td>
-                        <td><?= htmlspecialchars($user->username) ?></td>
-                        <td><?= htmlspecialchars($user->email) ?></td>
-                        <td><?= htmlspecialchars($user->role) ?></td>
-                        <td><?= htmlspecialchars($user->department_name) ?></td>
-                        <td><?= htmlspecialchars($user->supervisor_name) ?></td>
-                        <td><?= htmlspecialchars($user->regelarbeitszeit) ?> Stunden</td>
-                        <td><?= htmlspecialchars($user->ueberstunden) ?> Stunden</td>
-                        <td>
-                            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editUserModal" data-userid="<?= $user->id ?>" data-username="<?= htmlspecialchars($user->username) ?>" data-email="<?= htmlspecialchars($user->email) ?>" data-role="<?= htmlspecialchars($user->role) ?>" data-department="<?= htmlspecialchars($user->department_id) ?>" data-supervisor="<?= htmlspecialchars($user->supervisor_id) ?>" data-regelarbeitszeit="<?= htmlspecialchars($user->regelarbeitszeit) ?>" data-ueberstunden="<?= htmlspecialchars($user->ueberstunden) ?>"><i class="fas fa-edit mr-1"></i> <?= BUTTON_EDIT ?></button>
-                            <form method="post" class="d-inline">
-                                <input type="hidden" name="delete_user" value="1">
-                                <input type="hidden" name="user_id" value="<?= $user->id ?>">
-                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('<?= CONFIRM_DELETE_USER ?>')"><i class="fas fa-trash-alt mr-1"></i> <?= BUTTON_DELETE ?></button>
-                            </form>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-
-        <!-- Departments table -->
-        <h2 class="mt-3"><?= DEPARTMENT_MANAGEMENT_TITLE ?></h2>
-        <form method="post" class="mt-4 mb-4">
-            <input type="hidden" name="add_department" value="1">
-            <div class="mb-3 input-group">
-                <span class="input-group-text"><i class="fas fa-building"></i></span>
-                <input type="text" class="form-control" id="department_name" name="department_name" placeholder="<?= FORM_NEW_DEPARTMENT ?>" required>
-                <button type="submit" class="btn btn-primary"><i class="fas fa-plus mr-1"></i> <?= BUTTON_ADD_DEPARTMENT ?></button>
-            </div>
-        </form>
-        <table class="table table-striped mt-3" id="departmentsTable">
-            <thead>
-                <tr>
-                    <th><?= TABLE_HEADER_DEPARTMENT_ID ?></th>
-                    <th><?= TABLE_HEADER_DEPARTMENT_NAME ?></th>
-                    <th><?= TABLE_HEADER_ACTIONS ?></th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($departments as $department) : ?>
-                    <tr>
-                        <td><?= $department->id ?></td>
-                        <td><?= htmlspecialchars($department->name) ?></td>
-                        <td>
-                            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editDepartmentModal" data-departmentid="<?= $department->id ?>" data-departmentname="<?= htmlspecialchars($department->name) ?>"><i class="fas fa-edit mr-1"></i> <?= BUTTON_EDIT ?></button>
-                            <form method="post" class="d-inline">
-                                <input type="hidden" name="delete_department" value="1">
-                                <input type="hidden" name="department_id" value="<?= $department->id ?>">
-                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('<?= CONFIRM_DELETE_DEPARTMENT ?>')"><i class="fas fa-trash-alt mr-1"></i> <?= BUTTON_DELETE ?></button>
-                            </form>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-
-        <h2><?= API_ACCESS_TITLE ?></h2>
-
-        <!-- Generate Token Form and Display -->
-        <div class="mt-4">
-            <form method="post" class="input-group mb-3">
-                <input type="password" class="form-control" id="tokenField" value="<?= htmlspecialchars($currentUser->token ?? '') ?>" readonly>
-                <button class="btn btn-outline-secondary" type="button" id="toggleToken"><i class="fas fa-eye"></i></button>
-                <input type="hidden" name="generate_token" value="1">
-                <button type="submit" class="btn btn-success"><i class="fas fa-key mr-1"></i> <?= BUTTON_GENERATE_TOKEN ?></button>
-            </form>
-            <div class="mt-3">
-                <a href="apidoc.html" target="_blank" class="btn btn-primary"><i class="fas fa-book"></i> <?= BUTTON_API_DOC ?></a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal for Success -->
-    <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="successModalLabel"><?= MODAL_TITLE_SUCCESS ?></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <?= $successMessage ?>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= MODAL_BUTTON_CLOSE ?></button>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($departments as $department): ?>
+                                <tr>
+                                    <td><?= $department->id ?></td>
+                                    <td><?= htmlspecialchars($department->name) ?></td>
+                                    <td>
+                                        <button class="btn btn-ghost btn-sm" onclick="editDepartment(<?= $department->id ?>, '<?= htmlspecialchars($department->name) ?>')" title="<?= BUTTON_EDIT ?>">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <form method="post" class="inline" onsubmit="return confirm('<?= CONFIRM_DELETE_DEPARTMENT ?>')">
+                                            <input type="hidden" name="delete_department" value="1">
+                                            <input type="hidden" name="department_id" value="<?= $department->id ?>">
+                                            <button type="submit" class="btn btn-ghost btn-sm" title="<?= BUTTON_DELETE ?>">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Modal for Error -->
-    <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="errorModalLabel"><?= MODAL_TITLE_ERROR ?></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <?= $error ?>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= MODAL_BUTTON_CLOSE ?></button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal for Editing User -->
-    <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form method="post">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="editUserModalLabel"><?= MODAL_TITLE_EDIT_USER ?></h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <input type="hidden" name="edit_user" value="1">
-                        <input type="hidden" name="user_id" id="edit_user_id">
-                        <div class="mb-3 input-group">
-                            <span class="input-group-text"><i class="fas fa-user"></i></span>
-                            <input type="text" class="form-control" id="edit_username" name="username" required>
+            <!-- LDAP-Synchronisation -->
+            <div id="ldap-sync" class="card bg-base-100 shadow-xl mb-8">
+                <div class="card-body">
+                    <h2 class="card-title text-2xl mb-4"><?= LDAP_SYNC_TITLE ?></h2>
+                    <form method="post" class="space-y-4">
+                        <input type="hidden" name="sync_ldap" value="1">
+                        <div class="form-control">
+                            <label class="label" for="ldap_host">
+                                <span class="label-text"><?= FORM_LDAP_HOST ?></span>
+                            </label>
+                            <input type="text" id="ldap_host" name="ldap_host" class="input input-bordered" value="<?= htmlspecialchars($ldapHost) ?>" required>
                         </div>
-                        <div class="mb-3 input-group">
-                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                            <input type="email" class="form-control" id="edit_email" name="email" required>
+                        <div class="form-control">
+                            <label class="label" for="ldap_port">
+                                <span class="label-text"><?= FORM_LDAP_PORT ?></span>
+                            </label>
+                            <input type="number" id="ldap_port" name="ldap_port" class="input input-bordered" value="<?= htmlspecialchars($ldapPort) ?>" required>
                         </div>
-                        <div class="mb-3 input-group">
-                            <span class="input-group-text"><i class="fas fa-user-tag"></i></span>
-                            <select class="form-control" id="edit_role" name="role" required>
-                                <option value="user"><?= FORM_ROLE_USER ?></option>
-                                <option value="admin"><?= FORM_ROLE_ADMIN ?></option>
-                                <option value="supervisor"><?= FORM_ROLE_SUPERVISOR ?></option>
-                            </select>
+                        <div class="form-control">
+                            <label class="label" for="ldap_user">
+                                <span class="label-text"><?= FORM_LDAP_USER ?></span>
+                            </label>
+                            <input type="text" id="ldap_user" name="ldap_user" class="input input-bordered" value="<?= htmlspecialchars($ldapUser) ?>" required>
                         </div>
-                        <div class="mb-3 input-group">
-                            <span class="input-group-text"><i class="fas fa-building"></i></span>
-                            <select class="form-control" id="edit_department" name="department" required>
-                                <option value=""><?= FORM_SELECT_DEPARTMENT ?></option>
-                                <?php foreach ($departments as $department) : ?>
-                                    <option value="<?= htmlspecialchars($department->id) ?>"><?= htmlspecialchars($department->name) ?></option>
+                        <div class="form-control">
+                            <label class="label" for="ldap_pass">
+                                <span class="label-text"><?= FORM_LDAP_PASS ?></span>
+                            </label>
+                            <input type="password" id="ldap_pass" name="ldap_pass" class="input input-bordered" required>
+                        </div>
+                        <div class="form-control">
+                            <label class="label" for="ldap_base_dn">
+                                <span class="label-text"><?= FORM_LDAP_BASE_DN ?></span>
+                            </label>
+                            <input type="text" id="ldap_base_dn" name="ldap_base_dn" class="input input-bordered" value="<?= htmlspecialchars($ldapBaseDN) ?>" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-sync mr-2"></i><?= BUTTON_SYNC_LDAP ?>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Pauseneinstellungen -->
+            <div id="pause-settings" class="card bg-base-100 shadow-xl mb-8">
+                <div class="card-body">
+                    <h2 class="card-title text-2xl mb-4"><?= PAUSE_SETTINGS_TITLE ?></h2>
+                    <form method="post" class="space-y-4">
+                        <input type="hidden" name="update_pause_settings" value="1">
+                        <table class="table w-full" id="pauseSettingsTable">
+                            <thead>
+                                <tr>
+                                    <th class="text-left"><?= TABLE_HEADER_HOURS_THRESHOLD ?></th>
+                                    <th class="text-left"><?= TABLE_HEADER_MINIMUM_PAUSE ?></th>
+                                    <th class="text-left"><?= TABLE_HEADER_ACTIONS ?></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($pauseSettings as $setting): ?>
+                                    <tr>
+                                        <td>
+                                            <input type="number" name="hours_threshold[]" class="input input-bordered w-full" value="<?= htmlspecialchars($setting->hours_threshold) ?>" required>
+                                        </td>
+                                        <td>
+                                            <input type="number" name="minimum_pause[]" class="input input-bordered w-full" value="<?= htmlspecialchars($setting->minimum_pause) ?>" required>
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-ghost btn-sm remove-row" title="<?= BUTTON_DELETE ?>">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
                                 <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="mb-3 input-group">
-                            <span class="input-group-text"><i class="fas fa-user-tie"></i></span>
-                            <select class="form-control" id="edit_supervisor" name="supervisor">
-                                <option value=""><?= FORM_SELECT_SUPERVISOR ?></option>
-                                <?php foreach ($allUsers as $user) : ?>
-                                    <option value="<?= $user->id ?>"><?= htmlspecialchars($user->username) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="mb-3 input-group">
-                            <span class="input-group-text"><i class="fas fa-clock"></i></span>
-                            <input type="number" class="form-control" id="edit_regelarbeitszeit" name="regelarbeitszeit" placeholder="<?= FORM_REGULAR_WORKING_HOURS ?>" step="0.1" required>
-                        </div>
-                        <div class="mb-3 input-group">
-                            <span class="input-group-text"><i class="fas fa-hourglass"></i></span>
-                            <input type="number" class="form-control" id="edit_ueberstunden" name="ueberstunden" placeholder="<?= FORM_OVERTIME ?>" step="0.1" required>
-                        </div>
-                        <div class="mb-3 input-group">
-                            <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                            <input type="password" class="form-control" id="edit_password" name="password" placeholder="<?= FORM_NEW_PASSWORD ?>">
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= MODAL_BUTTON_CLOSE ?></button>
-                        <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i> <?= BUTTON_SAVE_CHANGES ?></button>
-                    </div>
-                </form>
+                            </tbody>
+                        </table>
+                        <button type="button" id="addRow" class="btn btn-secondary">
+                            <i class="fas fa-plus mr-2"></i><?= BUTTON_ADD_ROW ?>
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save mr-2"></i><?= BUTTON_SAVE_CHANGES ?>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- API-Zugang -->
+            <div id="api-access" class="card bg-base-100 shadow-xl mb-8">
+                <div class="card-body">
+                    <h2 class="card-title text-2xl mb-4"><?= API_ACCESS_TITLE ?></h2>
+                    <form method="post" class="flex space-x-2 mb-4">
+                        <input type="password" id="tokenField" class="input input-bordered flex-grow" value="<?= htmlspecialchars($currentUser->token ?? '') ?>" readonly>
+                        <button type="button" id="toggleToken" class="btn btn-secondary">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <input type="hidden" name="generate_token" value="1">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-key mr-2"></i><?= BUTTON_GENERATE_TOKEN ?>
+                        </button>
+                    </form>
+                    <a href="apidoc.html" target="_blank" class="btn btn-info">
+                        <i class="fas fa-book mr-2"></i><?= BUTTON_API_DOC ?>
+                    </a>
+                </div>
             </div>
         </div>
-    </div>
-
-    <!-- Modal for Editing Department -->
-    <div class="modal fade" id="editDepartmentModal" tabindex="-1" aria-labelledby="editDepartmentModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form method="post">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="editDepartmentModalLabel"><?= MODAL_TITLE_EDIT_DEPARTMENT ?></h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <input type="hidden" name="edit_department" value="1">
-                        <input type="hidden" name="department_id" id="edit_department_id">
-                        <div class="mb-3 input-group">
-                            <span class="input-group-text"><i class="fas fa-building"></i></span>
-                            <input type="text" class="form-control" id="edit_department_name" name="department_name" required>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= MODAL_BUTTON_CLOSE ?></button>
-                        <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i> <?= BUTTON_SAVE_CHANGES ?></button>
-                    </div>
-                </form>
-            </div>
+    </div> 
+    <div class="drawer-side">
+        <label for="my-drawer" class="drawer-overlay"></label>
+        <div class="bg-base-300 h-full pt-16"> <!-- pt-16 für den Abstand unter der Navbar -->
+            <ul class="menu p-4 w-80 text-base-content">
+                <!-- Sidebar content here -->
+                <li><a href="#user-management"><i class="fas fa-users mr-2"></i><?= USER_MANAGEMENT_TITLE ?></a></li>
+                <li><a href="#department-management"><i class="fas fa-building mr-2"></i><?= DEPARTMENT_MANAGEMENT_TITLE ?></a></li>
+                <li><a href="#ldap-sync"><i class="fas fa-sync mr-2"></i><?= LDAP_SYNC_TITLE ?></a></li>
+                <li><a href="#pause-settings"><i class="fas fa-coffee mr-2"></i><?= PAUSE_SETTINGS_TITLE ?></a></li>
+                <li><a href="#api-access"><i class="fas fa-key mr-2"></i><?= API_ACCESS_TITLE ?></a></li>
+            </ul>
         </div>
     </div>
+</div>
 
-    <!-- Footer -->
-    <footer class="footer mt-auto py-3">
-        <div class="container">
-            <span class="text-muted"><?= FOOTER_TEXT ?></span>
+<!-- Modal für Benutzer bearbeiten -->
+<dialog id="editUserModal" class="modal">
+    <form method="post" class="modal-box">
+        <h3 class="font-bold text-lg mb-4"><?= MODAL_TITLE_EDIT_USER ?></h3>
+        <input type="hidden" id="edit_user_id" name="user_id">
+        <input type="hidden" name="edit_user" value="1">
+        <div class="form-control mb-4">
+            <label class="label" for="edit_username">
+                <span class="label-text"><?= FORM_USERNAME ?></span>
+            </label>
+            <input type="text" id="edit_username" name="username" class="input input-bordered" required>
         </div>
-    </footer>
+        <div class="form-control mb-4">
+            <label class="label" for="edit_email">
+                <span class="label-text"><?= FORM_EMAIL ?></span>
+            </label>
+            <input type="email" id="edit_email" name="email" class="input input-bordered" required>
+        </div>
+        <div class="form-control mb-4">
+            <label class="label" for="edit_role">
+                <span class="label-text"><?= FORM_ROLE ?></span>
+            </label>
+            <select id="edit_role" name="role" class="select select-bordered" required>
+                <option value="user"><?= FORM_ROLE_USER ?></option>
+                <option value="admin"><?= FORM_ROLE_ADMIN ?></option>
+                <option value="supervisor"><?= FORM_ROLE_SUPERVISOR ?></option>
+            </select>
+        </div>
+        <div class="form-control mb-4">
+            <label class="label" for="edit_department">
+                <span class="label-text"><?= FORM_DEPARTMENT ?></span>
+            </label>
+            <select id="edit_department" name="department" class="select select-bordered" required>
+                <?php foreach ($departments as $department): ?>
+                    <option value="<?= $department->id ?>"><?= htmlspecialchars($department->name) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="form-control mb-4">
+            <label class="label" for="edit_supervisor">
+                <span class="label-text"><?= FORM_SUPERVISOR ?></span>
+            </label>
+            <select id="edit_supervisor" name="supervisor" class="select select-bordered">
+                <option value=""><?= FORM_NO_SUPERVISOR ?></option>
+                <?php foreach ($users as $user): ?>
+                    <?php if ($user->role === 'supervisor' || $user->role === 'admin'): ?>
+                        <option value="<?= $user->id ?>"><?= htmlspecialchars($user->username) ?></option>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="form-control mb-4">
+            <label class="label" for="edit_regelarbeitszeit">
+                <span class="label-text"><?= FORM_REGULAR_WORKING_HOURS ?></span>
+            </label>
+            <input type="number" id="edit_regelarbeitszeit" name="regelarbeitszeit" class="input input-bordered" step="0.01" required>
+        </div>
+        <div class="form-control mb-4">
+            <label class="label" for="edit_ueberstunden">
+                <span class="label-text"><?= FORM_OVERTIME ?></span>
+            </label>
+            <input type="number" id="edit_ueberstunden" name="ueberstunden" class="input input-bordered" step="0.01" required>
+        </div>
+        <div class="form-control mb-4">
+            <label class="label" for="edit_password">
+                <span class="label-text"><?= FORM_NEW_PASSWORD ?></span>
+            </label>
+            <input type="password" id="edit_password" name="password" class="input input-bordered">
+        </div>
+        <div class="modal-action">
+            <button type="submit" class="btn btn-primary"><?= BUTTON_SAVE_CHANGES ?></button>
+            <button type="button" class="btn" onclick="closeEditUserModal()"><?= BUTTON_CANCEL ?></button>
+        </div>
+    </form>
+</dialog>
 
-    <!-- Show modals if there are messages -->
-    <script>
-        $(document).ready(function() {
-            <?php if ($successMessage) : ?>
-                var successModal = new bootstrap.Modal(document.getElementById('successModal'));
-                successModal.show();
-            <?php endif; ?>
+<!-- Modal für Abteilung bearbeiten -->
+<dialog id="editDepartmentModal" class="modal">
+    <form method="post" class="modal-box">
+        <h3 class="font-bold text-lg mb-4"><?= MODAL_TITLE_EDIT_DEPARTMENT ?></h3>
+        <input type="hidden" id="edit_department_id" name="department_id">
+        <input type="hidden" name="edit_department" value="1">
+        <div class="form-control mb-4">
+            <label class="label" for="edit_department_name">
+                <span class="label-text"><?= FORM_DEPARTMENT_NAME ?></span>
+            </label>
+            <input type="text" id="edit_department_name" name="department_name" class="input input-bordered" required>
+        </div>
+        <div class="modal-action">
+            <button type="submit" class="btn btn-primary"><?= BUTTON_SAVE_CHANGES ?></button>
+            <button type="button" class="btn" onclick="closeEditDepartmentModal()"><?= BUTTON_CANCEL ?></button>
+        </div>
+    </form>
+</dialog>
 
-            <?php if ($error) : ?>
-                var errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
-                errorModal.show();
-            <?php endif; ?>
+<script>
+    // JavaScript-Funktionen für Toggles und Modals
+    document.addEventListener('DOMContentLoaded', (event) => {
+        const toggleUserForm = document.getElementById('toggleUserForm');
+        const userForm = document.getElementById('userForm');
+        const toggleToken = document.getElementById('toggleToken');
+        const tokenField = document.getElementById('tokenField');
+        const addRowButton = document.getElementById('addRow');
+        const pauseSettingsTable = document.getElementById('pauseSettingsTable');
+        const userSearch = document.getElementById('userSearch');
+        const departmentSearch = document.getElementById('departmentSearch');
 
-            $('#editUserModal').on('show.bs.modal', function(event) {
-                var button = $(event.relatedTarget);
-                var userId = button.data('userid');
-                var username = button.data('username');
-                var email = button.data('email');
-                var role = button.data('role');
-                var department = button.data('department');
-                var supervisor = button.data('supervisor');
-                var regelarbeitszeit = button.data('regelarbeitszeit');
-                var ueberstunden = button.data('ueberstunden');
-
-                var modal = $(this);
-                modal.find('#edit_user_id').val(userId);
-                modal.find('#edit_username').val(username);
-                modal.find('#edit_email').val(email);
-                modal.find('#edit_role').val(role);
-                modal.find('#edit_department').val(department);
-                modal.find('#edit_supervisor').val(supervisor);
-                modal.find('#edit_regelarbeitszeit').val(regelarbeitszeit);
-                modal.find('#edit_ueberstunden').val(ueberstunden);
-            });
-
-            $('#editDepartmentModal').on('show.bs.modal', function(event) {
-                var button = $(event.relatedTarget);
-                var departmentId = button.data('departmentid');
-                var departmentName = button.data('departmentname');
-
-                var modal = $(this);
-                modal.find('#edit_department_id').val(departmentId);
-                modal.find('#edit_department_name').val(departmentName);
-            });
-
-            // Suchfunktion
-            $("#searchInput").on("keyup", function() {
-                var value = $(this).val().toLowerCase();
-                $("#usersTable tbody tr").filter(function() {
-                    $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
-                });
-            });
-
-            // Zeige/hide neue Abteilungseingabe basierend auf der Auswahl
-            $('#department').change(function() {
-                if ($(this).val() === 'new_department') {
-                    $('#new_department_group').show();
-                } else {
-                    $('#new_department_group').hide();
-                }
-            });
-
-            $('#edit_department').change(function() {
-                if ($(this).val() === 'new_department') {
-                    $('#edit_new_department_group').show();
-                } else {
-                    $('#edit_new_department_group').hide();
-                }
-            });
-
-            // Pauseneinstellungen Zeile hinzufügen
-            $('#addRow').click(function() {
-                var newRow = `<tr>
-                    <td><input type="number" name="hours_threshold[]" class="form-control" required></td>
-                    <td><input type="number" name="minimum_pause[]" class="form-control" required></td>
-                    <td><button type="button" class="btn btn-danger btn-sm remove-row"><i class="fas fa-trash-alt"></i></button></td>
-                </tr>`;
-                $('#pauseSettingsTable tbody').append(newRow);
-            });
-
-            // Pauseneinstellungen Zeile entfernen
-            $('#pauseSettingsTable').on('click', '.remove-row', function() {
-                $(this).closest('tr').remove();
-            });
+        toggleUserForm.addEventListener('click', () => {
+            userForm.classList.toggle('hidden');
         });
 
-        document.addEventListener('DOMContentLoaded', (event) => {
-            const toggleButton = document.getElementById('toggleToken');
-            const tokenField = document.getElementById('tokenField');
-
-            toggleButton.addEventListener('click', () => {
-                if (tokenField.type === 'password') {
-                    tokenField.type = 'text';
-                    toggleButton.innerHTML = '<i class="fas fa-eye-slash"></i>';
-                } else {
-                    tokenField.type = 'password';
-                    toggleButton.innerHTML = '<i class="fas fa-eye"></i>';
-                }
-            });
-        });
-
-        document.getElementById('toggleUserForm').addEventListener('click', function() {
-            var form = document.getElementById('userForm');
-            if (form.style.display === 'none') {
-                form.style.display = 'block';
-                this.innerHTML = '<i class="fas fa-minus"></i> <?= BUTTON_CREATE_USER ?>';
+        toggleToken.addEventListener('click', () => {
+            if (tokenField.type === 'password') {
+                tokenField.type = 'text';
+                toggleToken.innerHTML = '<i class="fas fa-eye-slash"></i>';
             } else {
-                form.style.display = 'none';
-                this.innerHTML = '<i class="fas fa-plus"></i> <?= BUTTON_CREATE_USER ?>';
+                tokenField.type = 'password';
+                toggleToken.innerHTML = '<i class="fas fa-eye"></i>';
             }
         });
 
-        document.getElementById('toggleLdapForm').addEventListener('click', function() {
-            var form = document.getElementById('ldapForm');
-            if (form.style.display === 'none') {
-                form.style.display = 'block';
-                this.innerHTML = '<i class="fas fa-minus"></i> <?= LDAP_SYNC_TITLE ?>';
-            } else {
-                form.style.display = 'none';
-                this.innerHTML = '<i class="fas fa-plus"></i> <?= LDAP_SYNC_TITLE ?>';
+        addRowButton.addEventListener('click', () => {
+            const newRow = pauseSettingsTable.insertRow(-1);
+            newRow.innerHTML = `
+                <td><input type="number" name="hours_threshold[]" class="input input-bordered w-full" required></td>
+                <td><input type="number" name="minimum_pause[]" class="input input-bordered w-full" required></td>
+                <td><button type="button" class="btn btn-ghost btn-sm remove-row" title="${BUTTON_DELETE}"><i class="fas fa-trash-alt"></i></button></td>
+            `;
+        });
+
+        pauseSettingsTable.addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-row') || e.target.parentElement.classList.contains('remove-row')) {
+                const row = e.target.closest('tr');
+                row.parentNode.removeChild(row);
             }
         });
-    </script>
-</body>
 
-</html>
+        // Suchfunktion für Abteilungen
+        departmentSearch.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#department-management table tbody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if(text.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+
+        // Smooth scrolling für die Sidebar-Links
+        document.querySelectorAll('.drawer-side a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+
+                const targetId = this.getAttribute('href').substring(1);
+                const targetElement = document.getElementById(targetId);
+
+                if (targetElement) {
+                    const headerOffset = 80; // Anpassen Sie diesen Wert, um den gewünschten Abstand zum oberen Rand zu erhalten
+                    const elementPosition = targetElement.getBoundingClientRect().top;
+                    const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                    window.scrollTo({
+                        top: offsetPosition,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+    });
+
+    function editUser(userId) {
+        const modal = document.getElementById('editUserModal');
+        
+        // AJAX-Aufruf, um die Benutzerdaten zu holen
+        fetch(`get_user.php?id=${userId}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('edit_user_id').value = data.id;
+                document.getElementById('edit_username').value = data.username;
+                document.getElementById('edit_email').value = data.email;
+                document.getElementById('edit_role').value = data.role;
+                document.getElementById('edit_department').value = data.department_id;
+                document.getElementById('edit_supervisor').value = data.supervisor_id || '';
+                document.getElementById('edit_regelarbeitszeit').value = data.regelarbeitszeit;
+                document.getElementById('edit_ueberstunden').value = data.ueberstunden;
+                
+                modal.showModal();
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function closeEditUserModal() {
+        const modal = document.getElementById('editUserModal');
+        modal.close();
+    }
+
+    function editDepartment(departmentId, departmentName) {
+        const modal = document.getElementById('editDepartmentModal');
+        document.getElementById('edit_department_id').value = departmentId;
+        document.getElementById('edit_department_name').value = departmentName;
+        modal.showModal();
+    }
+
+    function closeEditDepartmentModal() {
+        const modal = document.getElementById('editDepartmentModal');
+        modal.close();
+    }
+</script>
+
+
+
+
