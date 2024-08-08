@@ -147,211 +147,84 @@ $totalUsers = $stmt->fetch(PDO::FETCH_OBJ)->count;
 ?>
 
 <!DOCTYPE html>
-<html lang="<?= $lang ?>">
+<html lang="<?= $lang ?>" data-theme="light">
 
 <head>
-    <!-- Meta tags and title -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= LOGIN_TITLE ?></title>
-
-    <!-- Favicon and external stylesheets -->
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
-    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- Custom CSS -->
-    <link rel="stylesheet" type="text/css" href="assets/css/main.css">
-
     <style>
-        :root {
-            --primary-color: #0366d6;
-            --background-color: #ededed;
-            --card-background: #ffffff;
-            --text-color: #333333;
-        }
-
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
         body {
-            font-family: 'Source Sans Pro', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        .login-container {
-            background-color: var(--card-background);
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            padding: 2rem;
-            width: 100%;
-            max-width: 400px;
-            transition: all 0.3s ease;
-            margin: 1rem;
-            box-sizing: border-box;
-        }
-
-        .login-header {
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .login-header img {
-            width: 80px;
-            height: auto;
-            margin-bottom: 1rem;
-        }
-
-        h1 {
-            color: var(--primary-color);
-            margin: 0;
-            font-size: 1.75rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-            position: relative;
-        }
-
-        .form-group i {
-            position: absolute;
-            left: 10px;
-            top: 58%;
-            color: var(--text-color);
-            font-size: 1.2rem;
-        }
-
-        input[type="text"],
-        input[type="password"] {
-            width: 100%;
-            padding: 0.75rem 0.75rem 0.75rem 2.5rem;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 1rem;
-            transition: border-color 0.3s ease;
-            box-sizing: border-box;
-            margin-top: 0.5rem;
-        }
-
-        input[type="text"]:focus,
-        input[type="password"]:focus {
-            border-color: var(--primary-color);
-            outline: none;
-        }
-
-        button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 0.75rem 1rem;
-            font-size: 1rem;
-            cursor: pointer;
-            width: 100%;
-            transition: background-color 0.3s ease;
-            box-sizing: border-box;
-            margin-top: 0.5rem;
-        }
-
-        button:hover {
-            background-color: #0056b3;
-        }
-
-        .register-button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 0.75rem 1rem;
-            font-size: 1rem;
-            cursor: pointer;
-            width: 100%;
-            transition: background-color 0.3s ease;
-            box-sizing: border-box;
-            margin-top: 1rem;
-            text-align: center;
-            display: block;
-            text-decoration: none;
-        }
-
-        .register-button:hover {
-            background-color: #0056b3;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 2rem;
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        .social-login-buttons .btn {
-            width: 100%;
-            margin-bottom: 0.5rem;
+            font-family: 'Poppins', sans-serif;
         }
     </style>
 </head>
 
-<body>
-    <div class="login-container">
-        <div class="login-header">
-            <img src="assets/kolibri_icon.png" alt="Quodara Chrono Logo">
-            <h1><?= LOGIN_TITLE ?></h1>
-        </div>
-        <form method="post">
-            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-            <div class="form-group">
-                <i class="fas fa-user"></i>
-                <label for="username"><?= USERNAME_LABEL ?></label>
-                <input type="text" id="username" name="username" required>
+<body class="bg-gradient-to-r from-blue-100 to-blue-50 flex justify-center items-center min-h-screen p-4">
+    <div class="card w-full max-w-md bg-white shadow-2xl">
+        <div class="card-body">
+            <div class="flex flex-col items-center mb-6">
+                <img src="assets/kolibri_icon.png" alt="Quodara Chrono Logo" class="w-20 h-20 mb-2" />
+                <h2 class="card-title text-2xl font-semibold text-gray-800"><?= LOGIN_TITLE ?></h2>
             </div>
-            <div class="form-group">
-                <i class="fas fa-lock"></i>
-                <label for="password"><?= PASSWORD_LABEL ?></label>
-                <input type="password" id="password" name="password" required>
-            </div>
-            <button type="submit"><?= LOGIN_BUTTON ?></button>
-        </form>
-        
-        <div class="social-login-buttons">
-            <button class="btn btn-danger">
-                <i class="fab fa-google"></i> Login via Google
-            </button>
-            <button class="btn btn-dark">
-                <i class="fab fa-github"></i> Login via GitHub
-            </button>
-            <button class="btn btn-secondary">
-                <i class="fab fa-apple"></i> Login via Apple
-            </button>
-        </div>
+            
+            <?php if ($error): ?>
+                <div class="alert alert-error shadow-lg mb-4">
+                    <div>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span><?= $error ?></span>
+                    </div>
+                </div>
+            <?php endif; ?>
+            
+            <?php if ($successMessage): ?>
+                <div class="alert alert-success shadow-lg mb-4">
+                    <div>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span><?= $successMessage ?></span>
+                    </div>
+                </div>
+            <?php endif; ?>
 
-        <?php if ($totalUsers == 0) : ?>
-            <a href="register.php" class="register-button"><?= REGISTER_BUTTON ?></a>
-        <?php endif; ?>
-        <div class="footer">
-            © 2024 Quodara Chrono - Zeiterfassung
+            <form method="post" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text text-gray-700"><?= USERNAME_LABEL ?></span>
+                    </label>
+                    <input type="text" name="username" placeholder="Enter your username" class="input input-bordered w-full bg-gray-50 focus:bg-white transition-colors duration-300" required />
+                </div>
+                
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text text-gray-700"><?= PASSWORD_LABEL ?></span>
+                    </label>
+                    <input type="password" name="password" placeholder="Enter your password" class="input input-bordered w-full bg-gray-50 focus:bg-white transition-colors duration-300" required />
+                </div>
+                
+                <div class="form-control mt-6">
+                    <button type="submit" class="btn btn-primary w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:shadow-lg">
+                        <?= LOGIN_BUTTON ?>
+                    </button>
+                </div>
+            </form>
+            
+            <?php if ($totalUsers == 0) : ?>
+                <div class="text-center mt-4">
+                    <a href="register.php" class="link link-primary text-sm hover:underline"><?= REGISTER_BUTTON ?></a>
+                </div>
+            <?php endif; ?>
+        </div>
+        <div class="text-center pb-6">
+            <p class="text-xs text-gray-500">© 2024 Quodara Chrono - Zeiterfassung</p>
         </div>
     </div>
-
-    <!-- Show modals if there are messages and redirect after close -->
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            <?php if ($successMessage) : ?>
-                alert('<?= $successMessage ?>');
-            <?php endif; ?>
-
-            <?php if ($error) : ?>
-                alert('<?= $error ?>');
-            <?php endif; ?>
-        });
-    </script>
 </body>
 
 </html>
