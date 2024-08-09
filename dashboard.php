@@ -25,7 +25,7 @@ $overHoursThisMonth = $overHoursThisMonth ?? 0;
 $overHoursThisYear = $overHoursThisYear ?? 0;
 
 // Fetch events for the calendar
-$stmt = $conn->prepare("SELECT id, startzeit as start, endzeit as end, beschreibung as title FROM zeiterfassung WHERE user_id = ? AND startzeit >= ? ORDER BY startzeit");
+$stmt = $conn->prepare("SELECT id, startzeit as start, endzeit as end, beschreibung, standort FROM zeiterfassung WHERE user_id = ? AND startzeit >= ? ORDER BY startzeit");
 $stmt->execute([$user_id, date('Y-m-d', strtotime('-1 month'))]);
 $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -66,7 +66,8 @@ $weeklyProductivityScore = min(100, ($totalHoursThisWeek / $weeklyExpectedHours)
 $theme_mode = $_SESSION['theme_mode'] ?? 'light';
 
 // Function to format hours as HH:MM
-function formatHoursAsHHMM($hours) {
+function formatHoursAsHHMM($hours)
+{
     $isNegative = $hours < 0;
     $hours = abs($hours);
     $h = floor($hours);
@@ -75,7 +76,8 @@ function formatHoursAsHHMM($hours) {
 }
 
 // Function to calculate remaining hours to work
-function calculateRemainingHours($workedHours, $expectedHours) {
+function calculateRemainingHours($workedHours, $expectedHours)
+{
     $remaining = $expectedHours - $workedHours;
     return $remaining > 0 ? formatHoursAsHHMM($remaining) : '00:00';
 }
@@ -108,21 +110,67 @@ function calculateRemainingHours($workedHours, $expectedHours) {
         .stat-value {
             font-size: 2rem;
         }
+
         .calendar-container {
             height: 700px;
             overflow: hidden;
             border-radius: 1rem;
         }
+
         .toastui-calendar-milestone,
         .toastui-calendar-allday,
         .toastui-calendar-task {
             display: none !important;
         }
+
         .stat,
         .stat-title,
         .stat-value,
         .stat-desc {
             color: white !important;
+        }
+
+        .info-tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+
+        .info-tooltip .tooltiptext {
+            visibility: hidden;
+            width: 350px;
+            background-color: #2a4365;
+            color: #e2e8f0;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -125px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            word-wrap: break-word;
+        }
+
+        .info-tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #555 transparent transparent transparent;
+        }
+
+        .info-tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
         }
     </style>
 </head>
@@ -130,7 +178,7 @@ function calculateRemainingHours($workedHours, $expectedHours) {
 <body class="bg-base-200">
     <div class="container mx-auto px-4 py-8">
         <h2 class="text-4xl font-bold mb-8 text-center"><?= DASHBOARD_TITLE ?></h2>
-        
+
         <!-- Overall Stats -->
         <div class="mb-8">
             <h3 class="text-2xl font-semibold mb-4"><?= DASHBOARD_OVERALL_STATS ?></h3>
@@ -157,9 +205,17 @@ function calculateRemainingHours($workedHours, $expectedHours) {
                     <div class="stat-figure opacity-70">
                         <i class="fas fa-hourglass-half fa-3x"></i>
                     </div>
-                    <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_TOTAL_OVERTIME ?></div>
+                    <div class="stat-title text-lg font-semibold opacity-80">
+                        <?= DASHBOARD_TOTAL_OVERTIME ?>
+                        <span class="info-tooltip">
+                            <i class="fas fa-info-circle"></i>
+                            <span class="tooltiptext"><?= nl2br(DASHBOARD_OVERTIME_INFO) ?></span>
+                        </span>
+                    </div>
                     <div class="stat-value"><?= formatHoursAsHHMM($totalOverHours) ?></div>
-                    <div class="stat-desc text-sm font-medium opacity-80"><?= sprintf(DASHBOARD_OVER_HOURS_YEAR, formatHoursAsHHMM($overHoursThisYear)) ?></div>
+                    <div class="stat-desc text-sm font-medium opacity-80">
+                        <?= sprintf(DASHBOARD_OVER_HOURS_YEAR, formatHoursAsHHMM($overHoursThisYear)) ?>
+                    </div>
                 </div>
             </div>
         </div>
@@ -186,7 +242,13 @@ function calculateRemainingHours($workedHours, $expectedHours) {
                     <div class="stat-figure opacity-70">
                         <i class="fas fa-tachometer-alt fa-3x"></i>
                     </div>
-                    <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_WEEKLY_PRODUCTIVITY ?></div>
+                    <div class="stat-title text-lg font-semibold opacity-80">
+                        <?= DASHBOARD_WEEKLY_PRODUCTIVITY ?>
+                        <span class="info-tooltip">
+                            <i class="fas fa-info-circle"></i>
+                            <span class="tooltiptext"><?= nl2br(DASHBOARD_WEEKLY_PRODUCTIVITY_INFO) ?></span>
+                        </span>
+                    </div>
                     <div class="stat-value"><?= number_format($weeklyProductivityScore, 1) ?>%</div>
                 </div>
             </div>
@@ -220,7 +282,13 @@ function calculateRemainingHours($workedHours, $expectedHours) {
                     <div class="stat-figure opacity-70">
                         <i class="fas fa-tachometer-alt fa-3x"></i>
                     </div>
-                    <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_PRODUCTIVITY_SCORE ?></div>
+                    <div class="stat-title text-lg font-semibold opacity-80">
+                        <?= DASHBOARD_PRODUCTIVITY_SCORE ?>
+                        <span class="info-tooltip">
+                            <i class="fas fa-info-circle"></i>
+                            <span class="tooltiptext"><?= nl2br(DASHBOARD_PRODUCTIVITY_SCORE_INFO) ?></span>
+                        </span>
+                    </div>
                     <div class="stat-value"><?= number_format($productivityScore, 1) ?>%</div>
                 </div>
             </div>
@@ -240,13 +308,15 @@ function calculateRemainingHours($workedHours, $expectedHours) {
         </div>
     </div>
 
-        <!-- Schedule Modal -->
-        <div class="modal" id="scheduleModal">
+    <!-- Schedule Modal -->
+    <div class="modal" id="scheduleModal">
         <div class="modal-box">
             <h3 class="font-bold text-lg" id="scheduleModalLabel"><?= MODAL_TITLE_SCHEDULE ?></h3>
             <p class="py-4">
                 <strong><?= FORM_START ?>:</strong> <span id="startTime"></span><br>
-                <strong><?= FORM_END ?>:</strong> <span id="endTime"></span>
+                <strong><?= FORM_END ?>:</strong> <span id="endTime"></span><br>
+                <strong><?= FORM_DESCRIPTION ?>:</strong> <span id="eventDescription"></span><br>
+                <strong><?= FORM_LOCATION ?>:</strong> <span id="eventLocation"></span>
             </p>
             <div class="modal-action">
                 <button class="btn" onclick="closeModal()"><?= BUTTON_CLOSE ?></button>
@@ -255,102 +325,121 @@ function calculateRemainingHours($workedHours, $expectedHours) {
     </div>
 
     <script>
-    // Calendar initialization
-    const Calendar = tui.Calendar;
-    const calendar = new Calendar('#calendar', {
-        defaultView: 'week',
-        useCreationPopup: false,
-        useDetailPopup: false,
-        isReadOnly: true,
-        week: {
-            dayNames: ['<?= SUNDAY ?>', '<?= MONDAY ?>', '<?= TUESDAY ?>', '<?= WEDNESDAY ?>', '<?= THURSDAY ?>', '<?= FRIDAY ?>', '<?= SATURDAY ?>'],
-            startDayOfWeek: 1,
-            workweek: true,
-            hourStart: 6,
-            hourEnd: 22,
+        // Calendar initialization
+        const Calendar = tui.Calendar;
+        const calendar = new Calendar('#calendar', {
+            defaultView: 'week',
+            useCreationPopup: false,
+            useDetailPopup: false,
+            isReadOnly: true,
+            week: {
+                dayNames: ['<?= SUNDAY ?>', '<?= MONDAY ?>', '<?= TUESDAY ?>', '<?= WEDNESDAY ?>', '<?= THURSDAY ?>', '<?= FRIDAY ?>', '<?= SATURDAY ?>'],
+                startDayOfWeek: 1,
+                workweek: true,
+                hourStart: 6,
+                hourEnd: 22,
+                taskView: false,
+                eventView: ['time']
+            },
+            month: {
+                visibleWeeksCount: 0 // Hide the month view completely
+            },
+            template: {
+                time: function(event) {
+                    const start = new Date(event.start);
+                    const end = new Date(event.end);
+                    const startTime = start.getHours().toString().padStart(2, '0') + ':' + start.getMinutes().toString().padStart(2, '0');
+                    const endTime = end.getHours().toString().padStart(2, '0') + ':' + end.getMinutes().toString().padStart(2, '0');
+                    return `<span class="event-time">${startTime} - ${endTime}</span> <span class="event-title">${event.title}</span>`;
+                }
+            },
             taskView: false,
-            eventView: ['time']
-        },
-        month: {
-            visibleWeeksCount: 0 // Hide the month view completely
-        },
-        template: {
-            time: function(event) {
-                const start = new Date(event.start);
-                const end = new Date(event.end);
-                const startTime = start.getHours().toString().padStart(2, '0') + ':' + start.getMinutes().toString().padStart(2, '0');
-                const endTime = end.getHours().toString().padStart(2, '0') + ':' + end.getMinutes().toString().padStart(2, '0');
-                return `<span>${startTime} - ${endTime} ${event.title}</span>`;
-            }
-        },
-        taskView: false,
-        scheduleView: ['time'],
-        milestone: {
-            visible: false
-        },
-        timezones: [{
-            timezoneOffset: 0,
-            displayLabel: 'GMT',
-            tooltip: 'GMT'
-        }],
-        disableClick: true,
-        disableDblClick: true,
-    });
+            scheduleView: ['time'],
+            milestone: {
+                visible: false
+            },
+            timezones: [{
+                timezoneOffset: 0,
+                displayLabel: 'GMT',
+                tooltip: 'GMT'
+            }],
+            disableClick: true,
+            disableDblClick: true,
+        });
 
-    // Populate calendar with events
-    const events = <?= json_encode($events) ?>;
-    calendar.createEvents(events.map(event => ({
-        id: event.id,
-        calendarId: '1',
-        title: event.title,
-        start: event.start,
-        end: event.end,
-        category: 'time',
-        isAllDay: false
-    })));
+        // Populate calendar with events
+        const events = <?= json_encode($events) ?>;
+        calendar.createEvents(events.map(event => ({
+            id: event.id,
+            calendarId: '1',
+            title: event.beschreibung ? event.beschreibung : 'Arbeit',
+            start: event.start,
+            end: event.end,
+            category: 'time',
+            isAllDay: false,
+            color: '#ffffff',
+            backgroundColor: '#4a5568',
+            borderColor: '#2d3748',
+            location: event.standort
+        })));
 
-    // Calendar navigation
-    document.getElementById('prevWeekBtn').addEventListener('click', function() {
-        calendar.prev();
-    });
+        // Calendar navigation
+        document.getElementById('prevWeekBtn').addEventListener('click', function() {
+            calendar.prev();
+        });
 
-    document.getElementById('nextWeekBtn').addEventListener('click', function() {
-        calendar.next();
-    });
+        document.getElementById('nextWeekBtn').addEventListener('click', function() {
+            calendar.next();
+        });
 
-    document.getElementById('todayBtn').addEventListener('click', function() {
-        calendar.today();
-    });
+        document.getElementById('todayBtn').addEventListener('click', function() {
+            calendar.today();
+        });
 
-    function formatDate(date) {
-        let day = ("0" + date.getDate()).slice(-2);
-        let month = ("0" + (date.getMonth() + 1)).slice(-2);
-        let year = date.getFullYear();
-        return day + "." + month + "." + year;
-    }
+        function formatDate(date) {
+            let day = ("0" + date.getDate()).slice(-2);
+            let month = ("0" + (date.getMonth() + 1)).slice(-2);
+            let year = date.getFullYear();
+            return day + "." + month + "." + year;
+        }
 
-    function showModal() {
-        document.getElementById('scheduleModal').classList.add('modal-open');
-    }
+        function showModal() {
+            document.getElementById('scheduleModal').classList.add('modal-open');
+        }
 
-    function closeModal() {
-        document.getElementById('scheduleModal').classList.remove('modal-open');
-    }
+        function closeModal() {
+            document.getElementById('scheduleModal').classList.remove('modal-open');
+        }
 
-    calendar.on('clickEvent', function (event) {
-        const validTitles = ['<?= WORK ?>', '<?= VACATION ?>'];
-        if (validTitles.includes(event.event.title)) {
+        calendar.on('clickEvent', function(event) {
             let startDate = new Date(event.event.start);
             let endDate = new Date(event.event.end);
 
             document.getElementById('startTime').textContent = formatDate(startDate) + " " + startDate.toLocaleTimeString();
             document.getElementById('endTime').textContent = formatDate(endDate) + " " + endDate.toLocaleTimeString();
+            document.getElementById('eventDescription').textContent = event.event.title;
+            document.getElementById('eventLocation').textContent = event.event.location || '-';
 
             showModal();
+        });
+
+        // Additional styles for calendar events
+        const style = document.createElement('style');
+        style.textContent = `
+        .toastui-calendar-event-time {
+            color: #ffffff !important;
         }
-    });
+        .event-time {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        .event-title {
+            font-style: italic;
+        }
+    `;
+        document.head.appendChild(style);
     </script>
 
 </body>
-</html>
 
+</html>

@@ -47,15 +47,15 @@ $kolibri_icon = 'assets/kolibri_icon.png';
     <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
     <script src="./assets/js/main.js"></script>
     <script>
-    tailwind.config = {
-        darkMode: 'media', // oder 'media' wenn Sie die Systemeinstellung bevorzugen
-        daisyui: {
-            themes: ["light", "dark"],
-        },
-    }
-</script>
+        tailwind.config = {
+            darkMode: 'media', // oder 'media' wenn Sie die Systemeinstellung bevorzugen
+            daisyui: {
+                themes: ["light", "dark"],
+            },
+        }
+    </script>
 
- 
+
 </head>
 
 <body>
@@ -73,6 +73,13 @@ $kolibri_icon = 'assets/kolibri_icon.png';
             </ul>
         </div>
         <div class="navbar-end">
+            <div id="timer" class="mr-4 <?php echo $activeSession ? '' : 'hidden'; ?>">00:00:00</div>
+            <button id="startButton" class="btn btn-primary btn-sm mr-2">
+                <i class="fas fa-sign-in-alt mr-2"></i>Kommen
+            </button>
+            <button id="endButton" class="btn btn-secondary btn-sm mr-4" style="display: none;">
+                <i class="fas fa-sign-out-alt mr-2"></i>Gehen
+            </button>
             <label class="swap swap-rotate mr-4">
                 <input type="checkbox" id="theme-toggle" />
                 <svg class="swap-on fill-current w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">

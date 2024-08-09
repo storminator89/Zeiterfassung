@@ -56,40 +56,7 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </head>
 
 <body class="bg-gradient-to-br from-base-200 to-base-300 min-h-screen">
-    <div class="navbar bg-base-300 fixed top-0 left-0 right-0 z-50">
-        <div class="navbar-start">
-            <a class="btn btn-ghost normal-case text-xl" href="index.php">
-                <img src="<?= $kolibri_icon ?>" alt="Time Tracking" class="h-8 w-8 mr-2">
-                <?= TITLE ?>
-            </a>
-        </div>
-        <div class="navbar-center hidden lg:flex">
-            <ul class="menu menu-horizontal px-1">
-                <li><a href="index.php"><i class="fas fa-home mr-2"></i><?= NAV_HOME ?></a></li>
-                <li><a href="dashboard.php"><i class="fas fa-tachometer-alt mr-2"></i><?= NAV_DASHBOARD ?></a></li>
-            </ul>
-        </div>
-        <div class="navbar-end">
-            <div id="timer" class="mr-4 <?php echo $activeSession ? '' : 'hidden'; ?>">00:00:00</div>
-            <button id="startButton" class="btn btn-primary btn-sm mr-2">
-                <i class="fas fa-sign-in-alt mr-2"></i>Kommen
-            </button>
-            <button id="endButton" class="btn btn-secondary btn-sm mr-4" style="display: none;">
-                <i class="fas fa-sign-out-alt mr-2"></i>Gehen
-            </button>
-            <div class="dropdown dropdown-end">
-                <label tabindex="0" class="btn btn-ghost btn-circle">
-                    <i class="fas fa-cog"></i>
-                </label>
-                <ul tabindex="0" class="menu menu-compact dropdown-content mt-3 p-2 shadow bg-base-100 rounded-box w-52">
-                    <li><a href="settings.php"><i class="fas fa-cog mr-2"></i>Einstellungen</a></li>
-                    <li><a onclick="showAboutModal()"><i class="fas fa-info-circle mr-2"></i>Über</a></li>
-                    <li><a href="logout.php"><i class="fas fa-sign-out-alt mr-2"></i>Logout</a></li>
-                </ul>
-            </div>
-        </div>
-
-    </div>
+    
 
     <div class="pt-16">
         <div class="container mx-auto px-4 py-8">
