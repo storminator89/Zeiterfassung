@@ -27,7 +27,8 @@ $stmt->execute([$user_id, $itemsPerPage, $offset]);
 $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Generate table HTML
-echo '<thead>
+echo '<table class="table table-zebra w-full" id="timeRecordsTable">
+    <thead>
         <tr>
             <th class="text-left">' . TABLE_HEADER_ID . '</th>
             <th class="text-left">' . TABLE_HEADER_WEEK . '</th>
@@ -80,4 +81,35 @@ foreach ($records as $record) {
         </tr>';
 }
 
-echo '</tbody>';
+echo '</tbody>
+</table>';
+
+// Fetch total number of records
+$stmt = $conn->prepare("SELECT COUNT(*) FROM zeiterfassung WHERE user_id = ?");
+$stmt->execute([$user_id]);
+$totalRecords = $stmt->fetchColumn();
+$totalPages = ceil($totalRecords / $itemsPerPage);
+
+// Generate pagination HTML
+echo '<div class="flex justify-center mt-4">
+    <div class="btn-group">';
+
+if ($page > 1) {
+    echo '<button onclick="updateTimeRecordsTable(1)" class="btn">«</button>
+          <button onclick="updateTimeRecordsTable(' . ($page - 1) . ')" class="btn">‹</button>';
+}
+
+$start = max(1, $page - 2);
+$end = min($totalPages, $page + 2);
+for ($i = $start; $i <= $end; $i++) {
+    echo '<button onclick="updateTimeRecordsTable(' . $i . ')" class="btn ' . ($i === $page ? 'btn-active' : '') . '">' . $i . '</button>';
+}
+
+if ($page < $totalPages) {
+    echo '<button onclick="updateTimeRecordsTable(' . ($page + 1) . ')" class="btn">›</button>
+          <button onclick="updateTimeRecordsTable(' . $totalPages . ')" class="btn">»</button>';
+}
+
+echo '</div>
+</div>';
+?>

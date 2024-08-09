@@ -56,7 +56,7 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </head>
 
 <body class="bg-gradient-to-br from-base-200 to-base-300 min-h-screen">
-    
+
 
     <div class="pt-16">
         <div class="container mx-auto px-4 py-8">
@@ -342,7 +342,18 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
             fetch(`get_time_records.php?page=${page}`)
                 .then(response => response.text())
                 .then(data => {
-                    document.getElementById('timeRecordsTable').innerHTML = data;
+                    let parser = new DOMParser();
+                    let doc = parser.parseFromString(data, 'text/html');
+
+                    // Update table content
+                    document.getElementById('timeRecordsTable').innerHTML = doc.getElementById('timeRecordsTable').innerHTML;
+
+                    // Update pagination
+                    let paginationContainer = document.querySelector('.btn-group');
+                    if (paginationContainer) {
+                        paginationContainer.innerHTML = doc.querySelector('.btn-group').innerHTML;
+                    }
+
                     attachEventListeners();
                 })
                 .catch((error) => {
