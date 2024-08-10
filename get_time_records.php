@@ -26,22 +26,26 @@ $stmt = $conn->prepare("SELECT *, strftime('%W', startzeit) AS weekNumber FROM z
 $stmt->execute([$user_id, $itemsPerPage, $offset]);
 $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Generate table HTML
-echo '<table class="table table-zebra w-full" id="timeRecordsTable">
-    <thead>
-        <tr>
-            <th class="text-left">' . TABLE_HEADER_ID . '</th>
-            <th class="text-left">' . TABLE_HEADER_WEEK . '</th>
-            <th class="text-left">' . TABLE_HEADER_START_TIME . '</th>
-            <th class="text-left">' . TABLE_HEADER_END_TIME . '</th>
-            <th class="text-left">' . TABLE_HEADER_DURATION . '</th>
-            <th class="text-left">' . TABLE_HEADER_BREAK . '</th>
-            <th class="text-left">' . TABLE_HEADER_LOCATION . '</th>
-            <th class="text-left">' . TABLE_HEADER_COMMENT . '</th>
-            <th class="text-left">' . TABLE_HEADER_ACTIONS . '</th>
-        </tr>
-    </thead>
-    <tbody>';
+// Start of the timeRecordsTable div
+echo '<div id="timeRecordsTable" class="card bg-base-100 shadow-xl">
+    <div class="card-body">
+        <h3 class="card-title text-2xl mb-4"><i class="fas fa-clock mr-2"></i>' . ACTUAL_WORKED_TIMES . '</h3>
+        <div class="overflow-x-auto">
+            <table class="table table-zebra w-full">
+                <thead>
+                    <tr>
+                        <th class="text-left">' . TABLE_HEADER_ID . '</th>
+                        <th class="text-left">' . TABLE_HEADER_WEEK . '</th>
+                        <th class="text-left">' . TABLE_HEADER_START_TIME . '</th>
+                        <th class="text-left">' . TABLE_HEADER_END_TIME . '</th>
+                        <th class="text-left">' . TABLE_HEADER_DURATION . '</th>
+                        <th class="text-left">' . TABLE_HEADER_BREAK . '</th>
+                        <th class="text-left">' . TABLE_HEADER_LOCATION . '</th>
+                        <th class="text-left">' . TABLE_HEADER_COMMENT . '</th>
+                        <th class="text-left">' . TABLE_HEADER_ACTIONS . '</th>
+                    </tr>
+                </thead>
+                <tbody>';
 
 foreach ($records as $record) {
     echo '<tr>
@@ -82,7 +86,8 @@ foreach ($records as $record) {
 }
 
 echo '</tbody>
-</table>';
+            </table>
+        </div>';
 
 // Fetch total number of records
 $stmt = $conn->prepare("SELECT COUNT(*) FROM zeiterfassung WHERE user_id = ?");
@@ -92,7 +97,7 @@ $totalPages = ceil($totalRecords / $itemsPerPage);
 
 // Generate pagination HTML
 echo '<div class="flex justify-center mt-4">
-    <div class="btn-group">';
+        <div class="btn-group">';
 
 if ($page > 1) {
     echo '<button onclick="updateTimeRecordsTable(1)" class="btn">«</button>
@@ -111,5 +116,7 @@ if ($page < $totalPages) {
 }
 
 echo '</div>
+    </div>
+  </div>
 </div>';
 ?>

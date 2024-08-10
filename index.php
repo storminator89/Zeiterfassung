@@ -16,21 +16,10 @@ $stmt = $conn->prepare("SELECT id, startzeit FROM zeiterfassung WHERE user_id = 
 $stmt->execute([$user_id]);
 $activeSession = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Pagination
-$itemsPerPage = 10;
-$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-$offset = ($page - 1) * $itemsPerPage;
-
-// Fetch total number of records
-$stmt = $conn->prepare("SELECT COUNT(*) FROM zeiterfassung WHERE user_id = ?");
+// Fetch the most recent time record
+$stmt = $conn->prepare("SELECT * FROM zeiterfassung WHERE user_id = ? ORDER BY startzeit DESC LIMIT 1");
 $stmt->execute([$user_id]);
-$totalRecords = $stmt->fetchColumn();
-$totalPages = ceil($totalRecords / $itemsPerPage);
-
-// Fetch records for current page
-$stmt = $conn->prepare("SELECT *, strftime('%W', startzeit) AS weekNumber FROM zeiterfassung WHERE user_id = ? ORDER BY startzeit DESC LIMIT ? OFFSET ?");
-$stmt->execute([$user_id, $itemsPerPage, $offset]);
-$records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$latestRecord = $stmt->fetch(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -48,23 +37,28 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/de.js"></script>
     <style>
-        #timer {
+        #timer,
+        #mobileTimer {
             font-size: 1.25rem;
             font-weight: bold;
+        }
+
+        @media (max-width: 640px) {
+            .event-type-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 
 <body class="bg-gradient-to-br from-base-200 to-base-300 min-h-screen">
-
-
     <div class="pt-16">
         <div class="container mx-auto px-4 py-8">
-            <div class="grid lg:grid-cols-3 gap-6">
+            <div class="grid md:grid-cols-3 gap-6">
                 <!-- Main Form Card -->
-                <div class="lg:col-span-2 h-full">
-                    <div class="card bg-base-100 shadow-xl h-full">
-                        <div class="card-body p-4 sm:p-6">
+                <div class="md:col-span-2">
+                    <div class="card bg-base-100 shadow-xl">
+                        <div class="card-body p-4">
                             <header class="flex items-center justify-between mb-4">
                                 <div class="flex items-center space-x-3">
                                     <img src="<?= $kolibri_icon ?>" alt="Quodara Chrono Logo" class="w-10 h-10">
@@ -72,8 +66,21 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 </div>
                             </header>
 
+                            <!-- Mobile Timer and Buttons -->
+                            <div class="lg:hidden mb-4">
+                                <div id="mobileTimer" class="text-center text-2xl font-bold mb-2 <?php echo $activeSession ? '' : 'hidden'; ?>">00:00:00</div>
+                                <div class="flex justify-center space-x-4">
+                                    <button id="mobileStartButton" class="btn btn-primary">
+                                        <i class="fas fa-sign-in-alt mr-2"></i>Kommen
+                                    </button>
+                                    <button id="mobileEndButton" class="btn btn-secondary" style="display: none;">
+                                        <i class="fas fa-sign-out-alt mr-2"></i>Gehen
+                                    </button>
+                                </div>
+                            </div>
+
                             <p class="text-lg mb-6">
-                                Willkommen zurück! Klicken Sie oben auf "Kommen" zum Starten oder buchen Sie hier spezielle Ereignisse.
+                                Willkommen zurück! Klicken Sie auf "Kommen" zum Starten oder buchen Sie hier spezielle Ereignisse.
                             </p>
 
                             <form id="mainForm" class="space-y-6">
@@ -83,7 +90,7 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                                 <div>
                                     <h2 class="text-lg font-semibold mb-3">Ereignistyp</h2>
-                                    <div class="grid grid-cols-3 gap-3">
+                                    <div class="grid event-type-grid gap-3">
                                         <label class="flex items-center justify-start p-3 border rounded transition-all hover:bg-base-200 cursor-pointer">
                                             <input type="radio" id="urlaub" name="ereignistyp" value="Urlaub" class="radio radio-primary mr-3">
                                             <i class="fas fa-umbrella-beach text-xl mr-2"></i>
@@ -104,7 +111,7 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                                 <div>
                                     <h2 class="text-lg font-semibold mb-3">Datumsbereich</h2>
-                                    <div class="flex space-x-3">
+                                    <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
                                         <input type="text" id="dateRange" name="dateRange" class="input input-bordered flex-grow" placeholder="Datumsbereich auswählen" readonly>
                                         <button type="button" id="datenEintragenButton" class="btn btn-primary whitespace-nowrap">
                                             <?= BUTTON_SUBMIT_DATA ?>
@@ -116,10 +123,9 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                 </div>
 
-
                 <!-- Statistics Card -->
-                <div class="h-full">
-                    <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300 h-full">
+                <div>
+                    <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300">
                         <div class="card-body flex flex-col justify-between">
                             <h3 class="card-title text-2xl mb-4"><i class="fas fa-chart-bar mr-2"></i><?= STATISTICS_WORKING_TIMES ?></h3>
                             <div class="stats stats-vertical shadow">
@@ -176,85 +182,57 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             </div>
 
-            <!-- Time Records Table -->
-            <div class="card bg-base-100 shadow-xl mt-8">
+            <!-- Time Records Container -->
+            <div id="timeRecordsContainer" class="mt-8">
+                <!-- Content will be loaded here via AJAX -->
+            </div>
+
+            <!-- Latest Time Record (visible only on mobile) -->
+            <div id="latestTimeRecord" class="card bg-base-100 shadow-xl mt-8 md:hidden">
                 <div class="card-body">
-                    <h3 class="card-title text-2xl mb-4"><i class="fas fa-clock mr-2"></i><?= ACTUAL_WORKED_TIMES ?></h3>
-                    <div class="overflow-x-auto">
-                        <table class="table table-zebra w-full" id="timeRecordsTable">
-                            <thead>
-                                <tr>
-                                    <th class="text-left"><?= TABLE_HEADER_ID ?></th>
-                                    <th class="text-left"><?= TABLE_HEADER_WEEK ?></th>
-                                    <th class="text-left"><?= TABLE_HEADER_START_TIME ?></th>
-                                    <th class="text-left"><?= TABLE_HEADER_END_TIME ?></th>
-                                    <th class="text-left"><?= TABLE_HEADER_DURATION ?></th>
-                                    <th class="text-left"><?= TABLE_HEADER_BREAK ?></th>
-                                    <th class="text-left"><?= TABLE_HEADER_LOCATION ?></th>
-                                    <th class="text-left"><?= TABLE_HEADER_COMMENT ?></th>
-                                    <th class="text-left"><?= TABLE_HEADER_ACTIONS ?></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($records as $record) : ?>
-                                    <tr>
-                                        <td><?= $record['id'] ?></td>
-                                        <td><?= $record['weekNumber'] ?></td>
-                                        <td>
-                                            <input type="datetime-local" class="input input-bordered w-full max-w-xs editable" data-id="<?= $record['id'] ?>" data-field="startzeit" value="<?= date('Y-m-d\TH:i', strtotime($record['startzeit'])) ?>">
-                                        </td>
-                                        <td>
-                                            <?php if ($record['endzeit'] !== null): ?>
-                                                <input type="datetime-local" class="input input-bordered w-full max-w-xs editable" data-id="<?= $record['id'] ?>" data-field="endzeit" value="<?= date('Y-m-d\TH:i', strtotime($record['endzeit'])) ?>">
-                                            <?php else: ?>
-                                                <span>-</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td><?= calculateDuration($record['startzeit'], $record['endzeit'], $record['pause']) ?></td>
-                                        <td>
-                                            <input type="number" class="input input-bordered w-full max-w-xs editable" data-id="<?= $record['id'] ?>" data-field="pause" value="<?= $record['pause'] ?>">
-                                        </td>
-                                        <td>
-                                            <select class="select select-bordered w-full max-w-xs editable" data-id="<?= $record['id'] ?>" data-field="standort">
-                                                <option value="<?= LOCATION_OFFICE_VALUE ?>" <?= $record['standort'] == LOCATION_OFFICE_VALUE ? 'selected' : '' ?>><?= LOCATION_OFFICE ?></option>
-                                                <option value="<?= LOCATION_HOME_OFFICE_VALUE ?>" <?= $record['standort'] == LOCATION_HOME_OFFICE_VALUE ? 'selected' : '' ?>><?= LOCATION_HOME_OFFICE ?></option>
-                                                <option value="<?= LOCATION_BUSINESS_TRIP_VALUE ?>" <?= $record['standort'] == LOCATION_BUSINESS_TRIP_VALUE ? 'selected' : '' ?>><?= LOCATION_BUSINESS_TRIP ?></option>
-                                            </select>
-                                        </td>
-                                        <td>
-                                            <input type="text" class="input input-bordered w-full max-w-xs editable" data-id="<?= $record['id'] ?>" data-field="beschreibung" value="<?= htmlspecialchars($record['beschreibung']) ?>">
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-ghost btn-sm text-black hover:bg-black hover:text-white transition-colors duration-300 deleteRow" data-id="<?= $record['id'] ?>">
-                                                <i class="fas fa-trash-alt"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Pagination -->
-                    <div class="flex justify-center mt-4">
-                        <div class="btn-group">
-                            <?php if ($page > 1) : ?>
-                                <button onclick="updateTimeRecordsTable(1)" class="btn">«</button>
-                                <button onclick="updateTimeRecordsTable(<?= $page - 1 ?>)" class="btn">‹</button>
-                            <?php endif; ?>
-
-                            <?php
-                            $start = max(1, $page - 2);
-                            $end = min($totalPages, $page + 2);
-                            for ($i = $start; $i <= $end; $i++) :
-                            ?>
-                                <button onclick="updateTimeRecordsTable(<?= $i ?>)" class="btn <?= $i === $page ? 'btn-active' : '' ?>"><?= $i ?></button>
-                            <?php endfor; ?>
-
-                            <?php if ($page < $totalPages) : ?>
-                                <button onclick="updateTimeRecordsTable(<?= $page + 1 ?>)" class="btn">›</button>
-                                <button onclick="updateTimeRecordsTable(<?= $totalPages ?>)" class="btn">»</button>
-                            <?php endif; ?>
+                    <h3 class="card-title text-2xl mb-4"><i class="fas fa-clock mr-2"></i><?= LATEST_TIME_RECORD ?></h3>
+                    <div class="bg-base-200 p-6 rounded-lg shadow-inner">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="col-span-2 bg-primary text-primary-content p-4 rounded-lg mb-4">
+                                <p class="text-lg font-semibold"><?= TABLE_HEADER_DURATION ?>:</p>
+                                <p class="text-3xl font-bold"><?= calculateDuration($latestRecord['startzeit'], $latestRecord['endzeit'], $latestRecord['pause']) ?></p>
+                            </div>
+                            <div>
+                                <p class="font-semibold"><?= TABLE_HEADER_START_TIME ?>:</p>
+                                <p><?= date('d.m.Y H:i', strtotime($latestRecord['startzeit'])) ?></p>
+                            </div>
+                            <div>
+                                <p class="font-semibold"><?= TABLE_HEADER_END_TIME ?>:</p>
+                                <p><?= $latestRecord['endzeit'] ? date('d.m.Y H:i', strtotime($latestRecord['endzeit'])) : '-' ?></p>
+                            </div>
+                            <div>
+                                <p class="font-semibold"><?= TABLE_HEADER_BREAK ?>:</p>
+                                <p><?= $latestRecord['pause'] ?> <?= LABEL_MINUTES ?></p>
+                            </div>
+                            <div>
+                                <p class="font-semibold"><?= TABLE_HEADER_LOCATION ?>:</p>
+                                <p>
+                                    <?php
+                                    switch ($latestRecord['standort']) {
+                                        case LOCATION_OFFICE_VALUE:
+                                            echo LOCATION_OFFICE;
+                                            break;
+                                        case LOCATION_HOME_OFFICE_VALUE:
+                                            echo LOCATION_HOME_OFFICE;
+                                            break;
+                                        case LOCATION_BUSINESS_TRIP_VALUE:
+                                            echo LOCATION_BUSINESS_TRIP;
+                                            break;
+                                        default:
+                                            echo 'Unbekannt';
+                                    }
+                                    ?>
+                                </p>
+                            </div>
+                            <div class="col-span-2">
+                                <p class="font-semibold"><?= TABLE_HEADER_COMMENT ?>:</p>
+                                <p><?= htmlspecialchars($latestRecord['beschreibung']) ?></p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -265,8 +243,11 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <script>
         let startButton = document.getElementById('startButton');
         let endButton = document.getElementById('endButton');
+        let mobileStartButton = document.getElementById('mobileStartButton');
+        let mobileEndButton = document.getElementById('mobileEndButton');
         let mainForm = document.getElementById('mainForm');
         let timerElement = document.getElementById('timer');
+        let mobileTimerElement = document.getElementById('mobileTimer');
         let timerInterval;
         let startTime;
 
@@ -283,11 +264,17 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
             if (isActive) {
                 startButton.style.display = 'none';
                 endButton.style.display = '';
+                mobileStartButton.style.display = 'none';
+                mobileEndButton.style.display = '';
                 timerElement.classList.remove('hidden');
+                mobileTimerElement.classList.remove('hidden');
             } else {
                 startButton.style.display = '';
                 endButton.style.display = 'none';
+                mobileStartButton.style.display = '';
+                mobileEndButton.style.display = 'none';
                 timerElement.classList.add('hidden');
+                mobileTimerElement.classList.add('hidden');
             }
         }
 
@@ -297,7 +284,9 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
             timerInterval = setInterval(() => {
                 const currentTime = new Date().getTime();
                 const elapsedTime = Math.floor((currentTime - startTime) / 1000);
-                timerElement.textContent = formatTime(elapsedTime);
+                const formattedTime = formatTime(elapsedTime);
+                timerElement.textContent = formattedTime;
+                mobileTimerElement.textContent = formattedTime;
             }, 1000);
         }
 
@@ -314,6 +303,7 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             if (action === 'start') {
                 formData.append('startzeit', localISOTime);
+                formData.append('standort', 'office'); // Oder einen anderen Standardwert
             } else if (action === 'end') {
                 formData.append('endzeit', localISOTime);
             }
@@ -325,11 +315,16 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 .then(response => response.text())
                 .then(data => {
                     console.log(data);
-                    updateTimeRecordsTable();
-                    if (action === 'start') {
-                        startTimer();
-                    } else if (action === 'end') {
-                        stopTimer();
+                    if (data.includes("erfolgreich")) {
+                        if (action === 'start') {
+                            startTimer();
+                        } else if (action === 'end') {
+                            stopTimer();
+                        }
+                        updateTimeRecordsTable();
+                        updateLatestTimeRecord();
+                    } else {
+                        alert(data || 'Ein Fehler ist aufgetreten');
                     }
                 })
                 .catch((error) => {
@@ -338,27 +333,42 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 });
         }
 
+        function updateTimeRecordsView() {
+            var timeRecordsTable = document.getElementById('timeRecordsTable');
+            var latestTimeRecord = document.getElementById('latestTimeRecord');
+
+            if (window.innerWidth >= 768) { // 768px is typically the breakpoint for tablet view
+                if (timeRecordsTable) timeRecordsTable.style.display = 'block';
+                if (latestTimeRecord) latestTimeRecord.style.display = 'none';
+            } else {
+                if (timeRecordsTable) timeRecordsTable.style.display = 'none';
+                if (latestTimeRecord) latestTimeRecord.style.display = 'block';
+            }
+        }
+
         function updateTimeRecordsTable(page = 1) {
             fetch(`get_time_records.php?page=${page}`)
                 .then(response => response.text())
                 .then(data => {
-                    let parser = new DOMParser();
-                    let doc = parser.parseFromString(data, 'text/html');
-
-                    // Update table content
-                    document.getElementById('timeRecordsTable').innerHTML = doc.getElementById('timeRecordsTable').innerHTML;
-
-                    // Update pagination
-                    let paginationContainer = document.querySelector('.btn-group');
-                    if (paginationContainer) {
-                        paginationContainer.innerHTML = doc.querySelector('.btn-group').innerHTML;
-                    }
-
+                    document.getElementById('timeRecordsContainer').innerHTML = data;
                     attachEventListeners();
+                    updateTimeRecordsView();
                 })
                 .catch((error) => {
                     console.error('Error:', error);
                     alert('Error updating time records table');
+                });
+        }
+
+        function updateLatestTimeRecord() {
+            fetch('get_latest_record.php')
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('latestTimeRecord').innerHTML = data;
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    alert('Error updating latest time record');
                 });
         }
 
@@ -379,6 +389,7 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             .then(data => {
                                 if (data === "Successfully deleted") {
                                     updateTimeRecordsTable();
+                                    updateLatestTimeRecord();
                                 } else {
                                     alert(data);
                                 }
@@ -410,6 +421,7 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             if (data === "Successfully updated") {
                                 console.log('Update successful');
                                 updateTimeRecordsTable();
+                                updateLatestTimeRecord();
                             } else {
                                 alert(data);
                                 // Revert the input to its original value
@@ -432,6 +444,16 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
         });
 
         endButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            submitForm('end');
+        });
+
+        mobileStartButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            submitForm('start');
+        });
+
+        mobileEndButton.addEventListener('click', function(e) {
             e.preventDefault();
             submitForm('end');
         });
@@ -482,6 +504,7 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         .then(data => {
                             alert(data);
                             updateTimeRecordsTable();
+                            updateLatestTimeRecord();
                         })
                         .catch((error) => {
                             console.error('Error:', error);
@@ -495,9 +518,6 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
         });
 
-        // Initial attachment of event listeners
-        attachEventListeners();
-
         // Initial setup
         document.addEventListener('DOMContentLoaded', function() {
             <?php if ($activeSession): ?>
@@ -505,9 +525,14 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <?php else: ?>
                 updateButtonVisibility(false);
             <?php endif; ?>
+
+            updateTimeRecordsTable();
+            updateTimeRecordsView();
+
+            // Run on window resize
+            window.addEventListener('resize', updateTimeRecordsView);
         });
     </script>
-
 </body>
 
 </html>

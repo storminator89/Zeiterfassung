@@ -85,6 +85,7 @@ define('MONTH_OCTOBER', 'Oktober');
 define('MONTH_NOVEMBER', 'November');
 define('MONTH_DECEMBER', 'Dezember');
 define('FORM_DESCRIPTION', 'Beschreibung');
+define('LATEST_TIME_RECORD', 'Letzter Zeiteintrag');
 define('DASHBOARD_TITLE', 'Dashboard');
 define('DASHBOARD_PROGRESS', 'Fortschritt');
 define('DASHBOARD_CURRENT_WEEK', 'Aktuelle Woche %s');

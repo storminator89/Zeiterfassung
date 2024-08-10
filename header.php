@@ -48,22 +48,58 @@ $kolibri_icon = 'assets/kolibri_icon.png';
     <script src="./assets/js/main.js"></script>
     <script>
         tailwind.config = {
-            darkMode: 'media', // oder 'media' wenn Sie die Systemeinstellung bevorzugen
+            darkMode: 'media',
             daisyui: {
                 themes: ["light", "dark"],
             },
         }
     </script>
+    <style>
+        @media (max-width: 640px) {
+            .table {
+                font-size: 0.8rem;
+            }
 
+            .table th,
+            .table td {
+                padding: 0.5rem;
+            }
 
+            .input,
+            .select {
+                font-size: 0.8rem;
+                padding: 0.3rem;
+            }
+        }
+    </style>
 </head>
 
 <body>
     <div class="navbar bg-base-300 fixed top-0 left-0 right-0 z-50">
         <div class="navbar-start">
+            <div class="dropdown lg:hidden">
+                <label tabindex="0" class="btn btn-ghost">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" />
+                    </svg>
+                </label>
+                <ul tabindex="0" class="menu menu-compact dropdown-content mt-3 p-2 shadow bg-base-100 rounded-box w-52">
+                    <li><a href="index.php"><i class="fas fa-home mr-2"></i><?= NAV_HOME ?></a></li>
+                    <li><a href="dashboard.php"><i class="fas fa-tachometer-alt mr-2"></i><?= NAV_DASHBOARD ?></a></li>
+                    <li><a href="settings.php"><i class="fas fa-cog mr-2"></i><?= NAV_SETTINGS ?></a></li>
+                    <?php if ($user_role === 'admin') : ?>
+                        <li><a href="admin.php"><i class="fas fa-user-shield mr-2"></i>Admin</a></li>
+                    <?php endif; ?>
+                    <?php if ($user_role === 'supervisor' || $user_role === 'admin') : ?>
+                        <li><a href="supervisor.php"><i class="fas fa-user-tie mr-2"></i><?= NAV_SUPERVISOR ?></a></li>
+                    <?php endif; ?>
+                    <li><a onclick="showAboutModal()"><i class="fas fa-info-circle mr-2"></i><?= NAV_ABOUT ?></a></li>
+                    <li><a href="logout.php"><i class="fas fa-sign-out-alt mr-2"></i><?= NAV_LOGOUT ?></a></li>
+                </ul>
+            </div>
             <a class="btn btn-ghost normal-case text-xl" href="index.php">
                 <img src="<?= $kolibri_icon ?>" alt="Time Tracking" class="h-8 w-8 mr-2">
-                <?= TITLE ?>
+                <span class="hidden sm:inline"><?= TITLE ?></span>
             </a>
         </div>
         <div class="navbar-center hidden lg:flex">
@@ -73,13 +109,15 @@ $kolibri_icon = 'assets/kolibri_icon.png';
             </ul>
         </div>
         <div class="navbar-end">
-            <div id="timer" class="mr-4 <?php echo $activeSession ? '' : 'hidden'; ?>">00:00:00</div>
-            <button id="startButton" class="btn btn-primary btn-sm mr-2">
-                <i class="fas fa-sign-in-alt mr-2"></i>Kommen
-            </button>
-            <button id="endButton" class="btn btn-secondary btn-sm mr-4" style="display: none;">
-                <i class="fas fa-sign-out-alt mr-2"></i>Gehen
-            </button>
+            <div id="timer" class="mr-4 hidden lg:inline-block <?php echo $activeSession ? '' : 'hidden'; ?>">00:00:00</div>
+            <div class="hidden lg:block">
+                <button id="startButton" class="btn btn-primary btn-sm mr-2">
+                    <i class="fas fa-sign-in-alt mr-2"></i><span>Kommen</span>
+                </button>
+                <button id="endButton" class="btn btn-secondary btn-sm mr-4" style="display: none;">
+                    <i class="fas fa-sign-out-alt mr-2"></i><span>Gehen</span>
+                </button>
+            </div>
             <label class="swap swap-rotate mr-4">
                 <input type="checkbox" id="theme-toggle" />
                 <svg class="swap-on fill-current w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -89,7 +127,7 @@ $kolibri_icon = 'assets/kolibri_icon.png';
                     <path d="M21.64,13a1,1,0,0,0-1.05-.14,8.05,8.05,0,0,1-3.37.73A8.15,8.15,0,0,1,9.08,5.49a8.59,8.59,0,0,1,.25-2A1,1,0,0,0,8,2.36,10.14,10.14,0,1,0,22,14.05,1,1,0,0,0,21.64,13Zm-9.5,6.69A8.14,8.14,0,0,1,7.08,5.22v.27A10.15,10.15,0,0,0,17.22,15.63a9.79,9.79,0,0,0,2.1-.22A8.11,8.11,0,0,1,12.14,19.73Z" />
                 </svg>
             </label>
-            <div class="dropdown dropdown-end">
+            <div id="settingsDropdown" class="dropdown dropdown-end">
                 <label tabindex="0" class="btn btn-ghost btn-circle">
                     <i class="fas fa-cog"></i>
                 </label>
@@ -108,9 +146,6 @@ $kolibri_icon = 'assets/kolibri_icon.png';
         </div>
     </div>
 
-    <div class="pt-16"> <!-- Add padding to the top of the body content to account for the fixed navbar -->
-        <!-- Your page content goes here -->
-    </div>
 
     <!-- About Modal -->
     <dialog id="aboutModal" class="modal">
@@ -161,6 +196,21 @@ $kolibri_icon = 'assets/kolibri_icon.png';
                 themeToggle.checked = e.matches;
             }
         });
+
+        function updateSettingsVisibility() {
+            var settingsDropdown = document.getElementById('settingsDropdown');
+            if (window.innerWidth < 1024) { // 1024px ist der Standardwert für lg in Tailwind
+                settingsDropdown.style.display = 'none';
+            } else {
+                settingsDropdown.style.display = 'block';
+            }
+        }
+
+        // Führe die Funktion beim Laden der Seite aus
+        updateSettingsVisibility();
+
+        // Führe die Funktion aus, wenn die Fenstergröße geändert wird
+        window.addEventListener('resize', updateSettingsVisibility);
     </script>
 </body>
 
