@@ -26,6 +26,15 @@ This tool assists you in tracking your working hours.
 
 ---
 
+## Tutorial Video
+
+Watch our tutorial video to learn more about Quodara Chrono:
+
+[![Quodara Chrono Tutorial](https://img.youtube.com/vi/vh1hj4rqv88/0.jpg)](https://www.youtube.com/watch?v=vh1hj4rqv88)
+
+Click on the image above to view the video on YouTube.
+
+
 ## Main Features
 
 ⏰ **Work Time Tracking:** Users can enter start time, end time, and break time (manually or using a timer). This allows
