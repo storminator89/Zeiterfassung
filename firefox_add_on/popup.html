@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quodara Chrono - Zeiterfassung</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="materialize.min.css">
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <h4 class="center-align">Quodara Chrono</h4>
+    
+    <div class="row">
+        <div class="col s12">
+            <ul class="tabs">
+                <li class="tab col s6"><a class="active" href="#loginTab">Login</a></li>
+                <li class="tab col s6"><a href="#zeitbuchungTab">Zeitbuchung</a></li>
+            </ul>
+        </div>
+        
+        <div id="loginTab" class="col s12">
+            <div class="card-panel">
+                <div class="input-field">
+                    <input id="apiUrl" type="text">
+                    <label for="apiUrl">API URL</label>
+                </div>
+                <button id="saveUrlButton" class="btn waves-effect waves-light">
+                    API URL Speichern
+                    <i class="material-icons right">save</i>
+                </button>
+            </div>
+
+            <div class="card-panel">
+                <div class="input-field">
+                    <input id="username" type="text">
+                    <label for="username">Benutzername</label>
+                </div>
+                <div class="input-field">
+                    <input id="password" type="password">
+                    <label for="password">Passwort</label>
+                </div>
+                <button id="loginButton" class="btn waves-effect waves-light">
+                    Login
+                    <i class="material-icons right">login</i>
+                </button>
+            </div>
+        </div>
+
+        <div id="zeitbuchungTab" class="col s12">
+            <div id="userInfo" class="user-info card-panel">
+                <p>Bitte melden Sie sich an, um Ihre Benutzerinformationen zu sehen.</p>
+            </div>
+            
+            <div class="card">
+                <div class="card-content">
+                    <span class="card-title">Neue Zeitbuchung</span>
+                    <div class="input-field">
+                        <select id="standort">
+                            <option value="" disabled selected>Wählen Sie einen Standort</option>
+                            <option value="Büro">Büro</option>
+                            <option value="Home Office">Home Office</option>
+                            <option value="Dienstreise">Dienstreise</option>
+                        </select>
+                        <label>Standort</label>
+                    </div>
+                    <div class="input-field">
+                        <input id="beschreibung" type="text">
+                        <label for="beschreibung">Beschreibung</label>
+                    </div>
+                </div>
+                <div class="card-action">
+                    <div class="btn-container">
+                        <button id="kommButton" class="btn waves-effect waves-light">
+                            Kommen
+                            <i class="material-icons right">access_time</i>
+                        </button>
+                        <button id="gehenButton" class="btn waves-effect waves-light red">
+                            Gehen
+                            <i class="material-icons right">exit_to_app</i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="latestEntry" class="card"></div>
+            
+            <button id="logoutButton" class="btn waves-effect waves-light red" style="width: 100%; margin-top: 20px;">
+                Logout
+                <i class="material-icons right">logout</i>
+            </button>
+        </div>
+    </div>
+
+    <script src="browser-polyfill.min.js"></script>
+    <script src="materialize.min.js"></script>
+    <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,264 @@
+body { 
+    width: 480px; 
+    padding: 20px; 
+    font-family: 'Roboto', sans-serif;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+body.dark-mode {
+    background-color: #121212;
+    color: #e0e0e0;
+}
+
+.tabs .tab a {
+    color: #26a69a;
+}
+
+.tabs .tab a:hover, .tabs .tab a.active {
+    color: #00897b;
+}
+
+.tabs .indicator {
+    background-color: #00897b;
+}
+
+.dark-mode .tabs {
+    background-color: #1e1e1e;
+}
+
+.dark-mode .tabs .tab a {
+    color: #4db6ac;
+}
+
+.dark-mode .tabs .tab a:hover, .dark-mode .tabs .tab a.active {
+    color: #80cbc4;
+}
+
+.dark-mode .tabs .indicator {
+    background-color: #80cbc4;
+}
+
+.user-info {
+    background-color: #e0f2f1;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-left: 5px solid #00897b;
+    transition: background-color 0.3s;
+}
+
+.dark-mode .user-info {
+    background-color: #1e3a39;
+}
+
+.btn-container {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.btn-container .btn {
+    flex: 1;
+    margin: 0 5px;
+}
+
+.card-panel, .card {
+    padding: 20px;
+    margin: 15px 0;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: background-color 0.3s;
+}
+
+.dark-mode .card-panel, .dark-mode .card {
+    background-color: #1e1e1e;
+}
+
+h4 {
+    color: #00897b;
+    margin-bottom: 30px;
+}
+
+.dark-mode h4 {
+    color: #4db6ac;
+}
+
+.input-field input:focus + label {
+    color: #00897b !important;
+}
+
+.input-field input:focus {
+    border-bottom: 1px solid #00897b !important;
+    box-shadow: 0 1px 0 0 #00897b !important;
+}
+
+.dark-mode .input-field input {
+    color: #e0e0e0;
+}
+
+.dark-mode .input-field input:focus + label {
+    color: #4db6ac !important;
+}
+
+.dark-mode .input-field input:focus {
+    border-bottom: 1px solid #4db6ac !important;
+    box-shadow: 0 1px 0 0 #4db6ac !important;
+}
+
+select:focus {
+    outline: 1px solid #00897b;
+}
+
+.dark-mode select:focus {
+    outline: 1px solid #4db6ac;
+}
+
+.card-title {
+    color: #00897b;
+    font-weight: bold;
+}
+
+.dark-mode .card-title {
+    color: #4db6ac;
+}
+
+.card-action {
+    border-top: 1px solid #e0e0e0;
+    padding-top: 16px;
+}
+
+.dark-mode .card-action {
+    border-top: 1px solid #333;
+}
+
+#kommButton {
+    background-color: #4CAF50;
+}
+
+#gehenButton {
+    background-color: #F44336;
+}
+
+#logoutButton {
+    background-color: #757575;
+}
+
+.btn {
+    text-transform: none;
+    border-radius: 25px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+#latestEntry {
+    background-color: #f5f5f5;
+    transition: background-color 0.3s;
+}
+
+.dark-mode #latestEntry {
+    background-color: #2a2a2a;
+}
+
+.entry-header {
+    background-color: #00897b;
+    color: white;
+    padding: 15px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.dark-mode .entry-header {
+    background-color: #00695c;
+}
+
+.entry-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.entry-date {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.entry-details {
+    padding: 15px;
+}
+
+.entry-item {
+    margin-bottom: 10px;
+}
+
+.entry-label {
+    font-size: 0.9rem;
+    color: #757575;
+    margin-bottom: 3px;
+}
+
+.dark-mode .entry-label {
+    color: #b0b0b0;
+}
+
+.entry-value {
+    font-size: 1.1rem;
+    color: #333;
+}
+
+.dark-mode .entry-value {
+    color: #e0e0e0;
+}
+
+/* Dark mode für Materialize Komponenten */
+.dark-mode .select-dropdown li.disabled, 
+.dark-mode .select-dropdown li.disabled > span, 
+.dark-mode .select-dropdown li.optgroup {
+    color: rgba(255,255,255,0.3);
+    background-color: transparent;
+}
+
+.dark-mode .select-dropdown li:not(.disabled) span {
+    color: #e0e0e0;
+}
+
+.dark-mode .dropdown-content {
+    background-color: #333;
+}
+
+.dark-mode .dropdown-content li:hover, .dark-mode .dropdown-content li.active {
+    background-color: #4a4a4a;
+}
+
+.dark-mode .select-dropdown li.selected {
+    background-color: #4a4a4a;
+}
+
+.dark-mode input:not([type]):focus:not([readonly]),
+.dark-mode input[type=text]:not(.browser-default):focus:not([readonly]),
+.dark-mode input[type=password]:not(.browser-default):focus:not([readonly]),
+.dark-mode input[type=email]:not(.browser-default):focus:not([readonly]),
+.dark-mode input[type=url]:not(.browser-default):focus:not([readonly]),
+.dark-mode input[type=time]:not(.browser-default):focus:not([readonly]),
+.dark-mode input[type=date]:not(.browser-default):focus:not([readonly]),
+.dark-mode input[type=datetime]:not(.browser-default):focus:not([readonly]),
+.dark-mode input[type=datetime-local]:not(.browser-default):focus:not([readonly]),
+.dark-mode input[type=tel]:not(.browser-default):focus:not([readonly]),
+.dark-mode input[type=number]:not(.browser-default):focus:not([readonly]),
+.dark-mode input[type=search]:not(.browser-default):focus:not([readonly]),
+.dark-mode textarea.materialize-textarea:focus:not([readonly]) {
+    border-bottom: 1px solid #4db6ac;
+    box-shadow: 0 1px 0 0 #4db6ac;
+}
+
+.dark-mode .select-wrapper input.select-dropdown:focus {
+    border-bottom: 1px solid #4db6ac;
+}
+
+.dark-mode .select-wrapper .caret {
+    fill: #e0e0e0;
+}
