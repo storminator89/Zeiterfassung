@@ -41,12 +41,21 @@ $kolibri_icon = 'assets/kolibri_icon.png';
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/locale/de.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/de.js"></script>
+    <!-- SweetAlert2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+
+    <!-- SweetAlert2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
     <script src="./assets/js/main.js"></script>
     <script>
+        // Add this line before the tailwind config
+        const currentLang = '<?= $lang ?>';
+
         tailwind.config = {
             darkMode: 'media',
             daisyui: {
@@ -70,6 +79,14 @@ $kolibri_icon = 'assets/kolibri_icon.png';
                 font-size: 0.8rem;
                 padding: 0.3rem;
             }
+        }
+
+        .flatpickr-calendar {
+            z-index: 9999 !important;
+        }
+
+        .editable-datetime {
+            cursor: pointer;
         }
     </style>
 </head>

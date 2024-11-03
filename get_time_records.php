@@ -52,12 +52,29 @@ foreach ($records as $record) {
             <td>' . $record['id'] . '</td>
             <td>' . $record['weekNumber'] . '</td>
             <td>
-                <input type="datetime-local" class="input input-bordered w-full max-w-xs editable" data-id="' . $record['id'] . '" data-field="startzeit" value="' . date('Y-m-d\TH:i', strtotime($record['startzeit'])) . '">
+                <div class="flex items-center gap-2">
+                    <span class="text-gray-600 editable-datetime" 
+                          data-id="' . $record['id'] . '" 
+                          data-field="startzeit" 
+                          data-value="' . date('Y-m-d H:i', strtotime($record['startzeit'])) . '">
+                        ' . date('d.m.Y H:i', strtotime($record['startzeit'])) . '
+                    </span>
+                    <button type="button" class="edit-datetime-btn btn btn-ghost btn-xs">
+                        <i class="fas fa-calendar-alt"></i>
+                    </button>
+                </div>
             </td>
             <td>';
 
     if ($record['endzeit'] !== null) {
-        echo '<input type="datetime-local" class="input input-bordered w-full max-w-xs editable" data-id="' . $record['id'] . '" data-field="endzeit" value="' . date('Y-m-d\TH:i', strtotime($record['endzeit'])) . '">';
+        echo '<div class="flex items-center gap-2">
+                <span class="text-gray-600 editable-datetime cursor-default" data-id="' . $record['id'] . '" data-field="endzeit" data-value="' . date('Y-m-d\TH:i', strtotime($record['endzeit'])) . '">
+                    ' . date('d.m.Y H:i', strtotime($record['endzeit'])) . '
+                </span>
+                <button type="button" class="edit-datetime-btn btn btn-ghost btn-xs">
+                    <i class="fas fa-calendar-alt"></i>
+                </button>
+            </div>';
     } else {
         echo '<span>-</span>';
     }
@@ -65,7 +82,11 @@ foreach ($records as $record) {
     echo '</td>
             <td>' . calculateDuration($record['startzeit'], $record['endzeit'], $record['pause']) . '</td>
             <td>
-                <input type="number" class="input input-bordered w-full max-w-xs editable" data-id="' . $record['id'] . '" data-field="pause" value="' . $record['pause'] . '">
+                <input type="number" 
+                       name="pause" 
+                       class="input input-bordered w-full max-w-xs" 
+                       value="' . $record['pause'] . '" 
+                       data-id="' . $record['id'] . '">
             </td>
             <td>
                 <select class="select select-bordered w-full max-w-xs editable" data-id="' . $record['id'] . '" data-field="standort">

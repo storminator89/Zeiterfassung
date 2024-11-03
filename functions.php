@@ -469,4 +469,12 @@ function calculateDuration($startzeit, $endzeit, $pause) {
 
     return sprintf("%02d:%02d", $hours, $minutes);
 }
+
+function getPauseDuration($totalHours)
+{
+    global $conn;
+    $stmt = $conn->prepare("SELECT minimum_pause FROM pause_settings WHERE hours_threshold <= ? ORDER BY hours_threshold DESC LIMIT 1");
+    $stmt->execute([$totalHours]);
+    return (int)$stmt->fetchColumn();
+}
 ?>

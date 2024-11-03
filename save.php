@@ -3,6 +3,7 @@ include 'config.php';
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
+    http_response_code(401);
     die("Nicht angemeldet");
 }
 
@@ -34,61 +35,72 @@ if (isset($_POST['delete']) && $_POST['delete'] == 'true' && isset($_POST['id'])
 
 // Aktualisieren eines Eintrags
 if (isset($_POST['update']) && $_POST['update'] == 'true') {
+    header('Content-Type: application/json');
     $id = $_POST['id'];
     $column = $_POST['column'];
     $value = $_POST['data'];
 
     $allowedColumns = ['startzeit', 'endzeit', 'pause', 'standort', 'beschreibung'];
-    if (!in_array($column, $allowedColumns)) {
-        die("Invalid column");
-    }
 
-    if ($column === 'endzeit' || $column === 'startzeit') {
-        // Fetch the start time and end time from the database
-        $stmt = $conn->prepare("SELECT startzeit, endzeit, pause FROM zeiterfassung WHERE id = :id AND user_id = :user_id");
+    if (in_array($column, $allowedColumns)) {
+        // Fetch existing record
+        $stmt = $conn->prepare("SELECT startzeit, endzeit FROM zeiterfassung WHERE id = :id AND user_id = :user_id");
         $stmt->bindParam(':id', $id, PDO::PARAM_INT);
         $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
         $stmt->execute();
-        $times = $stmt->fetch(PDO::FETCH_ASSOC);
+        $record = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        $startzeit_raw = $times['startzeit'];
-        $endzeit_raw = ($column === 'endzeit') ? $value : $times['endzeit'];
-        $startzeit_raw = ($column === 'startzeit') ? $value : $times['startzeit'];
-        $current_pause = $times['pause'];
+        if (!$record) {
+            http_response_code(404);
+            die("Datensatz nicht gefunden");
+        }
 
-        if ($startzeit_raw && $endzeit_raw) {
-            $startzeit_iso = new DateTime($startzeit_raw);
-            $endzeit_iso = new DateTime($endzeit_raw);
+        $new_startzeit = ($column === 'startzeit') ? $value : $record['startzeit'];
+        $new_endzeit = ($column === 'endzeit') ? $value : $record['endzeit'];
 
-            // Calculate the total work duration
-            $totalDuration = $endzeit_iso->diff($startzeit_iso);
-            $totalHours = $totalDuration->h + ($totalDuration->i / 60);
-
-            // Determine the pause duration if not set or below the minimum required pause
-            if (!$current_pause || $current_pause < getPauseDuration($totalHours)) {
-                $pause = getPauseDuration($totalHours);
-                $stmt = $conn->prepare("UPDATE zeiterfassung SET $column = :value, pause = :pause WHERE id = :id AND user_id = :user_id");
-                $stmt->bindParam(':pause', $pause);
-            } else {
-                $stmt = $conn->prepare("UPDATE zeiterfassung SET $column = :value WHERE id = :id AND user_id = :user_id");
+        // Validate that endzeit is not before startzeit
+        if ($new_startzeit && $new_endzeit) {
+            $start = new DateTime($new_startzeit);
+            $end = new DateTime($new_endzeit);
+            if ($end < $start) {
+                http_response_code(400);
+                die("Endzeit darf nicht vor der Startzeit liegen.");
             }
+        }
+
+        if ($column === 'pause') {
+            // Gesamtarbeitsstunden ermitteln
+            $stmt_total = $conn->prepare("SELECT (julianday(endzeit) - julianday(startzeit)) * 24 AS total_hours FROM zeiterfassung WHERE id = :id AND user_id = :user_id");
+            $stmt_total->execute([':id' => $id, ':user_id' => $user_id]);
+            $totalHours = $stmt_total->fetchColumn();
+
+            // Mindestpause bestimmen
+            $minimumPause = getPauseDuration($totalHours);
+
+            if ((int)$value < $minimumPause) {
+                http_response_code(400);
+                die("Die Pause muss mindestens $minimumPause Minuten betragen.");
+            }
+        }
+
+        // Now proceed with the update
+        $stmt = $conn->prepare("UPDATE zeiterfassung SET $column = :value WHERE id = :id AND user_id = :user_id");
+        $stmt->bindParam(':value', $value);
+        $stmt->bindParam(':id', $id);
+        $stmt->bindParam(':user_id', $user_id);
+
+        if ($stmt->execute()) {
+            http_response_code(204);
+            exit;
         } else {
-            $stmt = $conn->prepare("UPDATE zeiterfassung SET $column = :value WHERE id = :id AND user_id = :user_id");
+            http_response_code(400);
+            die("Fehler beim Aktualisieren der Daten");
         }
     } else {
-        $stmt = $conn->prepare("UPDATE zeiterfassung SET $column = :value WHERE id = :id AND user_id = :user_id");
+        http_response_code(400);
+        echo "Ungültige Spalte";
+        exit;
     }
-
-    $stmt->bindParam(':value', $value);
-    $stmt->bindParam(':id', $id);
-    $stmt->bindParam(':user_id', $user_id);
-
-    if ($stmt->execute()) {
-        echo "Successfully updated";
-    } else {
-        echo "Error updating record";
-    }
-    exit;
 }
 
 // Hinzufügen eines neuen Eintrags oder Beenden eines Eintrags
@@ -124,6 +136,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["action"])) {
             $totalHours = $duration->h + ($duration->i / 60);
             $pause = getPauseDuration($totalHours);
 
+            // Validierung: Endzeit darf nicht vor Startzeit liegen
+            if ($endzeit < $startzeit) {
+                $_SESSION['error_message'] = "Endzeit darf nicht vor der Startzeit liegen.";
+                http_response_code(400);
+                die("Endzeit darf nicht vor der Startzeit liegen.");
+            }
+
             $stmt = $conn->prepare("UPDATE zeiterfassung SET endzeit = :endzeit, pause = :pause WHERE id = :id");
             $stmt->bindParam(':endzeit', $endzeit_iso);
             $stmt->bindParam(':pause', $pause);
@@ -148,7 +167,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["action"])) {
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["urlaubStart"]) && isset($_POST["urlaubEnde"]) && isset($_POST["ereignistyp"])) {
     $start = new DateTime($_POST["urlaubStart"]);
     $end = new DateTime($_POST["urlaubEnde"]);
-    $ereignistyp = $_POST["ereignistyp"];
+
+    // Validierung: UrlaubEnde darf nicht vor UrlaubStart liegen
+    if ($end < $start) {
+        http_response_code(400);
+        die("Enddatum des Urlaubs darf nicht vor dem Startdatum liegen.");
+    }
 
     $interval = new DateInterval('P1D');
     $daterange = new DatePeriod($start, $interval, $end->modify('+1 day'));
