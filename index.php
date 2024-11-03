@@ -23,7 +23,7 @@ $latestRecord = $stmt->fetch(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
-<html lang="<?= $lang ?>" data-theme="<?= $theme_mode ?>">
+<html lang="<?= $lang ?>" data-theme="auto">
 
 <head>
     <meta charset="UTF-8">
@@ -53,8 +53,8 @@ $latestRecord = $stmt->fetch(PDO::FETCH_ASSOC);
     </style>
 </head>
 
-<body class="bg-gradient-to-br from-base-200 to-base-300 min-h-screen">
-    <div class="pt-16">
+<body class="bg-gradient-to-br from-base-200 to-base-300">
+    <div class="pt-16 pl-0 md:pl-4">
         <div class="container mx-auto px-4 py-8">
             <div class="grid md:grid-cols-3 gap-6">
                 <!-- Main Form Card -->
@@ -85,7 +85,7 @@ $latestRecord = $stmt->fetch(PDO::FETCH_ASSOC);
                                 Willkommen zurück! Klicken Sie auf "Kommen" zum Starten oder buchen Sie hier spezielle Ereignisse.
                             </p>
 
-                            <form id="mainForm" class="space-y-6">
+                            <form id="mainForm" method="POST" action="save.php" class="space-y-6">
                                 <input type="hidden" id="action" name="action" value="">
                                 <input type="datetime-local" id="startzeit" name="startzeit" class="hidden">
                                 <input type="datetime-local" id="endzeit" name="endzeit" class="hidden">
@@ -111,6 +111,22 @@ $latestRecord = $stmt->fetch(PDO::FETCH_ASSOC);
                                     </div>
                                 </div>
 
+                                <div class="event-selection-fields">
+                                    <!-- Event selection elements -->
+                                    <label for="standort">Standort:</label>
+                                    <select name="standort" id="standort" required data-id="<?= htmlspecialchars($record['id']) ?>">
+                                        <option value="">Wählen Sie einen Standort</option>
+                                        <option value="Home">Home</option>
+                                        <option value="Büro">Büro</option>
+                                        <!-- Weitere Optionen -->
+                                    </select>
+
+                                    <label for="beschreibung">Kommentar:</label>
+                                    <textarea name="beschreibung" id="beschreibung" rows="3" placeholder="Geben Sie einen Kommentar ein..." data-id="<?= htmlspecialchars($record['id']) ?>"></textarea>
+
+                                    <button type="submit">Speichern</button>
+                                </div>
+
                                 <div>
                                     <h2 class="text-lg font-semibold mb-3">Datumsbereich</h2>
                                     <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
@@ -121,6 +137,19 @@ $latestRecord = $stmt->fetch(PDO::FETCH_ASSOC);
                                     </div>
                                 </div>
                             </form>
+
+                            <script>
+                                // Add this script block or add to your existing scripts
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    document.querySelector('#datenEintragenButton').addEventListener('click', function() {
+                                        var selectedEreignistyp = document.querySelector('input[name="ereignistyp"]:checked');
+                                        if (selectedEreignistyp) {
+                                            document.querySelector('textarea[name="beschreibung"]').value = selectedEreignistyp.value;
+                                        }
+                                    });
+                                });
+                            </script>
+
                         </div>
                     </div>
                 </div>
@@ -242,6 +271,10 @@ $latestRecord = $stmt->fetch(PDO::FETCH_ASSOC);
         </div>
     </div>
 
+    <div id="settingsDropdown" style="display: none;">
+        <!-- Einstellungen-Inhalte hier -->
+    </div>
+
     <script>
         let startButton = document.getElementById('startButton');
         let endButton = document.getElementById('endButton');
@@ -305,34 +338,61 @@ $latestRecord = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (action === 'start') {
                 formData.append('startzeit', localISOTime);
-                formData.append('standort', 'office'); // Oder einen anderen Standardwert
+                formData.append('standort', document.getElementById('standort').value || 'office');
+                formData.append('beschreibung', document.getElementById('beschreibung').value || '');
             } else if (action === 'end') {
                 formData.append('endzeit', localISOTime);
             }
 
             fetch('save.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.text())
-                .then(data => {
-                    console.log(data);
-                    if (data.includes("erfolgreich")) {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.text();
+            })
+            .then(data => {
+                let jsonResponse;
+                try {
+                    jsonResponse = JSON.parse(data);
+                    if (jsonResponse.success) {
                         if (action === 'start') {
                             startTimer();
                         } else if (action === 'end') {
                             stopTimer();
                         }
-                        updateTimeRecordsTable();
-                        updateLatestTimeRecord();
+                        
+                        // Warte bis die Updates abgeschlossen sind
+                        return Promise.all([
+                            updateTimeRecordsTable(),
+                            updateLatestTimeRecord()
+                        ]).then(() => {
+                            Swal.fire({
+                                icon: 'success',
+                                title: jsonResponse.message,
+                                showConfirmButton: false,
+                                timer: 1500
+                            });
+                        });
                     } else {
-                        alert(data || 'Ein Fehler ist aufgetreten');
+                        throw new Error(jsonResponse.message || 'Ein Fehler ist aufgetreten');
                     }
-                })
-                .catch((error) => {
-                    console.error('Error:', error);
-                    alert('Error submitting form');
+                } catch (e) {
+                    throw new Error(data || 'Ein Fehler ist aufgetreten');
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Fehler',
+                    text: error.message,
+                    confirmButtonText: 'OK'
                 });
+            });
         }
 
         function updateTimeRecordsView() {
@@ -349,28 +409,49 @@ $latestRecord = $stmt->fetch(PDO::FETCH_ASSOC);
         }
 
         function updateTimeRecordsTable(page = 1) {
-            fetch(`get_time_records.php?page=${page}`)
-                .then(response => response.text())
+            return fetch(`get_time_records.php?page=${page}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.text();
+                })
                 .then(data => {
-                    document.getElementById('timeRecordsContainer').innerHTML = data;
-                    attachEventListeners();
-                    updateTimeRecordsView();
+                    const container = document.getElementById('timeRecordsContainer');
+                    if (container) {
+                        container.innerHTML = data;
+                        attachEventListeners();
+                        updateTimeRecordsView();
+                    }
                 })
                 .catch((error) => {
                     console.error('Error:', error);
-                    alert('Error updating time records table');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Fehler',
+                        text: 'Fehler beim Aktualisieren der Zeiteinträge',
+                        confirmButtonText: 'OK'
+                    });
                 });
         }
 
         function updateLatestTimeRecord() {
-            fetch('get_latest_record.php')
-                .then(response => response.text())
+            return fetch('get_latest_record.php')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.text();
+                })
                 .then(data => {
-                    document.getElementById('latestTimeRecord').innerHTML = data;
+                    const container = document.getElementById('latestTimeRecord');
+                    if (container) {
+                        container.innerHTML = data;
+                    }
                 })
                 .catch((error) => {
                     console.error('Error:', error);
-                    alert('Error updating latest time record');
+                    // Hier keine Fehlermeldung anzeigen, da dies ein optionales Feature ist
                 });
         }
 
@@ -379,8 +460,18 @@ $latestRecord = $stmt->fetch(PDO::FETCH_ASSOC);
             document.querySelectorAll('.deleteRow').forEach(button => {
                 button.addEventListener('click', function() {
                     const id = this.dataset.id;
-                    if (confirm('Are you sure you want to delete this record?')) {
-                        fetch('save.php', {
+                    Swal.fire({
+                        title: 'Sind Sie sicher?',
+                        text: "Dieser Eintrag wird unwiderruflich gelöscht!",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Ja, löschen!',
+                        cancelButtonText: 'Abbrechen'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            fetch('save.php', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -390,17 +481,33 @@ $latestRecord = $stmt->fetch(PDO::FETCH_ASSOC);
                             .then(response => response.text())
                             .then(data => {
                                 if (data === "Successfully deleted") {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Gelöscht!',
+                                        text: 'Der Eintrag wurde erfolgreich gelöscht.',
+                                        showConfirmButton: false,
+                                        timer: 1500
+                                    });
                                     updateTimeRecordsTable();
                                     updateLatestTimeRecord();
                                 } else {
-                                    alert(data);
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Fehler',
+                                        text: data
+                                    });
                                 }
                             })
                             .catch((error) => {
                                 console.error('Error:', error);
-                                alert('Error deleting record');
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Fehler',
+                                    text: 'Fehler beim Löschen des Eintrags'
+                                });
                             });
-                    }
+                        }
+                    });
                 });
             });
 
@@ -500,7 +607,8 @@ $latestRecord = $stmt->fetch(PDO::FETCH_ASSOC);
                             headers: {
                                 'Content-Type': 'application/x-www-form-urlencoded',
                             },
-                            body: `urlaubStart=${start}&urlaubEnde=${end}&ereignistyp=${ereignistyp}`,
+                            // Änderung hier: ereignistyp zu beschreibung
+                            body: `urlaubStart=${start}&urlaubEnde=${end}&beschreibung=${ereignistyp}`,
                         })
                         .then(response => response.text())
                         .then(data => {

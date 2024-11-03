@@ -461,9 +461,14 @@ function calculateDuration($startzeit, $endzeit, $pause) {
 
     $start = new DateTime($startzeit);
     $end = new DateTime($endzeit);
-    $interval = $start->diff($end);
-
-    $totalMinutes = ($interval->days * 24 * 60) + ($interval->h * 60) + $interval->i - intval($pause);
+    
+    // Calculate difference in minutes
+    $diff = ($end->getTimestamp() - $start->getTimestamp()) / 60;
+    
+    // Subtract pause
+    $totalMinutes = $diff - intval($pause);
+    
+    // Calculate hours and minutes
     $hours = floor($totalMinutes / 60);
     $minutes = $totalMinutes % 60;
 
@@ -476,5 +481,36 @@ function getPauseDuration($totalHours)
     $stmt = $conn->prepare("SELECT minimum_pause FROM pause_settings WHERE hours_threshold <= ? ORDER BY hours_threshold DESC LIMIT 1");
     $stmt->execute([$totalHours]);
     return (int)$stmt->fetchColumn();
+}
+
+// Example function to fetch time records with Standort and Beschreibung
+function getTimeRecords($conn, $user_id) {
+    try {
+        $stmt = $conn->prepare('SELECT id, startzeit, endzeit, pause, standort, beschreibung FROM zeiterfassung WHERE user_id = :user_id ORDER BY startzeit DESC');
+        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        die("Datenbankfehler: " . $e->getMessage());
+    }
+}
+
+// Ensure functions handling updates include Standort and Beschreibung if necessary
+function updateTimeRecord($conn, $id, $column, $data) {
+    // Validate column
+    $allowedColumns = ['startzeit', 'endzeit', 'pause', 'standort', 'beschreibung'];
+    if (!in_array($column, $allowedColumns)) {
+        throw new Exception("Ungültige Spalte.");
+    }
+
+    try {
+        $stmt = $conn->prepare("UPDATE zeiterfassung SET $column = :data WHERE id = :id AND user_id = :user_id");
+        $stmt->bindParam(':data', $data);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt->bindParam(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
+        $stmt->execute();
+    } catch (PDOException $e) {
+        throw new Exception("Datenbankfehler: " . $e->getMessage());
+    }
 }
 ?>

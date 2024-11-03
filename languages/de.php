@@ -247,6 +247,11 @@ define('NO_ENTRIES_FOUND', 'Keine Einträge gefunden.');
 define('TABLE_HEADER_OVERTIME', 'Überstunden');
 define('TOTAL_OVERTIME_TITLE', 'Gesamtüberstunden');
 
+// Add these new constants for supervisor view
+define('TABLE_HEADER_TOTAL_DURATION', 'Gesamtdauer');
+define('TABLE_HEADER_TOTAL_BREAK', 'Gesamtpause');
+define('TABLE_HEADER_DATE', 'Datum');
+
 //Settings Page
 define('SETTINGS_LANGUAGE', 'Spracheinstellungen');
 define('SETTINGS_REGULAR_WORKING_HOURS', 'Regelarbeitszeit');
@@ -255,5 +260,6 @@ define('SETTINGS_DOWNLOAD_DATABASE', 'Datenbank herunterladen');
 define('BUTTON_SAVE_REGULAR_WORKING_HOURS', 'Zeiten speichern');
 define('SETTINGS_OVERTIME', 'Frühere Überstunden');
 
+define('TOUR_START', 'Tour starten');
 
 ?>

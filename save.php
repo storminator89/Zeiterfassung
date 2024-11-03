@@ -106,21 +106,43 @@ if (isset($_POST['update']) && $_POST['update'] == 'true') {
 // Hinzufügen eines neuen Eintrags oder Beenden eines Eintrags
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["action"])) {
     $action = $_POST["action"];
+    header('Content-Type: application/json');
 
     if ($action === 'start') {
         $startzeit_iso = date('Y-m-d H:i:s', strtotime($_POST["startzeit"]));
-        $standort = $_POST["standort"];
+        $standort = $_POST["standort"] ?? 'office';
+        $beschreibung = $_POST["beschreibung"] ?? '';
 
-        $stmt = $conn->prepare("INSERT INTO zeiterfassung (startzeit, standort, user_id) VALUES (:startzeit, :standort, :user_id)");
+        $stmt = $conn->prepare("INSERT INTO zeiterfassung (startzeit, standort, beschreibung, user_id) VALUES (:startzeit, :standort, :beschreibung, :user_id)");
         $stmt->bindParam(':startzeit', $startzeit_iso);
         $stmt->bindParam(':standort', $standort);
+        $stmt->bindParam(':beschreibung', $beschreibung);
         $stmt->bindParam(':user_id', $user_id);
 
-        if ($stmt->execute()) {
-            $_SESSION['success_message'] = "Arbeitszeit erfolgreich gestartet!";
-        } else {
-            $_SESSION['success_message'] = "Fehler beim Starten der Arbeitszeit.";
+        try {
+            $conn->beginTransaction();
+            if ($stmt->execute()) {
+                $conn->commit();
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Arbeitszeit erfolgreich gestartet!'
+                ]);
+            } else {
+                $conn->rollBack();
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Fehler beim Starten der Arbeitszeit.'
+                ]);
+            }
+        } catch (PDOException $e) {
+            $conn->rollBack();
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Datenbankfehler: ' . $e->getMessage()
+            ]);
         }
+        exit();
     } elseif ($action === 'end') {
         $endzeit_iso = date('Y-m-d H:i:s', strtotime($_POST["endzeit"]));
 
@@ -138,9 +160,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["action"])) {
 
             // Validierung: Endzeit darf nicht vor Startzeit liegen
             if ($endzeit < $startzeit) {
-                $_SESSION['error_message'] = "Endzeit darf nicht vor der Startzeit liegen.";
                 http_response_code(400);
-                die("Endzeit darf nicht vor der Startzeit liegen.");
+                echo json_encode([
+                    'success' => false,
+                    'message' => "Endzeit darf nicht vor der Startzeit liegen."
+                ]);
+                exit;
             }
 
             $stmt = $conn->prepare("UPDATE zeiterfassung SET endzeit = :endzeit, pause = :pause WHERE id = :id");
@@ -148,23 +173,41 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["action"])) {
             $stmt->bindParam(':pause', $pause);
             $stmt->bindParam(':id', $record['id']);
 
-            if ($stmt->execute()) {
-                $_SESSION['success_message'] = "Arbeitszeit erfolgreich beendet!";
-            } else {
-                $_SESSION['success_message'] = "Fehler beim Beenden der Arbeitszeit.";
+            try {
+                $conn->beginTransaction();
+                if ($stmt->execute()) {
+                    $conn->commit();
+                    echo json_encode([
+                        'success' => true,
+                        'message' => "Arbeitszeit erfolgreich beendet!"
+                    ]);
+                } else {
+                    $conn->rollBack();
+                    echo json_encode([
+                        'success' => false,
+                        'message' => "Fehler beim Beenden der Arbeitszeit."
+                    ]);
+                }
+            } catch (PDOException $e) {
+                $conn->rollBack();
+                http_response_code(500);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Datenbankfehler: ' . $e->getMessage()
+                ]);
             }
         } else {
-            $_SESSION['success_message'] = "Kein offener Arbeitszeitentrageintrag gefunden.";
+            echo json_encode([
+                'success' => false,
+                'message' => "Kein offener Arbeitszeitentrageintrag gefunden."
+            ]);
         }
+        exit();
     }
-
-    header("Location: index.php");
-    exit();
 }
 
-
 // Hinzufügen von Sondertagen (Urlaub, Feiertag, Krankheit)
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["urlaubStart"]) && isset($_POST["urlaubEnde"]) && isset($_POST["ereignistyp"])) {
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["urlaubStart"]) && isset($_POST["urlaubEnde"]) && isset($_POST["beschreibung"])) {
     $start = new DateTime($_POST["urlaubStart"]);
     $end = new DateTime($_POST["urlaubEnde"]);
 
@@ -179,6 +222,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["urlaubStart"]) && isse
 
     $eingetragene_tage = 0;
 
+    // Korrigierte Zeile: Verwendung von $_POST['beschreibung'] statt $ereignistyp
+    $beschreibung = $_POST["beschreibung"];
+
     foreach ($daterange as $date) {
         if ($date->format('N') >= 6) {
             continue;  // Skip Saturday (6) and Sunday (7)
@@ -186,7 +232,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["urlaubStart"]) && isse
         $datum = $date->format("Y-m-d");
         $startzeit_iso = $datum . ' 09:00:00';
         $endzeit_iso = $datum . ' 17:00:00';
-        $beschreibung = $ereignistyp;
+        // $beschreibung = $ereignistyp; // Entfernt
         $pause = 0;
         $standort = '';
 
@@ -195,5 +241,62 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["urlaubStart"]) && isse
         $eingetragene_tage++;
     }
 
-    echo "{$ereignistyp} von {$start->format('d.m.Y')} bis {$end->modify('-1 day')->format('d.m.Y')} wurde eingetragen. {$eingetragene_tage} Tage wurden erfasst.";
+    echo "{$beschreibung} von {$start->format('d.m.Y')} bis {$end->modify('-1 day')->format('d.m.Y')} wurde eingetragen. {$eingetragene_tage} Tage wurden erfasst.";
 }
+
+// After processing, ensure no flags are set to display event selection fields
+
+// Sicherstellen, dass der Benutzer eingeloggt ist
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+
+// PDO-Verbindung herstellen
+try {
+    $conn = new PDO("sqlite:$database");
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Verbindungsfehler: " . $e->getMessage());
+}
+
+// Überprüfen, ob es sich um eine AJAX-Anfrage handelt
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'], $_POST['column'], $_POST['data'])) {
+    $id = intval($_POST['id']);
+    $column = $_POST['column'];
+    $data = $_POST['data'];
+
+    // Erlaubte Spalten für Updates
+    $allowedColumns = ['standort', 'beschreibung'];
+    if (!in_array($column, $allowedColumns)) {
+        http_response_code(400);
+        echo "Ungültige Spalte.";
+        exit();
+    }
+
+    // Update-Anweisung vorbereiten
+    $stmt = $conn->prepare("UPDATE zeiterfassung SET $column = :data WHERE id = :id AND user_id = :user_id");
+    $stmt->bindParam(':data', $data, PDO::PARAM_STR);
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+
+    try {
+        if ($stmt->execute()) {
+            echo "Erfolg";
+        } else {
+            http_response_code(500);
+            echo "Fehler beim Aktualisieren.";
+        }
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo "Datenbankfehler: " . $e->getMessage();
+    }
+
+    exit();
+}
+
+// ... bestehender Code für andere POST-Anfragen ...
+// Diese Kommentarzeile dient als Platzhalter für zukünftige POST-Anfragen
+?>

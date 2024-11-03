@@ -243,6 +243,11 @@ define('NO_ENTRIES_FOUND', 'No entries found.');
 define('TABLE_HEADER_OVERTIME', 'Overtime');
 define('TOTAL_OVERTIME_TITLE', 'Total Overtime');
 
+// Add these new constants for supervisor view
+define('TABLE_HEADER_TOTAL_DURATION', 'Total Duration');
+define('TABLE_HEADER_TOTAL_BREAK', 'Total Break');
+define('TABLE_HEADER_DATE', 'Date');
+
 //Settings Page
 define('SETTINGS_LANGUAGE', 'Language Settings');
 define('SETTINGS_REGULAR_WORKING_HOURS', 'Regular Working Hours');
@@ -250,5 +255,9 @@ define('SETTINGS_IMPORT_DATABASE', 'Import Database');
 define('SETTINGS_DOWNLOAD_DATABASE', 'Download Database');
 define('BUTTON_SAVE_REGULAR_WORKING_HOURS', 'Save Hours');
 define('SETTINGS_OVERTIME', 'Previous Overtime');
+
+// ...existing code...
+define('TOUR_START', 'Start Tour');
+// ...existing code...
 
 ?>
