@@ -312,37 +312,131 @@
       },
       "/api.php/timeentries": {
         "get": {
-          "summary": "Get all time entries for the authenticated user",
+          "summary": "Get filtered time entries for the authenticated user",
+          "parameters": [
+            {
+              "name": "start_date",
+              "in": "query",
+              "description": "Start date (YYYY-MM-DD)",
+              "required": false,
+              "schema": {
+                "type": "string",
+                "format": "date"
+              }
+            },
+            {
+              "name": "end_date",
+              "in": "query",
+              "description": "End date (YYYY-MM-DD)",
+              "required": false,
+              "schema": {
+                "type": "string",
+                "format": "date"
+              }
+            },
+            {
+              "name": "limit",
+              "in": "query",
+              "description": "Maximum number of entries to return",
+              "required": false,
+              "schema": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            {
+              "name": "offset",
+              "in": "query",
+              "description": "Number of entries to skip",
+              "required": false,
+              "schema": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          ],
           "responses": {
             "200": {
-              "description": "List of time entries",
+              "description": "List of time entries with pagination metadata",
               "content": {
                 "application/json": {
-                  "examples": {
-                    "success": {
-                      "summary": "List of time entries",
-                      "value": {
-                        "success": true,
-                        "data": [
-                          {
-                            "id": 1,
-                            "startzeit": "2024-05-24T09:00:00",
-                            "endzeit": "2024-05-24T17:00:00",
-                            "pause": 60,
-                            "beschreibung": "Worked on project X",
-                            "standort": "Office",
-                            "user_id": 1
-                          },
-                          {
-                            "id": 2,
-                            "startzeit": "2024-05-25T09:00:00",
-                            "endzeit": "2024-05-25T17:00:00",
-                            "pause": 60,
-                            "beschreibung": "Worked on project Y",
-                            "standort": "Office",
-                            "user_id": 1
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "success": {
+                        "type": "boolean"
+                      },
+                      "data": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "integer"
+                            },
+                            "startzeit": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "endzeit": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "pause": {
+                              "type": "integer"
+                            },
+                            "beschreibung": {
+                              "type": "string"
+                            },
+                            "standort": {
+                              "type": "string"
+                            },
+                            "user_id": {
+                              "type": "integer"
+                            }
                           }
-                        ]
+                        }
+                      },
+                      "meta": {
+                        "type": "object",
+                        "properties": {
+                          "total": {
+                            "type": "integer",
+                            "description": "Total number of entries"
+                          },
+                          "filtered": {
+                            "type": "integer",
+                            "description": "Number of entries in current response"
+                          },
+                          "limit": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Number of entries per page"
+                          },
+                          "offset": {
+                            "type": "integer",
+                            "nullable": true,
+                            "description": "Number of entries skipped"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid parameters",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "success": {
+                        "type": "boolean"
+                      },
+                      "message": {
+                        "type": "string"
                       }
                     }
                   }
@@ -502,4 +596,3 @@
       }
     }
   }
-  

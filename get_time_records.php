@@ -38,6 +38,17 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $currentDate = null;
 $dailyTotals = [];
 
+// Header section with improved export button
+echo '<div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-bold"><i class="fas fa-clock mr-2"></i>' . TABLE_HEADER_TIME_RECORDS . '</h2>
+    <button onclick="exportToCSV()" 
+            class="btn btn-outline btn-success btn-sm gap-2 hover:scale-105 transform transition-transform duration-200" 
+            >
+        <i class="fas fa-file-csv text-lg"></i>
+        <span class="hidden sm:inline">' . BUTTON_EXPORT_CSV . '</span>
+    </button>
+</div>';
+
 echo '<div id="timeRecordsTable" class="card bg-base-100 shadow-xl">
     <div class="card-body p-6">
         <h3 class="card-title text-2xl mb-6 flex items-center gap-3">

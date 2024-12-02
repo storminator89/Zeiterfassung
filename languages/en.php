@@ -258,6 +258,10 @@ define('SETTINGS_OVERTIME', 'Previous Overtime');
 
 // ...existing code...
 define('TOUR_START', 'Start Tour');
+// Table Headers
+define('TABLE_HEADER_TIME_RECORDS', 'Time Records');
 // ...existing code...
+
+define('BUTTON_EXPORT_CSV', 'CSV Export');
 
 ?>

@@ -104,6 +104,12 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* Remove the specific background-color from [data-theme="dark"] as it's not needed */
+        [data-theme="dark"] {
+            color: hsl(var(--bc));
+        }
+        
+        /* Existing styles */
         .modal-box {
             width: 90vw;
             max-width: 70vw;
@@ -161,256 +167,281 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
     </style>
 </head>
 
-<body class="bg-base-200">
-    <div class="container mx-auto px-4 py-8">
-        <h2 class="text-4xl font-bold mb-8 text-center"><?= SUPERVISOR_TIMES_TITLE ?></h2>
+<body>
+    <!-- Remove the bg-base-200 class from body and add it to a wrapper div -->
+    <div class="min-h-screen bg-base-100">
+        <?php include 'navigation.php'; ?>
+        <div class="container mx-auto px-4 py-8">
+            <h2 class="text-4xl font-bold mb-8 text-center"><?= SUPERVISOR_TIMES_TITLE ?></h2>
 
-        <?php if ($user_role !== 'supervisor' && $user_role !== 'admin') : ?>
-            <div class="alert alert-warning shadow-lg">
-                <div>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <span><?= NOT_SUPERVISOR_MESSAGE ?></span>
-                </div>
-            </div>
-        <?php else : ?>
-            <!-- Search and Filter Section -->
-            <div class="mb-6">
-                <div class="flex flex-wrap gap-4 items-center justify-between">
-                    <div class="search-container">
-                        <input type="text" 
-                               id="searchInput" 
-                               class="input input-bordered search-input" 
-                               placeholder="Suche nach Mitarbeiter...">
-                    </div>
-                    <div class="flex gap-2 flex-wrap">
-                        <span class="badge badge-primary filter-badge" data-filter="all">Alle</span>
-                        <span class="badge badge-secondary filter-badge" data-filter="overtime">Überstunden</span>
-                        <span class="badge badge-warning filter-badge" data-filter="undertime">Minusstunden</span>
+            <?php if ($user_role !== 'supervisor' && $user_role !== 'admin') : ?>
+                <div class="alert alert-warning shadow-lg">
+                    <div>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span><?= NOT_SUPERVISOR_MESSAGE ?></span>
                     </div>
                 </div>
-            </div>
-
-            <!-- Charts Section -->
-            <div class="mb-8">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="card bg-base-100 shadow-xl">
-                        <div class="card-body">
-                            <h3 class="card-title">Überstunden Übersicht</h3>
-                            <div class="chart-container">
-                                <canvas id="overtimeChart"></canvas>
-                            </div>
+            <?php else : ?>
+                <!-- Search and Filter Section -->
+                <div class="mb-6">
+                    <div class="flex flex-wrap gap-4 items-center justify-between">
+                        <div class="search-container">
+                            <input type="text" 
+                                id="searchInput" 
+                                class="input input-bordered search-input" 
+                                placeholder="Suche nach Mitarbeiter...">
                         </div>
-                    </div>
-                    <div class="card bg-base-100 shadow-xl">
-                        <div class="card-body">
-                            <h3 class="card-title">Regelarbeitszeit pro Mitarbeiter</h3>
-                            <div class="chart-container">
-                                <canvas id="regularHoursChart"></canvas>
-                            </div>
+                        <div class="flex gap-2 flex-wrap">
+                            <span class="badge badge-primary filter-badge" data-filter="all">Alle</span>
+                            <span class="badge badge-secondary filter-badge" data-filter="overtime">Überstunden</span>
+                            <span class="badge badge-warning filter-badge" data-filter="undertime">Minusstunden</span>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Overtime Cards Section -->
-            <div class="mb-12">
-                <h3 class="text-2xl font-semibold mb-6">
-                    <i class="fas fa-hourglass mr-2"></i><?= TOTAL_OVERTIME_TITLE ?>
-                </h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="overtimeCards">
-                    <?php if (is_array($ueberstundenListe) && !empty($ueberstundenListe)) : ?>
-                        <?php foreach ($ueberstundenListe as $userId => $data) : ?>
-                            <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300 fade-in stats-card">
-                                <div class="card-body">
-                                    <h2 class="card-title text-lg"><?= htmlspecialchars($data['username']) ?></h2>
-                                    <p class="text-3xl font-bold <?= substr($data['ueberstunden'], 0, 1) === '-' ? 'text-error' : 'text-success' ?>">
-                                        <?= htmlspecialchars($data['ueberstunden']) ?>
-                                    </p>
-                                    <div class="card-actions justify-end">
-                                        <button class="btn btn-primary btn-sm" onclick="showDetails('<?= $userId ?>')">Details</button>
+                <!-- Charts Section -->
+                <div class="mb-8">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <h3 class="card-title">Überstunden Übersicht</h3>
+                                <div class="chart-container">
+                                    <canvas id="overtimeChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <h3 class="card-title">Regelarbeitszeit pro Mitarbeiter</h3>
+                                <div class="chart-container">
+                                    <canvas id="regularHoursChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Overtime Cards Section -->
+                <div class="mb-12">
+                    <h3 class="text-2xl font-semibold mb-6">
+                        <i class="fas fa-hourglass mr-2"></i><?= TOTAL_OVERTIME_TITLE ?>
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="overtimeCards">
+                        <?php if (is_array($ueberstundenListe) && !empty($ueberstundenListe)) : ?>
+                            <?php foreach ($ueberstundenListe as $userId => $data) : ?>
+                                <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300 fade-in stats-card">
+                                    <div class="card-body">
+                                        <h2 class="card-title text-lg"><?= htmlspecialchars($data['username']) ?></h2>
+                                        <p class="text-3xl font-bold <?= substr($data['ueberstunden'], 0, 1) === '-' ? 'text-error' : 'text-success' ?>">
+                                            <?= htmlspecialchars($data['ueberstunden']) ?>
+                                        </p>
+                                        <div class="card-actions justify-end">
+                                            <button class="btn btn-primary btn-sm" onclick="showDetails('<?= $userId ?>')">Details</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <!-- Time Records Table Section -->
+                <div class="mb-8">
+                    <h3 class="text-2xl font-semibold mb-6">
+                        <i class="fas fa-clock mr-2"></i><?= ACTUAL_WORKED_TIMES ?>
+                    </h3>
+                    <div class="card bg-base-100 shadow-xl">
+                        <div class="card-body">
+                            <!-- Search and Filter Bar -->
+                            <div class="flex flex-wrap gap-4 mb-4">
+                                <div class="form-control w-full max-w-xs">
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="fas fa-search"></i>
+                                        </span>
+                                        <input type="text" 
+                                            id="userSearchInput" 
+                                            class="input input-bordered w-full" 
+                                            placeholder="Mitarbeiter suchen...">
                                     </div>
                                 </div>
                             </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
-            </div>
 
-            <!-- Time Records Table Section -->
-            <div class="mb-8">
-                <h3 class="text-2xl font-semibold mb-6">
-                    <i class="fas fa-clock mr-2"></i><?= ACTUAL_WORKED_TIMES ?>
-                </h3>
-                <div class="card bg-base-100 shadow-xl">
-                    <div class="card-body">
-                        <!-- Search and Filter Bar -->
-                        <div class="flex flex-wrap gap-4 mb-4">
-                            <div class="form-control w-full max-w-xs">
-                                <div class="input-group">
-                                    <span class="input-group-text">
-                                        <i class="fas fa-search"></i>
-                                    </span>
-                                    <input type="text" 
-                                           id="userSearchInput" 
-                                           class="input input-bordered w-full" 
-                                           placeholder="Mitarbeiter suchen...">
-                                </div>
+                            <div class="overflow-x-auto">
+                                <table class="table w-full">
+                                    <thead>
+                                        <tr>
+                                            <th class="w-8"></th> <!-- Expand/Collapse Icon -->
+                                            <th><?= TABLE_HEADER_USERNAME ?></th>
+                                            <th><?= TABLE_HEADER_DATE ?></th>
+                                            <th><?= TABLE_HEADER_TOTAL_DURATION ?></th>
+                                            <th><?= TABLE_HEADER_TOTAL_BREAK ?></th>
+                                            <th><?= TABLE_HEADER_LOCATION ?></th>
+                                            <th><?= TABLE_HEADER_OVERTIME ?></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="timeRecordsBody">
+                                        <?php
+                                        // Group entries by user and date
+                                        $groupedEntries = [];
+                                        foreach ($zeiten as $zeit) {
+                                            $userId = $zeit['user_id'];
+                                            $date = date('Y-m-d', strtotime($zeit['startzeit']));
+                                            $key = $userId . '_' . $date;
+                                            
+                                            if (!isset($groupedEntries[$key])) {
+                                                $groupedEntries[$key] = [
+                                                    'user_id' => $userId,
+                                                    'username' => $zeit['username'],
+                                                    'date' => $date,
+                                                    'regelarbeitszeit' => $zeit['regelarbeitszeit'],
+                                                    'entries' => [],
+                                                    'total_duration' => 0,
+                                                    'total_break' => 0
+                                                ];
+                                            }
+                                            
+                                            // Calculate duration for this entry
+                                            $start = new DateTime($zeit['startzeit']);
+                                            $end = new DateTime($zeit['endzeit']);
+                                            $duration = ($end->getTimestamp() - $start->getTimestamp()) / 60;
+                                            $break = intval($zeit['pause']);
+                                            
+                                            // Add entry with its individual duration minus break
+                                            $groupedEntries[$key]['entries'][] = [
+                                                'startzeit' => $zeit['startzeit'],
+                                                'endzeit' => $zeit['endzeit'],
+                                                'duration' => $duration - $break, // Individual duration minus break
+                                                'pause' => $break,
+                                                'standort' => $zeit['standort'],
+                                                'beschreibung' => $zeit['beschreibung'] ?? ''
+                                            ];
+                                            
+                                            // Update totals
+                                            $groupedEntries[$key]['total_duration'] += $duration - $break; // Add duration minus break
+                                            $groupedEntries[$key]['total_break'] += $break;
+                                        }
+
+                                        // Output grouped entries
+                                        $itemsPerPage = 10; // Number of items per page
+                                        $totalRecords = count($groupedEntries);
+                                        $totalPages = ceil($totalRecords / $itemsPerPage);
+                                        $currentPage = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+                                        $currentPage = max(1, min($currentPage, $totalPages));
+                                        $start = ($currentPage - 1) * $itemsPerPage;
+                                        $pagedEntries = array_slice($groupedEntries, $start, $itemsPerPage, true);
+
+                                        foreach ($pagedEntries as $group) {
+                                            $totalDuration = $group['total_duration']; // Already includes break deduction
+                                            $hours = floor($totalDuration / 60);
+                                            $minutes = $totalDuration % 60;
+                                            $overtime = $totalDuration - ($group['regelarbeitszeit'] * 60);
+                                            $overtimeHours = floor(abs($overtime) / 60);
+                                            $overtimeMinutes = abs($overtime % 60);
+
+                                            // Summary row
+                                            echo '<tr class="group-header hover:bg-base-200 cursor-pointer" data-user-id="' . $group['user_id'] . '" data-date="' . $group['date'] . '">
+                                                    <td><i class="fas fa-chevron-right transition-transform duration-200"></i></td>
+                                                    <td>' . htmlspecialchars($group['username']) . '</td>
+                                                    <td>' . date('d.m.Y', strtotime($group['date'])) . '</td>
+                                                    <td>' . sprintf("%02d:%02d", $hours, $minutes) . '</td>
+                                                    <td>' . $group['total_break'] . ' min</td>
+                                                    <td>' . (count($group['entries']) > 1 ? 'Mehrere' : htmlspecialchars($group['entries'][0]['standort'])) . '</td>
+                                                    <td class="' . ($overtime >= 0 ? 'text-success' : 'text-error') . '">
+                                                        ' . ($overtime >= 0 ? '+' : '-') . sprintf("%02d:%02d", $overtimeHours, $overtimeMinutes) . '
+                                                    </td>
+                                                </tr>';
+
+                                            // Detail rows (initially hidden)
+                                            echo '<tr class="detail-row hidden" data-parent="' . $group['user_id'] . '_' . $group['date'] . '">
+                                                    <td colspan="7" class="p-0">
+                                                        <div class="bg-base-200/50 p-4">
+                                                            <table class="table w-full">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>' . TABLE_HEADER_START_TIME . '</th>
+                                                                        <th>' . TABLE_HEADER_END_TIME . '</th>
+                                                                        <th>' . TABLE_HEADER_DURATION . '</th>
+                                                                        <th>' . TABLE_HEADER_BREAK . '</th>
+                                                                        <th>' . TABLE_HEADER_LOCATION . '</th>
+                                                                        <th>' . TABLE_HEADER_COMMENT . '</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>';
+
+                                            foreach ($group['entries'] as $entry) {
+                                                $entryStart = new DateTime($entry['startzeit']);
+                                                $entryEnd = new DateTime($entry['endzeit']);
+                                                $entryHours = floor($entry['duration'] / 60);
+                                                $entryMinutes = $entry['duration'] % 60;
+
+                                                echo '<tr>
+                                                        <td>' . $entryStart->format('H:i') . '</td>
+                                                        <td>' . $entryEnd->format('H:i') . '</td>
+                                                        <td>' . sprintf("%02d:%02d", $entryHours, $entryMinutes) . '</td>
+                                                        <td>' . $entry['pause'] . ' min</td>
+                                                        <td>' . htmlspecialchars($entry['standort']) . '</td>
+                                                        <td>' . htmlspecialchars($entry['beschreibung'] ?? '') . '</td>
+                                                    </tr>';
+                                            }
+
+                                            echo '</tbody>
+                                                </table>
+                                            </div>
+                                        </td>
+                                    </tr>';
+                                        }
+                                        ?>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
+                    </div>
+                    <div class="flex justify-center mt-4">
+                        <div class="btn-group">
+                            <?php
+                            // Vorherige-Seite-Button
+                            $prevClass = $currentPage == 1 ? ' btn-disabled' : '';
+                            echo "<a href='?page=".($currentPage-1)."' class='btn btn-sm$prevClass'>&laquo;</a>";
 
-                        <div class="overflow-x-auto">
-                            <table class="table w-full">
-                                <thead>
-                                    <tr>
-                                        <th class="w-8"></th> <!-- Expand/Collapse Icon -->
-                                        <th><?= TABLE_HEADER_USERNAME ?></th>
-                                        <th><?= TABLE_HEADER_DATE ?></th>
-                                        <th><?= TABLE_HEADER_TOTAL_DURATION ?></th>
-                                        <th><?= TABLE_HEADER_TOTAL_BREAK ?></th>
-                                        <th><?= TABLE_HEADER_LOCATION ?></th>
-                                        <th><?= TABLE_HEADER_OVERTIME ?></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="timeRecordsBody">
-                                    <?php
-                                    // Group entries by user and date
-                                    $groupedEntries = [];
-                                    foreach ($zeiten as $zeit) {
-                                        $userId = $zeit['user_id'];
-                                        $date = date('Y-m-d', strtotime($zeit['startzeit']));
-                                        $key = $userId . '_' . $date;
-                                        
-                                        if (!isset($groupedEntries[$key])) {
-                                            $groupedEntries[$key] = [
-                                                'user_id' => $userId,
-                                                'username' => $zeit['username'],
-                                                'date' => $date,
-                                                'regelarbeitszeit' => $zeit['regelarbeitszeit'],
-                                                'entries' => [],
-                                                'total_duration' => 0,
-                                                'total_break' => 0
-                                            ];
-                                        }
-                                        
-                                        // Calculate duration for this entry
-                                        $start = new DateTime($zeit['startzeit']);
-                                        $end = new DateTime($zeit['endzeit']);
-                                        $duration = ($end->getTimestamp() - $start->getTimestamp()) / 60;
-                                        $break = intval($zeit['pause']);
-                                        
-                                        // Add entry with its individual duration minus break
-                                        $groupedEntries[$key]['entries'][] = [
-                                            'startzeit' => $zeit['startzeit'],
-                                            'endzeit' => $zeit['endzeit'],
-                                            'duration' => $duration - $break, // Individual duration minus break
-                                            'pause' => $break,
-                                            'standort' => $zeit['standort'],
-                                            'beschreibung' => $zeit['beschreibung'] ?? ''
-                                        ];
-                                        
-                                        // Update totals
-                                        $groupedEntries[$key]['total_duration'] += $duration - $break; // Add duration minus break
-                                        $groupedEntries[$key]['total_break'] += $break;
-                                    }
+                            // Maximal anzuzeigende Seitenzahlen
+                            $maxVisible = 5;
+                            $start = max(1, min($currentPage - floor($maxVisible/2), $totalPages - $maxVisible + 1));
+                            $end = min($start + $maxVisible - 1, $totalPages);
 
-                                    // Output grouped entries
-                                    $itemsPerPage = 10; // Number of items per page
-                                    $totalRecords = count($groupedEntries);
-                                    $totalPages = ceil($totalRecords / $itemsPerPage);
-                                    $currentPage = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-                                    $currentPage = max(1, min($currentPage, $totalPages));
-                                    $start = ($currentPage - 1) * $itemsPerPage;
-                                    $pagedEntries = array_slice($groupedEntries, $start, $itemsPerPage, true);
+                            // Erste Seite anzeigen, wenn wir nicht bei 1 beginnen
+                            if ($start > 1) {
+                                echo "<a href='?page=1' class='btn btn-sm'>1</a>";
+                                if ($start > 2) {
+                                    echo "<span class='btn btn-sm btn-disabled'>...</span>";
+                                }
+                            }
 
-                                    foreach ($pagedEntries as $group) {
-                                        $totalDuration = $group['total_duration']; // Already includes break deduction
-                                        $hours = floor($totalDuration / 60);
-                                        $minutes = $totalDuration % 60;
-                                        $overtime = $totalDuration - ($group['regelarbeitszeit'] * 60);
-                                        $overtimeHours = floor(abs($overtime) / 60);
-                                        $overtimeMinutes = abs($overtime % 60);
+                            // Seitenzahlen
+                            for ($i = $start; $i <= $end; $i++) {
+                                $activeClass = $i == $currentPage ? ' btn-active' : '';
+                                echo "<a href='?page=$i' class='btn btn-sm$activeClass'>$i</a>";
+                            }
 
-                                        // Summary row
-                                        echo '<tr class="group-header hover:bg-base-200 cursor-pointer" data-user-id="' . $group['user_id'] . '" data-date="' . $group['date'] . '">
-                                                <td><i class="fas fa-chevron-right transition-transform duration-200"></i></td>
-                                                <td>' . htmlspecialchars($group['username']) . '</td>
-                                                <td>' . date('d.m.Y', strtotime($group['date'])) . '</td>
-                                                <td>' . sprintf("%02d:%02d", $hours, $minutes) . '</td>
-                                                <td>' . $group['total_break'] . ' min</td>
-                                                <td>' . (count($group['entries']) > 1 ? 'Mehrere' : htmlspecialchars($group['entries'][0]['standort'])) . '</td>
-                                                <td class="' . ($overtime >= 0 ? 'text-success' : 'text-error') . '">
-                                                    ' . ($overtime >= 0 ? '+' : '-') . sprintf("%02d:%02d", $overtimeHours, $overtimeMinutes) . '
-                                                </td>
-                                            </tr>';
+                            // Letzte Seite anzeigen, wenn wir nicht beim Maximum enden
+                            if ($end < $totalPages) {
+                                if ($end < $totalPages - 1) {
+                                    echo "<span class='btn btn-sm btn-disabled'>...</span>";
+                                }
+                                echo "<a href='?page=$totalPages' class='btn btn-sm'>$totalPages</a>";
+                            }
 
-                                        // Detail rows (initially hidden)
-                                        echo '<tr class="detail-row hidden" data-parent="' . $group['user_id'] . '_' . $group['date'] . '">
-                                                <td colspan="7" class="p-0">
-                                                    <div class="bg-base-200/50 p-4">
-                                                        <table class="table w-full">
-                                                            <thead>
-                                                                <tr>
-                                                                    <th>' . TABLE_HEADER_START_TIME . '</th>
-                                                                    <th>' . TABLE_HEADER_END_TIME . '</th>
-                                                                    <th>' . TABLE_HEADER_DURATION . '</th>
-                                                                    <th>' . TABLE_HEADER_BREAK . '</th>
-                                                                    <th>' . TABLE_HEADER_LOCATION . '</th>
-                                                                    <th>' . TABLE_HEADER_COMMENT . '</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>';
-
-                                        foreach ($group['entries'] as $entry) {
-                                            $entryStart = new DateTime($entry['startzeit']);
-                                            $entryEnd = new DateTime($entry['endzeit']);
-                                            $entryHours = floor($entry['duration'] / 60);
-                                            $entryMinutes = $entry['duration'] % 60;
-
-                                            echo '<tr>
-                                                    <td>' . $entryStart->format('H:i') . '</td>
-                                                    <td>' . $entryEnd->format('H:i') . '</td>
-                                                    <td>' . sprintf("%02d:%02d", $entryHours, $entryMinutes) . '</td>
-                                                    <td>' . $entry['pause'] . ' min</td>
-                                                    <td>' . htmlspecialchars($entry['standort']) . '</td>
-                                                    <td>' . htmlspecialchars($entry['beschreibung'] ?? '') . '</td>
-                                                </tr>';
-                                        }
-
-                                        echo '</tbody>
-                                            </table>
-                                        </div>
-                                    </td>
-                                </tr>';
-                                    }
-                                    ?>
-                                </tbody>
-                            </table>
+                            // Nächste-Seite-Button
+                            $nextClass = $currentPage == $totalPages ? ' btn-disabled' : '';
+                            echo "<a href='?page=".($currentPage+1)."' class='btn btn-sm$nextClass'>&raquo;</a>";
+                            ?>
                         </div>
                     </div>
                 </div>
-                <div class="flex justify-center mt-4">
-                    <div class="btn-group">
-                        <?php
-                        // Previous button
-                        $prevClass = $currentPage == 1 ? ' btn-disabled' : '';
-                        echo "<a href='?page=".($currentPage-1)."' class='btn btn-sm$prevClass'>&laquo;</a>";
-
-                        // Page numbers
-                        for ($i = 1; $i <= $totalPages; $i++) {
-                            $activeClass = $i == $currentPage ? ' btn-active' : '';
-                            echo "<a href='?page=$i' class='btn btn-sm$activeClass'>$i</a>";
-                        }
-
-                        // Next button
-                        $nextClass = $currentPage == $totalPages ? ' btn-disabled' : '';
-                        echo "<a href='?page=".($currentPage+1)."' class='btn btn-sm$nextClass'>&raquo;</a>";
-                        ?>
-                    </div>
-                </div>
-            </div>
-        <?php endif; ?>
+            <?php endif; ?>
+        </div>
     </div>
 
     <!-- Enhanced Modal -->

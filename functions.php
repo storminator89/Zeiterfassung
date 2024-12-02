@@ -1,6 +1,19 @@
 <?php
-include 'config.php';
 session_start();
+
+// Set default language if not set
+$lang = $_SESSION['lang'] ?? 'de';
+$langFile = __DIR__ . "/languages/$lang.php";
+
+// Load language file first
+if (file_exists($langFile)) {
+    require_once $langFile;
+} else {
+    require_once __DIR__ . '/languages/de.php'; // Fallback to German
+}
+
+// Now include other dependencies
+require_once 'config.php';
 
 // Ensure the user is logged in
 if (!isset($_SESSION['user_id'])) {

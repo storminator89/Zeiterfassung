@@ -270,19 +270,115 @@ function getUsers($conn) {
 /**
  * @OA\Get(
  *     path="/api.php/timeentries",
- *     summary="Get all time entries for the authenticated user",
+ *     summary="Get filtered time entries for the authenticated user",
+ *     @OA\Parameter(
+ *         name="start_date",
+ *         in="query",
+ *         description="Start date (YYYY-MM-DD)",
+ *         required=false,
+ *         @OA\Schema(type="string")
+ *     ),
+ *     @OA\Parameter(
+ *         name="end_date",
+ *         in="query",
+ *         description="End date (YYYY-MM-DD)",
+ *         required=false,
+ *         @OA\Schema(type="string")
+ *     ),
+ *     @OA\Parameter(
+ *         name="limit",
+ *         in="query",
+ *         description="Maximum number of entries to return",
+ *         required=false,
+ *         @OA\Schema(type="integer")
+ *     ),
+ *     @OA\Parameter(
+ *         name="offset",
+ *         in="query",
+ *         description="Number of entries to skip",
+ *         required=false,
+ *         @OA\Schema(type="integer")
+ *     ),
  *     @OA\Response(response=200, description="List of time entries"),
+ *     @OA\Response(response=400, description="Invalid parameters"),
  *     @OA\Response(response=401, description="Unauthorized"),
  *     @OA\Response(response=500, description="Internal server error")
  * )
  */
 function getTimeEntries($conn, $user_id) {
     try {
-        $stmt = $conn->prepare("SELECT * FROM zeiterfassung WHERE user_id = :user_id");
-        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+        $params = [];
+        $whereConditions = ["user_id = :user_id"];
+        $params[':user_id'] = $user_id;
+
+        // Add date filters if provided
+        if (isset($_GET['start_date'])) {
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['start_date'])) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Invalid start_date format. Use YYYY-MM-DD']);
+                return;
+            }
+            $whereConditions[] = "date(startzeit) >= :start_date";
+            $params[':start_date'] = $_GET['start_date'];
+        }
+
+        if (isset($_GET['end_date'])) {
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['end_date'])) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Invalid end_date format. Use YYYY-MM-DD']);
+                return;
+            }
+            $whereConditions[] = "date(startzeit) <= :end_date";
+            $params[':end_date'] = $_GET['end_date'];
+        }
+
+        // Build the base query
+        $query = "SELECT * FROM zeiterfassung WHERE " . implode(' AND ', $whereConditions);
+
+        // Add ORDER BY
+        $query .= " ORDER BY startzeit DESC";
+
+        // Add LIMIT and OFFSET if provided
+        if (isset($_GET['limit']) && is_numeric($_GET['limit'])) {
+            $limit = (int)$_GET['limit'];
+            $query .= " LIMIT :limit";
+            $params[':limit'] = $limit;
+        }
+
+        if (isset($_GET['offset']) && is_numeric($_GET['offset'])) {
+            $offset = (int)$_GET['offset'];
+            $query .= " OFFSET :offset";
+            $params[':offset'] = $offset;
+        }
+
+        // Get total count for pagination
+        $countStmt = $conn->prepare("SELECT COUNT(*) FROM zeiterfassung WHERE " . implode(' AND ', $whereConditions));
+        foreach ($params as $key => $value) {
+            if (!in_array($key, [':limit', ':offset'])) {
+                $countStmt->bindValue($key, $value);
+            }
+        }
+        $countStmt->execute();
+        $totalCount = $countStmt->fetchColumn();
+
+        // Execute main query
+        $stmt = $conn->prepare($query);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
         $stmt->execute();
         $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        echo json_encode(['success' => true, 'data' => $entries]);
+
+        echo json_encode([
+            'success' => true,
+            'data' => $entries,
+            'meta' => [
+                'total' => $totalCount,
+                'filtered' => count($entries),
+                'limit' => isset($_GET['limit']) ? (int)$_GET['limit'] : null,
+                'offset' => isset($_GET['offset']) ? (int)$_GET['offset'] : null
+            ]
+        ]);
     } catch (\Exception $exception) {
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Internal server error']);
