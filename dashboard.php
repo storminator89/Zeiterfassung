@@ -65,6 +65,13 @@ $weeklyProductivityScore = min(100, ($totalHoursThisWeek / $weeklyExpectedHours)
 // Theme Mode aus der Session lesen
 $theme_mode = $_SESSION['theme_mode'] ?? 'light';
 
+// Darkmode-Klassen für Body setzen
+if ($theme_mode === 'dark') {
+    $bodyClass = 'bg-gray-900 text-gray-100';
+} else {
+    $bodyClass = 'bg-base-200';
+}
+
 // Function to format hours as HH:MM
 function formatHoursAsHHMM($hours)
 {
@@ -175,7 +182,7 @@ function calculateRemainingHours($workedHours, $expectedHours)
     </style>
 </head>
 
-<body class="bg-base-200">
+<body class="<?= $bodyClass ?>">
     <div class="container mx-auto px-4 py-8">
         <h2 class="text-4xl font-bold mb-8 text-center"><?= DASHBOARD_TITLE ?></h2>
 

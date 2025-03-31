@@ -7,6 +7,11 @@ body {
     color: hsl(var(--bc));
 }
 
+body.dark {
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 50%, #4a5568 100%);
+    color: hsl(var(--bc));
+}
+
 /* Container und Karten */
 .container {
     max-width: 1400px;
@@ -121,6 +126,11 @@ h1, h2, h3, h4, h5, h6 {
     transform: translateY(-5px);
 }
 
+.dark .stat {
+    background-color: hsl(var(--n));
+    color: hsl(var(--nc));
+}
+
 .stat-title {
     font-size: 0.9rem;
     font-weight: 600;
@@ -224,6 +234,11 @@ h1, h2, h3, h4, h5, h6 {
     background-color: hsl(var(--n) / 80%);
 }
 
+[data-theme="dark"] .container {
+    background-color: transparent;
+    color: hsl(var(--nc));
+}
+
 [data-theme="dark"] .table thead th {
     background-color: hsl(var(--n));
     border-bottom-color: hsl(var(--n));
@@ -239,6 +254,155 @@ h1, h2, h3, h4, h5, h6 {
 
 [data-theme="dark"] .table td {
     border-bottom-color: hsl(var(--n));
+}
+
+[data-theme="dark"] .sidebar {
+    background-color: hsl(var(--n) / 80%);
+    border-right-color: hsl(var(--nc) / 20%);
+}
+
+[data-theme="dark"] body {
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 50%, #4a5568 100%);
+}
+
+/* TUI Calendar Dark Mode Styles */
+[data-theme="dark"] .toastui-calendar {
+    background-color: hsl(var(--n)) !important;
+    color: hsl(var(--nc)) !important;
+}
+
+/* Überschreiben der Inline-Styles für den Kalender im Dark Mode */
+[data-theme="dark"] .toastui-calendar-layout,
+[data-theme="dark"] .toastui-calendar-week-view,
+[data-theme="dark"] .toastui-calendar-layout.toastui-calendar-week-view {
+    background-color: hsl(var(--n)) !important;
+}
+
+[data-theme="dark"] .toastui-calendar-panel,
+[data-theme="dark"] .toastui-calendar-week-view-day-names,
+[data-theme="dark"] .toastui-calendar-day-names.toastui-calendar-week {
+    background-color: inherit !important;
+    border-color: hsl(var(--nc) / 20%) !important;
+}
+
+[data-theme="dark"] .toastui-calendar-month {
+    background-color: hsl(var(--n)) !important;
+}
+
+[data-theme="dark"] .toastui-calendar-grid-cell {
+    background-color: hsl(var(--n)) !important;
+    border-color: hsl(var(--nc) / 20%) !important;
+}
+
+[data-theme="dark"] .toastui-calendar-daygrid-cell {
+    background-color: hsl(var(--n)) !important;
+    border-color: hsl(var(--nc) / 20%) !important;
+}
+
+[data-theme="dark"] .toastui-calendar-weekday-grid-line {
+    background-color: hsl(var(--n)) !important;
+    border-color: hsl(var(--nc) / 20%) !important;
+}
+
+[data-theme="dark"] .toastui-calendar-timegrid-line {
+    background-color: hsl(var(--n)) !important;
+    border-color: hsl(var(--nc) / 20%) !important;
+}
+
+[data-theme="dark"] .toastui-calendar-vlayout-area {
+    background-color: hsl(var(--n)) !important;
+}
+
+[data-theme="dark"] .toastui-calendar-timegrid-timezone {
+    background-color: hsl(var(--n)) !important;
+    color: hsl(var(--nc)) !important;
+}
+
+[data-theme="dark"] .toastui-calendar-header {
+    background-color: hsl(var(--n)) !important;
+    border-bottom-color: hsl(var(--nc) / 20%) !important;
+}
+
+[data-theme="dark"] .toastui-calendar-title {
+    color: hsl(var(--nc)) !important;
+}
+
+[data-theme="dark"] .toastui-calendar-weekday {
+    color: hsl(var(--nc) / 80%) !important;
+}
+
+[data-theme="dark"] .toastui-calendar-date {
+    color: hsl(var(--nc)) !important;
+}
+
+/* Überschreiben der Inline-Styles für die Zeitgitter-Elemente */
+[data-theme="dark"] .toastui-calendar-timegrid-time-column,
+[data-theme="dark"] .toastui-calendar-timegrid-hour-rows,
+[data-theme="dark"] .toastui-calendar-timegrid-container,
+[data-theme="dark"] .toastui-calendar-timegrid-scroll-area {
+    background-color: hsl(var(--n)) !important;
+    border-color: hsl(var(--nc) / 20%) !important;
+}
+
+/* Überschreiben der Inline-Styles für die Tagesansicht-Container */
+[data-theme="dark"] .toastui-calendar-day-name-container,
+[data-theme="dark"] .toastui-calendar-day-name-item {
+    background-color: hsl(var(--n)) !important;
+    border-color: hsl(var(--nc) / 20%) !important;
+}
+
+/* Überschreiben der Inline-Styles für die Tagesansicht-Texte */
+[data-theme="dark"] .toastui-calendar-day-name__date,
+[data-theme="dark"] .toastui-calendar-day-name__name {
+    color: hsl(var(--nc)) !important;
+}
+
+[data-theme="dark"] .toastui-calendar-date.toastui-calendar-today {
+    background-color: hsl(var(--p) / 30%);
+}
+
+[data-theme="dark"] .toastui-calendar-date:hover {
+    background-color: hsl(var(--p) / 50%);
+}
+
+[data-theme="dark"] .toastui-calendar-date.toastui-calendar-selected {
+    background-color: hsl(var(--p));
+    color: hsl(var(--pc));
+}
+
+[data-theme="dark"] .toastui-calendar-day-name {
+    color: hsl(var(--nc));
+}
+
+[data-theme="dark"] .toastui-calendar-grid-cell-date {
+    color: hsl(var(--nc));
+}
+
+[data-theme="dark"] .toastui-calendar-event-time {
+    color: hsl(var(--nc));
+    background-color: hsl(var(--p));
+}
+
+[data-theme="dark"] .toastui-calendar-event-time-content {
+    color: hsl(var(--pc));
+}
+
+[data-theme="dark"] .toastui-calendar-event-dot {
+    background-color: hsl(var(--p));
+}
+
+[data-theme="dark"] .sidebar-link {
+    color: hsl(var(--nc));
+}
+
+[data-theme="dark"] .sidebar-link:hover {
+    background-color: hsl(var(--p) / 50%);
+    color: hsl(var(--pc));
+}
+
+[data-theme="dark"] .sidebar-link.active {
+    background-color: hsl(var(--p));
+    color: hsl(var(--pc));
 }
 
 /* Tour Styling */
