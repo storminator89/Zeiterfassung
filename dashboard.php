@@ -30,7 +30,7 @@ $stmt->execute([$user_id, date('Y-m-d', strtotime('-1 month'))]);
 $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Gamification data
-$stmt = $conn->prepare("SELECT COUNT(DISTINCT strftime('%W', startzeit)) as weeksCount FROM zeiterfassung WHERE user_id = :user_id");
+$stmt = $conn->prepare("SELECT COUNT(DISTINCT strftime('%W', substr(startzeit,1,19))) as weeksCount FROM zeiterfassung WHERE user_id = :user_id");
 $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
 $stmt->execute();
 $result = $stmt->fetch(PDO::FETCH_ASSOC);

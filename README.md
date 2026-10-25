@@ -144,6 +144,8 @@ curl -X POST -H "Content-Type: application/json" -d '{"username":"your_username"
 # Example of creating a new work entry
 curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer your_jwt_token" -d '{"startzeit":"2023-11-15T08:00:00", "endzeit":"2023-11-15T16:00:00", "pause":30, "beschreibung":"Project work", "standort":"Home Office"}' https://yourdomain.com/api.php/workentry
 
-## Optionales Praxis-Terminal (geplant)
+## Optionales Praxis-Terminal
 
-Ein optionales Terminal für die Belegschaft, mit PIN/NFC, tatsächlichen Pausen und Geräteverwaltung, ist im [Umsetzungsplan](docs/PRAXIS-TERMINAL-PLAN.md) beschrieben. Das Modul ist noch nicht implementiert.
+Der Online-Terminal-Modus bietet PIN/NFC-Kennung plus PIN, Geräteverwaltung, tatsächliche Pausen und Korrekturanträge. Er ist standardmäßig deaktiviert. [Einrichtung und Betrieb](docs/TERMINAL.md) · [ursprünglicher Ausbauplan](docs/PRAXIS-TERMINAL-PLAN.md).
+
+Für den Pilotbetrieb `APP_TERMINAL_ENABLED=1` setzen und das Modul als Administrator unter `terminals.php` aktivieren. Der lokale Python-Gerätedienst mit Kiosk liegt in `terminal-agent/`. Ein realer NFC-Leser muss noch mit der gewählten Hardware geprüft werden; Offline-Buchungen sind nicht implementiert.

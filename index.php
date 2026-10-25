@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__.'/config.php';
+if (attendance_enabled($conn)) { header('Location: attendance.php'); exit; }
 include 'header.php';
 
 // Fetch user's regular working hours

@@ -1,0 +1,33 @@
+name: PHP and terminal regression tests
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start isolated PHP fixture
+        run: |
+          mkdir -p "$RUNNER_TEMP/chrono-data"
+          docker run -d --name chrono-test -p 127.0.0.1:8084:8080 \
+            --user "$(id -u):$(id -g)" \
+            -e APP_DATA_DIR=/data -e APP_TERMINAL_ENABLED=1 -e PHP_CLI_SERVER_WORKERS=4 \
+            -v "$RUNNER_TEMP/chrono-data:/data" -v "$GITHUB_WORKSPACE:/app:ro" -w /app \
+            php:8.3-cli php -S 0.0.0.0:8080 router.php
+          docker exec -e APP_TEST_MODE=1 chrono-test php tests/seed.php
+      - name: PHP syntax and clock boundaries
+        run: |
+          docker exec chrono-test sh -c 'for f in /app/*.php /app/lib/*.php /app/tests/*.php; do php -l "$f" >/dev/null || exit 1; done'
+          docker exec chrono-test php tests/attendance_time.php
+          python3 -m py_compile terminal-agent/agent.py tests/terminal_http.py
+          node --check assets/js/attendance.js
+          node --check terminal-agent/kiosk.js
+      - name: Existing and terminal HTTP checks
+        run: |
+          python3 tests/security_http.py http://127.0.0.1:8084 "$RUNNER_TEMP/chrono-data/timetracking.sqlite"
+          python3 tests/import_http.py http://127.0.0.1:8084 "$RUNNER_TEMP/chrono-data/timetracking.sqlite"
+          python3 tests/terminal_http.py http://127.0.0.1:8084 "$RUNNER_TEMP/chrono-data/timetracking.sqlite"
+      - name: Container diagnostics
+        if: failure()
+        run: docker logs --tail 100 chrono-test

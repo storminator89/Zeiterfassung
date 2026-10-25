@@ -156,6 +156,11 @@ function validateToken() {
  * )
  */
 function createNewWorkEntry($conn, $user_id) {
+    if (attendance_enabled($conn)) {
+        $data=json_decode(file_get_contents('php://input'),true);
+        if (!is_array($data) || !empty($data['endzeit'])) { abort_request(409, 'Use a correction request for historical entries.'); }
+        attendance_json(fn() => attendance_transition($conn,(int)$user_id,'api:'.$user_id,$data['event_id'] ?? bin2hex(random_bytes(16)),'start'));
+    }
     $inputJSON = file_get_contents('php://input');
     $input = json_decode($inputJSON, TRUE);
 
@@ -217,6 +222,11 @@ function createNewWorkEntry($conn, $user_id) {
  * )
  */
 function setEndzeit($conn, $input, $user_id) {
+    if (attendance_enabled($conn)) {
+        attendance_json(fn() => attendance_transition($conn,(int)$user_id,'api:'.$user_id,$input['event_id'] ?? bin2hex(random_bytes(16)),'end',($input['confirm_end_pause'] ?? false) === true,(int)($input['id'] ?? 0)));
+    }
+    try { attendance_assert_unmanaged($conn, [$input['id'] ?? 0]); }
+    catch (AttendanceError $e) { abort_request($e->status,$e->getMessage()); }
     $id = $input['id'];
     $endzeit = date('Y-m-d\TH:i:s'); 
 
@@ -394,6 +404,8 @@ function getTimeEntries($conn, $user_id) {
  * )
  */
 function deleteTimeEntry($conn, $user_id, $entry_id) {
+    try { attendance_assert_unmanaged($conn, [$entry_id]); }
+    catch (AttendanceError $e) { abort_request($e->status,$e->getMessage()); }
     try {
         // Check if the entry exists
         $stmt = $conn->prepare("SELECT * FROM zeiterfassung WHERE id = :id");
@@ -439,6 +451,10 @@ if ($method === 'POST') {
         case $basePath . '/login':
             login($conn);
             break;
+        case $basePath . '/attendance':
+            $tokenData = validateToken();
+            $input = json_decode(file_get_contents('php://input'), true);
+            attendance_json(fn() => attendance_transition($conn, (int)$tokenData['user_id'], 'api:'.$tokenData['user_id'], $input['event_id'] ?? '', $input['action'] ?? '', ($input['confirm_end_pause'] ?? false) === true));
         case $basePath . '/workentry':
             $tokenData = validateToken();
             createNewWorkEntry($conn, $tokenData['user_id']);

@@ -336,6 +336,11 @@ $kolibri_icon = 'assets/kolibri_icon.png';
                         <span><?= NAV_LOGOUT ?></span>
                     </button>
                 </form>
+                <?php if (attendance_enabled($conn) || att_one($conn, "SELECT id FROM work_sessions LIMIT 1")): ?>
+                <a href="attendance.php" class="sidebar-link">Arbeitszeit &amp; Pausen</a>
+                <a href="adjustments.php" class="sidebar-link">Korrekturanträge</a>
+                <?php endif; ?>
+                <?php if ($user_role === 'admin'): ?><a href="terminals.php" class="sidebar-link">Praxis-Terminals</a><?php endif; ?>
             </nav>
         </div>
     </div>

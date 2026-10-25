@@ -1,6 +1,6 @@
 # Optionales Zeiterfassungs-Terminal für eine Zahnarztpraxis
 
-Status: Konzept und Umsetzungsplan, noch nicht implementiert.
+Status: Der Online-Pilot ist implementiert; Einrichtung und tatsächlicher Umfang stehen in [TERMINAL.md](TERMINAL.md). Dieses Dokument hält den ursprünglichen Ausbauplan fest. Reale NFC-Hardware-Abnahme, kryptografische Karten und Offline-Sync bleiben Folgearbeiten.
 
 ## Ziel und Annahmen
 

@@ -343,6 +343,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
 
 // Benutzer löschen
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_user'])) {
+    if (att_one($conn, 'SELECT id FROM work_sessions WHERE user_id=? AND ended_at IS NULL', [(int)($_POST['user_id'] ?? 0)])) { abort_request(409, 'Offene Arbeitszeit zuerst beenden.'); }
     $user_id = $_POST['user_id'];
 
     try {

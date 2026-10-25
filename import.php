@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/config.php';
 require_admin();
+if (attendance_enabled($conn) || att_one($conn, 'SELECT id FROM work_sessions LIMIT 1') || att_one($conn, 'SELECT id FROM terminals LIMIT 1') || att_one($conn, 'SELECT user_id FROM employee_credentials LIMIT 1') || att_one($conn, 'SELECT id FROM time_adjustments LIMIT 1')) { abort_request(409, 'Terminal installation: restore the complete private data directory offline. See docs/TERMINAL.md.'); }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { abort_request(405, 'POST required.'); }
 $file = $_FILES['dbFile'] ?? null;
 if (!$file || $file['error'] !== UPLOAD_ERR_OK || $file['size'] > 20 * 1024 * 1024 || !is_uploaded_file($file['tmp_name'])) {

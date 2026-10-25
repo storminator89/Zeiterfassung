@@ -24,8 +24,8 @@ $offset = ($page - 1) * $itemsPerPage;
 // Modify the query to order by date and time
 $stmt = $conn->prepare("
     SELECT *,
-           strftime('%W', startzeit) AS weekNumber,
-           DATE(startzeit) as workDate
+           strftime('%W', substr(startzeit,1,19)) AS weekNumber,
+           substr(startzeit,1,10) as workDate
     FROM zeiterfassung
     WHERE user_id = ?
     ORDER BY startzeit DESC
@@ -89,7 +89,7 @@ foreach ($records as $record) {
         $start = new DateTime($record['startzeit']);
         $end = new DateTime($record['endzeit']);
         $interval = $start->diff($end);
-        $minutes = ($interval->h * 60) + $interval->i;
+        $minutes = (($end->getTimestamp() - $start->getTimestamp()) / 60);
         $dailyTotals[$workDate]['totalMinutes'] += $minutes;
         $dailyTotals[$workDate]['totalPause'] += intval($record['pause']);
         $dailyTotals[$workDate]['entries']++;

@@ -54,6 +54,7 @@ if (PHP_SAPI !== 'cli') {
     header('Cache-Control: no-store');
     $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || getenv('APP_HTTPS') === '1';
     if ($secure) { header('Strict-Transport-Security: max-age=31536000'); }
+    if (basename($_SERVER['SCRIPT_NAME'] ?? '') === 'terminal_api.php') { return; }
     ini_set('session.use_strict_mode', '1');
     ini_set('session.use_only_cookies', '1');
     session_set_cookie_params(['httponly' => true, 'secure' => $secure, 'samesite' => 'Lax', 'path' => '/']);

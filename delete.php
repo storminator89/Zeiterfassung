@@ -17,6 +17,8 @@ $data = json_decode($rawData, true);
 if (isset($data['ids']) && is_array($data['ids'])) {
     // Delete multiple records
     $ids = $data['ids'];
+    try { attendance_assert_unmanaged($conn, $ids); }
+    catch (AttendanceError $e) { abort_request($e->status, $e->getMessage()); }
     $stmt = $conn->prepare("DELETE FROM zeiterfassung WHERE id = ? AND user_id = ?");
     $deletedCount = 0;
 

@@ -122,3 +122,8 @@ if (PHP_SAPI !== 'cli' && isset($_SESSION['user_id'])) {
     $_SESSION['role'] = $current->role;
     $_SESSION['username'] = $current->username;
 }
+
+require_once __DIR__ . "/lib/attendance.php";
+attendance_migrate($conn);
+
+if (attendance_enabled($conn) || att_one($conn, 'SELECT id FROM work_sessions LIMIT 1')) { date_default_timezone_set('Europe/Berlin'); }

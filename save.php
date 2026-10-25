@@ -11,6 +11,14 @@ $user_id = $_SESSION['user_id'];
 header('Content-Type: text/plain; charset=UTF-8');
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { abort_request(405, 'POST required.'); }
 
+// Managed records are never edited through the legacy path, even after deactivation.
+try { if (isset($_POST['id'])) { attendance_assert_unmanaged($conn, [$_POST['id']]); } }
+catch (AttendanceError $e) { abort_request($e->status, $e->getMessage()); }
+if (attendance_enabled($conn) && isset($_POST['action']) && in_array($_POST['action'], ['start','end'], true)) {
+    attendance_json(fn() => attendance_transition($conn, (int)$user_id, 'web:'.$user_id,
+        $_POST['event_id'] ?? bin2hex(random_bytes(16)), $_POST['action'], ($_POST['confirm_end_pause'] ?? '') === '1'));
+}
+
 // Funktion, um die Mindestpausendauer basierend auf der Arbeitszeit abzurufen
 function getPauseDuration($totalHours)
 {

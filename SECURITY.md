@@ -46,3 +46,7 @@ python3 tests/import_http.py http://127.0.0.1:8080 /private/test-data/timetracki
 The seed script refuses populated databases. Fixtures create `auditadmin`, `audituser`, `auditother`, with password `LocalAudit!Password2026`; use only in isolated local tests. Set the same `APP_DATA_DIR` on the server and seeder.
 
 See `SECURITY-REVIEW.md` for review scope, findings, validation and remaining limits.
+
+## Optionales Terminal-Modul
+
+Die Terminal-API verwendet separate signierte Geräteanfragen und keine Browsersitzungen. Einrichtung, Freigaben, Sperren, Grenzen und vollständige Backup-/Rollback-Schritte: [docs/TERMINAL.md](docs/TERMINAL.md). Nach Nutzung des Moduls ist der alte partielle Browser-Import gesperrt; die gesamte private Ablage muss gemeinsam wiederhergestellt werden.

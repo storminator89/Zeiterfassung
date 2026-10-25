@@ -15,7 +15,7 @@ $zeiten = [];
 $ueberstundenListe = [];
 $detaillierteDaten = [];
 if ($user_role === 'admin' || $user_role === 'supervisor') {
-    $stmt = $conn->prepare("SELECT z.*, u.username, u.id as user_id, u.regelarbeitszeit, u.ueberstunden as vorherige_ueberstunden, strftime('%Y-%m-%d', z.startzeit) AS day, strftime('%W', z.startzeit) AS weekNumber
+    $stmt = $conn->prepare("SELECT z.*, u.username, u.id as user_id, u.regelarbeitszeit, u.ueberstunden as vorherige_ueberstunden, substr(z.startzeit,1,10) AS day, strftime('%W', substr(z.startzeit,1,19)) AS weekNumber
                             FROM zeiterfassung z
                             JOIN users u ON z.user_id = u.id
                             WHERE u.supervisor_id = ?
@@ -52,7 +52,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
         $interval = $start->diff($end);
         $pauseMinuten = intval($zeit['pause']) ?: 0;
 
-        $gesamtMinuten = ($interval->h * 60 + $interval->i) - $pauseMinuten;
+        $gesamtMinuten = (($end->getTimestamp() - $start->getTimestamp()) / 60) - $pauseMinuten;
         $workHoursByUser[$userId]['days'][$day] += $gesamtMinuten;
         $workHoursByUser[$userId]['total_hours'] += $gesamtMinuten / 60;
     }

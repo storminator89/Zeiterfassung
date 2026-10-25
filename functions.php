@@ -48,7 +48,7 @@ try {
 // Fetch all entries from 'zeiterfassung' for the current user, adding week number
 try {
     $stmt = $conn->prepare('
-        SELECT *, strftime("%W", startzeit) as weekNumber 
+        SELECT *, strftime("%W", substr(startzeit,1,19)) as weekNumber
         FROM zeiterfassung 
         WHERE user_id = :user_id
         ORDER BY startzeit DESC
@@ -90,8 +90,8 @@ try {
         ) as totalMinutes
         FROM zeiterfassung
         WHERE user_id = :user_id
-        AND strftime("%Y", startzeit) = :currentYear
-        AND strftime("%W", startzeit) = :weekNumber
+        AND strftime("%Y", substr(startzeit,1,19)) = :currentYear
+        AND strftime("%W", substr(startzeit,1,19)) = :weekNumber
         AND beschreibung != "Feiertag"
     ');
     $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
@@ -126,16 +126,16 @@ $currentDate = date("Y-m-d");
 // Adjusting SQL query to fetch data for the current calendar week
 $stmt = $conn->prepare('
     SELECT
-        strftime("%Y-%m-%d", startzeit) AS tag,
-        SUM((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60.0) AS arbeitsstunden
+        substr(startzeit,1,10) AS tag,
+        SUM((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60.0 - COALESCE(pause, 0)) AS arbeitsstunden
     FROM
         zeiterfassung
     WHERE
         user_id = :user_id
-        AND strftime("%W", startzeit) = :weekNumber
-        AND strftime("%Y", startzeit) = :currentYear
+        AND strftime("%W", substr(startzeit,1,19)) = :weekNumber
+        AND strftime("%Y", substr(startzeit,1,19)) = :currentYear
     GROUP BY
-        strftime("%Y-%m-%d", startzeit)
+        substr(startzeit,1,10)
 ');
 $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
 $stmt->bindParam(':weekNumber', $currentWeekNumber, PDO::PARAM_STR);
@@ -287,7 +287,7 @@ foreach ($records as $record) {
     $endzeit = new DateTime($record['endzeit']);
     $gesamtdauer = $endzeit->diff($startzeit);
 
-    $gesamtstunden = $gesamtdauer->h + ($gesamtdauer->i / 60);
+    $gesamtstunden = ($endzeit->getTimestamp() - $startzeit->getTimestamp()) / 3600;
     $pause = is_numeric($record['pause']) ? ($record['pause'] / 60) : 0;
     $arbeitstunden = $gesamtstunden - $pause;
 
@@ -330,13 +330,13 @@ if ($totalOverHours < 0) {
 // SQL query for total working hours this month
 $stmt = $conn->prepare('
     SELECT
-        SUM((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60) as totalMinutes
+        SUM((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60 - COALESCE(pause, 0)) as totalMinutes
     FROM
         zeiterfassung
     WHERE
         user_id = :user_id
-        AND strftime("%Y", startzeit) = :currentYear
-        AND strftime("%m", startzeit) = :currentMonth
+        AND strftime("%Y", substr(startzeit,1,19)) = :currentYear
+        AND strftime("%m", substr(startzeit,1,19)) = :currentMonth
 ');
 $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
 $stmt->bindParam(':currentYear', $currentYear, PDO::PARAM_STR);
@@ -351,12 +351,12 @@ $overHoursThisMonth = $totalHoursThisMonthFromRecords - $workingHoursThisMonth;
 // Total working hours of the year
 $stmt = $conn->prepare('
     SELECT
-        SUM((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60) as totalMinutes
+        SUM((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60 - COALESCE(pause, 0)) as totalMinutes
     FROM
         zeiterfassung
     WHERE
         user_id = :user_id
-        AND strftime("%Y", startzeit) = :currentYear
+        AND strftime("%Y", substr(startzeit,1,19)) = :currentYear
 ');
 $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
 $stmt->bindParam(':currentYear', $currentYear, PDO::PARAM_STR);
@@ -427,7 +427,7 @@ function getEntryById($conn, $id)
 }
 
 // Gamification: Counting the different weeks worked
-$stmt = $conn->prepare("SELECT COUNT(DISTINCT strftime('%W', startzeit)) as weeksCount FROM zeiterfassung WHERE user_id = :user_id");
+$stmt = $conn->prepare("SELECT COUNT(DISTINCT strftime('%W', substr(startzeit,1,19))) as weeksCount FROM zeiterfassung WHERE user_id = :user_id");
 $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
 $stmt->execute();
 $result = $stmt->fetch(PDO::FETCH_ASSOC);
