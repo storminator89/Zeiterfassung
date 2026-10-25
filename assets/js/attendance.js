@@ -8,6 +8,18 @@
         actions.querySelectorAll('button').forEach(b=>{b.hidden=!allowed.includes(b.dataset.action);b.disabled=false;});
         document.getElementById('status').textContent=labels[state];
     }
+    const absenceForm=document.getElementById('absence-form');
+    absenceForm.addEventListener('submit',async event=>{
+        event.preventDefault();
+        const button=absenceForm.querySelector('button'), status=document.getElementById('absence-message');
+        button.disabled=true;
+        try {
+            const response=await fetch('save.php',{method:'POST',body:new FormData(absenceForm)});
+            const data=await response.json();status.textContent=data.message;
+            if(response.ok) { absenceForm.reset(); }
+        } catch(error) { status.textContent='Keine Bestätigung erhalten. Seite neu laden und vorhandene Buchungen prüfen.'; }
+        finally { button.disabled=false; }
+    });
     update(actions.dataset.state);
     actions.addEventListener('click',async e=>{
         const button=e.target.closest('button'); if(!button||busy)return;

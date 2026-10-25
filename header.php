@@ -20,7 +20,7 @@ require_once 'functions.php';
 $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['role'];
 
-$conn = new PDO("sqlite:$database");
+// Keep the configured connection with audit context.
 
 $kolibri_icon = 'assets/kolibri_icon.png';
 ?>
@@ -336,10 +336,11 @@ $kolibri_icon = 'assets/kolibri_icon.png';
                         <span><?= NAV_LOGOUT ?></span>
                     </button>
                 </form>
-                <?php if (attendance_enabled($conn) || att_one($conn, "SELECT id FROM work_sessions LIMIT 1")): ?>
+
                 <a href="attendance.php" class="sidebar-link">Arbeitszeit &amp; Pausen</a>
                 <a href="adjustments.php" class="sidebar-link">Korrekturanträge</a>
-                <?php endif; ?>
+                <a href="history.php" class="sidebar-link">Änderungshistorie</a>
+                <a href="work_models.php" class="sidebar-link">Arbeitszeitmodelle</a>
                 <?php if ($user_role === 'admin'): ?><a href="terminals.php" class="sidebar-link">Praxis-Terminals</a><?php endif; ?>
             </nav>
         </div>
@@ -408,7 +409,7 @@ $kolibri_icon = 'assets/kolibri_icon.png';
         document.addEventListener('click', function(e) {
             const sidebar = document.getElementById('sidebar');
             const sidebarToggle = document.getElementById('sidebar-toggle');
-            
+
             if (window.innerWidth <= 768) {
                 if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
                     sidebar.classList.remove('active');
@@ -601,7 +602,7 @@ $kolibri_icon = 'assets/kolibri_icon.png';
                 }
             }
         });
-    </script>   
+    </script>
 
     <script src="assets/js/tour.js"></script>
 

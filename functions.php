@@ -25,7 +25,7 @@ $user_id = $_SESSION['user_id'];
 
 // Establish a PDO connection
 try {
-    $conn = new PDO("sqlite:$database");
+    // Keep the configured connection with audit context.
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
     // Handle connection error
@@ -190,8 +190,8 @@ function getWorkingDays($startDate, $endDate)
 // Function to get working hours between two dates
 function getWorkingHours($startDate, $endDate, $hoursPerDay)
 {
-    $workingDays = getWorkingDays($startDate, $endDate);
-    return $workingDays * $hoursPerDay;
+    global $conn, $user_id;
+    return planned_hours($conn,(int)$user_id,$startDate,$endDate);
 }
 
 // Function to fetch holidays from the database for a given year
@@ -303,12 +303,7 @@ $totalOverHours = 0;
 
 // Durchlaufen der gesammelten Arbeitsstunden pro Tag
 foreach ($workHoursByDate as $datum => $hours) {
-    $wochentag = date('N', strtotime($datum));
-    if ($wochentag >= 1 && $wochentag <= 5) { // Montag bis Freitag
-        $totalOverHours += $hours - $userRegularWorkingHours;
-    } else {
-        $totalOverHours += $hours; // Wochenendarbeit als Überstunden
-    }
+    $totalOverHours += $hours - planned_minutes($conn,(int)$user_id,$datum)/60;
 }
 
 // Hinzufügen der vorherigen Überstunden
@@ -376,16 +371,7 @@ $overHoursThisYear = $totalHoursThisYearFromRecords - $workingHoursThisYear;
 $firstDayOfWeek = date('Y-m-d', strtotime('Monday this week'));
 $lastWorkingDayOfWeek = date('Y-m-d', strtotime('Friday this week'));
 
-$expectedHoursThisWeek = 5 * $userRegularWorkingHours; // 5 Arbeitstage pro Woche
-
-// Checking each day of the working week if it's a holiday
-$currentDate = $firstDayOfWeek;
-while (strtotime($currentDate) <= strtotime($lastWorkingDayOfWeek)) {
-    if (istFeiertag($currentDate)) {
-        $expectedHoursThisWeek -= $userRegularWorkingHours;
-    }
-    $currentDate = date('Y-m-d', strtotime("+1 day", strtotime($currentDate)));
-}
+$expectedHoursThisWeek = planned_hours($conn,(int)$user_id,$firstDayOfWeek,date('Y-m-d',strtotime('Sunday this week')));
 
 // Calculating over hours for this week
 $overHoursThisWeek = round($totalHoursThisWeek - $expectedHoursThisWeek, 1);
@@ -512,20 +498,5 @@ function getTimeRecords($conn, $user_id) {
 
 // Ensure functions handling updates include Standort and Beschreibung if necessary
 function updateTimeRecord($conn, $id, $column, $data) {
-    // Validate column
-    $allowedColumns = ['startzeit', 'endzeit', 'pause', 'standort', 'beschreibung'];
-    if (!in_array($column, $allowedColumns)) {
-        throw new Exception("Ungültige Spalte.");
-    }
-
-    try {
-        $stmt = $conn->prepare("UPDATE zeiterfassung SET $column = :data WHERE id = :id AND user_id = :user_id");
-        $stmt->bindParam(':data', $data);
-        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-        $stmt->bindParam(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
-        $stmt->execute();
-    } catch (PDOException $e) {
-        throw new Exception("Datenbankfehler: " . $e->getMessage());
-    }
+    throw new AttendanceError('Bitte Korrekturantrag verwenden.');
 }
-?>

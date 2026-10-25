@@ -13,7 +13,8 @@ class Client:
   status,p=self.req('/login.php',dict(username=name,password='LocalAudit!Password2026',csrf_token=self.csrf));assert status==200
  def post(self,path,data):return self.req(path,dict(data,csrf_token=self.csrf))
 def query(sql,args=()):
- with sqlite3.connect(DB) as db:return db.execute(sql,args).fetchall()
+ with sqlite3.connect(DB) as db:
+  db.create_function('audit_actor',0,lambda:'fixture');db.create_function('audit_reason',0,lambda:'test clock/data simulation');return db.execute(sql,args).fetchall()
 def check(name,ok):
  global passed
  assert ok,name

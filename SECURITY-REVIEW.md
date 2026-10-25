@@ -38,3 +38,7 @@ Validation uses PHP 8.3 CLI server and the built PHP 8.3 Apache image on loopbac
 - Existing code still has presentation/date warnings for empty datasets; errors are not displayed to visitors. Broad time-accounting/business-rule correctness was not part of the security remediation.
 - Single-node SQLite and application throttling are not volumetric DoS protection. Production should add proxy request/body limits and independent backups.
 - No assurance of complete security and no conclusion about past compromise. If the original instance was public, database/password/LDAP exposure must be assessed separately.
+
+## Follow-up: mandatory attendance, schedules and audit history
+
+The optional terminal implementation is extended with mandatory web/API attendance and actual breaks, effective-dated weekday schedules, schedule-based absence credit, approved cancellations, and a database-enforced append-only journal. Prior baseline rows are labelled as such; past edit history cannot be reconstructed. Direct editing/deletion and partial browser restore are disabled for every installation. Security regression expectations have been updated to require these restrictions. See [docs/PRAXISFUNKTIONEN.md](docs/PRAXISFUNKTIONEN.md) for exact migration behavior, test coverage, and the trust boundary of the audit journal. This extends the earlier security review rather than claiming certification or production deployment validation.

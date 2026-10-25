@@ -38,13 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             require_once $langFile;
         }
     }
-    if (isset($_POST['regelarbeitszeit'])) {
-        $regelarbeitszeit = floatval($_POST['regelarbeitszeit']);
-        $updateSql = "UPDATE users SET regelarbeitszeit = :regelarbeitszeit WHERE id = :id";
-        $stmt = $conn->prepare($updateSql);
-        $stmt->execute([':regelarbeitszeit' => $regelarbeitszeit, ':id' => $user_id]);
-        $userInfo['regelarbeitszeit'] = $regelarbeitszeit;
-    }
+
     if (isset($_POST['ueberstunden']) && $user_role === 'admin') {
         $ueberstunden = floatval($_POST['ueberstunden']);
         $updateSql = "UPDATE users SET ueberstunden = :ueberstunden WHERE id = :id";
@@ -112,7 +106,7 @@ include 'header.php';
                         <label class="label" for="regelarbeitszeit">
                             <span class="label-text"><i class="fas fa-clock mr-2"></i><?= SETTINGS_REGULAR_WORKING_HOURS ?></span>
                         </label>
-                        <input type="number" step="0.1" id="regelarbeitszeit" name="regelarbeitszeit" value="<?= $userInfo['regelarbeitszeit'] ?>" min="0" max="24" class="input input-bordered w-full">
+                        <p>Das aktuelle Soll mit Gültigkeitsdatum steht unter <a href="work_models.php">Arbeitszeitmodell</a>.</p><input type="number" step="0.1" id="regelarbeitszeit" disabled name="regelarbeitszeit" value="<?= $userInfo['regelarbeitszeit'] ?>" min="0" max="24" class="input input-bordered w-full">
                     </div>
 
                     <?php if ($user_role === 'admin') : ?>

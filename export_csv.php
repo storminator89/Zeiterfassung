@@ -23,37 +23,41 @@ try {
         'Start',
         'Ende',
         'Pause (Min)',
-        'Arbeitszeit',
+        'Arbeitszeit / Gutschrift',
         'Standort',
-        'Beschreibung'
+        'Beschreibung',
+        'Art',
+        'Gutschrift (Min)'
     ], ';');
 
     // Fetch records
     $stmt = $conn->prepare('
-        SELECT 
-            startzeit, 
-            endzeit, 
-            pause, 
-            standort, 
-            beschreibung 
-        FROM zeiterfassung 
-        WHERE user_id = :user_id 
+        SELECT
+            startzeit,
+            endzeit,
+            pause,
+            standort,
+            beschreibung, absence_kind, planned_minutes
+        FROM zeiterfassung
+        WHERE user_id = :user_id
         ORDER BY startzeit DESC
     ');
     $stmt->execute(['user_id' => $_SESSION['user_id']]);
-    
+
     while ($record = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $startzeit = new DateTime($record['startzeit']);
         $endzeit = $record['endzeit'] ? new DateTime($record['endzeit']) : null;
-        
+
         fputcsv($output, [
             $startzeit->format('d.m.Y'),
-            $startzeit->format('H:i'),
-            $endzeit ? $endzeit->format('H:i') : '',
+            $record['absence_kind'] ? '' : $startzeit->format('H:i'),
+            $record['absence_kind'] ? '' : ($endzeit ? $endzeit->format('H:i') : ''),
             csv_safe($record['pause'] ?: ''),
             calculateDuration($record['startzeit'], $record['endzeit'], $record['pause']),
             csv_safe($record['standort']),
-            csv_safe($record['beschreibung'])
+            csv_safe($record['beschreibung']),
+            csv_safe($record['absence_kind'] ?? 'Arbeitszeit'),
+            $record['planned_minutes'] ?? ''
         ], ';');
     }
 

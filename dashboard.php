@@ -20,7 +20,7 @@ $totalHoursThisWeek = $totalHoursThisWeek ?? 0;
 $totalHoursThisMonth = $totalHoursThisMonthFromRecords ?? 0;
 $workingHoursThisMonth = $workingHoursThisMonth ?? 0;
 $totalOverHours = $totalOverHours ?? 0;
-$overHoursThisWeek = $totalHoursThisWeek - (5 * $userRegularWorkingHours);
+$overHoursThisWeek = $totalHoursThisWeek - $expectedHoursThisWeek;
 $overHoursThisMonth = $overHoursThisMonth ?? 0;
 $overHoursThisYear = $overHoursThisYear ?? 0;
 

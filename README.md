@@ -125,11 +125,11 @@ The REST API is available at `/api.php`
 ## Endpoints
 
 - **POST /api.php/login:** User login. Requires `username` and `password`.
-- **POST /api.php/workentry:** Create a new work entry. Requires `startzeit`, `endzeit`, `pause`, `beschreibung`, and `standort`.
+- **POST /api.php/workentry:** Start work with server time (historical entries require correction). Requires `startzeit`, `endzeit`, `pause`, `beschreibung`, and `standort`.
 - **POST /api.php/setendzeit:** Set end time for a specific work entry. Requires `id`.
 - **GET /api.php/users:** Get the currently authenticated user as a one-element array.
 - **GET /api.php/timeentries:** Get all time entries for the authenticated user.
-- **DELETE /api.php/timeentry/{id}:** Delete a specific time entry.
+- **DELETE /api.php/timeentry/{id}:** Disabled (409); use an approved cancellation request.
 
 ## Authentication
 
@@ -149,3 +149,9 @@ curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer your_
 Der Online-Terminal-Modus bietet PIN/NFC-Kennung plus PIN, Geräteverwaltung, tatsächliche Pausen und Korrekturanträge. Er ist standardmäßig deaktiviert. [Einrichtung und Betrieb](docs/TERMINAL.md) · [ursprünglicher Ausbauplan](docs/PRAXIS-TERMINAL-PLAN.md).
 
 Für den Pilotbetrieb `APP_TERMINAL_ENABLED=1` setzen und das Modul als Administrator unter `terminals.php` aktivieren. Der lokale Python-Gerätedienst mit Kiosk liegt in `terminal-agent/`. Ein realer NFC-Leser muss noch mit der gewählten Hardware geprüft werden; Offline-Buchungen sind nicht implementiert.
+
+## Arbeitszeiten, Abwesenheit und Historie
+
+Die Startseite erfasst Kommen, tatsächliche Pausen und Gehen mit Serverzeit – auch ohne Terminal. Alle direkten Änderungen/Löschungen, einschließlich alter API-Endpunkte, sind durch begründete Korrekturanträge mit Freigabe ersetzt.
+
+Unter **Arbeitszeitmodelle** hinterlegt die Verwaltung Sollminuten je Wochentag und Gültigkeitsdatum. Urlaub/Krankheit erhalten diese Gutschrift; freie Tage und hinterlegte Feiertage werden ausgelassen. Unter **Historie** stehen alte/neue Werte und Freigaben. Upgrade-, API- und Betriebsdetails: [Praxisfunktionen](docs/PRAXISFUNKTIONEN.md), [Terminaleinrichtung](docs/TERMINAL.md).

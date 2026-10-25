@@ -1,60 +1,63 @@
 {
-    "openapi": "3.0.0",
-    "info": {
-      "title": "Zeiterfassung API",
-      "version": "1.0"
-    },
-    "paths": {
-      "/api.php/login": {
-        "post": {
-          "summary": "User login",
-          "requestBody": {
-            "required": true,
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "username": {
-                      "type": "string"
-                    },
-                    "password": {
-                      "type": "string"
-                    }
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Zeiterfassung API",
+    "version": "2.0",
+    "description": "Server-time attendance with actual breaks. Historical changes and cancellations require approved correction requests."
+  },
+  "paths": {
+    "/api.php/login": {
+      "post": {
+        "summary": "User login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string"
                   },
-                  "required": ["username", "password"]
-                }
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "username",
+                  "password"
+                ]
               }
             }
-          },
-          "responses": {
-            "200": {
-              "description": "Successful login",
-              "content": {
-                "application/json": {
-                  "examples": {
-                    "success": {
-                      "summary": "Successful login",
-                      "value": {
-                        "success": true,
-                        "token": "your_jwt_token_here"
-                      }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful login",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "success": {
+                    "summary": "Successful login",
+                    "value": {
+                      "success": true,
+                      "token": "your_jwt_token_here"
                     }
                   }
                 }
               }
-            },
-            "401": {
-              "description": "Invalid credentials",
-              "content": {
-                "application/json": {
-                  "examples": {
-                    "error": {
-                      "summary": "Invalid credentials",
-                      "value": {
-                        "success": false,
-                        "message": "Invalid credentials"
-                      }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "error": {
+                    "summary": "Invalid credentials",
+                    "value": {
+                      "success": false,
+                      "message": "Invalid credentials"
                     }
                   }
                 }
@@ -62,537 +65,520 @@
             }
           }
         }
-      },
-      "/api.php/workentry": {
-        "post": {
-          "summary": "Create new work entry",
-          "requestBody": {
-            "required": true,
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "startzeit": {
-                      "type": "string"
-                    },
-                    "endzeit": {
-                      "type": "string"
-                    },
-                    "pause": {
-                      "type": "integer"
-                    },
-                    "beschreibung": {
-                      "type": "string"
-                    },
-                    "standort": {
-                      "type": "string"
-                    }
-                  },
-                  "required": ["startzeit", "endzeit", "pause", "beschreibung", "standort"]
-                }
-              }
-            }
-          },
-          "responses": {
-            "200": {
-              "description": "Work entry created",
-              "content": {
-                "application/json": {
-                  "examples": {
-                    "success": {
-                      "summary": "Work entry created",
-                      "value": {
-                        "success": true,
-                        "message": "Eintrag erstellt",
-                        "data": {
-                          "id": 1,
-                          "startzeit": "2024-05-24T09:00:00",
-                          "endzeit": "2024-05-24T17:00:00",
-                          "pause": 60,
-                          "beschreibung": "Worked on project X",
-                          "standort": "Office",
-                          "user_id": 1
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "401": {
-              "description": "Unauthorized",
-              "content": {
-                "application/json": {
-                  "examples": {
-                    "error": {
-                      "summary": "Unauthorized",
-                      "value": {
-                        "success": false,
-                        "message": "Authorization header missing"
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "500": {
-              "description": "Internal server error",
-              "content": {
-                "application/json": {
-                  "examples": {
-                    "error": {
-                      "summary": "Internal server error",
-                      "value": {
-                        "success": false,
-                        "message": "Internal server error"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "security": [
-            {
-              "bearerAuth": []
-            }
-          ]
-        }
-      },
-      "/api.php/setendzeit": {
-        "post": {
-          "summary": "Set end time of a specific work entry",
-          "requestBody": {
-            "required": true,
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "integer"
-                    }
-                  },
-                  "required": ["id"]
-                }
-              }
-            }
-          },
-          "responses": {
-            "200": {
-              "description": "End time updated",
-              "content": {
-                "application/json": {
-                  "examples": {
-                    "success": {
-                      "summary": "End time updated",
-                      "value": {
-                        "success": true,
-                        "message": "Endzeit aktualisiert",
-                        "id": 1
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "401": {
-              "description": "Unauthorized",
-              "content": {
-                "application/json": {
-                  "examples": {
-                    "error": {
-                      "summary": "Unauthorized",
-                      "value": {
-                        "success": false,
-                        "message": "Authorization header missing"
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "500": {
-              "description": "Internal server error",
-              "content": {
-                "application/json": {
-                  "examples": {
-                    "error": {
-                      "summary": "Internal server error",
-                      "value": {
-                        "success": false,
-                        "message": "Internal server error"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "security": [
-            {
-              "bearerAuth": []
-            }
-          ]
-        }
-      },
-      "/api.php/users": {
-        "get": {
-          "summary": "Get the authenticated user",
-          "responses": {
-            "200": {
-              "description": "Current user (one-element array)",
-              "content": {
-                "application/json": {
-                  "examples": {
-                    "success": {
-                      "summary": "Current user (one-element array)",
-                      "value": {
-                        "success": true,
-                        "data": [
-                          {
-                            "id": 1,
-                            "username": "admin",
-                            "email": "admin@example.com",
-                            "role": "admin"
-                          },
-                          {
-                            "id": 2,
-                            "username": "user",
-                            "email": "user@example.com",
-                            "role": "user"
-                          }
-                        ]
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "401": {
-              "description": "Unauthorized",
-              "content": {
-                "application/json": {
-                  "examples": {
-                    "error": {
-                      "summary": "Unauthorized",
-                      "value": {
-                        "success": false,
-                        "message": "Authorization header missing"
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "500": {
-              "description": "Internal server error",
-              "content": {
-                "application/json": {
-                  "examples": {
-                    "error": {
-                      "summary": "Internal server error",
-                      "value": {
-                        "success": false,
-                        "message": "Internal server error"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "security": [
-            {
-              "bearerAuth": []
-            }
-          ]
-        }
-      },
-      "/api.php/timeentries": {
-        "get": {
-          "summary": "Get filtered time entries for the authenticated user",
-          "parameters": [
-            {
-              "name": "start_date",
-              "in": "query",
-              "description": "Start date (YYYY-MM-DD)",
-              "required": false,
-              "schema": {
-                "type": "string",
-                "format": "date"
-              }
-            },
-            {
-              "name": "end_date",
-              "in": "query",
-              "description": "End date (YYYY-MM-DD)",
-              "required": false,
-              "schema": {
-                "type": "string",
-                "format": "date"
-              }
-            },
-            {
-              "name": "limit",
-              "in": "query",
-              "description": "Maximum number of entries to return",
-              "required": false,
-              "schema": {
-                "type": "integer",
-                "minimum": 1
-              }
-            },
-            {
-              "name": "offset",
-              "in": "query",
-              "description": "Number of entries to skip",
-              "required": false,
-              "schema": {
-                "type": "integer",
-                "minimum": 0
-              }
-            }
-          ],
-          "responses": {
-            "200": {
-              "description": "List of time entries with pagination metadata",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "type": "object",
-                    "properties": {
-                      "success": {
-                        "type": "boolean"
-                      },
-                      "data": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "id": {
-                              "type": "integer"
-                            },
-                            "startzeit": {
-                              "type": "string",
-                              "format": "date-time"
-                            },
-                            "endzeit": {
-                              "type": "string",
-                              "format": "date-time"
-                            },
-                            "pause": {
-                              "type": "integer"
-                            },
-                            "beschreibung": {
-                              "type": "string"
-                            },
-                            "standort": {
-                              "type": "string"
-                            },
-                            "user_id": {
-                              "type": "integer"
-                            }
-                          }
-                        }
-                      },
-                      "meta": {
-                        "type": "object",
-                        "properties": {
-                          "total": {
-                            "type": "integer",
-                            "description": "Total number of entries"
-                          },
-                          "filtered": {
-                            "type": "integer",
-                            "description": "Number of entries in current response"
-                          },
-                          "limit": {
-                            "type": "integer",
-                            "nullable": true,
-                            "description": "Number of entries per page"
-                          },
-                          "offset": {
-                            "type": "integer",
-                            "nullable": true,
-                            "description": "Number of entries skipped"
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "400": {
-              "description": "Invalid parameters",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "type": "object",
-                    "properties": {
-                      "success": {
-                        "type": "boolean"
-                      },
-                      "message": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "401": {
-              "description": "Unauthorized",
-              "content": {
-                "application/json": {
-                  "examples": {
-                    "error": {
-                      "summary": "Unauthorized",
-                      "value": {
-                        "success": false,
-                        "message": "Authorization header missing"
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "500": {
-              "description": "Internal server error",
-              "content": {
-                "application/json": {
-                  "examples": {
-                    "error": {
-                      "summary": "Internal server error",
-                      "value": {
-                        "success": false,
-                        "message": "Internal server error"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "security": [
-            {
-              "bearerAuth": []
-            }
-          ]
-        }
-      },
-      "/api.php/timeentry/{id}": {
-        "delete": {
-          "summary": "Delete a specific time entry",
-          "parameters": [
-            {
-              "name": "id",
-              "in": "path",
-              "required": true,
-              "schema": {
-                "type": "integer"
-              }
-            }
-          ],
-          "responses": {
-            "200": {
-              "description": "Time entry deleted",
-              "content": {
-                "application/json": {
-                  "examples": {
-                    "success": {
-                      "summary": "Time entry deleted",
-                      "value": {
-                        "success": true,
-                        "message": "Eintrag gelöscht"
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "401": {
-              "description": "Unauthorized",
-              "content": {
-                "application/json": {
-                  "examples": {
-                    "error": {
-                      "summary": "Unauthorized",
-                      "value": {
-                        "success": false,
-                        "message": "Authorization header missing"
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "403": {
-              "description": "Not allowed to delete",
-              "content": {
-                "application/json": {
-                  "examples": {
-                    "error": {
-                      "summary": "Not allowed to delete",
-                      "value": {
-                        "success": false,
-                        "message": "Nicht erlaubt zu löschen"
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "404": {
-              "description": "Entry not found",
-              "content": {
-                "application/json": {
-                  "examples": {
-                    "error": {
-                      "summary": "Entry not found",
-                      "value": {
-                        "success": false,
-                        "message": "Eintrag nicht gefunden"
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "500": {
-              "description": "Internal server error",
-              "content": {
-                "application/json": {
-                  "examples": {
-                    "error": {
-                      "summary": "Internal server error",
-                      "value": {
-                        "success": false,
-                        "message": "Internal server error"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "security": [
-            {
-              "bearerAuth": []
-            }
-          ]
-        }
       }
     },
-    "components": {
-      "securitySchemes": {
-        "bearerAuth": {
-          "type": "http",
-          "scheme": "bearer",
-          "bearerFormat": "JWT"
+    "/api.php/workentry": {
+      "post": {
+        "summary": "Start work using server time",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "event_id": {
+                    "type": "string",
+                    "minLength": 16,
+                    "maxLength": 80
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Work entry created",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "success": {
+                    "summary": "Work entry created",
+                    "value": {
+                      "success": true,
+                      "message": "Eintrag erstellt",
+                      "data": {
+                        "id": 1,
+                        "startzeit": "2024-05-24T09:00:00",
+                        "endzeit": "2024-05-24T17:00:00",
+                        "pause": 60,
+                        "beschreibung": "Worked on project X",
+                        "standort": "Office",
+                        "user_id": 1
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "error": {
+                    "summary": "Unauthorized",
+                    "value": {
+                      "success": false,
+                      "message": "Authorization header missing"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "error": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "success": false,
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already working or historical entry requires correction"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Compatibility alias for attendance/start. Client startzeit is not authoritative; endzeit or nonzero pause are rejected (409)."
+      }
+    },
+    "/api.php/setendzeit": {
+      "post": {
+        "summary": "Set end time of a specific work entry",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "End time updated",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "success": {
+                    "summary": "End time updated",
+                    "value": {
+                      "success": true,
+                      "message": "Endzeit aktualisiert",
+                      "id": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "error": {
+                    "summary": "Unauthorized",
+                    "value": {
+                      "success": false,
+                      "message": "Authorization header missing"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "error": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "success": false,
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "End the current work session using server time. id must match the current record. Actual breaks only; optional event_id and confirm_end_pause."
+      }
+    },
+    "/api.php/users": {
+      "get": {
+        "summary": "Get the authenticated user",
+        "responses": {
+          "200": {
+            "description": "Current user (one-element array)",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "success": {
+                    "summary": "Current user (one-element array)",
+                    "value": {
+                      "success": true,
+                      "data": [
+                        {
+                          "id": 1,
+                          "username": "admin",
+                          "email": "admin@example.com",
+                          "role": "admin"
+                        },
+                        {
+                          "id": 2,
+                          "username": "user",
+                          "email": "user@example.com",
+                          "role": "user"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "error": {
+                    "summary": "Unauthorized",
+                    "value": {
+                      "success": false,
+                      "message": "Authorization header missing"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "error": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "success": false,
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api.php/timeentries": {
+      "get": {
+        "summary": "Get filtered time entries for the authenticated user",
+        "parameters": [
+          {
+            "name": "start_date",
+            "in": "query",
+            "description": "Start date (YYYY-MM-DD)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "description": "End date (YYYY-MM-DD)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of entries to return",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Number of entries to skip",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of time entries with pagination metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "startzeit": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "endzeit": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "pause": {
+                            "type": "integer"
+                          },
+                          "beschreibung": {
+                            "type": "string"
+                          },
+                          "standort": {
+                            "type": "string"
+                          },
+                          "user_id": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "description": "Total number of entries"
+                        },
+                        "filtered": {
+                          "type": "integer",
+                          "description": "Number of entries in current response"
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "nullable": true,
+                          "description": "Number of entries per page"
+                        },
+                        "offset": {
+                          "type": "integer",
+                          "nullable": true,
+                          "description": "Number of entries skipped"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "error": {
+                    "summary": "Unauthorized",
+                    "value": {
+                      "success": false,
+                      "message": "Authorization header missing"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "error": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "success": false,
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api.php/timeentry/{id}": {
+      "delete": {
+        "summary": "Disabled: use an approved cancellation request",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "409": {
+            "description": "Cancellation requires approved correction"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "deprecated": true
+      }
+    },
+    "/api.php/attendance": {
+      "post": {
+        "summary": "Record work or break transition",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "action",
+                  "event_id"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "start",
+                      "pause_start",
+                      "pause_end",
+                      "end"
+                    ]
+                  },
+                  "event_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{16,80}$"
+                  },
+                  "confirm_end_pause": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Confirmed transition; retry same event_id and content to receive same result"
+          },
+          "400": {
+            "description": "Invalid event"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "description": "State conflict or confirmation required"
+          },
+          "503": {
+            "description": "Unconfirmed; retry same event ID"
+          }
         }
       }
     }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
   }
+}

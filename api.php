@@ -15,7 +15,7 @@ require_once 'config.php';
 header('Content-Type: application/json; charset=UTF-8');
 
 // Connect to the database
-$conn = new PDO("sqlite:$database");
+// Use the configured connection, including audit functions.
 $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 /**
@@ -156,54 +156,10 @@ function validateToken() {
  * )
  */
 function createNewWorkEntry($conn, $user_id) {
-    if (attendance_enabled($conn)) {
-        $data=json_decode(file_get_contents('php://input'),true);
-        if (!is_array($data) || !empty($data['endzeit'])) { abort_request(409, 'Use a correction request for historical entries.'); }
-        attendance_json(fn() => attendance_transition($conn,(int)$user_id,'api:'.$user_id,$data['event_id'] ?? bin2hex(random_bytes(16)),'start'));
-    }
-    $inputJSON = file_get_contents('php://input');
-    $input = json_decode($inputJSON, TRUE);
-
-    if (!is_array($input) || !is_string($input['startzeit'] ?? null) || strtotime($input['startzeit']) === false
-        || (isset($input['endzeit']) && (!is_string($input['endzeit']) || strtotime($input['endzeit']) === false))
-        || !is_int($input['pause'] ?? null) || $input['pause'] < 0 || $input['pause'] > 1440
-        || !is_string($input['beschreibung'] ?? null) || strlen($input['beschreibung']) > 4000
-        || !is_string($input['standort'] ?? null) || strlen($input['standort']) > 200) {
-        abort_request(400, 'Invalid work entry.');
-    }
-    if (isset($input['endzeit']) && strtotime($input['endzeit']) < strtotime($input['startzeit'])) { abort_request(400, 'End must follow start.'); }
-    $startzeit_raw = $input['startzeit'];
-    $endzeit_raw = isset($input['endzeit']) ? $input['endzeit'] : null;
-    $pause = $input['pause'];
-    $beschreibung = $input['beschreibung'];
-    $standort = $input['standort'];
-
-    $startzeit_iso = date('Y-m-d\TH:i:s', strtotime($startzeit_raw));
-    $endzeit_iso = !is_null($endzeit_raw) ? date('Y-m-d\TH:i:s', strtotime($endzeit_raw)) : null;
-
-    try {
-        $stmt = $conn->prepare("INSERT INTO zeiterfassung (startzeit, endzeit, pause, beschreibung, standort, user_id) VALUES (:startzeit, :endzeit, :pause, :beschreibung, :standort, :user_id)");
-        $stmt->bindParam(':startzeit', $startzeit_iso);
-        $stmt->bindParam(':endzeit', $endzeit_iso);
-        $stmt->bindParam(':pause', $pause);
-        $stmt->bindParam(':beschreibung', $beschreibung);
-        $stmt->bindParam(':standort', $standort);
-        $stmt->bindParam(':user_id', $user_id);
-
-        $stmt->execute();
-        $lastId = $conn->lastInsertId();
-
-        $stmt = $conn->prepare("SELECT * FROM zeiterfassung WHERE id = :id AND user_id = :user_id");
-        $stmt->bindParam(':id', $lastId, PDO::PARAM_INT);
-        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
-        $stmt->execute();
-        $newEntry = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        echo json_encode(['success' => true, 'message' => 'Eintrag erstellt', 'data' => $newEntry]);
-    } catch (\Exception $exception) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Internal server error']);
-    }
+    $data=json_decode(file_get_contents('php://input'),true);
+    if (!is_array($data)) { abort_request(400,'Invalid request.'); }
+    if (!empty($data['endzeit']) || !empty($data['pause'])) { abort_request(409,'Use a correction request for historical entries.'); }
+    attendance_json(fn()=>attendance_transition($conn,(int)$user_id,'api:'.$user_id,$data['event_id']??bin2hex(random_bytes(16)),'start'));
 }
 
 /**
@@ -222,29 +178,7 @@ function createNewWorkEntry($conn, $user_id) {
  * )
  */
 function setEndzeit($conn, $input, $user_id) {
-    if (attendance_enabled($conn)) {
-        attendance_json(fn() => attendance_transition($conn,(int)$user_id,'api:'.$user_id,$input['event_id'] ?? bin2hex(random_bytes(16)),'end',($input['confirm_end_pause'] ?? false) === true,(int)($input['id'] ?? 0)));
-    }
-    try { attendance_assert_unmanaged($conn, [$input['id'] ?? 0]); }
-    catch (AttendanceError $e) { abort_request($e->status,$e->getMessage()); }
-    $id = $input['id'];
-    $endzeit = date('Y-m-d\TH:i:s'); 
-
-    try {
-        $stmt = $conn->prepare("UPDATE zeiterfassung SET endzeit = :endzeit WHERE id = :id AND user_id = :user_id");
-        $stmt->bindParam(':endzeit', $endzeit, PDO::PARAM_STR);
-        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
-
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true, 'message' => 'Endzeit aktualisiert', 'id' => $id]);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Error updating endzeit']);
-        }
-    } catch (\Exception $exception) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Internal server error']);
-    }
+    attendance_json(fn()=>attendance_transition($conn,(int)$user_id,'api:'.$user_id,$input['event_id']??bin2hex(random_bytes(16)),'end',($input['confirm_end_pause']??false)===true,(int)($input['id']??0)));
 }
 
 /**
@@ -404,39 +338,7 @@ function getTimeEntries($conn, $user_id) {
  * )
  */
 function deleteTimeEntry($conn, $user_id, $entry_id) {
-    try { attendance_assert_unmanaged($conn, [$entry_id]); }
-    catch (AttendanceError $e) { abort_request($e->status,$e->getMessage()); }
-    try {
-        // Check if the entry exists
-        $stmt = $conn->prepare("SELECT * FROM zeiterfassung WHERE id = :id");
-        $stmt->bindParam(':id', $entry_id, PDO::PARAM_INT);
-        $stmt->execute();
-        $entry = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$entry) {
-            http_response_code(404);
-            echo json_encode(['success' => false, 'message' => 'Eintrag nicht gefunden']);
-            return;
-        }
-
-        // Check if the entry belongs to the user
-        if ($entry['user_id'] != $user_id) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Nicht erlaubt zu löschen']);
-            return;
-        }
-
-        // Entry exists and belongs to the user, proceed with deletion
-        $stmt = $conn->prepare("DELETE FROM zeiterfassung WHERE id = :id AND user_id = :user_id");
-        $stmt->bindParam(':id', $entry_id, PDO::PARAM_INT);
-        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
-        $stmt->execute();
-
-        echo json_encode(['success' => true, 'message' => 'Eintrag gelöscht']);
-    } catch (\Exception $exception) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Internal server error']);
-    }
+    abort_request(409,'Use an approved correction request to cancel a record.');
 }
 
 // Parse the URL path and route the request to the appropriate function

@@ -4,7 +4,7 @@ Status: Der Online-Pilot ist implementiert; Einrichtung und tatsächlicher Umfan
 
 ## Ziel und Annahmen
 
-Beschäftigte sollen Arbeitsbeginn, Arbeitsende und tatsächliche Pausen direkt in der Praxis buchen können, ohne eigenes Smartphone oder Anmeldung am Arbeitsplatz-PC. Die bestehende Web-App bleibt verfügbar. Das Terminal-Modul ist standardmäßig deaktiviert und wird pro Installation ausdrücklich aktiviert. Ohne Aktivierung bleiben Bedienung und bestehende Daten unverändert; Terminal-Routen nehmen keine Buchungen an.
+Beschäftigte sollen Arbeitsbeginn, Arbeitsende und tatsächliche Pausen direkt in der Praxis buchen können, ohne eigenes Smartphone oder Anmeldung am Arbeitsplatz-PC. Die bestehende Web-App bleibt verfügbar. Das Terminal-Modul ist standardmäßig deaktiviert und wird pro Installation ausdrücklich aktiviert. Ohne Aktivierung nehmen Terminal-Routen keine Buchungen an. Die Web-Zeiterfassung verwendet inzwischen immer echte Pausen, Korrekturen und Historie; siehe [Praxisfunktionen](PRAXISFUNKTIONEN.md).
 
 Planungsannahme: eine Praxis, ungefähr 5–30 Beschäftigte und zunächst ein Terminal am Personaleingang oder im Personalraum. Mehrere Standorte und Terminals werden im Datenmodell vorbereitet. Arbeitsplatz-PC und Terminal buchen auf dieselben Zeitkonten. Es werden keine Patienteninformationen verarbeitet. Die konkrete Personalzahl, Infrastruktur und gewünschte Authentifizierung müssen vor Hardwarekauf feststehen.
 

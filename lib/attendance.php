@@ -43,6 +43,7 @@ function attendance_require_enabled(PDO $db): void {
 function attendance_local(int $time): string { return (new DateTimeImmutable('@'.$time))->setTimezone(new DateTimeZone('Europe/Berlin'))->format('Y-m-d\TH:i:sP'); }
 function attendance_status(PDO $db, int $user): array {
     $session=att_one($db,'SELECT * FROM work_sessions WHERE user_id=? AND ended_at IS NULL',[$user]);
+    if (!$session) { $old=att_one($db,'SELECT id FROM zeiterfassung WHERE user_id=? AND endzeit IS NULL',[$user]); if ($old) { return ['state'=>'working','record_id'=>(int)$old['id']]; } }
     $break=$session ? att_one($db,'SELECT * FROM break_intervals WHERE session_id=? AND ended_at IS NULL',[$session['id']]) : null;
     return ['state'=>$session ? ($break ? 'paused':'working'):'absent', 'record_id'=>$session ? (int)$session['record_id']:null];
 }
@@ -63,10 +64,23 @@ function attendance_transition_locked(PDO $db, int $user, string $source, string
         if (!hash_equals($old['payload_hash'],$hash)) { throw new AttendanceError('Ereignis-ID bereits anders verwendet.'); }
         return json_decode($old['response'],true);
     }
+    $GLOBALS['audit_actor']=$source.':user:'.$user;
+    $GLOBALS['audit_reason']='Stempelereignis '.$action.' / '.$eventId;
     $now=time();
     $s=att_one($db,'SELECT * FROM work_sessions WHERE user_id=? AND ended_at IS NULL',[$user]);
+    if (!$s && $action!=='start') {
+        $rows=$db->prepare('SELECT * FROM zeiterfassung WHERE user_id=? AND endzeit IS NULL');$rows->execute([$user]);$open=$rows->fetchAll(PDO::FETCH_ASSOC);$rows->closeCursor();
+        if (count($open)>1) { throw new AttendanceError('Mehrere offene Altbuchungen: zuerst über Korrekturanträge bereinigen.'); }
+        if ($open) {
+            $oldStart=strtotime($open[0]['startzeit']);
+            if ($oldStart===false || $oldStart>$now) { throw new AttendanceError('Ungültige Altbuchung: Korrekturantrag erforderlich.'); }
+            att_exec($db,'INSERT INTO work_sessions(user_id,record_id,started_at) VALUES(?,?,?)',[$user,$open[0]['id'],$oldStart]);
+            $s=att_one($db,'SELECT * FROM work_sessions WHERE id=?',[(int)$db->lastInsertId()]);
+        }
+    }
     if ($action==='start') {
         if ($s || att_one($db,'SELECT id FROM zeiterfassung WHERE user_id=? AND endzeit IS NULL',[$user])) { throw new AttendanceError('Bereits eine offene Arbeitszeit vorhanden.'); }
+        if (att_one($db,'SELECT id FROM zeiterfassung WHERE user_id=? AND absence_kind IS NOT NULL AND substr(startzeit,1,10)=?',[$user,substr(attendance_local($now),0,10)])) { throw new AttendanceError('Heute ist eine Abwesenheit gebucht. Bitte zuerst korrigieren oder stornieren.'); }
         att_exec($db,'INSERT INTO zeiterfassung(startzeit,pause,beschreibung,standort,user_id) VALUES(?,0,?,?,?)',[attendance_local($now),'','office',$user]);
         $record=(int)$db->lastInsertId();
         att_exec($db,'INSERT INTO work_sessions(user_id,record_id,started_at) VALUES(?,?,?)',[$user,$record,$now]);
@@ -95,7 +109,7 @@ function attendance_transition_locked(PDO $db, int $user, string $source, string
     $response=['success'=>true,'message'=>'Buchung bestätigt.','time'=>gmdate('c',$now),'local_time'=>attendance_local($now),'event_id'=>$eventId,'record_id'=>(int)$s['record_id']] + attendance_status($db,$user);
     if ($action==='end') {
         $actual=(int)att_one($db,'SELECT pause FROM zeiterfassung WHERE id=?',[$s['record_id']])['pause'];
-        $required=(int)(att_one($db,'SELECT MAX(minimum_pause) AS minutes FROM pause_settings WHERE hours_threshold*3600 < ?',[$now-(int)$s['started_at']])['minutes']??0);
+        $required=(int)(att_one($db,'SELECT MAX(minimum_pause) AS minutes FROM pause_settings WHERE hours_threshold*3600 < CAST(? AS INTEGER)',[$now-(int)$s['started_at']])['minutes']??0);
         if ($actual<$required) {
             $response['pause_warning']='Erfasste Pause: '.$actual.' Minuten; konfigurierte Mindestpause: '.$required.' Minuten. Bitte prüfen.';
             $response['message'].=' '.$response['pause_warning'];
@@ -106,7 +120,7 @@ function attendance_transition_locked(PDO $db, int $user, string $source, string
 }
 function attendance_transition(PDO $db, int $user, string $source, string $eventId, string $action, bool $confirm=false, ?int $record=null): array {
     $db->exec('BEGIN IMMEDIATE');
-    try { attendance_require_enabled($db); $r=attendance_transition_locked($db,$user,$source,$eventId,$action,$confirm,$record); $db->exec('COMMIT'); return $r; }
+    try { $r=attendance_transition_locked($db,$user,$source,$eventId,$action,$confirm,$record); $db->exec('COMMIT'); return $r; }
     catch (Throwable $e) { $db->exec('ROLLBACK'); throw $e; }
 }
 function attendance_json(callable $action): never {
