@@ -1,10 +1,11 @@
 <?php
-session_start();
+require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/config.php';
 
 $theme_mode = $theme_mode ?? ($_COOKIE['theme'] ?? 'light');
 
 if (isset($_GET['lang'])) {
-    $_SESSION['lang'] = $_GET['lang'];
+    $_SESSION['lang'] = valid_language($_GET['lang']);
 }
 
 $lang = $_SESSION['lang'] ?? 'de';
@@ -19,7 +20,7 @@ require_once 'functions.php';
 $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['role'];
 
-$conn = new PDO("sqlite:assets/db/timetracking.sqlite");
+$conn = new PDO("sqlite:$database");
 
 $kolibri_icon = 'assets/kolibri_icon.png';
 ?>
@@ -28,6 +29,8 @@ $kolibri_icon = 'assets/kolibri_icon.png';
 <html lang="<?= $lang ?>" data-theme="auto">
 
 <head>
+    <meta name="csrf-token" content="<?= h($_SESSION['csrf_token']) ?>">
+    <script src="assets/js/security.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= TITLE ?></title>
@@ -326,10 +329,13 @@ $kolibri_icon = 'assets/kolibri_icon.png';
                     <i class="fas fa-info-circle w-6"></i>
                     <span><?= NAV_ABOUT ?></span>
                 </a>
-                <a href="logout.php" class="sidebar-link">
-                    <i class="fas fa-sign-out-alt w-6"></i>
-                    <span><?= NAV_LOGOUT ?></span>
-                </a>
+                <form action="logout.php" method="post">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="sidebar-link w-full">
+                        <i class="fas fa-sign-out-alt w-6"></i>
+                        <span><?= NAV_LOGOUT ?></span>
+                    </button>
+                </form>
             </nav>
         </div>
     </div>

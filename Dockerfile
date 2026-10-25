@@ -1,20 +1,13 @@
-# Basis-Image: PHP 8.2 mit Apache
-FROM php:8.2-apache
-
-RUN apt-get update && apt-get install -y \
-    libsqlite3-dev \
-    && docker-php-ext-install pdo pdo_sqlite
-
-# Installieren der erforderlichen PHP-Erweiterungen
-RUN docker-php-ext-install pdo pdo_sqlite
-
-# Arbeitsverzeichnis im Container setzen
+FROM php:8.3-apache
+# PDO SQLite and mbstring are included in the official image.
 WORKDIR /var/www/html
-
-# Kopieren der Anwendungsdateien in das Arbeitsverzeichnis
 COPY . /var/www/html
-
-RUN chown www-data:www-data /var/www/html/timetracking.sqlite
-
-# Öffnen Sie Port 80 für den Zugriff auf Ihren Container
+RUN find /var/www/html -type d -exec chmod 755 {} + \
+    && find /var/www/html -type f -exec chmod 644 {} + \
+    && mkdir -p /var/lib/chrono && chown www-data:www-data /var/lib/chrono \
+    && chmod 700 /var/lib/chrono \
+    && printf '<Directory /var/www/html>\nAllowOverride All\nOptions -Indexes\n</Directory>\n' > /etc/apache2/conf-available/chrono.conf \
+    && a2enconf chrono
+ENV APP_DATA_DIR=/var/lib/chrono
+VOLUME /var/lib/chrono
 EXPOSE 80

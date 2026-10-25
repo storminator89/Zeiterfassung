@@ -1,30 +1,4 @@
-<div class="event-selection-fields space-y-6">
-    <div class="form-control w-full">
-        <label class="label">
-            <span class="label-text font-medium">Standort</span>
-        </label>
-        <select name="standort" id="standort" class="select select-bordered w-full" required data-id="<?= htmlspecialchars($record['id']) ?>">
-            <option value="">Wählen Sie einen Standort</option>
-            <option value="Home">Home</option>
-            <option value="Büro">Büro</option>
-        </select>
-    </div>
-
-    <div class="form-control w-full">
-        <label class="label">
-            <span class="label-text font-medium">Kommentar</span>
-        </label>
-        <textarea name="beschreibung" id="beschreibung" 
-            class="textarea textarea-bordered h-24" 
-            placeholder="Geben Sie einen Kommentar ein..." 
-            data-id="<?= htmlspecialchars($record['id']) ?>"></textarea>
-    </div>
-
-    <button type="submit" class="btn btn-primary w-full gap-2">
-        <i class="fas fa-save"></i>
-        Speichern
-    </button>
-</div><?php
+<?php
 include 'header.php';
 
 // Fetch user's regular working hours
@@ -112,6 +86,7 @@ $latestRecord = $stmt->fetch(PDO::FETCH_ASSOC);
                             </p>
 
                             <form id="mainForm" method="POST" action="save.php" class="space-y-6">
+<?= csrf_field() ?>
                                 <input type="hidden" id="action" name="action" value="">
                                 <input type="datetime-local" id="startzeit" name="startzeit" class="hidden">
                                 <input type="datetime-local" id="endzeit" name="endzeit" class="hidden">

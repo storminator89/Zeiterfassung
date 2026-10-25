@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/security.php';
 
 // Set default language if not set
 $lang = $_SESSION['lang'] ?? 'de';
@@ -206,9 +206,11 @@ function fetchFeiertageDB($jahr)
     }
 
     $url = "https://feiertage-api.de/api/?jahr=" . urlencode($jahr) . "&nur_land=BW";
-    $json = file_get_contents($url);
+    $context = stream_context_create(['http' => ['timeout' => 5]]);
+    $json = @file_get_contents($url, false, $context);
     if ($json === false) {
-        throw new Exception("Error fetching holiday data.");
+        error_log("Holiday service unavailable");
+        return;
     }
 
     $data = json_decode($json, true);

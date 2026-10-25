@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/security.php';
 include 'config.php';
 
 // Supported languages
@@ -7,7 +7,7 @@ $supported_languages = ['de', 'en'];
 
 // Detect browser language if not set
 if (!isset($_SESSION['lang'])) {
-    $lang = substr($_SERVER['HTTP_ACCEPT_LANGUAGE'], 0, 2);
+    $lang = substr(($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? 'de'), 0, 2);
     $_SESSION['lang'] = in_array($lang, $supported_languages) ? $lang : 'de';
 }
 
@@ -45,15 +45,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $error = ERROR_INVALID_CSRF;
     } else {
         $username = trim($_POST['username']);
-        $password = trim($_POST['password']);
+        $password = $_POST['password'];
 
         if (!empty($username) && !empty($password)) {
+            throttle_login($conn, $username);
             // LDAP-Verbindungsdetails aus der Datenbank abrufen
             $stmt = $conn->prepare("SELECT * FROM ldap_settings ORDER BY id DESC LIMIT 1");
             $stmt->execute();
             $ldapSettings = $stmt->fetch(PDO::FETCH_OBJ);
 
-            if ($ldapSettings) {
+            if ($ldapSettings && function_exists('ldap_connect')) {
                 $ldapHost = $ldapSettings->ldap_host;
                 $ldapPort = $ldapSettings->ldap_port;
                 $ldapUser = $ldapSettings->ldap_user;
@@ -65,12 +66,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 if ($ldapConn) {
                     ldap_set_option($ldapConn, LDAP_OPT_PROTOCOL_VERSION, 3);
-                    $ldapRdn = "uid=$username,$ldapBaseDN";
+                    ldap_set_option($ldapConn, LDAP_OPT_NETWORK_TIMEOUT, 5);
+                    if (!str_starts_with(strtolower($ldapHost), 'ldaps://') && !ldap_start_tls($ldapConn)) { abort_request(503, 'LDAP TLS required.'); }
+                    $ldapRdn = "uid=" . ldap_escape($username, "", LDAP_ESCAPE_DN) . ",$ldapBaseDN";
 
                     if (@ldap_bind($ldapConn, $ldapRdn, $password)) {
                         // User authenticated via LDAP
                         // Fetch user details from LDAP and proceed
-                        $search = ldap_search($ldapConn, $ldapBaseDN, "(uid=$username)");
+                        $search = ldap_search($ldapConn, $ldapBaseDN, "(uid=" . ldap_escape($username, "", LDAP_ESCAPE_FILTER) . ")");
                         $entries = ldap_get_entries($ldapConn, $search);
 
                         if ($entries["count"] > 0) {
@@ -86,7 +89,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             if (!$user) {
                                 // If user doesn't exist locally, insert the user
                                 $stmt = $conn->prepare("INSERT INTO users (username, password, email, role) VALUES (:username, :password, :email, 'user')");
-                                $hashedPassword = password_hash($password, PASSWORD_DEFAULT); // Store a hashed password
+                                $hashedPassword = password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT); // No reusable local LDAP password
                                 $stmt->bindParam(':username', $username);
                                 $stmt->bindParam(':password', $hashedPassword);
                                 $stmt->bindParam(':email', $email);
@@ -99,9 +102,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 $user = $stmt->fetch(PDO::FETCH_OBJ);
                             }
 
+                            // Directory-managed accounts must not retain a local password fallback.
+                            $user->password = password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT);
+                            $conn->prepare("UPDATE users SET auth_source='ldap', password=? WHERE id=?")->execute([$user->password, $user->id]);
                             // Regenerate session ID to prevent session fixation
                             session_regenerate_id(true);
 
+                            $_SESSION['auth_version'] = hash('sha256', $user->password);
                             $_SESSION['user_id'] = $user->id;
                             $_SESSION['username'] = $user->username;
                             $_SESSION['role'] = $user->role; // Benutzerrolle speichern
@@ -120,11 +127,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt->execute();
             $user = $stmt->fetch(PDO::FETCH_OBJ);
 
-            if ($user && password_verify($password, $user->password)) {
+            if ($user && $user->auth_source === 'local' && $password !== 'defaultpassword' && password_verify($password, $user->password)) {
                 // Regenerate session ID to prevent session fixation
                 session_regenerate_id(true);
 
-                $_SESSION['user_id'] = $user->id;
+                $_SESSION['auth_version'] = hash('sha256', $user->password);
+                            $_SESSION['user_id'] = $user->id;
                 $_SESSION['username'] = $user->username;
                 $_SESSION['role'] = $user->role; // Benutzerrolle speichern
 

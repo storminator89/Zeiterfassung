@@ -1,3 +1,8 @@
+function escapeHTML(value) {
+    const node = document.createElement('span');
+    node.textContent = String(value ?? '');
+    return node.innerHTML;
+}
 let authToken = null;
 let currentUser = null;
 
@@ -132,9 +137,9 @@ function updateUserInfoDisplay() {
     const userInfoElement = document.getElementById('userInfo');
     if (currentUser) {
         userInfoElement.innerHTML = `
-            <p><strong>Angemeldet als:</strong> ${currentUser.username}</p>
-            <p><strong>E-Mail:</strong> ${currentUser.email}</p>
-            <p><strong>Rolle:</strong> ${currentUser.role}</p>
+            <p><strong>Angemeldet als:</strong> ${escapeHTML(currentUser.username)}</p>
+            <p><strong>E-Mail:</strong> ${escapeHTML(currentUser.email)}</p>
+            <p><strong>Rolle:</strong> ${escapeHTML(currentUser.role)}</p>
         `;
     } else {
         userInfoElement.innerHTML = `
@@ -196,11 +201,11 @@ function displayLatestTimeEntry(entry) {
             </div>
             <div class="entry-item">
                 <div class="entry-label">Standort</div>
-                <div class="entry-value">${entry.standort || '-'}</div>
+                <div class="entry-value">${escapeHTML(entry.standort || '-')}</div>
             </div>
             <div class="entry-item">
                 <div class="entry-label">Beschreibung</div>
-                <div class="entry-value">${entry.beschreibung || '-'}</div>
+                <div class="entry-value">${escapeHTML(entry.beschreibung || '-')}</div>
             </div>
         </div>
     `;

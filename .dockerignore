@@ -1,0 +1,7 @@
+.git
+.env
+*.sqlite
+*.sqlite-*
+*.key
+tests
+SECURITY-REVIEW.md

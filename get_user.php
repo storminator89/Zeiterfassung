@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/security.php';
 include 'config.php';
 
 // Überprüfen, ob der Benutzer eingeloggt und ein Admin ist

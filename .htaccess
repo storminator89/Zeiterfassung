@@ -1,0 +1,5 @@
+RedirectMatch 404 "(^|/)(\.|tests/|languages/)"
+Options -Indexes
+<FilesMatch "(^\.|\.(sqlite|sqlite3|db|key|log|bak|ini|env|md|py|sh)$|^(config|security|functions|router)\.php$)">
+    Require all denied
+</FilesMatch>

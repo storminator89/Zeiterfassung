@@ -375,7 +375,7 @@ function calculateRemainingHours($workedHours, $expectedHours)
         });
 
         // Populate calendar with events
-        const events = <?= json_encode($events) ?>;
+        const events = <?= json_encode($events, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         calendar.createEvents(events.map(event => ({
             id: event.id,
             calendarId: '1',
