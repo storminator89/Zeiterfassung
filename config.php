@@ -129,3 +129,5 @@ attendance_migrate($conn);
 require_once __DIR__.'/lib/practice.php';
 practice_migrate($conn);
 date_default_timezone_set('Europe/Berlin');
+
+require_once __DIR__.'/lib/reporting.php';

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/booking.php';
 // UTC event times are authoritative; zeiterfassung is the legacy reporting projection.
 class AttendanceError extends RuntimeException {
     public function __construct(string $message, public int $status = 409) { parent::__construct($message); }
@@ -72,7 +73,7 @@ function attendance_transition_locked(PDO $db, int $user, string $source, string
         $rows=$db->prepare('SELECT * FROM zeiterfassung WHERE user_id=? AND endzeit IS NULL');$rows->execute([$user]);$open=$rows->fetchAll(PDO::FETCH_ASSOC);$rows->closeCursor();
         if (count($open)>1) { throw new AttendanceError('Mehrere offene Altbuchungen: zuerst über Korrekturanträge bereinigen.'); }
         if ($open) {
-            $oldStart=strtotime($open[0]['startzeit']);
+            $oldStart=booking_time($open[0]['startzeit']);
             if ($oldStart===false || $oldStart>$now) { throw new AttendanceError('Ungültige Altbuchung: Korrekturantrag erforderlich.'); }
             att_exec($db,'INSERT INTO work_sessions(user_id,record_id,started_at) VALUES(?,?,?)',[$user,$open[0]['id'],$oldStart]);
             $s=att_one($db,'SELECT * FROM work_sessions WHERE id=?',[(int)$db->lastInsertId()]);
@@ -80,7 +81,7 @@ function attendance_transition_locked(PDO $db, int $user, string $source, string
     }
     if ($action==='start') {
         if ($s || att_one($db,'SELECT id FROM zeiterfassung WHERE user_id=? AND endzeit IS NULL',[$user])) { throw new AttendanceError('Bereits eine offene Arbeitszeit vorhanden.'); }
-        if (att_one($db,'SELECT id FROM zeiterfassung WHERE user_id=? AND absence_kind IS NOT NULL AND substr(startzeit,1,10)=?',[$user,substr(attendance_local($now),0,10)])) { throw new AttendanceError('Heute ist eine Abwesenheit gebucht. Bitte zuerst korrigieren oder stornieren.'); }
+        booking_assert_no_overlap($db,$user,$now,$now+1);
         att_exec($db,'INSERT INTO zeiterfassung(startzeit,pause,beschreibung,standort,user_id) VALUES(?,0,?,?,?)',[attendance_local($now),'','office',$user]);
         $record=(int)$db->lastInsertId();
         att_exec($db,'INSERT INTO work_sessions(user_id,record_id,started_at) VALUES(?,?,?)',[$user,$record,$now]);
@@ -88,7 +89,9 @@ function attendance_transition_locked(PDO $db, int $user, string $source, string
     } else {
         if (!$s) { throw new AttendanceError('Keine offene Arbeitszeit vorhanden.'); }
         if ($expectedRecord !== null && (int)$s['record_id'] !== $expectedRecord) { throw new AttendanceError('Andere Arbeitszeit aktiv.'); }
-        if ($now < (int)$s['started_at']) { throw new AttendanceError('Serverzeit prüfen.'); }
+        $lastEvent=(int)(att_one($db,'SELECT MAX(received_at) AS last FROM attendance_events WHERE session_id=?',[$s['id']])['last']??0);
+        $lastBreak=(int)(att_one($db,'SELECT MAX(MAX(started_at,COALESCE(ended_at,started_at))) AS last FROM break_intervals WHERE session_id=?',[$s['id']])['last']??0);
+        if ($now < max((int)$s['started_at'],$lastEvent,$lastBreak)) { throw new AttendanceError('Serverzeit prüfen.'); }
         $break=att_one($db,'SELECT * FROM break_intervals WHERE session_id=? AND ended_at IS NULL',[$s['id']]);
         if ($break && $now < (int)$break['started_at']) { throw new AttendanceError('Serverzeit prüfen.'); }
         if ($action==='pause_start') {
@@ -109,7 +112,7 @@ function attendance_transition_locked(PDO $db, int $user, string $source, string
     $response=['success'=>true,'message'=>'Buchung bestätigt.','time'=>gmdate('c',$now),'local_time'=>attendance_local($now),'event_id'=>$eventId,'record_id'=>(int)$s['record_id']] + attendance_status($db,$user);
     if ($action==='end') {
         $actual=(int)att_one($db,'SELECT pause FROM zeiterfassung WHERE id=?',[$s['record_id']])['pause'];
-        $required=(int)(att_one($db,'SELECT MAX(minimum_pause) AS minutes FROM pause_settings WHERE hours_threshold*3600 < CAST(? AS INTEGER)',[$now-(int)$s['started_at']])['minutes']??0);
+        $required=(int)(att_one($db,'SELECT MAX(minimum_pause) AS minutes FROM pause_settings WHERE hours_threshold*3600 < CAST(? AS INTEGER)',[max(0,$now-(int)$s['started_at']-$seconds)])['minutes']??0);
         if ($actual<$required) {
             $response['pause_warning']='Erfasste Pause: '.$actual.' Minuten; konfigurierte Mindestpause: '.$required.' Minuten. Bitte prüfen.';
             $response['message'].=' '.$response['pause_warning'];

@@ -45,3 +45,15 @@ Destruktive Tests ausschließlich gegen eine frische `tests/seed.php`-Fixture:
 Die CI führt diese Prüfungen mit PHP 8.3 und vier HTTP-Workern aus. Physischer Leser, Produktions-HTTPS, Praxisnetz sowie externe Sicherungsablage sind separate Abnahmepunkte; lokale Browser-/Datenbanktests ersetzen diese nicht.
 
 `tests/practice_browser.py` prüft zusätzlich mit Playwright die Webbuchung einschließlich Bestätigung, Abwesenheitsformular und mobile Ansichten.
+
+## Korrekturen an Buchungslogik und Auswertungen
+
+- Kalenderwochen werden als Montag–Sonntag einschließlich Jahreswechsel ausgewertet. Wochenkennungen enthalten das ISO-Wochenjahr; gleiche Wochennummern verschiedener Jahre werden nicht zusammengezählt.
+- Abgeschlossene Arbeitszeiten und Gutschriften behalten ihre ganzen Minuten in Monats-/Jahressummen. Offene Buchungen fließen nicht als vermeintlich abgeschlossene Zeiten in Summen oder Überstunden ein. Die vorhandene Zuordnung einer vollständigen Nachtschicht zum Startdatum bleibt bestehen; es erfolgt keine nachträgliche Tagesaufteilung.
+- Arbeitszeitmodelle mit null Sollstunden verursachen keine Division durch null. Wochenfortschritt und verbleibende Wochenzeit verwenden das individuelle Modell statt fünfmal eines pauschalen Tageswerts. Rundung erzeugt keine Uhrzeiten wie `01:60`.
+- Mindestpausen-Hinweise richten sich nach der Nettoarbeitszeit ohne tatsächlich erfasste Pausen. Eine zurückspringende Serveruhr darf keine Ereignisse vor bereits erfassten Ereignissen/Pausen derselben Arbeitssitzung erzeugen.
+- Eine Abwesenheitsgutschrift blockiert bei Überschneidungsprüfungen den ganzen lokalen Kalendertag – auch einen 23-/25-Stunden-Tag und auch bei alten Einträgen mit Beschreibung Urlaub/Krankheit/Feiertag. Arbeitsnachträge dürfen erst nach dem tatsächlichen Ende beantragt und freigegeben werden; künftige Abwesenheitsgutschriften bleiben möglich. Bei einer Gutschriftenkorrektur beginnt das technische Zeitintervall um 00:00 Ortszeit, enthält ganze Sollminuten und keine Pause. Historische widersprüchliche Daten werden nicht automatisch umgeschrieben.
+- Einstempeln wird abgewiesen, wenn eine vorhandene abgeschlossene Buchung den aktuellen Zeitpunkt bereits umfasst. Direkt aneinander anschließende Arbeitsintervalle bleiben erlaubt.
+- Nach bestätigten Webbuchungen aktualisieren sich Status und letzte Buchungen. Ein veralteter Tab kann nach einem Zustandskonflikt wieder die tatsächlich zulässigen Aktionen anbieten. Die Liste zeigt die zuletzt angelegten Einträge; geplante Abwesenheiten verdrängen keine danach neu gestempelte Buchung. Die Kachel „letzter Zeiteintrag“ bevorzugt offene Arbeitszeit und behandelt zukünftige Gutschriften nicht als letzte Arbeitszeit.
+
+Zusätzliche Regressionen: `tests/booking_logic.php` (32 Prüfungen) und `tests/booking_http.py` (13 Prüfungen). Zusammen mit den bisherigen Suites sind es 221 serverseitige Prüfungen. Die Playwright-Prüfung deckt zusätzlich aktuelle Buchungszeilen und konkurrierende Browser-Tabs ab. Keine Datenmigration ist für diese Fehlerkorrekturen nötig; vorhandene Journal- und Originalereignisse bleiben unverändert.
