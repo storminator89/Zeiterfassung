@@ -1,0 +1,5 @@
+<?php
+function terminal_page(string $title): void { ?>
+<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="csrf-token" content="<?= h($_SESSION['csrf_token']) ?>"><title><?= h($title) ?> · Chrono</title><link rel="stylesheet" href="assets/css/terminal.css"></head><body><header><a href="index.php" class="brand">◷ Chrono</a><nav><a href="attendance.php">Arbeitszeit</a><a href="adjustments.php">Korrekturen</a><a href="work_models.php">Arbeitszeitmodell</a><a href="history.php">Historie</a><a href="dashboard.php">Auswertung</a><?php if (($_SESSION['role']??'')==='admin'): ?><a href="terminals.php">Terminals</a><a href="admin.php">Verwaltung</a><?php endif; ?><a href="settings.php">Einstellungen</a><form method="post" action="logout.php"><?= csrf_field() ?><button class="quiet">Abmelden</button></form></nav></header><main><p class="eyebrow">PRAXIS · ZEITERFASSUNG</p><h1><?= h($title) ?></h1>
+<?php }
+function terminal_page_end(): void { echo '</main></body></html>'; }

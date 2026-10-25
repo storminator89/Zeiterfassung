@@ -25,7 +25,8 @@ def check(name,condition):
  if not condition:raise AssertionError(name)
  passed+=1; print('PASS',name)
 def query(sql,params=()):
- with sqlite3.connect(DB) as c:return c.execute(sql,params).fetchall()
+ with sqlite3.connect(DB) as c:
+  c.create_function('audit_actor',0,lambda:'fixture');c.create_function('audit_reason',0,lambda:'test clock/data simulation');return c.execute(sql,params).fetchall()
 def forge(secret,**claims):
  enc=lambda obj:base64.urlsafe_b64encode(json.dumps(obj).encode()).decode().rstrip('=')
  body=enc({'typ':'JWT','alg':'HS256'})+'.'+enc(claims)
@@ -50,20 +51,20 @@ for page in ['index.php','dashboard.php','settings.php','get_time_records.php','
  status,body,_=user.request('/'+page);check('page '+page,status==200 and b'Fatal error' not in body)
 headers={'X-CSRF-Token':user.csrf}
 status,body,_=user.request('/save.php',{'action':'start','startzeit':'2026-10-25 10:00:00','standort':'office','beschreibung':'integration'},headers);check('start time record',status==200 and json.loads(body)['success'])
-new_id=query("SELECT id FROM zeiterfassung WHERE beschreibung='integration'")[0][0]
-check('update owned entry',user.request('/save.php',{'update':'true','id':new_id,'column':'beschreibung','data':'updated'},headers)[0]==204)
+new_id=json.loads(body)['record_id']
+check('direct edit requires correction',user.request('/save.php',{'update':'true','id':new_id,'column':'beschreibung','data':'updated'},headers)[0]==409)
 other=Client();other.login('auditother')
-check('other user cannot edit record',other.request('/save.php',{'update':'true','id':new_id,'column':'beschreibung','data':'stolen'},{'X-CSRF-Token':other.csrf})[0]==404)
-check('record ownership preserved',query('SELECT beschreibung FROM zeiterfassung WHERE id=?',(new_id,))[0][0]=='updated')
+check('other user cannot edit record',other.request('/save.php',{'update':'true','id':new_id,'column':'beschreibung','data':'stolen'},{'X-CSRF-Token':other.csrf})[0]==409)
+check('record ownership preserved',query('SELECT beschreibung FROM zeiterfassung WHERE id=?',(new_id,))[0][0]=='')
 status,body,_=user.api('login',{'username':'audituser','password':'LocalAudit!Password2026'});check('API login',status==200); token=json.loads(body)['token']
 status,body,_=user.api('users',token=token);data=json.loads(body)['data'];check('API only returns current user',status==200 and len(data)==1 and data[0]['username']=='audituser')
-check('API create entry',user.api('workentry',{'startzeit':'2026-10-25 08:00:00','endzeit':'2026-10-25 17:00:00','pause':30,'beschreibung':'API integration','standort':'office'},token)[0]==200)
-check('API rejects HTML pause',user.api('workentry',{'startzeit':'2026-10-25','pause':'<img src=x onerror=alert(1)>','beschreibung':'x','standort':'office'},token)[0]==400)
+check('API historical entry requires correction',user.api('workentry',{'startzeit':'2026-10-25 08:00:00','endzeit':'2026-10-25 17:00:00','pause':30,'beschreibung':'API integration','standort':'office'},token)[0]==409)
+check('API rejects HTML pause',user.api('workentry',{'startzeit':'2026-10-25','pause':'<img src=x onerror=alert(1)>','beschreibung':'x','standort':'office'},token)[0]==409)
 admin=Client();admin.login('auditadmin')
 check('admin CSRF blocked',admin.request('/admin.php',{'add_department':1,'department_name':'blocked'})[0]==403)
 status,body,_=admin.request('/admin.php',{'add_department':1,'department_name':'Audit department','csrf_token':admin.csrf});check('admin valid mutation',status==200 and query("SELECT name FROM departments WHERE name='Audit department'"))
 status,body,_=admin.request('/download.php');check('authorized consistent backup',status==200 and body.startswith(b'SQLite format 3'))
-check('invalid import blocked',admin.request('/import.php',{'csrf_token':admin.csrf})[0]==400)
+check('invalid import blocked',admin.request('/import.php',{'csrf_token':admin.csrf})[0]==409)
 query('UPDATE zeiterfassung SET beschreibung=?,standort=?,pause=? WHERE id=?',('=1+1','<img src=x onerror=alert(1)>','" onfocus="alert(1)',new_id))
 status,body,_=user.request('/export_csv.php');check('CSV formula neutralized',status==200 and b"'=1+1" in body)
 status,body,_=user.request('/get_time_records.php');check('pause HTML escaped',status==200 and b'&quot; onfocus=&quot;' in body and b'value="" onfocus=' not in body)
@@ -86,5 +87,5 @@ query("UPDATE users SET auth_source='local' WHERE id=3")
 check('logout GET blocked',other.request('/logout.php')[0]==405)
 check('logout CSRF required',other.request('/logout.php',{})[0]==403)
 check('logout POST succeeds',other.request('/logout.php',{'csrf_token':other.csrf})[0]==200)
-query('DELETE FROM zeiterfassung WHERE id=? OR beschreibung=?',(new_id,'API integration'));query("DELETE FROM departments WHERE name='Audit department'");query('DELETE FROM login_attempts')
+query('UPDATE work_sessions SET ended_at=? WHERE record_id=?',(int(time.time()),new_id));query('DELETE FROM zeiterfassung WHERE id=? OR beschreibung=?',(new_id,'API integration'));query("DELETE FROM departments WHERE name='Audit department'");query('DELETE FROM login_attempts')
 print(f'{passed} checks passed')

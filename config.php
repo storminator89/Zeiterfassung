@@ -122,3 +122,10 @@ if (PHP_SAPI !== 'cli' && isset($_SESSION['user_id'])) {
     $_SESSION['role'] = $current->role;
     $_SESSION['username'] = $current->username;
 }
+
+require_once __DIR__ . "/lib/attendance.php";
+attendance_migrate($conn);
+
+require_once __DIR__.'/lib/practice.php';
+practice_migrate($conn);
+date_default_timezone_set('Europe/Berlin');

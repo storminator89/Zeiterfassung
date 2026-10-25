@@ -15,7 +15,7 @@ $zeiten = [];
 $ueberstundenListe = [];
 $detaillierteDaten = [];
 if ($user_role === 'admin' || $user_role === 'supervisor') {
-    $stmt = $conn->prepare("SELECT z.*, u.username, u.id as user_id, u.regelarbeitszeit, u.ueberstunden as vorherige_ueberstunden, strftime('%Y-%m-%d', z.startzeit) AS day, strftime('%W', z.startzeit) AS weekNumber
+    $stmt = $conn->prepare("SELECT z.*, u.username, u.id as user_id, u.regelarbeitszeit, u.ueberstunden as vorherige_ueberstunden, substr(z.startzeit,1,10) AS day, strftime('%W', substr(z.startzeit,1,19)) AS weekNumber
                             FROM zeiterfassung z
                             JOIN users u ON z.user_id = u.id
                             WHERE u.supervisor_id = ?
@@ -23,6 +23,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
     $stmt->execute([$user_id]);
     $zeiten = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    foreach ($zeiten as &$entry) { $entry['planned_minutes_day']=planned_minutes($conn,(int)$entry['user_id'],$entry['day']); } unset($entry);
     // Berechnung der Überstunden und detaillierte Daten
     $workHoursByUser = [];
     foreach ($zeiten as $zeit) {
@@ -52,7 +53,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
         $interval = $start->diff($end);
         $pauseMinuten = intval($zeit['pause']) ?: 0;
 
-        $gesamtMinuten = ($interval->h * 60 + $interval->i) - $pauseMinuten;
+        $gesamtMinuten = (($end->getTimestamp() - $start->getTimestamp()) / 60) - $pauseMinuten;
         $workHoursByUser[$userId]['days'][$day] += $gesamtMinuten;
         $workHoursByUser[$userId]['total_hours'] += $gesamtMinuten / 60;
     }
@@ -62,7 +63,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
         $totalOverMinutes = 0;
         $regelarbeitszeit = $data['regelarbeitszeit'];
         foreach ($data['days'] as $day => $totalMinutes) {
-            $regularWorkingMinutesPerDay = $regelarbeitszeit * 60;
+            $regularWorkingMinutesPerDay = planned_minutes($conn,(int)$userId,$day);
 
             $overMinutes = $totalMinutes - $regularWorkingMinutesPerDay;
             $totalOverMinutes += $overMinutes;
@@ -337,7 +338,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                                             $totalDuration = $group['total_duration']; // Already includes break deduction
                                             $hours = floor($totalDuration / 60);
                                             $minutes = $totalDuration % 60;
-                                            $overtime = $totalDuration - ($group['regelarbeitszeit'] * 60);
+                                            $overtime = $totalDuration - planned_minutes($conn,(int)$group['user_id'],$group['date']);
                                             $overtimeHours = floor(abs($overtime) / 60);
                                             $overtimeMinutes = abs($overtime % 60);
 
@@ -571,7 +572,7 @@ function escapeHTML(value) {
                 const dauer = formatTime(gesamtMinuten);
 
                 const regelarbeitszeit = zeit.regelarbeitszeit || 8.0;
-                const regularWorkingMinutesPerDay = regelarbeitszeit * 60;
+                const regularWorkingMinutesPerDay = zeit.planned_minutes_day;
                 const ueberstunden = gesamtMinuten - regularWorkingMinutesPerDay;
                 const ueberstundenFormat = formatTime(Math.abs(ueberstunden));
 

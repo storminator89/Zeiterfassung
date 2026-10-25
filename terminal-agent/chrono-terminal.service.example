@@ -1,0 +1,19 @@
+[Unit]
+Description=Chrono Praxis-Terminal (online)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=chrono-terminal
+Group=chrono-terminal
+ExecStart=/usr/bin/python3 /opt/chrono-terminal/agent.py --config /var/lib/chrono-terminal/device.json
+Restart=on-failure
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/var/lib/chrono-terminal
+
+[Install]
+WantedBy=multi-user.target

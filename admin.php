@@ -343,6 +343,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
 
 // Benutzer löschen
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_user'])) {
+    if (att_one($conn, 'SELECT id FROM audit_log WHERE user_id=?', [(int)($_POST['user_id'] ?? 0)])) { abort_request(409, 'Konten mit Zeithistorie bleiben erhalten. Zugang über Passwortänderung und Terminal-Sperre entziehen.'); }
     $user_id = $_POST['user_id'];
 
     try {
@@ -841,7 +842,7 @@ include 'header.php';
             <label class="label" for="edit_regelarbeitszeit">
                 <span class="label-text"><?= FORM_REGULAR_WORKING_HOURS ?></span>
             </label>
-            <input type="number" id="edit_regelarbeitszeit" name="regelarbeitszeit" class="input input-bordered" step="0.01" required>
+            <p>Änderungen am Soll bitte unter <a href="work_models.php">Arbeitszeitmodelle</a> mit Gültigkeitsdatum speichern.</p><input readonly type="number" id="edit_regelarbeitszeit" name="regelarbeitszeit" class="input input-bordered" step="0.01" required>
         </div>
         <div class="form-control mb-4">
             <label class="label" for="edit_ueberstunden">

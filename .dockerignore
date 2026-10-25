@@ -5,3 +5,5 @@
 *.key
 tests
 SECURITY-REVIEW.md
+.github
+**/__pycache__

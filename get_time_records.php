@@ -24,8 +24,8 @@ $offset = ($page - 1) * $itemsPerPage;
 // Modify the query to order by date and time
 $stmt = $conn->prepare("
     SELECT *,
-           strftime('%W', startzeit) AS weekNumber,
-           DATE(startzeit) as workDate
+           strftime('%W', substr(startzeit,1,19)) AS weekNumber,
+           substr(startzeit,1,10) as workDate
     FROM zeiterfassung
     WHERE user_id = ?
     ORDER BY startzeit DESC
@@ -89,7 +89,7 @@ foreach ($records as $record) {
         $start = new DateTime($record['startzeit']);
         $end = new DateTime($record['endzeit']);
         $interval = $start->diff($end);
-        $minutes = ($interval->h * 60) + $interval->i;
+        $minutes = (($end->getTimestamp() - $start->getTimestamp()) / 60);
         $dailyTotals[$workDate]['totalMinutes'] += $minutes;
         $dailyTotals[$workDate]['totalPause'] += intval($record['pause']);
         $dailyTotals[$workDate]['entries']++;
@@ -236,67 +236,5 @@ function outputTableHeaders() {
 }
 
 function outputRecordRow($record) {
-    echo '<tr>
-            <td class="hidden">' . $record['id'] . '</td>
-            <td>' . $record['weekNumber'] . '</td>
-            <td>
-                <div class="flex items-center gap-2">
-                    <span class="text-gray-600 editable-datetime"
-                          data-id="' . $record['id'] . '"
-                          data-field="startzeit"
-                          data-value="' . date('Y-m-d H:i', strtotime($record['startzeit'])) . '">
-                        ' . date('d.m.Y H:i', strtotime($record['startzeit'])) . '
-                    </span>
-                    <button type="button" class="edit-datetime-btn btn btn-ghost btn-xs">
-                        <i class="fas fa-calendar-alt"></i>
-                    </button>
-                </div>
-            </td>
-            <td>';
-
-    if ($record['endzeit'] !== null) {
-        echo '<div class="flex items-center gap-2">
-                <span class="text-gray-600 editable-datetime cursor-default" data-id="' . $record['id'] . '" data-field="endzeit" data-value="' . date('Y-m-d\TH:i', strtotime($record['endzeit'])) . '">
-                    ' . date('d.m.Y H:i', strtotime($record['endzeit'])) . '
-                </span>
-                <button type="button" class="edit-datetime-btn btn btn-ghost btn-xs">
-                    <i class="fas fa-calendar-alt"></i>
-                </button>
-            </div>';
-    } else {
-        echo '<span>-</span>';
-    }
-
-    echo '</td>
-            <td>' . calculateDuration($record['startzeit'], $record['endzeit'], $record['pause']) . '</td>
-            <td>
-                <input type="number"
-                       name="pause"
-                       class="input input-bordered input-sm w-16"
-                       value="' . h($record['pause']) . '"
-                       data-id="' . $record['id'] . '">
-            </td>
-            <td>
-                <select class="select select-bordered select-sm w-32"
-                        data-id="' . htmlspecialchars($record['id']) . '"
-                        data-field="standort">
-                    <option value="' . LOCATION_OFFICE_VALUE . '" ' . ($record['standort'] == LOCATION_OFFICE_VALUE ? 'selected' : '') . '>' . LOCATION_OFFICE . '</option>
-                    <option value="' . LOCATION_HOME_OFFICE_VALUE . '" ' . ($record['standort'] == LOCATION_HOME_OFFICE_VALUE ? 'selected' : '') . '>' . LOCATION_HOME_OFFICE . '</option>
-                    <option value="' . LOCATION_BUSINESS_TRIP_VALUE . '" ' . ($record['standort'] == LOCATION_BUSINESS_TRIP_VALUE ? 'selected' : '') . '>' . LOCATION_BUSINESS_TRIP . '</option>
-                </select>
-            </td>
-            <td>
-                <input type="text"
-                       class="input input-bordered input-sm w-full"
-                       data-id="' . htmlspecialchars($record['id']) . '"
-                       data-field="beschreibung"
-                       value="' . htmlspecialchars($record['beschreibung']) . '">
-            </td>
-            <td class="w-12">
-                <button class="btn btn-ghost btn-xs text-black hover:bg-black hover:text-white transition-colors duration-300 deleteRow" data-id="' . $record['id'] . '">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-            </td>
-        </tr>';
+    echo '<tr><td>'.h($record['weekNumber']).'</td><td>'.h($record['startzeit']).'</td><td>'.h($record['endzeit']??'Läuft').'</td><td>'.h(calculateDuration($record['startzeit'],$record['endzeit'],$record['pause'])).'</td><td>'.h($record['pause']).'</td><td>'.h($record['standort']).'</td><td>'.h($record['beschreibung']).'</td><td><a href="adjustments.php?record_id='.(int)$record['id'].'">Korrektur / Storno</a></td></tr>';
 }
-?>

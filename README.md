@@ -125,11 +125,11 @@ The REST API is available at `/api.php`
 ## Endpoints
 
 - **POST /api.php/login:** User login. Requires `username` and `password`.
-- **POST /api.php/workentry:** Create a new work entry. Requires `startzeit`, `endzeit`, `pause`, `beschreibung`, and `standort`.
+- **POST /api.php/workentry:** Start work with server time (historical entries require correction). Send a unique `event_id` for safe retries; client timestamps are not authoritative.
 - **POST /api.php/setendzeit:** Set end time for a specific work entry. Requires `id`.
 - **GET /api.php/users:** Get the currently authenticated user as a one-element array.
 - **GET /api.php/timeentries:** Get all time entries for the authenticated user.
-- **DELETE /api.php/timeentry/{id}:** Delete a specific time entry.
+- **DELETE /api.php/timeentry/{id}:** Disabled (409); use an approved cancellation request.
 
 ## Authentication
 
@@ -141,9 +141,18 @@ The API uses JWT (JSON Web Tokens) for authentication. Tokens expire after one h
 # Example of logging in and receiving a JWT token
 curl -X POST -H "Content-Type: application/json" -d '{"username":"your_username", "password":"your_password"}' https://yourdomain.com/api.php/login
 
-# Example of creating a new work entry
-curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer your_jwt_token" -d '{"startzeit":"2023-11-15T08:00:00", "endzeit":"2023-11-15T16:00:00", "pause":30, "beschreibung":"Project work", "standort":"Home Office"}' https://yourdomain.com/api.php/workentry
+# Start work with an event ID (reuse it only when retrying this exact action)
+curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer your_jwt_token" -d '{"action":"start", "event_id":"example-start-000001"}' https://yourdomain.com/api.php/attendance
+```
 
-## Optionales Praxis-Terminal (geplant)
+## Optionales Praxis-Terminal
 
-Ein optionales Terminal für die Belegschaft, mit PIN/NFC, tatsächlichen Pausen und Geräteverwaltung, ist im [Umsetzungsplan](docs/PRAXIS-TERMINAL-PLAN.md) beschrieben. Das Modul ist noch nicht implementiert.
+Der Online-Terminal-Modus bietet PIN/NFC-Kennung plus PIN, Geräteverwaltung, tatsächliche Pausen und Korrekturanträge. Er ist standardmäßig deaktiviert. [Einrichtung und Betrieb](docs/TERMINAL.md) · [ursprünglicher Ausbauplan](docs/PRAXIS-TERMINAL-PLAN.md).
+
+Für den Pilotbetrieb `APP_TERMINAL_ENABLED=1` setzen und das Modul als Administrator unter `terminals.php` aktivieren. Der lokale Python-Gerätedienst mit Kiosk liegt in `terminal-agent/`. Ein realer NFC-Leser muss noch mit der gewählten Hardware geprüft werden; Offline-Buchungen sind nicht implementiert.
+
+## Arbeitszeiten, Abwesenheit und Historie
+
+Die Startseite erfasst Kommen, tatsächliche Pausen und Gehen mit Serverzeit – auch ohne Terminal. Alle direkten Änderungen/Löschungen, einschließlich alter API-Endpunkte, sind durch begründete Korrekturanträge mit Freigabe ersetzt.
+
+Unter **Arbeitszeitmodelle** hinterlegt die Verwaltung Sollminuten je Wochentag und Gültigkeitsdatum. Urlaub/Krankheit erhalten diese Gutschrift; freie Tage und hinterlegte Feiertage werden ausgelassen. Unter **Historie** stehen alte/neue Werte und Freigaben. Upgrade-, API- und Betriebsdetails: [Praxisfunktionen](docs/PRAXISFUNKTIONEN.md), [Terminaleinrichtung](docs/TERMINAL.md).

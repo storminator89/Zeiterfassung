@@ -2,7 +2,7 @@
 // Local PHP server only. Apache uses .htaccess instead.
 $path = rawurldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?: '/');
 $target = realpath(__DIR__ . $path);
-$allowedPages = ['index.php','login.php','logout.php','register.php','admin.php','settings.php','supervisor.php','dashboard.php','save.php','delete.php','download.php','import.php','export_csv.php','get_user.php','get_time_records.php','get_latest_record.php','api.php','apidoc.html','swagger.json'];
+$allowedPages = ['history.php','work_models.php','terminal_api.php','terminals.php','attendance.php','adjustments.php','index.php','login.php','logout.php','register.php','admin.php','settings.php','supervisor.php','dashboard.php','save.php','delete.php','download.php','import.php','export_csv.php','get_user.php','get_time_records.php','get_latest_record.php','api.php','apidoc.html','swagger.json'];
 if (preg_match('#^/api\.php(?:/|$)#', $path)) { $_SERVER['SCRIPT_NAME'] = '/api.php'; require __DIR__ . '/api.php'; return true; }
 if ($path === '/') { require __DIR__ . '/index.php'; return true; }
 if ($target && str_starts_with($target, __DIR__ . '/') && is_file($target)) {

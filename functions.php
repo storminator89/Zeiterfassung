@@ -25,7 +25,7 @@ $user_id = $_SESSION['user_id'];
 
 // Establish a PDO connection
 try {
-    $conn = new PDO("sqlite:$database");
+    // Keep the configured connection with audit context.
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
     // Handle connection error
@@ -48,7 +48,7 @@ try {
 // Fetch all entries from 'zeiterfassung' for the current user, adding week number
 try {
     $stmt = $conn->prepare('
-        SELECT *, strftime("%W", startzeit) as weekNumber 
+        SELECT *, strftime("%W", substr(startzeit,1,19)) as weekNumber
         FROM zeiterfassung 
         WHERE user_id = :user_id
         ORDER BY startzeit DESC
@@ -90,8 +90,8 @@ try {
         ) as totalMinutes
         FROM zeiterfassung
         WHERE user_id = :user_id
-        AND strftime("%Y", startzeit) = :currentYear
-        AND strftime("%W", startzeit) = :weekNumber
+        AND strftime("%Y", substr(startzeit,1,19)) = :currentYear
+        AND strftime("%W", substr(startzeit,1,19)) = :weekNumber
         AND beschreibung != "Feiertag"
     ');
     $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
@@ -126,16 +126,16 @@ $currentDate = date("Y-m-d");
 // Adjusting SQL query to fetch data for the current calendar week
 $stmt = $conn->prepare('
     SELECT
-        strftime("%Y-%m-%d", startzeit) AS tag,
-        SUM((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60.0) AS arbeitsstunden
+        substr(startzeit,1,10) AS tag,
+        SUM((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60.0 - COALESCE(pause, 0)) AS arbeitsstunden
     FROM
         zeiterfassung
     WHERE
         user_id = :user_id
-        AND strftime("%W", startzeit) = :weekNumber
-        AND strftime("%Y", startzeit) = :currentYear
+        AND strftime("%W", substr(startzeit,1,19)) = :weekNumber
+        AND strftime("%Y", substr(startzeit,1,19)) = :currentYear
     GROUP BY
-        strftime("%Y-%m-%d", startzeit)
+        substr(startzeit,1,10)
 ');
 $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
 $stmt->bindParam(':weekNumber', $currentWeekNumber, PDO::PARAM_STR);
@@ -190,8 +190,8 @@ function getWorkingDays($startDate, $endDate)
 // Function to get working hours between two dates
 function getWorkingHours($startDate, $endDate, $hoursPerDay)
 {
-    $workingDays = getWorkingDays($startDate, $endDate);
-    return $workingDays * $hoursPerDay;
+    global $conn, $user_id;
+    return planned_hours($conn,(int)$user_id,$startDate,$endDate);
 }
 
 // Function to fetch holidays from the database for a given year
@@ -287,7 +287,7 @@ foreach ($records as $record) {
     $endzeit = new DateTime($record['endzeit']);
     $gesamtdauer = $endzeit->diff($startzeit);
 
-    $gesamtstunden = $gesamtdauer->h + ($gesamtdauer->i / 60);
+    $gesamtstunden = ($endzeit->getTimestamp() - $startzeit->getTimestamp()) / 3600;
     $pause = is_numeric($record['pause']) ? ($record['pause'] / 60) : 0;
     $arbeitstunden = $gesamtstunden - $pause;
 
@@ -303,12 +303,7 @@ $totalOverHours = 0;
 
 // Durchlaufen der gesammelten Arbeitsstunden pro Tag
 foreach ($workHoursByDate as $datum => $hours) {
-    $wochentag = date('N', strtotime($datum));
-    if ($wochentag >= 1 && $wochentag <= 5) { // Montag bis Freitag
-        $totalOverHours += $hours - $userRegularWorkingHours;
-    } else {
-        $totalOverHours += $hours; // Wochenendarbeit als Überstunden
-    }
+    $totalOverHours += $hours - planned_minutes($conn,(int)$user_id,$datum)/60;
 }
 
 // Hinzufügen der vorherigen Überstunden
@@ -330,13 +325,13 @@ if ($totalOverHours < 0) {
 // SQL query for total working hours this month
 $stmt = $conn->prepare('
     SELECT
-        SUM((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60) as totalMinutes
+        SUM((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60 - COALESCE(pause, 0)) as totalMinutes
     FROM
         zeiterfassung
     WHERE
         user_id = :user_id
-        AND strftime("%Y", startzeit) = :currentYear
-        AND strftime("%m", startzeit) = :currentMonth
+        AND strftime("%Y", substr(startzeit,1,19)) = :currentYear
+        AND strftime("%m", substr(startzeit,1,19)) = :currentMonth
 ');
 $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
 $stmt->bindParam(':currentYear', $currentYear, PDO::PARAM_STR);
@@ -351,12 +346,12 @@ $overHoursThisMonth = $totalHoursThisMonthFromRecords - $workingHoursThisMonth;
 // Total working hours of the year
 $stmt = $conn->prepare('
     SELECT
-        SUM((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60) as totalMinutes
+        SUM((strftime("%s", endzeit) - strftime("%s", startzeit)) / 60 - COALESCE(pause, 0)) as totalMinutes
     FROM
         zeiterfassung
     WHERE
         user_id = :user_id
-        AND strftime("%Y", startzeit) = :currentYear
+        AND strftime("%Y", substr(startzeit,1,19)) = :currentYear
 ');
 $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
 $stmt->bindParam(':currentYear', $currentYear, PDO::PARAM_STR);
@@ -376,16 +371,7 @@ $overHoursThisYear = $totalHoursThisYearFromRecords - $workingHoursThisYear;
 $firstDayOfWeek = date('Y-m-d', strtotime('Monday this week'));
 $lastWorkingDayOfWeek = date('Y-m-d', strtotime('Friday this week'));
 
-$expectedHoursThisWeek = 5 * $userRegularWorkingHours; // 5 Arbeitstage pro Woche
-
-// Checking each day of the working week if it's a holiday
-$currentDate = $firstDayOfWeek;
-while (strtotime($currentDate) <= strtotime($lastWorkingDayOfWeek)) {
-    if (istFeiertag($currentDate)) {
-        $expectedHoursThisWeek -= $userRegularWorkingHours;
-    }
-    $currentDate = date('Y-m-d', strtotime("+1 day", strtotime($currentDate)));
-}
+$expectedHoursThisWeek = planned_hours($conn,(int)$user_id,$firstDayOfWeek,date('Y-m-d',strtotime('Sunday this week')));
 
 // Calculating over hours for this week
 $overHoursThisWeek = round($totalHoursThisWeek - $expectedHoursThisWeek, 1);
@@ -427,7 +413,7 @@ function getEntryById($conn, $id)
 }
 
 // Gamification: Counting the different weeks worked
-$stmt = $conn->prepare("SELECT COUNT(DISTINCT strftime('%W', startzeit)) as weeksCount FROM zeiterfassung WHERE user_id = :user_id");
+$stmt = $conn->prepare("SELECT COUNT(DISTINCT strftime('%W', substr(startzeit,1,19))) as weeksCount FROM zeiterfassung WHERE user_id = :user_id");
 $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
 $stmt->execute();
 $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -512,20 +498,5 @@ function getTimeRecords($conn, $user_id) {
 
 // Ensure functions handling updates include Standort and Beschreibung if necessary
 function updateTimeRecord($conn, $id, $column, $data) {
-    // Validate column
-    $allowedColumns = ['startzeit', 'endzeit', 'pause', 'standort', 'beschreibung'];
-    if (!in_array($column, $allowedColumns)) {
-        throw new Exception("Ungültige Spalte.");
-    }
-
-    try {
-        $stmt = $conn->prepare("UPDATE zeiterfassung SET $column = :data WHERE id = :id AND user_id = :user_id");
-        $stmt->bindParam(':data', $data);
-        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-        $stmt->bindParam(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
-        $stmt->execute();
-    } catch (PDOException $e) {
-        throw new Exception("Datenbankfehler: " . $e->getMessage());
-    }
+    throw new AttendanceError('Bitte Korrekturantrag verwenden.');
 }
-?>

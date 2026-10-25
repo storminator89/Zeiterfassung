@@ -31,7 +31,7 @@ Terminate production HTTPS at a trusted reverse proxy. Set `APP_HTTPS=1` only wh
 4. Re-enter LDAP settings: encryption previously used a public constant. Old encrypted LDAP values are intentionally not decrypted with that constant. Use LDAPS or successful StartTLS and install PHP's LDAP extension before enabling LDAP; the supplied base Docker image does not include LDAP. Re-synchronize LDAP users so `auth_source='ldap'` prevents local-password fallback. The known old `defaultpassword` login is rejected. Directory-managed accounts cannot use local-password API login; an administrator can still generate their own API token. Verify your directory workflow before enabling it for users.
 5. If the old application was internet-accessible, investigate access to `download.php` and `assets/db/`. Rotate LDAP service credentials and reset potentially exposed user passwords; source fixes cannot undo past disclosure.
 
-Back up the entire private data directory offline, including keys. The browser database download is a consistent SQLite snapshot and requires a current administrator session, but deliberately excludes private keys. A database-only restore from another installation cannot decrypt that installation's LDAP values. Web import accepts compatible current-schema SQLite backups up to 20 MiB, rejects views/triggers, copies only known table data inside a transaction and logs out the importing administrator. Older backup schemas must first be upgraded offline. Other existing sessions are revalidated against restored accounts, roles and password hashes on their next request.
+Back up the entire private data directory offline, including keys. The browser database download is a consistent SQLite snapshot and requires a current administrator session, but deliberately excludes private keys. A database-only restore from another installation cannot decrypt that installation's LDAP values. Partial web import is disabled because it would discard the audit trail. Restore the complete private directory offline as described in [docs/TERMINAL.md](docs/TERMINAL.md).
 
 ## Verification
 
@@ -46,3 +46,7 @@ python3 tests/import_http.py http://127.0.0.1:8080 /private/test-data/timetracki
 The seed script refuses populated databases. Fixtures create `auditadmin`, `audituser`, `auditother`, with password `LocalAudit!Password2026`; use only in isolated local tests. Set the same `APP_DATA_DIR` on the server and seeder.
 
 See `SECURITY-REVIEW.md` for review scope, findings, validation and remaining limits.
+
+## Optionales Terminal-Modul
+
+Die Terminal-API verwendet separate signierte Geräteanfragen und keine Browsersitzungen. Einrichtung, Freigaben, Sperren, Grenzen und vollständige Backup-/Rollback-Schritte: [docs/TERMINAL.md](docs/TERMINAL.md). Der alte partielle Browser-Import ist immer gesperrt; die gesamte private Ablage muss gemeinsam wiederhergestellt werden.
