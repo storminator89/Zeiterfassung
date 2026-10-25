@@ -125,7 +125,7 @@ The REST API is available at `/api.php`
 ## Endpoints
 
 - **POST /api.php/login:** User login. Requires `username` and `password`.
-- **POST /api.php/workentry:** Start work with server time (historical entries require correction). Requires `startzeit`, `endzeit`, `pause`, `beschreibung`, and `standort`.
+- **POST /api.php/workentry:** Start work with server time (historical entries require correction). Send a unique `event_id` for safe retries; client timestamps are not authoritative.
 - **POST /api.php/setendzeit:** Set end time for a specific work entry. Requires `id`.
 - **GET /api.php/users:** Get the currently authenticated user as a one-element array.
 - **GET /api.php/timeentries:** Get all time entries for the authenticated user.
@@ -141,8 +141,9 @@ The API uses JWT (JSON Web Tokens) for authentication. Tokens expire after one h
 # Example of logging in and receiving a JWT token
 curl -X POST -H "Content-Type: application/json" -d '{"username":"your_username", "password":"your_password"}' https://yourdomain.com/api.php/login
 
-# Example of creating a new work entry
-curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer your_jwt_token" -d '{"startzeit":"2023-11-15T08:00:00", "endzeit":"2023-11-15T16:00:00", "pause":30, "beschreibung":"Project work", "standort":"Home Office"}' https://yourdomain.com/api.php/workentry
+# Start work with an event ID (reuse it only when retrying this exact action)
+curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer your_jwt_token" -d '{"action":"start", "event_id":"example-start-000001"}' https://yourdomain.com/api.php/attendance
+```
 
 ## Optionales Praxis-Terminal
 
