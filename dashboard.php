@@ -29,38 +29,14 @@ $stmt = $conn->prepare("SELECT id, startzeit as start, endzeit as end, beschreib
 $stmt->execute([$user_id, date('Y-m-d', strtotime('-1 month'))]);
 $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Gamification data
-$stmt = $conn->prepare("SELECT COUNT(DISTINCT strftime('%W', substr(startzeit,1,19))) as weeksCount FROM zeiterfassung WHERE user_id = :user_id");
-$stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
-$stmt->execute();
-$result = $stmt->fetch(PDO::FETCH_ASSOC);
-$weeksCount = $result['weeksCount'];
-$isFirstWeek = $weeksCount == 1;
-
-// Fetch the number of worked days this month
-$stmt = $conn->prepare("
-    SELECT COUNT(DISTINCT DATE(startzeit)) as workedDays 
-    FROM zeiterfassung 
-    WHERE user_id = :user_id 
-    AND startzeit >= :month_start 
-    AND startzeit < :month_end
-");
-$stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
-$stmt->bindValue(':month_start', date('Y-m-01 00:00:00'), PDO::PARAM_STR);
-$stmt->bindValue(':month_end', date('Y-m-d 23:59:59', strtotime('last day of this month')), PDO::PARAM_STR);
-$stmt->execute();
-$result = $stmt->fetch(PDO::FETCH_ASSOC);
-$workedDays = $result['workedDays'];
-
-// Calculate average daily hours for this month
-$averageDailyHours = $workedDays > 0 ? $totalHoursThisMonth / $workedDays : 0;
-
-// Calculate monthly productivity score
-$productivityScore = min(100, ($totalHoursThisMonth / $workingHoursThisMonth) * 100);
-
-// Calculate weekly productivity score
-$weeklyExpectedHours = 5 * $userRegularWorkingHours; // Assuming a 5-day work week
-$weeklyProductivityScore = min(100, ($totalHoursThisWeek / $weeklyExpectedHours) * 100);
+// Completed booking days only, using local dates rather than SQLite UTC DATE().
+$monthDays=array_filter($reportDays,fn($day)=>$day>=$currentMonthStart&&$day<=$currentMonthEnd,ARRAY_FILTER_USE_KEY);
+$workedDays=count($monthDays);
+$averageDailyHours=$workedDays>0?$totalHoursThisMonth/$workedDays:0;
+$productivityScore=report_percentage($totalHoursThisMonth,$workingHoursThisMonth);
+$weeklyExpectedHours=$expectedHoursThisWeek;
+$weeklyProductivityScore=report_percentage($totalHoursThisWeek,$weeklyExpectedHours);
+$userRegularWorkingHours=planned_minutes($conn,(int)$user_id,date('Y-m-d'))/60;
 
 // Theme Mode aus der Session lesen
 $theme_mode = $_SESSION['theme_mode'] ?? 'light';
@@ -75,11 +51,7 @@ if ($theme_mode === 'dark') {
 // Function to format hours as HH:MM
 function formatHoursAsHHMM($hours)
 {
-    $isNegative = $hours < 0;
-    $hours = abs($hours);
-    $h = floor($hours);
-    $m = round(($hours - $h) * 60);
-    return ($isNegative ? '-' : '') . sprintf("%02d:%02d", $h, $m);
+    return report_format_hours((float)$hours);
 }
 
 // Function to calculate remaining hours to work
@@ -243,7 +215,7 @@ function calculateRemainingHours($workedHours, $expectedHours)
                         <i class="fas fa-hourglass-half fa-3x"></i>
                     </div>
                     <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_REMAINING_HOURS_WEEK ?></div>
-                    <div class="stat-value"><?= calculateRemainingHours($totalHoursThisWeek, 5 * $userRegularWorkingHours) ?></div>
+                    <div class="stat-value"><?= calculateRemainingHours($totalHoursThisWeek, $expectedHoursThisWeek) ?></div>
                 </div>
                 <div class="stat bg-gradient-to-br from-blue-400 to-blue-500 rounded-box shadow-lg">
                     <div class="stat-figure opacity-70">

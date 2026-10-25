@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 
 // Fetch the most recent time record
-$stmt = $conn->prepare("SELECT * FROM zeiterfassung WHERE user_id = ? ORDER BY startzeit DESC LIMIT 1");
+$stmt = $conn->prepare("SELECT * FROM zeiterfassung WHERE user_id = ? AND absence_kind IS NULL AND COALESCE(beschreibung,'') NOT IN ('Urlaub','Krankheit','Feiertag') ORDER BY (endzeit IS NULL) DESC, id DESC LIMIT 1");
 $stmt->execute([$user_id]);
 $latestRecord = $stmt->fetch(PDO::FETCH_ASSOC);
 

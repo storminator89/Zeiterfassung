@@ -82,10 +82,7 @@ function practice_absence(PDO $db,int $user,string $start,string $end,string $ki
             $day=$date->format('Y-m-d');$minutes=planned_minutes($db,$user,$day);if (!$minutes) { continue; }
             // One credit per day. Overlaps, including overnight work, need explicit correction.
             $from=$date->getTimestamp();$to=$date->modify('+1 day')->getTimestamp();
-            $rows=$db->prepare('SELECT startzeit,endzeit FROM zeiterfassung WHERE user_id=?');$rows->execute([$user]);
-            foreach($rows->fetchAll(PDO::FETCH_ASSOC) as $row) {
-                if (strtotime($row['startzeit'])<$to&&(!$row['endzeit']||strtotime($row['endzeit'])>$from)) { throw new AttendanceError('Am '.$day.' ist bereits eine Buchung vorhanden. Bitte Korrekturantrag verwenden.'); }
-            }
+            booking_assert_no_overlap($db,$user,$from,$to);
             // Compatibility projection: an explicitly labelled credit interval, never a punch.
             att_exec($db,'INSERT INTO zeiterfassung(startzeit,endzeit,pause,beschreibung,standort,user_id,absence_kind,planned_minutes) VALUES(?,?,0,?,?,?,?,?)',[attendance_local($from),attendance_local($from+$minutes*60),$kind,'',$user,$kind,$minutes]);$count++;
         }

@@ -24,7 +24,7 @@ $offset = ($page - 1) * $itemsPerPage;
 // Modify the query to order by date and time
 $stmt = $conn->prepare("
     SELECT *,
-           strftime('%W', substr(startzeit,1,19)) AS weekNumber,
+           NULL AS weekNumber,
            substr(startzeit,1,10) as workDate
     FROM zeiterfassung
     WHERE user_id = ?
@@ -33,6 +33,7 @@ $stmt = $conn->prepare("
 ");
 $stmt->execute([$user_id, $itemsPerPage, $offset]);
 $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+foreach ($records as &$entry) { $entry['weekNumber']=substr(report_week($entry),5);$entry['workDate']=report_day($entry); } unset($entry);
 
 // Group records by date for summary calculation
 $currentDate = null;

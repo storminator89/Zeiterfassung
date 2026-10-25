@@ -15,15 +15,15 @@ $zeiten = [];
 $ueberstundenListe = [];
 $detaillierteDaten = [];
 if ($user_role === 'admin' || $user_role === 'supervisor') {
-    $stmt = $conn->prepare("SELECT z.*, u.username, u.id as user_id, u.regelarbeitszeit, u.ueberstunden as vorherige_ueberstunden, substr(z.startzeit,1,10) AS day, strftime('%W', substr(z.startzeit,1,19)) AS weekNumber
+    $stmt = $conn->prepare("SELECT z.*, u.username, u.id as user_id, u.regelarbeitszeit, u.ueberstunden as vorherige_ueberstunden, substr(z.startzeit,1,10) AS day, NULL AS weekNumber
                             FROM zeiterfassung z
                             JOIN users u ON z.user_id = u.id
-                            WHERE u.supervisor_id = ?
+                            WHERE u.supervisor_id = ? OR ?='admin'
                             ORDER BY z.startzeit DESC");
-    $stmt->execute([$user_id]);
+    $stmt->execute([$user_id,$user_role]);
     $zeiten = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    foreach ($zeiten as &$entry) { $entry['planned_minutes_day']=planned_minutes($conn,(int)$entry['user_id'],$entry['day']); } unset($entry);
+    foreach ($zeiten as &$entry) { $entry['weekNumber']=substr(report_week($entry),5);$entry['day']=report_day($entry);$entry['net_minutes']=report_minutes($entry);$entry['planned_minutes_day']=planned_minutes($conn,(int)$entry['user_id'],$entry['day']); } unset($entry);
     // Berechnung der Überstunden und detaillierte Daten
     $workHoursByUser = [];
     foreach ($zeiten as $zeit) {
@@ -43,6 +43,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
             ];
         }
 
+        if ($zeit['net_minutes']===null) { continue; }
         if (!isset($workHoursByUser[$userId]['days'][$day])) {
             $workHoursByUser[$userId]['days'][$day] = 0;
             $workHoursByUser[$userId]['total_days']++;
@@ -53,7 +54,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
         $interval = $start->diff($end);
         $pauseMinuten = intval($zeit['pause']) ?: 0;
 
-        $gesamtMinuten = (($end->getTimestamp() - $start->getTimestamp()) / 60) - $pauseMinuten;
+        $gesamtMinuten = $zeit['net_minutes'];
         $workHoursByUser[$userId]['days'][$day] += $gesamtMinuten;
         $workHoursByUser[$userId]['total_hours'] += $gesamtMinuten / 60;
     }
@@ -85,7 +86,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
             'regelarbeitszeit' => $data['regelarbeitszeit'],
             'total_hours' => round($data['total_hours'], 2),
             'total_days' => $data['total_days'],
-            'avg_hours_per_day' => round($data['total_hours'] / $data['total_days'], 2),
+            'avg_hours_per_day' => ($data['total_days']>0 ? round($data['total_hours'] / $data['total_days'], 2) : 0),
             'ueberstunden' => ($isNegative ? '-' : '') . sprintf("%02d:%02d", $totalOverHours, $totalOverMinutes)
         ];
     }
@@ -300,15 +301,17 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                                                     'regelarbeitszeit' => $zeit['regelarbeitszeit'],
                                                     'entries' => [],
                                                     'total_duration' => 0,
-                                                    'total_break' => 0
+                                                    'total_break' => 0,
+                                                    'completed' => false
                                                 ];
                                             }
 
                                             // Calculate duration for this entry
                                             $start = new DateTime($zeit['startzeit']);
-                                            $end = new DateTime($zeit['endzeit']);
-                                            $duration = ($end->getTimestamp() - $start->getTimestamp()) / 60;
-                                            $break = intval($zeit['pause']);
+                                            $end = $zeit['endzeit'] ? new DateTime($zeit['endzeit']) : null;
+                                            $duration = $zeit['net_minutes']===null ? 0 : $zeit['net_minutes']+(int)$zeit['pause'];
+                                            $break = $zeit['net_minutes']===null ? 0 : intval($zeit['pause']);
+                                            if ($zeit['net_minutes']!==null) { $groupedEntries[$key]['completed']=true; }
 
                                             // Add entry with its individual duration minus break
                                             $groupedEntries[$key]['entries'][] = [
@@ -338,7 +341,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                                             $totalDuration = $group['total_duration']; // Already includes break deduction
                                             $hours = floor($totalDuration / 60);
                                             $minutes = $totalDuration % 60;
-                                            $overtime = $totalDuration - planned_minutes($conn,(int)$group['user_id'],$group['date']);
+                                            $overtime = $group['completed'] ? $totalDuration - planned_minutes($conn,(int)$group['user_id'],$group['date']) : 0;
                                             $overtimeHours = floor(abs($overtime) / 60);
                                             $overtimeMinutes = abs($overtime % 60);
 
@@ -374,13 +377,13 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
 
                                             foreach ($group['entries'] as $entry) {
                                                 $entryStart = new DateTime($entry['startzeit']);
-                                                $entryEnd = new DateTime($entry['endzeit']);
+                                                $entryEnd = $entry['endzeit'] ? new DateTime($entry['endzeit']) : null;
                                                 $entryHours = floor($entry['duration'] / 60);
                                                 $entryMinutes = $entry['duration'] % 60;
 
                                                 echo '<tr>
                                                         <td>' . $entryStart->format('H:i') . '</td>
-                                                        <td>' . $entryEnd->format('H:i') . '</td>
+                                                        <td>' . ($entryEnd?->format('H:i') ?? 'Läuft') . '</td>
                                                         <td>' . sprintf("%02d:%02d", $entryHours, $entryMinutes) . '</td>
                                                         <td>' . $entry['pause'] . ' min</td>
                                                         <td>' . htmlspecialchars($entry['standort']) . '</td>
@@ -568,12 +571,12 @@ function escapeHTML(value) {
                 const interval = (end - start) / (1000 * 60); // Differenz in Minuten
                 const pauseMinuten = parseInt(zeit.pause) || 0;
 
-                const gesamtMinuten = interval - pauseMinuten;
-                const dauer = formatTime(gesamtMinuten);
+                const gesamtMinuten = zeit.net_minutes ?? 0;
+                const dauer = zeit.net_minutes === null ? 'Läuft' : formatTime(gesamtMinuten);
 
                 const regelarbeitszeit = zeit.regelarbeitszeit || 8.0;
                 const regularWorkingMinutesPerDay = zeit.planned_minutes_day;
-                const ueberstunden = gesamtMinuten - regularWorkingMinutesPerDay;
+                const ueberstunden = zeit.net_minutes === null ? 0 : gesamtMinuten - regularWorkingMinutesPerDay;
                 const ueberstundenFormat = formatTime(Math.abs(ueberstunden));
 
                 const row = `
@@ -581,7 +584,7 @@ function escapeHTML(value) {
                     <td>${escapeHTML(zeit.username)}</td>
                     <td>${zeit.weekNumber}</td>
                     <td>${start.toLocaleString()}</td>
-                    <td>${end.toLocaleString()}</td>
+                    <td>${zeit.endzeit ? end.toLocaleString() : 'Läuft'}</td>
                     <td>${dauer}</td>
                     <td>${escapeHTML(zeit.pause)} min</td>
                     <td>${escapeHTML(zeit.standort)}</td>
