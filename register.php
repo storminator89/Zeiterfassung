@@ -1,7 +1,8 @@
 <?php
-session_start();
+require_once __DIR__ . '/security.php';
 include 'config.php';
 
+if (!getenv('APP_SETUP_TOKEN')) { abort_request(403, 'Web setup disabled. Set APP_SETUP_TOKEN temporarily to create the first administrator.'); }
 $error = '';
 $successMessage = '';
 
@@ -21,12 +22,14 @@ if ($totalUsers > 0) {
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    if (!is_string($_POST['setup_token'] ?? null) || !hash_equals(getenv('APP_SETUP_TOKEN'), $_POST['setup_token'])) { abort_request(403, 'Invalid setup token.'); }
+    if (strlen($_POST['password'] ?? '') < 12 || !filter_var($_POST['email'] ?? '', FILTER_VALIDATE_EMAIL)) { abort_request(400, 'Use a valid email and at least 12 password characters.'); }
     // CSRF Token validation
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
         $error = "Ungültiges CSRF-Token.";
     } else {
         $username = trim($_POST['username']);
-        $password = trim($_POST['password']);
+        $password = $_POST['password'];
         $email = trim($_POST['email']);
 
         if (!empty($username) && !empty($password) && !empty($email)) {
@@ -45,9 +48,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
                 try {
+                    $conn->exec('BEGIN IMMEDIATE');
+                    if ((int)$conn->query('SELECT COUNT(*) FROM users')->fetchColumn() !== 0) {
+                        $conn->exec('ROLLBACK');
+                        abort_request(403, 'Setup already completed.');
+                    }
                     // Prepare and execute the statement to insert the new user
                     $stmt = $conn->prepare("INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)");
                     $stmt->execute([$username, $hashedPassword, $email, $role]);
+                    $conn->exec('COMMIT');
 
                     // Set success message
                     $successMessage = "User $username erfolgreich angelegt";
@@ -94,6 +103,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div class="container mt-5 p-5">
         <h2>Registrieren</h2>
         <form method="post" class="mt-4">
+<label>Setup-Token <input type="password" name="setup_token" required autocomplete="off"></label>
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
             <div class="mb-3">
                 <label for="username" class="form-label">Benutzername</label>
@@ -120,7 +130,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <?= $successMessage ?>
+                    <?= h($successMessage) ?>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
@@ -138,7 +148,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <?= $error ?>
+                    <?= h($error) ?>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>

@@ -11,7 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 }
 
 // Including configuration settings
-include 'config.php';
+require_once 'config.php';
+header('Content-Type: application/json; charset=UTF-8');
 
 // Connect to the database
 $conn = new PDO("sqlite:$database");
@@ -54,15 +55,17 @@ function login($conn) {
     $inputJSON = file_get_contents('php://input');
     $input = json_decode($inputJSON, TRUE);
 
+    if (!is_array($input) || !is_string($input['username'] ?? null) || !is_string($input['password'] ?? null)) { abort_request(400, 'Username and password required.'); }
     $username = $input['username'];
     $password = $input['password'];
+    throttle_login($conn, $username);
 
-    $stmt = $conn->prepare("SELECT id, password FROM users WHERE username = :username");
+    $stmt = $conn->prepare("SELECT id, password, auth_source FROM users WHERE username = :username");
     $stmt->bindParam(':username', $username);
     $stmt->execute();
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($user && password_verify($password, $user['password'])) {
+    if ($user && $user['auth_source'] === 'local' && $password !== 'defaultpassword' && password_verify($password, $user['password'])) {
         $user_id = $user['id'];
 
         $header = [
@@ -74,11 +77,12 @@ function login($conn) {
             'iss' => "localhost",
             'aud' => "localhost",
             'iat' => time(),
-            'exp' => time() + (365 * 24 * 60 * 60), // 1 year expiration
-            'user_id' => $user_id
+            'exp' => time() + 3600, // 1 hour expiration
+            'user_id' => (int)$user_id,
+            'ver' => hash('sha256', $user['password'])
         ];
 
-        $jwt = generateJWT($header, $payload, 'your_secret_key');
+        $jwt = generateJWT($header, $payload, JWT_SECRET);
 
         echo json_encode(['success' => true, 'token' => $jwt]);
     } else {
@@ -92,58 +96,37 @@ function base64UrlDecode($data) {
 }
 
 function validateJWT($jwt, $secret) {
-    $tokenParts = explode('.', $jwt);
-    if (count($tokenParts) !== 3) {
+    if (!is_string($jwt) || strlen($jwt) > 4096) { return false; }
+    $parts = explode('.', $jwt);
+    if (count($parts) !== 3) { return false; }
+    [$head, $body, $signature] = $parts;
+    $header = json_decode(base64_decode(strtr($head, '-_', '+/'), true) ?: '', true);
+    $payload = json_decode(base64_decode(strtr($body, '-_', '+/'), true) ?: '', true);
+    if (!is_array($header) || !is_array($payload) || ($header['alg'] ?? '') !== 'HS256' || ($header['typ'] ?? '') !== 'JWT') { return false; }
+    $expected = base64UrlEncode(hash_hmac('sha256', "$head.$body", $secret, true));
+    if (!hash_equals($expected, $signature) || !is_int($payload['exp'] ?? null) || $payload['exp'] <= time()
+        || !is_int($payload['iat'] ?? null) || $payload['iat'] > time() + 30
+        || ($payload['iss'] ?? '') !== 'localhost' || ($payload['aud'] ?? '') !== 'localhost'
+        || !is_int($payload['user_id'] ?? null) || $payload['user_id'] < 1 || !is_string($payload['ver'] ?? null)) {
         return false;
     }
-
-    $headerEncoded = $tokenParts[0];
-    $payloadEncoded = $tokenParts[1];
-    $signatureProvided = $tokenParts[2];
-
-    $header = json_decode(base64UrlDecode($headerEncoded), true);
-    $payload = json_decode(base64UrlDecode($payloadEncoded), true);
-
-    $signature = hash_hmac('SHA256', "$headerEncoded.$payloadEncoded", $secret, true);
-    $signatureEncoded = base64UrlEncode($signature);
-
-    if ($signatureEncoded !== $signatureProvided) {
-        return false;
-    }
-
-    if ($payload['exp'] < time()) {
-        return false;
-    }
-
     return $payload;
 }
 
 function validateToken() {
-    $headers = getallheaders();
-    if (!isset($headers['Authorization'])) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'message' => 'Authorization header missing']);
-        exit();
+    global $conn;
+    $headers = array_change_key_case(getallheaders(), CASE_LOWER);
+    if (!preg_match('/^Bearer ([A-Za-z0-9_.-]+)$/D', $headers['authorization'] ?? '', $matches)) {
+        abort_request(401, 'Invalid bearer token.');
     }
-
-    $authHeader = $headers['Authorization'];
-    list($jwt) = sscanf($authHeader, 'Bearer %s');
-
-    if (!$jwt) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'message' => 'Invalid token format']);
-        exit();
+    $payload = validateJWT($matches[1], JWT_SECRET);
+    if (!$payload) { abort_request(401, 'Invalid or expired token.'); }
+    $stmt = $conn->prepare('SELECT password FROM users WHERE id = ?');
+    $stmt->execute([$payload['user_id']]);
+    $password = $stmt->fetchColumn();
+    if (!$password || !hash_equals(hash('sha256', $password), $payload['ver'])) {
+        abort_request(401, 'Account deleted or credentials changed.');
     }
-
-    $secret = 'your_secret_key';
-    $payload = validateJWT($jwt, $secret);
-
-    if (!$payload) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'message' => 'Invalid token']);
-        exit();
-    }
-
     return $payload;
 }
 
@@ -176,6 +159,14 @@ function createNewWorkEntry($conn, $user_id) {
     $inputJSON = file_get_contents('php://input');
     $input = json_decode($inputJSON, TRUE);
 
+    if (!is_array($input) || !is_string($input['startzeit'] ?? null) || strtotime($input['startzeit']) === false
+        || (isset($input['endzeit']) && (!is_string($input['endzeit']) || strtotime($input['endzeit']) === false))
+        || !is_int($input['pause'] ?? null) || $input['pause'] < 0 || $input['pause'] > 1440
+        || !is_string($input['beschreibung'] ?? null) || strlen($input['beschreibung']) > 4000
+        || !is_string($input['standort'] ?? null) || strlen($input['standort']) > 200) {
+        abort_request(400, 'Invalid work entry.');
+    }
+    if (isset($input['endzeit']) && strtotime($input['endzeit']) < strtotime($input['startzeit'])) { abort_request(400, 'End must follow start.'); }
     $startzeit_raw = $input['startzeit'];
     $endzeit_raw = isset($input['endzeit']) ? $input['endzeit'] : null;
     $pause = $input['pause'];
@@ -249,16 +240,16 @@ function setEndzeit($conn, $input, $user_id) {
 /**
  * @OA\Get(
  *     path="/api.php/users",
- *     summary="Get all users",
+ *     summary="Get the authenticated user",
  *     @OA\Response(response=200, description="List of users"),
  *     @OA\Response(response=401, description="Unauthorized"),
  *     @OA\Response(response=500, description="Internal server error")
  * )
  */
-function getUsers($conn) {
+function getUsers($conn, $user_id) {
     try {
-        $stmt = $conn->prepare("SELECT id, username, email, role FROM users");
-        $stmt->execute();
+        $stmt = $conn->prepare("SELECT id, username, email, role FROM users WHERE id = ?");
+        $stmt->execute([$user_id]);
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode(['success' => true, 'data' => $users]);
     } catch (\Exception $exception) {
@@ -466,7 +457,7 @@ if ($method === 'POST') {
     switch ($uri) {
         case $basePath . '/users':
             $tokenData = validateToken();
-            getUsers($conn);
+            getUsers($conn, $tokenData['user_id']);
             break;
         case $basePath . '/timeentries':
             $tokenData = validateToken();

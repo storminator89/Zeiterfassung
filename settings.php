@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/security.php';
 include 'config.php';
 
 // Überprüfen, ob der Benutzer eingeloggt ist
@@ -30,7 +30,7 @@ $userInfo = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['lang'])) {
-        $lang = $_POST['lang'];
+        $lang = valid_language($_POST['lang']);
         $_SESSION['lang'] = $lang;
         // Lade die neue Sprachdatei sofort
         $langFile = "languages/$lang.php";
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $userInfo['ueberstunden'] = $ueberstunden;
     }
     if (isset($_POST['theme_mode'])) {
-        $theme_mode = $_POST['theme_mode'];
+        $theme_mode = in_array($_POST['theme_mode'], ['light', 'dark', 'system'], true) ? $_POST['theme_mode'] : 'light';
         $_SESSION['theme_mode'] = $theme_mode;
     }
     $successMessage = 'Einstellungen erfolgreich aktualisiert!';
@@ -89,12 +89,13 @@ include 'header.php';
                 <div class="alert alert-error shadow-lg mb-4">
                     <div>
                         <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        <span><?= $error ?></span>
+                        <span><?= h($error) ?></span>
                     </div>
                 </div>
             <?php endif; ?>
 
             <form method="post" class="space-y-6">
+<?= csrf_field() ?>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="form-control">
                         <label class="label" for="lang">
@@ -147,6 +148,7 @@ include 'header.php';
                         <div class="card-body">
                             <h3 class="card-title"><i class="fas fa-upload mr-2"></i><?= SETTINGS_IMPORT_DATABASE ?></h3>
                             <form method="post" enctype="multipart/form-data" action="import.php" class="space-y-4">
+<?= csrf_field() ?>
                                 <div class="form-control">
                                     <label class="label" for="dbFile">
                                         <span class="label-text"><?= SETTINGS_IMPORT_DATABASE ?></span>
@@ -174,7 +176,7 @@ include 'header.php';
     <div id="successModal" class="modal modal-open">
         <div class="modal-box">
             <h3 class="font-bold text-lg">Erfolg!</h3>
-            <p class="py-4"><?= $successMessage ?></p>
+            <p class="py-4"><?= h($successMessage) ?></p>
             <div class="modal-action">
                 <button onclick="closeModal()" class="btn btn-primary">Schließen</button>
             </div>

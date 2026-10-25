@@ -3,7 +3,7 @@ require_once 'config.php';
 require_once 'functions.php';
 
 // Ensure user is logged in
-session_start();
+require_once __DIR__ . '/security.php';
 if (!isset($_SESSION['user_id'])) {
     die('Not authorized');
 }
@@ -50,10 +50,10 @@ try {
             $startzeit->format('d.m.Y'),
             $startzeit->format('H:i'),
             $endzeit ? $endzeit->format('H:i') : '',
-            $record['pause'] ?: '',
+            csv_safe($record['pause'] ?: ''),
             calculateDuration($record['startzeit'], $record['endzeit'], $record['pause']),
-            $record['standort'],
-            $record['beschreibung']
+            csv_safe($record['standort']),
+            csv_safe($record['beschreibung'])
         ], ';');
     }
 

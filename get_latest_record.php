@@ -1,7 +1,7 @@
 <?php
 include 'config.php';
 include 'functions.php';
-session_start();
+require_once __DIR__ . '/security.php';
 
 if (!isset($_SESSION['user_id'])) {
     die("Nicht angemeldet");
@@ -34,7 +34,7 @@ if ($latestRecord):
             </div>
             <div>
                 <p class="font-semibold"><?= TABLE_HEADER_BREAK ?>:</p>
-                <p><?= $latestRecord['pause'] ?> <?= LABEL_MINUTES ?></p>
+                <p><?= h($latestRecord['pause']) ?> <?= LABEL_MINUTES ?></p>
             </div>
             <div>
                 <p class="font-semibold"><?= TABLE_HEADER_LOCATION ?>:</p>

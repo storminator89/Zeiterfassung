@@ -1,28 +1,15 @@
 <?php
-/**
- * Download timetracking SQLite database when accessed directly from web browser
- */
-
-// Define the absolute path of the local SQLite database
-$database = __DIR__ . '/assets/db/timetracking.sqlite';
-
-// If the SQLite database exists...
-if (file_exists($database)) {
-    // Set appropriate headers for downloading a file
-    header('Content-Description: File Transfer');
-    header('Content-Type: application/octet-stream');
-    header(
-        'Content-Disposition: attachment; filename="' . basename($database) . '"'
-    );
-    header('Expires: 0');
-    header('Cache-Control: must-revalidate');
-    header('Pragma: public');
-    header('Content-Length: ' . filesize($database));
-
-    // Read and output the contents of the file to start the download process
-    @readfile($database);
-
-    // Stop executing after sending the response
-    exit();
+require_once __DIR__ . '/config.php';
+require_admin();
+header('Content-Type: application/octet-stream');
+header('Content-Disposition: attachment; filename="timetracking.sqlite"');
+header('Cache-Control: no-store');
+// Consistent snapshot even when other requests write concurrently.
+$snapshot = tempnam(APP_DATA_DIR, 'backup-');
+try {
+    $conn->exec('VACUUM INTO ' . $conn->quote($snapshot));
+    header('Content-Length: ' . filesize($snapshot));
+    readfile($snapshot);
+} finally {
+    unlink($snapshot);
 }
-?>

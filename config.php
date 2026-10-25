@@ -1,8 +1,10 @@
 <?php
 
-$database = __DIR__ . '/assets/db/timetracking.sqlite';
-define('ENCRYPTION_KEY', 'your-encryption-key'); 
-define('ENCRYPTION_METHOD', 'aes-256-cbc'); 
+require_once __DIR__ . '/security.php';
+$database = APP_DATA_DIR . '/timetracking.sqlite';
+if (file_exists(__DIR__ . '/assets/db/timetracking.sqlite')) {
+    abort_request(503, 'Move the legacy database out of the web root before starting. See SECURITY.md.');
+}
 
 
 try {
@@ -97,6 +99,26 @@ SQL;
 
     $result = $conn->query("PRAGMA table_info(users)")->fetchAll();
     $columns = array_column($result, 'name');
+    if (!in_array('auth_source', $columns, true)) {
+        $conn->exec("ALTER TABLE users ADD COLUMN auth_source TEXT NOT NULL DEFAULT 'local'");
+    }
 } catch (\PDOException $e) {
-    exit('Could not connect to the SQLite database: ' . $e->getMessage());
+    error_log($e->getMessage());
+    abort_request(503, 'Database unavailable.');
+}
+
+// Refresh authorization on every request, including after role changes or deletion.
+if (PHP_SAPI !== 'cli' && isset($_SESSION['user_id'])) {
+    $auth = $conn->prepare('SELECT username, role, password FROM users WHERE id = ?');
+    $auth->execute([$_SESSION['user_id']]);
+    $current = $auth->fetch();
+    $auth->closeCursor();
+    $fingerprint = $current ? hash('sha256', $current->password) : '';
+    if (!$current || !isset($_SESSION['auth_version']) || !hash_equals($_SESSION['auth_version'], $fingerprint)) {
+        $_SESSION = [];
+        session_destroy();
+        abort_request(401, 'Please sign in again.');
+    }
+    $_SESSION['role'] = $current->role;
+    $_SESSION['username'] = $current->username;
 }

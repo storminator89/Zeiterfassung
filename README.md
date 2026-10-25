@@ -112,11 +112,11 @@ Located in the `time-tracker-extension_edge` folder.
 
 ## Installation
 
-- Copy all files to your desired directory.
+Use the Docker setup and migration steps in [SECURITY.md](SECURITY.md). Do not expose a fresh setup publicly.
 
 ## Database Configuration
 
-Ensure write permissions on the main directory (assets/db) to allow the SQLite file to be created.
+Set `APP_DATA_DIR` to a private writable directory outside the web root (Docker: `/var/lib/chrono`). Legacy databases under `assets/db` must be migrated before startup.
 
 # REST API
 
@@ -127,13 +127,13 @@ The REST API is available at `/api.php`
 - **POST /api.php/login:** User login. Requires `username` and `password`.
 - **POST /api.php/workentry:** Create a new work entry. Requires `startzeit`, `endzeit`, `pause`, `beschreibung`, and `standort`.
 - **POST /api.php/setendzeit:** Set end time for a specific work entry. Requires `id`.
-- **GET /api.php/users:** Get a list of all users.
+- **GET /api.php/users:** Get the currently authenticated user as a one-element array.
 - **GET /api.php/timeentries:** Get all time entries for the authenticated user.
 - **DELETE /api.php/timeentry/{id}:** Delete a specific time entry.
 
 ## Authentication
 
-The API uses JWT (JSON Web Tokens) for authentication. Upon successful login, a token is returned which must be included in the `Authorization` header of subsequent requests.
+The API uses JWT (JSON Web Tokens) for authentication. Tokens expire after one hour and are invalidated by password changes or account deletion. Upon successful login, a token is returned which must be included in the `Authorization` header of subsequent requests.
 
 ## Example Usage
 
@@ -143,3 +143,7 @@ curl -X POST -H "Content-Type: application/json" -d '{"username":"your_username"
 
 # Example of creating a new work entry
 curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer your_jwt_token" -d '{"startzeit":"2023-11-15T08:00:00", "endzeit":"2023-11-15T16:00:00", "pause":30, "beschreibung":"Project work", "standort":"Home Office"}' https://yourdomain.com/api.php/workentry
+
+## Optionales Praxis-Terminal (geplant)
+
+Ein optionales Terminal für die Belegschaft, mit PIN/NFC, tatsächlichen Pausen und Geräteverwaltung, ist im [Umsetzungsplan](docs/PRAXIS-TERMINAL-PLAN.md) beschrieben. Das Modul ist noch nicht implementiert.

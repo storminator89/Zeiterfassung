@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/security.php';
 include 'config.php';
 
 // Sprachdateien laden
@@ -26,15 +26,18 @@ $successMessage = '';
 
 function encryptData($data, $key, $method)
 {
-    $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($method));
-    $encrypted = openssl_encrypt($data, $method, $key, 0, $iv);
-    return base64_encode($encrypted . '::' . $iv);
+    $iv = random_bytes(12);
+    $encrypted = openssl_encrypt($data, 'aes-256-gcm', hex2bin($key), OPENSSL_RAW_DATA, $iv, $tag);
+    if ($encrypted === false) { throw new RuntimeException('Encryption failed'); }
+    return 'v2:' . base64_encode($iv . $tag . $encrypted);
 }
-
 function decryptData($data, $key, $method)
 {
-    list($encryptedData, $iv) = explode('::', base64_decode($data), 2);
-    return openssl_decrypt($encryptedData, $method, $key, 0, $iv);
+    // Old credentials used a public key. Re-enter them rather than trusting them.
+    if (!str_starts_with($data, 'v2:')) { return ''; }
+    $raw = base64_decode(substr($data, 3), true);
+    if ($raw === false || strlen($raw) < 28) { return ''; }
+    return openssl_decrypt(substr($raw, 28), 'aes-256-gcm', hex2bin($key), OPENSSL_RAW_DATA, substr($raw, 0, 12), substr($raw, 12, 16)) ?: '';
 }
 
 // LDAP-Einstellungen aus der Datenbank abrufen
@@ -105,11 +108,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['generate_token'])) {
         'iss' => "localhost",
         'aud' => "localhost",
         'iat' => time(),
-        'exp' => time() + (365 * 24 * 60 * 60), // 1 Jahr Ablaufzeit
-        'user_id' => $_SESSION['user_id']
+        'exp' => time() + 3600, // 1 Jahr Ablaufzeit
+        'user_id' => (int)$_SESSION['user_id'],
+        'ver' => $_SESSION['auth_version']
     ];
 
-    $secret = 'your_secret_key';
+    $secret = JWT_SECRET;
     $token = generateJWT($header, $payload, $secret);
 
     try {
@@ -134,6 +138,7 @@ function getUidFromDn($dn)
 
 // LDAP-Synchronisation
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
+    if (!function_exists('ldap_connect')) { abort_request(503, 'PHP LDAP extension is required.'); }
     $ldapHost = $_POST['ldap_host'];
     $ldapPort = $_POST['ldap_port'];
     $ldapUser = $_POST['ldap_user'];
@@ -163,6 +168,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
         $ldapConn = ldap_connect($ldapHost, $ldapPort);
         if ($ldapConn) {
             ldap_set_option($ldapConn, LDAP_OPT_PROTOCOL_VERSION, 3);
+            ldap_set_option($ldapConn, LDAP_OPT_NETWORK_TIMEOUT, 5);
+            if (!str_starts_with(strtolower($ldapHost), 'ldaps://') && !ldap_start_tls($ldapConn)) { abort_request(503, 'LDAP TLS required.'); }
             if (ldap_bind($ldapConn, $ldapUser, $ldapPass)) {
                 $searchFilter = "(objectClass=inetOrgPerson)";
                 $attributes = ["uid", "cn", "sn", "mail", "ou", "manager"];
@@ -212,7 +219,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
 
                             if ($user) {
                                 // Benutzerinformationen aktualisieren
-                                $updateSql = "UPDATE users SET email = :email, department_id = :department_id, supervisor_id = :supervisor_id WHERE username = :username";
+                                $updateSql = "UPDATE users SET auth_source = 'ldap', email = :email, department_id = :department_id, supervisor_id = :supervisor_id WHERE username = :username";
                                 $stmt = $conn->prepare($updateSql);
                                 $stmt->bindParam(':email', $email);
                                 $stmt->bindParam(':department_id', $departmentId);
@@ -221,9 +228,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
                                 $stmt->execute();
                             } else {
                                 // Neuen Benutzer einfügen
-                                $insertSql = "INSERT INTO users (username, password, email, role, department_id, supervisor_id) VALUES (:username, :password, :email, 'user', :department_id, :supervisor_id)";
+                                $insertSql = "INSERT INTO users (username, password, email, role, department_id, supervisor_id, auth_source) VALUES (:username, :password, :email, 'user', :department_id, :supervisor_id, 'ldap')";
                                 $stmt = $conn->prepare($insertSql);
-                                $passwordHash = password_hash("defaultpassword", PASSWORD_BCRYPT);
+                                $passwordHash = password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT);
                                 $stmt->bindParam(':username', $username);
                                 $stmt->bindParam(':password', $passwordHash);
                                 $stmt->bindParam(':email', $email);
@@ -446,7 +453,7 @@ include 'header.php';
                 <div class="alert alert-error shadow-lg mb-4">
                     <div>
                         <i class="fas fa-exclamation-circle"></i>
-                        <span><?= $error ?></span>
+                        <span><?= h($error) ?></span>
                     </div>
                 </div>
             <?php endif; ?>
@@ -455,7 +462,7 @@ include 'header.php';
                 <div class="alert alert-success shadow-lg mb-4">
                     <div>
                         <i class="fas fa-check-circle"></i>
-                        <span><?= $successMessage ?></span>
+                        <span><?= h($successMessage) ?></span>
                     </div>
                 </div>
             <?php endif; ?>
@@ -469,6 +476,7 @@ include 'header.php';
                     </button>
                     <div id="userForm" class="hidden mb-6">
                         <form method="post" class="space-y-4">
+<?= csrf_field() ?>
                             <input type="hidden" name="add_user" value="1">
                             <div class="form-control">
                                 <label class="label" for="username">
@@ -581,6 +589,7 @@ include 'header.php';
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                             <form method="post" class="inline" onsubmit="return confirm('<?= CONFIRM_DELETE_USER ?>')">
+<?= csrf_field() ?>
                                                 <input type="hidden" name="delete_user" value="1">
                                                 <input type="hidden" name="user_id" value="<?= $user->id ?>">
                                                 <button type="submit" class="btn btn-ghost btn-sm" title="<?= BUTTON_DELETE ?>">
@@ -608,6 +617,7 @@ include 'header.php';
                 <div class="card-body">
                     <h2 class="card-title text-2xl mb-4"><?= DEPARTMENT_MANAGEMENT_TITLE ?></h2>
                     <form method="post" class="flex space-x-2 mb-4">
+<?= csrf_field() ?>
                         <input type="hidden" name="add_department" value="1">
                         <input type="text" name="department_name" class="input input-bordered flex-grow" placeholder="<?= FORM_NEW_DEPARTMENT ?>" required>
                         <button type="submit" class="btn btn-primary">
@@ -632,10 +642,11 @@ include 'header.php';
                                     <td><?= $department->id ?></td>
                                     <td><?= htmlspecialchars($department->name) ?></td>
                                     <td>
-                                        <button class="btn btn-ghost btn-sm" onclick="editDepartment(<?= $department->id ?>, '<?= htmlspecialchars($department->name) ?>')" title="<?= BUTTON_EDIT ?>">
+                                        <button class="btn btn-ghost btn-sm" onclick="editDepartment(<?= (int)$department->id ?>, <?= h(json_encode($department->name, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>)" title="<?= BUTTON_EDIT ?>">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                         <form method="post" class="inline" onsubmit="return confirm('<?= CONFIRM_DELETE_DEPARTMENT ?>')">
+<?= csrf_field() ?>
                                             <input type="hidden" name="delete_department" value="1">
                                             <input type="hidden" name="department_id" value="<?= $department->id ?>">
                                             <button type="submit" class="btn btn-ghost btn-sm" title="<?= BUTTON_DELETE ?>">
@@ -655,6 +666,7 @@ include 'header.php';
                 <div class="card-body">
                     <h2 class="card-title text-2xl mb-4"><?= LDAP_SYNC_TITLE ?></h2>
                     <form method="post" class="space-y-4">
+<?= csrf_field() ?>
                         <input type="hidden" name="sync_ldap" value="1">
                         <div class="form-control">
                             <label class="label" for="ldap_host">
@@ -698,6 +710,7 @@ include 'header.php';
                 <div class="card-body">
                     <h2 class="card-title text-2xl mb-4"><?= PAUSE_SETTINGS_TITLE ?></h2>
                     <form method="post" class="space-y-4">
+<?= csrf_field() ?>
                         <input type="hidden" name="update_pause_settings" value="1">
                         <table class="table w-full" id="pauseSettingsTable">
                             <thead>
@@ -740,6 +753,7 @@ include 'header.php';
                 <div class="card-body">
                     <h2 class="card-title text-2xl mb-4"><?= API_ACCESS_TITLE ?></h2>
                     <form method="post" class="flex space-x-2 mb-4">
+<?= csrf_field() ?>
                         <input type="password" id="tokenField" class="input input-bordered flex-grow" value="<?= htmlspecialchars($currentUser->token ?? '') ?>" readonly>
                         <button type="button" id="toggleToken" class="btn btn-secondary">
                             <i class="fas fa-eye"></i>
@@ -774,6 +788,7 @@ include 'header.php';
 <!-- Modal für Benutzer bearbeiten -->
 <dialog id="editUserModal" class="modal">
     <form method="post" class="modal-box">
+<?= csrf_field() ?>
         <h3 class="font-bold text-lg mb-4"><?= MODAL_TITLE_EDIT_USER ?></h3>
         <input type="hidden" id="edit_user_id" name="user_id">
         <input type="hidden" name="edit_user" value="1">
@@ -850,6 +865,7 @@ include 'header.php';
 <!-- Modal für Abteilung bearbeiten -->
 <dialog id="editDepartmentModal" class="modal">
     <form method="post" class="modal-box">
+<?= csrf_field() ?>
         <h3 class="font-bold text-lg mb-4"><?= MODAL_TITLE_EDIT_DEPARTMENT ?></h3>
         <input type="hidden" id="edit_department_id" name="department_id">
         <input type="hidden" name="edit_department" value="1">

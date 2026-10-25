@@ -15,7 +15,7 @@ $zeiten = [];
 $ueberstundenListe = [];
 $detaillierteDaten = [];
 if ($user_role === 'admin' || $user_role === 'supervisor') {
-    $stmt = $conn->prepare("SELECT z.*, u.username, u.id as user_id, u.regelarbeitszeit, u.ueberstunden as vorherige_ueberstunden, strftime('%Y-%m-%d', z.startzeit) AS day, strftime('%W', z.startzeit) AS weekNumber 
+    $stmt = $conn->prepare("SELECT z.*, u.username, u.id as user_id, u.regelarbeitszeit, u.ueberstunden as vorherige_ueberstunden, strftime('%Y-%m-%d', z.startzeit) AS day, strftime('%W', z.startzeit) AS weekNumber
                             FROM zeiterfassung z
                             JOIN users u ON z.user_id = u.id
                             WHERE u.supervisor_id = ?
@@ -108,13 +108,13 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
         [data-theme="dark"] {
             color: hsl(var(--bc));
         }
-        
+
         /* Existing styles */
         .modal-box {
             width: 90vw;
             max-width: 70vw;
             height: 70vh;
-            max-height: 90vh;          
+            max-height: 90vh;
         }
 
         th {
@@ -125,7 +125,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
         .stats-card {
             transition: transform 0.2s ease-in-out;
         }
-        
+
         .stats-card:hover {
             transform: translateY(-5px);
         }
@@ -170,7 +170,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
 <body>
     <!-- Remove the bg-base-200 class from body and add it to a wrapper div -->
     <div class="min-h-screen bg-base-100">
-        <?php include 'navigation.php'; ?>
+
         <div class="container mx-auto px-4 py-8">
             <h2 class="text-4xl font-bold mb-8 text-center"><?= SUPERVISOR_TIMES_TITLE ?></h2>
 
@@ -188,9 +188,9 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                 <div class="mb-6">
                     <div class="flex flex-wrap gap-4 items-center justify-between">
                         <div class="search-container">
-                            <input type="text" 
-                                id="searchInput" 
-                                class="input input-bordered search-input" 
+                            <input type="text"
+                                id="searchInput"
+                                class="input input-bordered search-input"
                                 placeholder="Suche nach Mitarbeiter...">
                         </div>
                         <div class="flex gap-2 flex-wrap">
@@ -261,9 +261,9 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                                         <span class="input-group-text">
                                             <i class="fas fa-search"></i>
                                         </span>
-                                        <input type="text" 
-                                            id="userSearchInput" 
-                                            class="input input-bordered w-full" 
+                                        <input type="text"
+                                            id="userSearchInput"
+                                            class="input input-bordered w-full"
                                             placeholder="Mitarbeiter suchen...">
                                     </div>
                                 </div>
@@ -290,7 +290,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                                             $userId = $zeit['user_id'];
                                             $date = date('Y-m-d', strtotime($zeit['startzeit']));
                                             $key = $userId . '_' . $date;
-                                            
+
                                             if (!isset($groupedEntries[$key])) {
                                                 $groupedEntries[$key] = [
                                                     'user_id' => $userId,
@@ -302,13 +302,13 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                                                     'total_break' => 0
                                                 ];
                                             }
-                                            
+
                                             // Calculate duration for this entry
                                             $start = new DateTime($zeit['startzeit']);
                                             $end = new DateTime($zeit['endzeit']);
                                             $duration = ($end->getTimestamp() - $start->getTimestamp()) / 60;
                                             $break = intval($zeit['pause']);
-                                            
+
                                             // Add entry with its individual duration minus break
                                             $groupedEntries[$key]['entries'][] = [
                                                 'startzeit' => $zeit['startzeit'],
@@ -318,7 +318,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                                                 'standort' => $zeit['standort'],
                                                 'beschreibung' => $zeit['beschreibung'] ?? ''
                                             ];
-                                            
+
                                             // Update totals
                                             $groupedEntries[$key]['total_duration'] += $duration - $break; // Add duration minus break
                                             $groupedEntries[$key]['total_break'] += $break;
@@ -463,10 +463,16 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
     </dialog>
 
     <script>
-        const detaillierteDaten = <?= json_encode($detaillierteDaten) ?>;
+function escapeHTML(value) {
+    const node = document.createElement('span');
+    node.textContent = String(value ?? '');
+    return node.innerHTML;
+}
+
+        const detaillierteDaten = <?= json_encode($detaillierteDaten, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         const itemsPerPage = 10; // Anzahl der Einträge pro Seite
         let currentPage = 1;
-        const zeiten = <?= json_encode($zeiten) ?>; // PHP-Array in JavaScript-Variable umwandeln
+        const zeiten = <?= json_encode($zeiten, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>; // PHP-Array in JavaScript-Variable umwandeln
 
         function showDetails(userId) {
             const modal = document.getElementById('details_modal');
@@ -483,10 +489,10 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
                     </div>
                     <div class="stat-title">Regelarbeitszeit</div>
-                    <div class="stat-value">${userData.regelarbeitszeit}h</div>
+                    <div class="stat-value">${escapeHTML(userData.regelarbeitszeit)}h</div>
                     <div class="stat-desc">pro Tag</div>
                 </div>
-                
+
                 <div class="stat bg-base-100 rounded-box shadow-lg">
                     <div class="stat-figure text-secondary">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
@@ -571,13 +577,13 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
 
                 const row = `
                 <tr class="hover:bg-base-200 transition-colors duration-200">
-                    <td>${zeit.username}</td>
+                    <td>${escapeHTML(zeit.username)}</td>
                     <td>${zeit.weekNumber}</td>
                     <td>${start.toLocaleString()}</td>
                     <td>${end.toLocaleString()}</td>
                     <td>${dauer}</td>
-                    <td>${zeit.pause} min</td>
-                    <td>${zeit.standort}</td>
+                    <td>${escapeHTML(zeit.pause)} min</td>
+                    <td>${escapeHTML(zeit.standort)}</td>
                     <td class="${ueberstunden >= 0 ? 'text-success' : 'text-error'} font-semibold">${ueberstunden >= 0 ? '+' : '-'}${ueberstundenFormat}</td>
                 </tr>
             `;
@@ -626,7 +632,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
         // Initialize Charts
         function initializeCharts() {
             // Convert the PHP array to the correct format for charts
-            const overtimeData = Object.values(<?= json_encode($ueberstundenListe) ?>).map(user => ({
+            const overtimeData = Object.values(<?= json_encode($ueberstundenListe, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>).map(user => ({
                 label: user.username,
                 value: parseFloat(user.ueberstunden.replace(':', '.').replace('-', '-'))
             }));
@@ -639,7 +645,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                     datasets: [{
                         label: 'Überstunden',
                         data: overtimeData.map(d => d.value),
-                        backgroundColor: overtimeData.map(d => d.value >= 0 ? 
+                        backgroundColor: overtimeData.map(d => d.value >= 0 ?
                             'rgba(72, 187, 120, 0.7)' : 'rgba(245, 101, 101, 0.7)'),
                     }]
                 },
@@ -664,7 +670,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
             });
 
             // Convert the PHP array to the correct format for charts
-            const workingHoursData = Object.values(<?= json_encode($detaillierteDaten) ?>).map(user => ({
+            const workingHoursData = Object.values(<?= json_encode($detaillierteDaten, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>).map(user => ({
                 label: user.username,
                 value: user.total_hours
             }));
@@ -673,10 +679,10 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
             new Chart(document.getElementById('regularHoursChart'), {
                 type: 'bar',
                 data: {
-                    labels: Object.values(<?= json_encode($detaillierteDaten) ?>).map(d => d.username),
+                    labels: Object.values(<?= json_encode($detaillierteDaten, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>).map(d => d.username),
                     datasets: [{
                         label: 'Regelarbeitszeit (Stunden)',
-                        data: Object.values(<?= json_encode($detaillierteDaten) ?>).map(d => d.regelarbeitszeit),
+                        data: Object.values(<?= json_encode($detaillierteDaten, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>).map(d => d.regelarbeitszeit),
                         backgroundColor: 'rgba(66, 153, 225, 0.7)',
                         borderColor: 'rgba(66, 153, 225, 1)',
                         borderWidth: 1
@@ -725,8 +731,8 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
             const cards = document.querySelectorAll('#overtimeCards .card');
             cards.forEach(card => {
                 const hours = parseFloat(card.querySelector('.text-3xl').textContent.replace(':', '.'));
-                if (type === 'all' || 
-                    (type === 'overtime' && hours > 0) || 
+                if (type === 'all' ||
+                    (type === 'overtime' && hours > 0) ||
                     (type === 'undertime' && hours < 0)) {
                     card.style.display = '';
                 } else {
@@ -748,12 +754,12 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
             userSearchInput.addEventListener('input', function() {
                 const searchTerm = this.value.toLowerCase();
                 const rows = document.querySelectorAll('.group-header');
-                
+
                 rows.forEach(row => {
                     const username = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
                     const shouldShow = username.includes(searchTerm);
                     row.style.display = shouldShow ? '' : 'none';
-                    
+
                     // Hide/show corresponding detail row
                     const detailRow = document.querySelector(`.detail-row[data-parent="${row.dataset.userId}_${row.dataset.date}"]`);
                     if (detailRow && detailRow.classList.contains('show')) {
@@ -769,7 +775,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                     const date = this.dataset.date;
                     const detailRow = document.querySelector(`.detail-row[data-parent="${userId}_${date}"]`);
                     const chevron = this.querySelector('.fa-chevron-right');
-                    
+
                     detailRow.classList.toggle('hidden');
                     chevron.style.transform = detailRow.classList.contains('hidden') ? '' : 'rotate(90deg)';
                 });

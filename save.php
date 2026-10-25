@@ -1,6 +1,6 @@
 <?php
 include 'config.php';
-session_start();
+require_once __DIR__ . '/security.php';
 
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
@@ -8,6 +8,8 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id = $_SESSION['user_id'];
+header('Content-Type: text/plain; charset=UTF-8');
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') { abort_request(405, 'POST required.'); }
 
 // Funktion, um die Mindestpausendauer basierend auf der Arbeitszeit abzurufen
 function getPauseDuration($totalHours)
@@ -217,6 +219,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["urlaubStart"]) && isse
         die("Enddatum des Urlaubs darf nicht vor dem Startdatum liegen.");
     }
 
+    if ($start->diff($end)->days > 366) { abort_request(400, 'Maximum date range is 366 days.'); }
     $interval = new DateInterval('P1D');
     $daterange = new DatePeriod($start, $interval, $end->modify('+1 day'));
 

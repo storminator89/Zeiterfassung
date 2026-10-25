@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/security.php';
 include 'config.php';
 
 // Sprachdateien laden
@@ -23,12 +23,12 @@ $offset = ($page - 1) * $itemsPerPage;
 
 // Modify the query to order by date and time
 $stmt = $conn->prepare("
-    SELECT *, 
+    SELECT *,
            strftime('%W', startzeit) AS weekNumber,
            DATE(startzeit) as workDate
-    FROM zeiterfassung 
-    WHERE user_id = ? 
-    ORDER BY startzeit DESC 
+    FROM zeiterfassung
+    WHERE user_id = ?
+    ORDER BY startzeit DESC
     LIMIT ? OFFSET ?
 ");
 $stmt->execute([$user_id, $itemsPerPage, $offset]);
@@ -41,8 +41,8 @@ $dailyTotals = [];
 // Header section with improved export button
 echo '<div class="flex justify-between items-center mb-4">
     <h2 class="text-xl font-bold"><i class="fas fa-clock mr-2"></i>' . TABLE_HEADER_TIME_RECORDS . '</h2>
-    <button onclick="exportToCSV()" 
-            class="btn btn-outline btn-success btn-sm gap-2 hover:scale-105 transform transition-transform duration-200" 
+    <button onclick="exportToCSV()"
+            class="btn btn-outline btn-success btn-sm gap-2 hover:scale-105 transform transition-transform duration-200"
             >
         <i class="fas fa-file-csv text-lg"></i>
         <span class="hidden sm:inline">' . BUTTON_EXPORT_CSV . '</span>
@@ -82,9 +82,9 @@ foreach ($records as $record) {
             'entries' => 0
         ];
     }
-    
+
     $dailyRecords[$workDate][] = $record;
-    
+
     if ($record['endzeit']) {
         $start = new DateTime($record['startzeit']);
         $end = new DateTime($record['endzeit']);
@@ -115,12 +115,12 @@ foreach ($dailyRecords as $workDate => $dayRecords) {
 
     // Subtract total pause from total minutes
     $totalMinutes -= $totalPause;
-    
+
     // Format total time
     $totalHours = floor($totalMinutes / 60);
     $remainingMinutes = $totalMinutes % 60;
     $formattedTotal = sprintf("%02d:%02d", $totalHours, $remainingMinutes);
-    
+
     $dateObj = new DateTime($workDate);
     $formattedDate = $dateObj->format('d.m.Y');
 
@@ -172,11 +172,11 @@ foreach ($dailyRecords as $workDate => $dayRecords) {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-base-200/50">';
-    
+
     foreach ($dayRecords as $record) {
         outputRecordRow($record);
     }
-    
+
     echo '</tbody>
                     </table>
                 </div>
@@ -241,9 +241,9 @@ function outputRecordRow($record) {
             <td>' . $record['weekNumber'] . '</td>
             <td>
                 <div class="flex items-center gap-2">
-                    <span class="text-gray-600 editable-datetime" 
-                          data-id="' . $record['id'] . '" 
-                          data-field="startzeit" 
+                    <span class="text-gray-600 editable-datetime"
+                          data-id="' . $record['id'] . '"
+                          data-field="startzeit"
                           data-value="' . date('Y-m-d H:i', strtotime($record['startzeit'])) . '">
                         ' . date('d.m.Y H:i', strtotime($record['startzeit'])) . '
                     </span>
@@ -270,15 +270,15 @@ function outputRecordRow($record) {
     echo '</td>
             <td>' . calculateDuration($record['startzeit'], $record['endzeit'], $record['pause']) . '</td>
             <td>
-                <input type="number" 
-                       name="pause" 
-                       class="input input-bordered input-sm w-16" 
-                       value="' . $record['pause'] . '" 
+                <input type="number"
+                       name="pause"
+                       class="input input-bordered input-sm w-16"
+                       value="' . h($record['pause']) . '"
                        data-id="' . $record['id'] . '">
             </td>
             <td>
-                <select class="select select-bordered select-sm w-32" 
-                        data-id="' . htmlspecialchars($record['id']) . '" 
+                <select class="select select-bordered select-sm w-32"
+                        data-id="' . htmlspecialchars($record['id']) . '"
                         data-field="standort">
                     <option value="' . LOCATION_OFFICE_VALUE . '" ' . ($record['standort'] == LOCATION_OFFICE_VALUE ? 'selected' : '') . '>' . LOCATION_OFFICE . '</option>
                     <option value="' . LOCATION_HOME_OFFICE_VALUE . '" ' . ($record['standort'] == LOCATION_HOME_OFFICE_VALUE ? 'selected' : '') . '>' . LOCATION_HOME_OFFICE . '</option>
@@ -286,10 +286,10 @@ function outputRecordRow($record) {
                 </select>
             </td>
             <td>
-                <input type="text" 
-                       class="input input-bordered input-sm w-full" 
-                       data-id="' . htmlspecialchars($record['id']) . '" 
-                       data-field="beschreibung" 
+                <input type="text"
+                       class="input input-bordered input-sm w-full"
+                       data-id="' . htmlspecialchars($record['id']) . '"
+                       data-field="beschreibung"
                        value="' . htmlspecialchars($record['beschreibung']) . '">
             </td>
             <td class="w-12">

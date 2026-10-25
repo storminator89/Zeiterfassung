@@ -239,15 +239,15 @@
       },
       "/api.php/users": {
         "get": {
-          "summary": "Get all users",
+          "summary": "Get the authenticated user",
           "responses": {
             "200": {
-              "description": "List of users",
+              "description": "Current user (one-element array)",
               "content": {
                 "application/json": {
                   "examples": {
                     "success": {
-                      "summary": "List of users",
+                      "summary": "Current user (one-element array)",
                       "value": {
                         "success": true,
                         "data": [
