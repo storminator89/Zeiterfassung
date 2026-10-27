@@ -60,7 +60,9 @@ PIN-Fehlversuche sind pro Gerät und Person beschränkt. Kopplungsversuche sind 
 
 ## Sicherung, Deaktivierung und Rollback
 
-Der alte partielle Browser-Datenbankimport ist immer gesperrt, damit Arbeitszeitmodelle und Änderungshistorie erhalten bleiben. Ein Browser-Download sichert die gesamte SQLite-Datenbank, aber keine `.key`-Dateien. Für eine Wiederherstellung:
+Der alte partielle Browser-Datenbankimport ist immer gesperrt, damit Arbeitszeitmodelle und Änderungshistorie erhalten bleiben. Die Einstellungen bieten deshalb keinen Upload an, sondern verweisen auf das manuelle Offline-Vorgehen. Ein Browser-Download ist ein konsistenter Snapshot der gesamten SQLite-Datenbank, aber keine vollständige Betriebssicherung: Externe `.key`-Dateien, Anwendungscode und Betriebskonfiguration sind nicht enthalten.
+
+Die vollständige private Datenablage gemeinsam sichern und den dazu passenden Code-, Schema- und Konfigurationsstand bereithalten. Ein automatischer Vollrestore wird nicht angeboten; ein vollständiger Wiederanlauf muss separat geprüft werden. Für eine Wiederherstellung:
 
 1. App und Gerätedienste stoppen, damit keine Buchungen während der Wiederherstellung eintreffen.
 2. Gesamte private Ablage einschließlich Datenbank, SQLite-Sidecars (falls vorhanden) und Schlüssel aus demselben konsistenten Backup wiederherstellen. Zugriffsrechte prüfen.
