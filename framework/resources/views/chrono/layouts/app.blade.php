@@ -279,7 +279,7 @@
                     <span>{{ $page->copy->text('NAV_SETTINGS') }}</span>
                 </a>
                 @if ($page->role === 'admin')
-                    <a href="admin.php" class="sidebar-link ">
+                    <a href="admin.php" class="sidebar-link {{ $page->activePage === 'admin.php' ? 'active' : '' }}">
                         <i class="fas fa-user-shield w-6"></i>
                         <span>Admin</span>
                     </a>
@@ -368,6 +368,7 @@
             @if ($page->interactions->workModels) Arbeitszeitmodelle sind ebenfalls verbunden. @endif
             @if ($page->interactions->history) Änderungshistorie ist ebenfalls verbunden. @endif
             @if ($page->interactions->supervisor) Vorgesetztenauswertung ist ebenfalls verbunden. @endif
+            @if ($page->interactions->adminPauseSettings) Nur die Pauseneinstellungen der Verwaltung sind zusätzlich verbunden; weitere Verwaltungsaktionen nicht. @endif
             Weitere Seiten sind in dieser Vorschau noch nicht verbunden.
             @else
             Inaktive Laravel-Ansicht: Anmeldung, Buchungen, Abwesenheiten und Abmeldung sind noch nicht verbunden.

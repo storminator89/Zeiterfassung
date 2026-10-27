@@ -47,6 +47,9 @@ interface ChronoReads
     /** Native paged versions, scoped selection and today's model for the same owner, in one snapshot. */
     public function workModelsPage(int $page = 1, ?int $selectedModelId = null): array;
 
+    /** Existing Admin pause-rule rows; fresh local-admin authorization in the snapshot. */
+    public function adminPauseSettings(): array;
+
     /** Native work-model target options, only after a fresh current-admin check. */
     public function workModelTargets(): array;
 }

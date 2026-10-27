@@ -16,5 +16,6 @@ final readonly class Interactions
         public bool $history = false,
         public bool $supervisor = false,
         public bool $dashboard = false,
+        public bool $adminPauseSettings = false,
     ) {}
 }

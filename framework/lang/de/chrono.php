@@ -108,4 +108,11 @@ return [
     'SETTINGS_BACKUP_SNAPSHOT_TITLE' => 'Datenbank-Snapshot',
     'SETTINGS_BACKUP_SNAPSHOT_DESCRIPTION' => 'Konsistenter Snapshot der gesamten SQLite-Datenbank. Externe .key-Dateien, Anwendungscode und Betriebskonfiguration sind nicht enthalten. Der Download ist daher keine vollständige Betriebssicherung.',
     'SETTINGS_BACKUP_SNAPSHOT_DOWNLOAD' => 'DB-Snapshot herunterladen',
+
+    // Exact existing native Admin pause-card copy.
+    'PAUSE_SETTINGS_TITLE' => 'Pauseneinstellungen',
+    'TABLE_HEADER_HOURS_THRESHOLD' => 'Stundenschwelle',
+    'TABLE_HEADER_MINIMUM_PAUSE' => 'Mindestpause',
+    'BUTTON_DELETE' => 'Löschen',
+    'BUTTON_ADD_ROW' => 'Zeile hinzufügen',
 ];

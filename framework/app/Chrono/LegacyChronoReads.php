@@ -371,6 +371,18 @@ final class LegacyChronoReads implements ChronoReads
         });
     }
 
+    public function adminPauseSettings(): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
+            if ($actor->role !== 'admin' || $actor->auth_source !== 'local') {
+                throw new AuthorizationException('Nur die Verwaltung darf Pauseneinstellungen ändern.');
+            }
+
+            // Native current configuration only; no default insertion or user/LDAP/token data.
+            return $this->rows($pdo, 'SELECT * FROM pause_settings ORDER BY hours_threshold ASC', []);
+        });
+    }
+
     public function workModelTargets(): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {

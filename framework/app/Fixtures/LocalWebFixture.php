@@ -219,9 +219,9 @@ final class LocalWebFixture
         $app->instance(RateLimiter::class, $limiter);
         $app->instance(Interactions::class, new Interactions(
             login: true, attendance: true, logout: true, corrections: true,
-            home: true, absences: true, workModels: true, history: true, supervisor: true, dashboard: true,
+            home: true, absences: true, workModels: true, history: true, supervisor: true, dashboard: true, adminPauseSettings: true,
         ));
-        LocalWebRoutes::register($app, includeHistory: true, includeSupervisor: true, includeDashboard: true, includeCsv: true, includeSettings: true);
+        LocalWebRoutes::register($app, includeHistory: true, includeSupervisor: true, includeDashboard: true, includeCsv: true, includeSettings: true, includeAdminPauseSettings: true);
     }
 
     private static function support(string $root): string

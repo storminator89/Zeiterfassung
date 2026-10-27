@@ -105,4 +105,11 @@ return [
     'SETTINGS_BACKUP_SNAPSHOT_TITLE' => '資料庫快照',
     'SETTINGS_BACKUP_SNAPSHOT_DESCRIPTION' => '整個 SQLite 資料庫的一致性快照。不包含外部 .key 檔案、應用程式碼及維運設定，因此此下載不是完整的系統備份。',
     'SETTINGS_BACKUP_SNAPSHOT_DOWNLOAD' => '下載資料庫快照',
+
+    // Exact existing native Admin pause-card copy.
+    'PAUSE_SETTINGS_TITLE' => '休息設定',
+    'TABLE_HEADER_HOURS_THRESHOLD' => '小時閾值',
+    'TABLE_HEADER_MINIMUM_PAUSE' => '最短休息時間',
+    'BUTTON_DELETE' => '刪除',
+    'BUTTON_ADD_ROW' => '新增行',
 ];

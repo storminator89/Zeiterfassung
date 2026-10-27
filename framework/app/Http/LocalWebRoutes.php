@@ -2,6 +2,7 @@
 
 namespace App\Http;
 
+use App\Http\Controllers\LocalWebAdminPauseSettingsController;
 use App\Http\Controllers\LocalWebAttendanceController;
 use App\Http\Controllers\LocalWebCorrectionsController;
 use App\Http\Controllers\LocalWebCsvExportController;
@@ -38,7 +39,7 @@ use Symfony\Component\HttpFoundation\Response;
 /** Explicit opt-in registrar. Never called by bootstrap/providers/default routes. */
 final class LocalWebRoutes
 {
-    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false): void
+    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false): void
     {
         // No opt-in page may be registered against missing or replaced chart bytes.
         if ($includeSupervisor) {
@@ -57,12 +58,14 @@ final class LocalWebRoutes
         // Native attendance/correction/model fields were never globally trimmed/coerced.
         // " 1 " must not become either a confirmation or a cancellation flag.
         $nativeFormPath = fn (Request $request): bool => in_array($request->path(), ['/', 'index.php', 'attendance.php', 'adjustments.php', 'get_time_records.php', 'save.php', 'work_models.php'], true)
-            || ($includeSettings && $request->path() === 'settings.php');
+            || ($includeSettings && $request->path() === 'settings.php')
+            || ($includeAdminPauseSettings && $request->path() === 'admin.php');
         TrimStrings::skipWhen($nativeFormPath);
         ConvertEmptyStringsToNull::skipWhen($nativeFormPath);
 
-        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings) {
-            if ($includeSettings && $request->path() === 'settings.php') {
+        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings) {
+            if (($includeSettings && $request->path() === 'settings.php')
+                || ($includeAdminPauseSettings && $request->path() === 'admin.php')) {
                 return $request->isMethod('POST')
                     ? new Response('Please sign in again.', 401, ['Content-Type' => 'text/plain; charset=UTF-8'])
                     : new RedirectResponse('login.php');
@@ -90,10 +93,10 @@ final class LocalWebRoutes
         $router->group(['middleware' => [
             EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class,
             ShareErrorsFromSession::class, LegacyFormCsrf::class, SubstituteBindings::class,
-        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings): void {
+        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings): void {
             $router->get('login.php', [LocalWebSessionController::class, 'create'])->name('login');
             $router->post('login.php', [LocalWebSessionController::class, 'store'])->middleware('throttle:chrono-web-login');
-            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings): void {
+            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings): void {
                 foreach (['/', 'index.php', 'attendance.php'] as $path) {
                     $router->get($path, [LocalWebAttendanceController::class, 'page']);
                     $router->post($path, [LocalWebAttendanceController::class, 'transition']);
@@ -119,6 +122,10 @@ final class LocalWebRoutes
                 if ($includeSettings) {
                     $router->get('settings.php', [LocalWebSettingsController::class, 'index']);
                     $router->post('settings.php', [LocalWebSettingsController::class, 'store']);
+                }
+                if ($includeAdminPauseSettings) {
+                    $router->get('admin.php', [LocalWebAdminPauseSettingsController::class, 'index']);
+                    $router->post('admin.php', [LocalWebAdminPauseSettingsController::class, 'store']);
                 }
                 $router->post('logout.php', [LocalWebSessionController::class, 'destroy']);
             });
