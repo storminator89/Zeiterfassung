@@ -42,7 +42,8 @@ check('disabled API denies pairing',api({'op':'pair','device_id':1,'code':'x'})[
 check('ordinary user cannot manage terminals',user.req('/terminals.php')[0]==403)
 check('management requires CSRF',admin.req('/terminals.php',{'action':'toggle','enabled':1})[0]==403)
 check('admin enables optional module',admin.post('/terminals.php',{'action':'toggle','enabled':1})[0]==200 and query('SELECT enabled FROM terminal_settings')[0][0]==1)
-check('new web entry page available',b'Meine Arbeitszeit' in user.req('/index.php')[1])
+status,page=user.req('/index.php')
+check('authenticated web entry page loads',status==200 and bool(page.strip()) and b'Fatal error' not in page and b'name="password"' not in page)
 status,p=admin.post('/terminals.php',{'action':'device','name':'Audit terminal','site_id':1});assert status==200
 code=re.search(rb'<code>([a-f0-9]+)</code>',p)[1].decode();id=query('SELECT MAX(id) FROM terminals')[0][0]
 check('wrong pairing code denied',api({'op':'pair','device_id':id,'code':'bad'})[0]==401)

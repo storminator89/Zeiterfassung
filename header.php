@@ -2,6 +2,7 @@
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/config.php';
 
+$strictAppUi = $strictAppUi ?? false;
 $theme_mode = $theme_mode ?? ($_COOKIE['theme'] ?? 'light');
 
 if (isset($_GET['lang'])) {
@@ -23,6 +24,8 @@ $user_role = $_SESSION['role'];
 // Keep the configured connection with audit context.
 
 $kolibri_icon = 'assets/kolibri_icon.png';
+$attendanceState = attendance_status($conn, (int)$user_id)['state'];
+$attendanceLabels = ['absent' => 'Nicht angemeldet', 'working' => 'Arbeitszeit läuft', 'paused' => 'Pause läuft'];
 ?>
 
 <!DOCTYPE html>
@@ -37,33 +40,35 @@ $kolibri_icon = 'assets/kolibri_icon.png';
 
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
     <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <?php if (!$strictAppUi): ?><script src="https://cdn.tailwindcss.com"></script><?php endif; ?>
+    <?php if (!$strictAppUi): ?><script src="https://code.jquery.com/jquery-3.7.1.min.js"></script><?php endif; ?>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/locale/de.js"></script>
+    <?php if (!$strictAppUi): ?><script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script><?php endif; ?>
+    <?php if (!$strictAppUi): ?><script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/locale/de.js"></script><?php endif; ?>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/de.js"></script>
+    <?php if (!$strictAppUi): ?><script src="https://cdn.jsdelivr.net/npm/flatpickr"></script><?php endif; ?>
+    <?php if (!$strictAppUi): ?><script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/de.js"></script><?php endif; ?>
     <!-- SweetAlert2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
 
     <!-- SweetAlert2 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <?php if (!$strictAppUi): ?><script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script><?php endif; ?>
 
     <!-- Shepherd.js für die Tour -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shepherd.js@10.0.1/dist/css/shepherd.css"/>
-    <script src="https://cdn.jsdelivr.net/npm/shepherd.js@10.0.1/dist/js/shepherd.min.js"></script>
+    <?php if (!$strictAppUi): ?><script src="https://cdn.jsdelivr.net/npm/shepherd.js@10.0.1/dist/js/shepherd.min.js"></script><?php endif; ?>
 
     <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
-    <script src="./assets/js/main.js"></script>
+    <?php if ($strictAppUi): ?><link rel="stylesheet" href="assets/css/app_ui.css"><?php endif; ?>
+    <script src="./assets/js/main.js" defer></script>
+    <script src="./assets/js/attendance.js" defer></script>
     <script>
         // Add this line before the tailwind config
         const currentLang = '<?= $lang ?>';
 
-        tailwind.config = {
+        if (typeof tailwind !== 'undefined') tailwind.config = {
             darkMode: 'media',
             daisyui: {
                 themes: ["light", "dark"],
@@ -296,12 +301,12 @@ $kolibri_icon = 'assets/kolibri_icon.png';
     </style>
 </head>
 
-<body>
+<body class="<?= $strictAppUi ? 'chrono-local-ui' : '' ?>" data-attendance-state="<?= h($attendanceState) ?>" data-attendance-user="<?= (int)$user_id ?>">
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="p-4">
             <nav class="space-y-2">
-                <a href="index.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'index.php' ? 'active' : '' ?>">
+                <a href="index.php" class="sidebar-link <?= in_array(basename($_SERVER['PHP_SELF']), ['index.php', 'attendance.php'], true) ? 'active' : '' ?>">
                     <i class="fas fa-home w-6"></i>
                     <span><?= NAV_HOME ?></span>
                 </a>
@@ -325,10 +330,10 @@ $kolibri_icon = 'assets/kolibri_icon.png';
                         <span><?= NAV_SUPERVISOR ?></span>
                     </a>
                 <?php endif; ?>
-                <a href="#" class="sidebar-link" onclick="showAboutModal()">
+                <button type="button" class="sidebar-link w-full" onclick="showAboutModal()">
                     <i class="fas fa-info-circle w-6"></i>
                     <span><?= NAV_ABOUT ?></span>
-                </a>
+                </button>
                 <form action="logout.php" method="post">
                     <?= csrf_field() ?>
                     <button type="submit" class="sidebar-link w-full">
@@ -337,11 +342,10 @@ $kolibri_icon = 'assets/kolibri_icon.png';
                     </button>
                 </form>
 
-                <a href="attendance.php" class="sidebar-link">Arbeitszeit &amp; Pausen</a>
-                <a href="adjustments.php" class="sidebar-link">Korrekturanträge</a>
-                <a href="history.php" class="sidebar-link">Änderungshistorie</a>
-                <a href="work_models.php" class="sidebar-link">Arbeitszeitmodelle</a>
-                <?php if ($user_role === 'admin'): ?><a href="terminals.php" class="sidebar-link">Praxis-Terminals</a><?php endif; ?>
+                <a href="adjustments.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'adjustments.php' ? 'active' : '' ?>"><i class="fas fa-pen-to-square w-6"></i><span>Korrekturanträge</span></a>
+                <a href="history.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'history.php' ? 'active' : '' ?>"><i class="fas fa-history w-6"></i><span>Änderungshistorie</span></a>
+                <a href="work_models.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'work_models.php' ? 'active' : '' ?>"><i class="fas fa-business-time w-6"></i><span>Arbeitszeitmodelle</span></a>
+                <?php if ($user_role === 'admin'): ?><a href="terminals.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'terminals.php' ? 'active' : '' ?>"><i class="fas fa-desktop w-6"></i><span>Praxis-Terminals</span></a><?php endif; ?>
             </nav>
         </div>
     </div>
@@ -349,7 +353,7 @@ $kolibri_icon = 'assets/kolibri_icon.png';
     <!-- Top navbar -->
     <div class="navbar fixed top-0 right-0 z-50" style="width: calc(100% - 250px);" id="navbar">
     <div class="navbar-start">
-        <button id="sidebar-toggle" class="btn btn-ghost btn-circle">
+        <button id="sidebar-toggle" type="button" class="btn btn-ghost btn-circle" aria-label="Menü öffnen oder schließen" aria-controls="sidebar" aria-expanded="true">
             <i class="fas fa-bars"></i>
         </button>
     </div>
@@ -360,17 +364,15 @@ $kolibri_icon = 'assets/kolibri_icon.png';
         </div>
     </div>
     <div class="navbar-end">
-        <div id="timer" class="mr-4 hidden lg:inline-block <?php echo $activeSession ? '' : 'hidden'; ?>">00:00:00</div>
-        <div class="hidden lg:block">
-            <button id="startButton" class="btn btn-primary btn-sm mr-2">
-                <i class="fas fa-sign-in-alt mr-2"></i><span>Kommen</span>
-            </button>
-            <button id="endButton" class="btn btn-secondary btn-sm mr-4" style="display: none;">
-                <i class="fas fa-sign-out-alt mr-2"></i><span>Gehen</span>
-            </button>
+        <div id="timer" data-attendance-status class="hidden lg:inline-block text-sm mr-3" role="status" aria-live="polite"><?= h($attendanceLabels[$attendanceState]) ?></div>
+        <div class="hidden lg:flex items-center gap-2 mr-3" aria-label="Arbeitszeit buchen">
+            <button id="startButton" type="button" data-attendance-action="start" class="btn btn-primary btn-sm" <?= $attendanceState !== 'absent' ? 'hidden' : '' ?>><i class="fas fa-sign-in-alt"></i><span>Kommen</span></button>
+            <button id="pauseStartButton" type="button" data-attendance-action="pause_start" class="btn btn-outline btn-sm" <?= $attendanceState !== 'working' ? 'hidden' : '' ?>><i class="fas fa-pause"></i><span>Pause</span></button>
+            <button id="pauseEndButton" type="button" data-attendance-action="pause_end" class="btn btn-outline btn-sm" <?= $attendanceState !== 'paused' ? 'hidden' : '' ?>><i class="fas fa-play"></i><span>Pause beenden</span></button>
+            <button id="endButton" type="button" data-attendance-action="end" class="btn btn-secondary btn-sm" <?= $attendanceState === 'absent' ? 'hidden' : '' ?>><i class="fas fa-sign-out-alt"></i><span>Gehen</span></button>
         </div>
         <label class="swap swap-rotate mr-4">
-            <input type="checkbox" id="theme-toggle" />
+            <input type="checkbox" id="theme-toggle" aria-label="Dunkles Design umschalten" />
             <svg class="swap-on fill-current w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                 <path d="M5.64,17l-.71.71a1,1,0,0,0,0,1.41,1,1,0,0,0,1.41,0l.71-.71A1,1,0,0,0,5.64,17ZM5,12a1,1,0,0,0-1-1H3a1,1,0,0,0,0,2H4A1,1,0,0,0,5,12Zm7-7a1,1,0,0,0,1-1V3a1,1,0,0,0-2,0V4A1,1,0,0,0,12,5ZM5.64,7.05a1,1,0,0,0,.7.29,1,1,0,0,0,.71-.29,1,1,0,0,0,0-1.41l-.71-.71A1,1,0,0,0,4.93,6.34Zm12,.29a1,1,0,0,0,.7-.29l.71-.71a1,1,0,1,0-1.41-1.41L17,5.64a1,1,0,0,0,0,1.41A1,1,0,0,0,17.66,7.34ZM21,11H20a1,1,0,0,0,0,2h1a1,1,0,0,0,0-2Zm-9,8a1,1,0,0,0-1,1v1a1,1,0,0,0,2,0V20A1,1,0,0,0,12,19ZM18.36,17A1,1,0,0,0,17,18.36l.71.71a1,1,0,0,0,1.41,0,1,1,0,0,0,0-1.41ZM12,6.5A5.5,5.5,0,1,0,17.5,12,5.51,5.51,0,0,0,12,6.5Zm0,9A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z" />
             </svg>
@@ -378,9 +380,9 @@ $kolibri_icon = 'assets/kolibri_icon.png';
                 <path d="M21.64,13a1,1,0,0,0-1.05-.14,8.05,8.05,0,0,1-3.37.73A8.15,8.15,0,0,1,9.08,5.49a8.59,8.59,0,0,1,.25-2A1,1,0,0,0,8,2.36,10.14,10.14,0,1,0,22,14.05,1,1,0,0,0,21.64,13Zm-9.5,6.69A8.14,8.14,0,0,1,7.08,5.22v.27A10.15,10.15,0,0,0,17.22,15.63a9.79,9.79,0,0,0,2.1-.22A8.11,8.11,0,0,1,12.14,19.73Z" />
             </svg>
         </label>
-        <button id="tourButton" class="btn btn-ghost btn-circle" title="<?= TOUR_START ?>">
+        <?php if (!$strictAppUi): ?><button id="tourButton" class="btn btn-ghost btn-circle" title="<?= TOUR_START ?>">
             <i class="fas fa-question-circle"></i>
-        </button>
+        </button><?php endif; ?>
     </div>
 </div>
 
@@ -395,28 +397,13 @@ $kolibri_icon = 'assets/kolibri_icon.png';
         </div>
     </dialog>
 
+    <p id="attendance-message" class="attendance-feedback text-sm" role="status" aria-live="polite"></p>
+
     <!-- Main content wrapper -->
     <div id="main-content" class="main-content">
         <!-- Your existing content goes here -->
 
     <script>
-        // Add this to your existing JavaScript
-        document.getElementById('sidebar-toggle').addEventListener('click', function() {
-            document.getElementById('sidebar').classList.toggle('active');
-        });
-
-        // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', function(e) {
-            const sidebar = document.getElementById('sidebar');
-            const sidebarToggle = document.getElementById('sidebar-toggle');
-
-            if (window.innerWidth <= 768) {
-                if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
-                    sidebar.classList.remove('active');
-                }
-            }
-        });
-
         // Function to show the About modal
         function showAboutModal() {
             document.getElementById('aboutModal').showModal();
@@ -496,60 +483,7 @@ $kolibri_icon = 'assets/kolibri_icon.png';
 
         // Prevent any other scripts from showing the event selection fields
 
-        // Delete row functionality
-        document.querySelectorAll('.deleteRow').forEach(button => {
-            button.addEventListener('click', function() {
-                const id = this.dataset.id;
-                Swal.fire({
-                    title: 'Sind Sie sicher?',
-                    text: "Dieser Eintrag wird unwiderruflich gelöscht!",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#3085d6',
-                    cancelButtonColor: '#d33',
-                    confirmButtonText: 'Ja, löschen!',
-                    cancelButtonText: 'Abbrechen'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        fetch('save.php', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                            },
-                            body: `delete=true&id=${id}`,
-                        })
-                        .then(response => response.text())
-                        .then(data => {
-                            if (data === "Successfully deleted") {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Gelöscht!',
-                                    text: 'Der Eintrag wurde erfolgreich gelöscht.',
-                                    showConfirmButton: false,
-                                    timer: 1500
-                                });
-                                updateTimeRecordsTable();
-                                updateLatestTimeRecord();
-                            } else {
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Fehler',
-                                    text: data
-                                });
-                            }
-                        })
-                        .catch((error) => {
-                            console.error('Error:', error);
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Fehler',
-                                text: 'Fehler beim Löschen des Eintrags'
-                            });
-                        });
-                    }
-                });
-            });
-        });
+        // Record changes and cancellations are handled by approved correction requests.
 
         // Sidebar toggle functionality
         const sidebar = document.getElementById('sidebar');
@@ -557,55 +491,41 @@ $kolibri_icon = 'assets/kolibri_icon.png';
         const mainContent = document.getElementById('main-content');
         const sidebarToggle = document.getElementById('sidebar-toggle');
 
+        function setSidebarCollapsed(collapsed) {
+            sidebar.classList.toggle('collapsed', collapsed);
+            navbar.classList.toggle('expanded', collapsed);
+            mainContent.classList.toggle('expanded', collapsed);
+            sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
+            sidebar.setAttribute('aria-hidden', String(collapsed));
+            sidebar.inert = collapsed;
+        }
+
         function toggleSidebar() {
-            sidebar.classList.toggle('collapsed');
-            navbar.classList.toggle('expanded');
-            mainContent.classList.toggle('expanded');
-            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+            const collapsed = !sidebar.classList.contains('collapsed');
+            setSidebarCollapsed(collapsed);
+            localStorage.setItem('sidebarCollapsed', String(collapsed));
         }
 
-        // Initialize sidebar state
-        const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-        if (sidebarCollapsed) {
-            sidebar.classList.add('collapsed');
-            navbar.classList.add('expanded');
-            mainContent.classList.add('expanded');
-        }
-
-        // Add click event for toggle button
-        if (sidebarToggle) {
-            sidebarToggle.addEventListener('click', toggleSidebar);
-        }
-
-        // Handle clicks outside sidebar on mobile
+        // Off-canvas links must not remain in the keyboard order on narrow screens.
+        setSidebarCollapsed(window.innerWidth <= 768 || localStorage.getItem('sidebarCollapsed') === 'true');
+        sidebarToggle.addEventListener('click', toggleSidebar);
         document.addEventListener('click', function(e) {
-            if (window.innerWidth <= 768) {
-                if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
-                    sidebar.classList.add('collapsed');
-                    navbar.classList.add('expanded');
-                    mainContent.classList.add('expanded');
-                }
+            if (window.innerWidth <= 768 && !sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
+                setSidebarCollapsed(true);
             }
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && !sidebar.classList.contains('collapsed') && window.innerWidth <= 768) {
+                setSidebarCollapsed(true);
+                sidebarToggle.focus();
+            }
+        });
+        window.addEventListener('resize', function() {
+            setSidebarCollapsed(window.innerWidth <= 768 || localStorage.getItem('sidebarCollapsed') === 'true');
         });
 
-        // Handle window resize
-        window.addEventListener('resize', function() {
-            if (window.innerWidth <= 768) {
-                sidebar.classList.add('collapsed');
-                navbar.classList.add('expanded');
-                mainContent.classList.add('expanded');
-            } else {
-                if (!localStorage.getItem('sidebarCollapsed')) {
-                    sidebar.classList.remove('collapsed');
-                    navbar.classList.remove('expanded');
-                    mainContent.classList.remove('expanded');
-                }
-            }
-        });
     </script>
 
-    <script src="assets/js/tour.js"></script>
+    <?php if (!$strictAppUi): ?><script src="assets/js/tour.js"></script><?php endif; ?>
 
-</body>
-
-</html>
+<!-- Each page closes its own main-content and document. -->

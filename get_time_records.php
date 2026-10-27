@@ -42,7 +42,7 @@ $dailyTotals = [];
 // Header section with improved export button
 echo '<div class="flex justify-between items-center mb-4">
     <h2 class="text-xl font-bold"><i class="fas fa-clock mr-2"></i>' . TABLE_HEADER_TIME_RECORDS . '</h2>
-    <button onclick="exportToCSV()"
+    <button aria-label="' . h(BUTTON_EXPORT_CSV) . '" onclick="exportToCSV()"
             class="btn btn-outline btn-success btn-sm gap-2 hover:scale-105 transform transition-transform duration-200"
             >
         <i class="fas fa-file-csv text-lg"></i>
@@ -54,7 +54,7 @@ echo '<div id="timeRecordsTable" class="card bg-base-100 shadow-xl">
     <div class="card-body p-6">
         <h3 class="card-title text-2xl mb-6 flex items-center gap-3">
             <i class="fas fa-clock text-primary"></i>
-            ' . ACTUAL_WORKED_TIMES . '
+            Arbeitszeiten und Abwesenheitsgutschriften
         </h3>
         <div class="overflow-x-auto rounded-lg border border-base-200">
             <table class="table w-full">
@@ -237,5 +237,10 @@ function outputTableHeaders() {
 }
 
 function outputRecordRow($record) {
-    echo '<tr><td>'.h($record['weekNumber']).'</td><td>'.h($record['startzeit']).'</td><td>'.h($record['endzeit']??'Läuft').'</td><td>'.h(calculateDuration($record['startzeit'],$record['endzeit'],$record['pause'])).'</td><td>'.h($record['pause']).'</td><td>'.h($record['standort']).'</td><td>'.h($record['beschreibung']).'</td><td><a href="adjustments.php?record_id='.(int)$record['id'].'">Korrektur / Storno</a></td></tr>';
+    // Absence credits are planned minutes, not a fabricated clock-in/out interval.
+    $credit = !empty($record['absence_kind']);
+    $startLabel = $credit ? substr($record['startzeit'], 0, 10) . ' · Gutschrift' : $record['startzeit'];
+    $endLabel = $credit ? 'Keine Stempelzeit' : ($record['endzeit'] ?? 'Läuft');
+    $durationLabel = $credit ? (int)$record['planned_minutes'] . ' Sollminuten' : calculateDuration($record['startzeit'], $record['endzeit'], $record['pause']);
+    echo '<tr><td>'.h($record['weekNumber']).'</td><td>'.h($startLabel).'</td><td>'.h($endLabel).'</td><td>'.h($durationLabel).'</td><td>'.h($record['pause']).'</td><td>'.h($record['standort']).'</td><td>'.h($record['beschreibung']).'</td><td><a class="link link-primary" href="adjustments.php?record_id='.(int)$record['id'].'">Korrektur / Storno</a></td></tr>';
 }
