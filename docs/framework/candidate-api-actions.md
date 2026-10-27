@@ -5,8 +5,8 @@ Dieses Folgepaket ergänzt ausschließlich den **weiterhin unregistrierten**
 `POST /api.php/attendance`. Kein produktiver Routenschalter: `api.php`,
 Altissuer/-verifier, `security.php`, Schlüssel, Konten, DB-/Hash-/Hostkonfiguration,
 Web-/Terminaldienste und UI bleiben unverändert. Ausgeliefert bleibt nur `/up`.
-Die Aliasrouten `/workentry` und `/setendzeit` sind weiterhin ausdrücklich
-unadmitted (503 im Kandidaten), #77 bleibt offen.
+Die vorhandenen Aliasrouten werden inzwischen vom getrennten
+[inaktiven Aliasfolgeschritt](candidate-api-aliases.md) bedient; #77 bleibt offen.
 
 ## Lokale Credentials mit Laravel statt zweitem Passwortsystem
 
@@ -119,6 +119,6 @@ Quelle und das Backup bleiben unverändert; keine reale Datei oder Zugangsdaten.
 
 Die vorhandenen groben Tokenprofil-/API-Wire-/Read-/Webprüfungen werden
 wiederverwendet, keine Mikrotests oder neue Vollsuite. Noch offen: persistentes
-geteiltes Loginbudget, APIaliase/Erweiterungskorrekturen #22/#23/#25,
+geteiltes Loginbudget, vollständige Erweiterungskorrekturen #22/#23/#25,
 `expectedRecord`-Entscheidung, `nbf`-Profilentscheidung, Swagger, echte
 Browsererweiterungs-/Verteilungsabnahme und separat reviewter Gesamtcutover.

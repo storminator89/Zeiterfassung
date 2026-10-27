@@ -132,7 +132,7 @@ try {
     $ensure($denied->getStatusCode() === 409 && $denied->getContent() === 'Use an approved correction request to cancel a record.'
         && $request('DELETE', '/api.php/timeentry/45/', $directoryAdmin)->getStatusCode() === 400);
     $ensure($request('POST', '/api.php/login')->getStatusCode() === 400
-        && $request('POST', '/api.php/workentry')->getStatusCode() === 503); // Legacy alias still unadmitted.
+        && $request('POST', '/api.php/workentry')->getStatusCode() === 401); // Alias still requires current bearer identity.
     $ensure(SourceSnapshot::capture($pdo, $mapping) === $before && ! $pdo->inTransaction()
         && $database->connection('chrono')->transactionLevel() === 0 && array_keys($database->getConnections()) === ['chrono']
         && $app->make('auth')->getDefaultDriver() === 'web' && ! defined('CHRONO_SECURITY_LOADED')

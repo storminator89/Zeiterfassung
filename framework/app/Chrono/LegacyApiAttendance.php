@@ -16,7 +16,7 @@ final class LegacyApiAttendance implements ApiAttendance
     /** @param Closure(): AttendanceWriter $writer Trusted fresh operation-scope resolver. */
     public function __construct(private readonly Factory $auth, private readonly Closure $writer) {}
 
-    public function transition(string $eventId, string $action, bool $confirm = false): array
+    public function transition(string $eventId, string $action, bool $confirm = false, ?int $expectedRecord = null): array
     {
         // Mandatory RequireLegacyApiToken first: reset request guard and verify
         // JWT/current account/password fingerprint. Never inherit a web identity.
@@ -36,8 +36,8 @@ final class LegacyApiAttendance implements ApiAttendance
         }
         $identifier = (int) $actor->getKey();
 
-        // Preserve the existing API namespace and direct endpoint's omission of
-        // expectedRecord (#36), not the separate /setendzeit alias semantics.
-        return $writer->transition($identifier, 'api:'.$identifier, $eventId, $action, $confirm);
+        // Exact shared namespace. Direct /attendance omits expectedRecord (#36);
+        // /setendzeit supplies its expected active projection, never row CRUD.
+        return $writer->transition($identifier, 'api:'.$identifier, $eventId, $action, $confirm, $expectedRecord);
     }
 }

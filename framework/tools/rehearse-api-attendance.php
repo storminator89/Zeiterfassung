@@ -141,6 +141,26 @@ try {
     $ensure(count($events) === 3 && array_unique(array_column($events, 'source')) === ['api:1']
         && array_unique(array_column($events, 'user_id')) === [1]);
 
+    $phase = 'existing client alias start, returned record_id, stale-id refusal and end';
+    $beforeAlias = time();
+    $aliasStart = $request('POST', '/api.php/workentry', [
+        'startzeit' => '2000-01-01T00:00:00+00:00', 'endzeit' => null, 'pause' => 0,
+        'beschreibung' => 'ignored client text', 'standort' => 'ignored client location',
+    ], $token);
+    $alias = json_decode($aliasStart->getContent(), true, 512, JSON_THROW_ON_ERROR);
+    $ensure($aliasStart->getStatusCode() === 200 && $alias['state'] === 'working'
+        && is_int($alias['record_id']) && ! isset($alias['data']));
+    $record = att_one($observer, 'SELECT * FROM zeiterfassung WHERE id=?', [$alias['record_id']]);
+    $ensure((int) $record['user_id'] === 1 && booking_time($record['startzeit']) >= $beforeAlias);
+    $before = SourceSnapshot::capture($observer, $mapping);
+    $stale = $request('POST', '/api.php/setendzeit', ['id' => (string) ($alias['record_id'] + 1000)], $token);
+    $ensure($stale->getStatusCode() === 409 && SourceSnapshot::capture($observer, $mapping) === $before);
+    $aliasEnd = $request('POST', '/api.php/setendzeit', ['id' => (string) $alias['record_id']], $token);
+    $endedAlias = json_decode($aliasEnd->getContent(), true, 512, JSON_THROW_ON_ERROR);
+    $ensure($aliasEnd->getStatusCode() === 200 && $endedAlias['state'] === 'absent'
+        && $endedAlias['record_id'] === $alias['record_id']
+        && (int) $observer->query('SELECT count(*) FROM attendance_events')->fetchColumn() === 5);
+
     $phase = 'unauthorized and revoked retries never resolve writer; shared budget refuses';
     $before = SourceSnapshot::capture($observer, $mapping);
     $writerCount = $opened;
@@ -161,7 +181,7 @@ try {
         && array_intersect_key($GLOBALS, array_flip(['audit_actor', 'audit_reason', '_SESSION'])) === $globals);
     echo json_encode([
         'passed' => true,
-        'groups' => ['inactive admissions and private synthetic adoption', 'local login issued token and own reads', 'API source booking replay pause end', 'unauthorized revocation and admitted budget refusal'],
+        'groups' => ['inactive admissions and private synthetic adoption', 'local login issued token and own reads', 'API source booking replay pause end', 'client aliases record_id and stale-id guard', 'unauthorized revocation and admitted budget refusal'],
         'synthetic_private_files_only' => true, 'laravel_http_kernel_requests' => true,
         'persistent_shared_budget_proven' => false, 'live_route_key_or_database_activation' => false,
     ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR)."\n";
