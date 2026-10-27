@@ -2,22 +2,15 @@
 require_once __DIR__ . '/security.php';
 include 'config.php';
 
-// Supported languages
-$supported_languages = ['de', 'en'];
-
-// Detect browser language if not set
-if (!isset($_SESSION['lang'])) {
-    $lang = substr(($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? 'de'), 0, 2);
-    $_SESSION['lang'] = in_array($lang, $supported_languages) ? $lang : 'de';
-}
+$_SESSION['lang'] = initial_language($_SESSION['lang'] ?? null, $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null);
 
 // Allow manual language change
-if (isset($_GET['lang'])) {
-    $_SESSION['lang'] = in_array($_GET['lang'], $supported_languages) ? $_GET['lang'] : $_SESSION['lang'];
+if (isset($_GET['lang']) && in_array($_GET['lang'], ['de', 'en'], true)) {
+    $_SESSION['lang'] = $_GET['lang'];
 }
 
 $lang = $_SESSION['lang'];
-require_once "languages/$lang.php";
+require_once __DIR__ . "/languages/$lang.php";
 
 $error = '';
 $successMessage = '';
