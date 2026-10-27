@@ -3,7 +3,7 @@
   "info": {
     "title": "Zeiterfassung API",
     "version": "2.0",
-    "description": "Source-checked native api.php contract at 1b526453439f1ff6973131f0b2ebb8f40466a74b (2026-10-27); documentation only, not a runtime acceptance. Server-time attendance and actual breaks; own-account reads only. Errors remain mixed JSON and text/plain as shown per response, including bootstrap failures. See docs/API-CONTRACT.md for legacy limits and the unimplemented canonical JSON-error target. No geolocation webhook is implemented in this router. Inactive framework candidates are not published endpoints."
+    "description": "Native api.php contract based on main 7d4077c6d62edf14a8ebe17ab51946312e976542 (2026-10-27), with this package's controlled JSON-error normalization; not a full runtime acceptance. Server-time attendance and actual breaks; own-account reads only. Existing handlers and native abort_request failures, including controlled bootstrap refusals, use {success:false,message} with the original HTTP status. Uncaught PHP/infrastructure errors are not globally normalized. See docs/API-CONTRACT.md for scope and remaining limits. No geolocation webhook is implemented. Inactive framework candidates deliberately retain their mixed JSON/text wire and are not published endpoints. The #35 accepted end with an all-day absence overlap remains HTTP 200/success true and can add overlap_record_ids and overlap_warning to the stored receipt/message; this is not a 409 refusal. Documentation reconciled onto the current parent without changing the reviewed native formatter code or claiming new runtime acceptance."
   },
   "paths": {
     "/api.php/login": {
@@ -62,18 +62,21 @@
             }
           },
           "400": {
-            "description": "Missing/non-string username or password: text/plain.",
+            "description": "Missing/non-string username or password: controlled JSON 400.",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/Error"
                 },
-                "example": "Username and password required."
+                "example": {
+                  "success": false,
+                  "message": "Username and password required."
+                }
               }
             }
           },
           "401": {
-            "description": "Invalid credentials: JSON (unlike protected-route bearer 401).",
+            "description": "Invalid credentials: JSON 401; protected-route bearer refusals also use the same envelope.",
             "content": {
               "application/json": {
                 "schema": {
@@ -87,13 +90,16 @@
             }
           },
           "429": {
-            "description": "Shared login budget exceeded: text/plain.",
+            "description": "Shared login budget exceeded: controlled JSON 429, preserving Retry-After: 600.",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/Error"
                 },
-                "example": "Too many login attempts. Try again later."
+                "example": {
+                  "success": false,
+                  "message": "Too many login attempts. Try again later."
+                }
               }
             },
             "headers": {
@@ -159,22 +165,26 @@
             }
           },
           "400": {
-            "description": "Invalid JSON or decoded body that is neither array nor object: text/plain. Arrays, including [], pass the legacy array check. Invalid event ID: JSON. Other malformed types need runtime hardening.",
+            "description": "Invalid JSON or decoded body that is neither array nor object: controlled JSON 400. Arrays, including [], pass the legacy array check. Invalid event ID is also JSON 400. Other malformed types are not universally normalized.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 },
-                "example": {
-                  "success": false,
-                  "message": "Ungültige Ereignis-ID."
+                "examples": {
+                  "handler": {
+                    "value": {
+                      "success": false,
+                      "message": "Ungültige Ereignis-ID."
+                    }
+                  },
+                  "controlled_refusal": {
+                    "value": {
+                      "success": false,
+                      "message": "Invalid request."
+                    }
+                  }
                 }
-              },
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                },
-                "example": "Invalid request."
               }
             }
           },
@@ -185,22 +195,26 @@
             "$ref": "#/components/responses/AttendanceForbidden"
           },
           "409": {
-            "description": "Historical fields rejected as text/plain; attendance state/overlap conflicts use JSON.",
+            "description": "Historical fields refused and attendance state/overlap conflicts: JSON 409 with the existing message.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 },
-                "example": {
-                  "success": false,
-                  "message": "Bereits eine offene Arbeitszeit vorhanden."
+                "examples": {
+                  "handler": {
+                    "value": {
+                      "success": false,
+                      "message": "Bereits eine offene Arbeitszeit vorhanden."
+                    }
+                  },
+                  "controlled_refusal": {
+                    "value": {
+                      "success": false,
+                      "message": "Use a correction request for historical entries."
+                    }
+                  }
                 }
-              },
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                },
-                "example": "Use a correction request for historical entries."
               }
             }
           },
@@ -255,20 +269,40 @@
         },
         "responses": {
           "200": {
-            "description": "Confirmed end; affected record_id stays positive even though state is absent.",
+            "description": "Confirmed end; affected record_id stays positive even though state is absent. An accepted end with all-day absence overlap is also HTTP 200/success true; optional overlap fields/message carry a warning, not a 409 error.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AttendanceReceipt"
                 },
-                "example": {
-                  "success": true,
-                  "message": "Buchung bestätigt.",
-                  "time": "2026-10-27T16:00:00+00:00",
-                  "local_time": "2026-10-27T17:00:00+01:00",
-                  "event_id": "example-end-00000001",
-                  "record_id": 42,
-                  "state": "absent"
+                "examples": {
+                  "end": {
+                    "value": {
+                      "success": true,
+                      "message": "Buchung bestätigt.",
+                      "time": "2026-10-27T16:00:00+00:00",
+                      "local_time": "2026-10-27T17:00:00+01:00",
+                      "event_id": "example-end-00000001",
+                      "record_id": 42,
+                      "state": "absent"
+                    }
+                  },
+                  "accepted_end_overlap": {
+                    "summary": "Saved end with historical absence warning, not a failed transition",
+                    "value": {
+                      "success": true,
+                      "message": "Buchung bestätigt. Arbeitsende gespeichert. Arbeitszeit überschneidet sich mit einer ganztägigen Abwesenheit. Betroffene Summen sind bis zur manuellen Klärung nicht abschließend. Bitte Korrekturanträge prüfen.",
+                      "time": "2026-10-27T05:00:00+00:00",
+                      "local_time": "2026-10-27T06:00:00+01:00",
+                      "event_id": "example-end-overlap-0001",
+                      "record_id": 42,
+                      "state": "absent",
+                      "overlap_record_ids": [
+                        43
+                      ],
+                      "overlap_warning": "Arbeitsende gespeichert. Arbeitszeit überschneidet sich mit einer ganztägigen Abwesenheit. Betroffene Summen sind bis zur manuellen Klärung nicht abschließend. Bitte Korrekturanträge prüfen."
+                    }
+                  }
                 }
               }
             }
@@ -471,13 +505,16 @@
             "$ref": "#/components/responses/BearerUnauthorized"
           },
           "409": {
-            "description": "Cancellation requires an approved correction request: text/plain.",
+            "description": "Cancellation requires an approved correction request: controlled JSON 409; no deletion or record lookup.",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/Error"
                 },
-                "example": "Use an approved correction request to cancel a record."
+                "example": {
+                  "success": false,
+                  "message": "Use an approved correction request to cancel a record."
+                }
               }
             }
           },
@@ -544,20 +581,40 @@
         },
         "responses": {
           "200": {
-            "description": "Confirmed event, or stored idempotent replay. Refresh GET status after an acknowledgement.",
+            "description": "Confirmed event, or stored idempotent replay. Refresh GET status after an acknowledgement. An accepted end with all-day absence overlap is also HTTP 200/success true; optional overlap fields/message carry a warning, not a 409 error.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AttendanceReceipt"
                 },
-                "example": {
-                  "success": true,
-                  "message": "Buchung bestätigt.",
-                  "time": "2026-10-27T08:00:00+00:00",
-                  "local_time": "2026-10-27T09:00:00+01:00",
-                  "event_id": "example-start-000001",
-                  "record_id": 42,
-                  "state": "working"
+                "examples": {
+                  "start": {
+                    "value": {
+                      "success": true,
+                      "message": "Buchung bestätigt.",
+                      "time": "2026-10-27T08:00:00+00:00",
+                      "local_time": "2026-10-27T09:00:00+01:00",
+                      "event_id": "example-start-000001",
+                      "record_id": 42,
+                      "state": "working"
+                    }
+                  },
+                  "accepted_end_overlap": {
+                    "summary": "Saved end with historical absence warning, not a failed transition",
+                    "value": {
+                      "success": true,
+                      "message": "Buchung bestätigt. Arbeitsende gespeichert. Arbeitszeit überschneidet sich mit einer ganztägigen Abwesenheit. Betroffene Summen sind bis zur manuellen Klärung nicht abschließend. Bitte Korrekturanträge prüfen.",
+                      "time": "2026-10-27T05:00:00+00:00",
+                      "local_time": "2026-10-27T06:00:00+01:00",
+                      "event_id": "example-end-overlap-0001",
+                      "record_id": 42,
+                      "state": "absent",
+                      "overlap_record_ids": [
+                        43
+                      ],
+                      "overlap_warning": "Arbeitsende gespeichert. Arbeitszeit überschneidet sich mit einer ganztägigen Abwesenheit. Betroffene Summen sind bis zur manuellen Klärung nicht abschließend. Bitte Korrekturanträge prüfen."
+                    }
+                  }
                 }
               }
             }
@@ -658,7 +715,7 @@
             "type": "string"
           }
         },
-        "description": "Existing JSON error envelope, and proposed canonical target for remaining text errors. This schema does not claim all current errors are JSON. Message text is not a stable machine error code."
+        "description": "Canonical controlled native API error envelope, including abort_request bootstrap/auth/validation/rate-limit refusals and existing JSON handlers. HTTP status is preserved; message text is not a stable machine error code. Uncaught failures are not covered. Dormant Laravel candidate errors remain deliberately mixed."
       },
       "AttendanceStatus": {
         "type": "object",
@@ -710,7 +767,8 @@
             ]
           },
           "message": {
-            "type": "string"
+            "type": "string",
+            "description": "Existing acknowledgement text, with pause_warning and/or overlap_warning appended when present. An accepted end-overlap warning remains HTTP 200 and success true, not an error envelope."
           },
           "time": {
             "type": "string",
@@ -744,9 +802,21 @@
           "pause_warning": {
             "type": "string",
             "description": "Optional warning after end; a configured minimum pause is not automatically deducted."
+          },
+          "overlap_record_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "uniqueItems": true,
+            "description": "Optional on an accepted end when its completed work overlaps all-day absence: deduplicated integer IDs of those absence reporting rows, not a new work record/event ID. Absent when no such overlap was found. Stored historical receipt metadata, not a current conflict diagnosis."
+          },
+          "overlap_warning": {
+            "type": "string",
+            "description": "Optional end-overlap clarification warning, also appended to message after any pause warning. Work end is saved: HTTP 200, success true, state absent. A stored replay retains this historical warning even after a later correction."
           }
         },
-        "description": "Stored acknowledgement of this event. A replay can describe an older state: refresh GET /attendance before another action."
+        "description": "Stored acknowledgement of this event. A replay can describe an older state: refresh GET /attendance before another action. Since #35, a saved end overlapping all-day absence can include optional overlap_record_ids/overlap_warning and an extended message, still HTTP 200/success true. Genuine refused transitions remain JSON 409/success false."
       },
       "User": {
         "type": "object",
@@ -899,29 +969,7 @@
     },
     "responses": {
       "BearerUnauthorized": {
-        "description": "Native bearer validation failure: text/plain, not JSON.",
-        "content": {
-          "text/plain": {
-            "schema": {
-              "type": "string"
-            },
-            "example": "Invalid or expired token."
-          }
-        }
-      },
-      "BootstrapUnavailable": {
-        "description": "Shared bootstrap/storage/database refusal before handler: text/plain. Other uncaught failures are not normalized.",
-        "content": {
-          "text/plain": {
-            "schema": {
-              "type": "string"
-            },
-            "example": "Database unavailable."
-          }
-        }
-      },
-      "AttendanceUnavailable": {
-        "description": "Handler failure: JSON-503, outcome unconfirmed; retry the same event ID and content for mutations. Earlier bootstrap refusal instead uses text/plain.",
+        "description": "Native bearer validation failure: controlled JSON 401, preserving the existing message and validation conditions.",
         "content": {
           "application/json": {
             "schema": {
@@ -929,14 +977,46 @@
             },
             "example": {
               "success": false,
-              "message": "Buchung nicht bestätigt. Verbindung prüfen und denselben Vorgang erneut versuchen."
+              "message": "Invalid or expired token."
             }
-          },
-          "text/plain": {
+          }
+        }
+      },
+      "BootstrapUnavailable": {
+        "description": "Controlled shared bootstrap/storage/database refusal: native JSON 503 before the handler. Other uncaught failures are not normalized.",
+        "content": {
+          "application/json": {
             "schema": {
-              "type": "string"
+              "$ref": "#/components/schemas/Error"
             },
-            "example": "Database unavailable."
+            "example": {
+              "success": false,
+              "message": "Database unavailable."
+            }
+          }
+        }
+      },
+      "AttendanceUnavailable": {
+        "description": "JSON 503 from the attendance handler or a controlled earlier bootstrap refusal. Mutation outcome may be unconfirmed: retry the same event ID and content. Uncaught failures are not universally covered.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "examples": {
+              "handler": {
+                "value": {
+                  "success": false,
+                  "message": "Buchung nicht bestätigt. Verbindung prüfen und denselben Vorgang erneut versuchen."
+                }
+              },
+              "controlled_refusal": {
+                "value": {
+                  "success": false,
+                  "message": "Database unavailable."
+                }
+              }
+            }
           }
         }
       },
@@ -969,7 +1049,7 @@
         }
       },
       "AttendanceConflict": {
-        "description": "State conflict, event ID reused with different content, expected record mismatch, overlap or missing active-pause confirmation (JSON).",
+        "description": "Genuinely refused transition: start/state conflict, event ID reused with different content, expected record mismatch or missing active-pause confirmation (JSON 409, success false). Since #35 a saved end overlapping all-day absence instead succeeds with HTTP 200 and optional receipt warnings; it is not this response.",
         "content": {
           "application/json": {
             "schema": {
@@ -998,11 +1078,12 @@
       }
     }
   },
-  "x-source-commit": "1b526453439f1ff6973131f0b2ebb8f40466a74b",
+  "x-source-commit": "7d4077c6d62edf14a8ebe17ab51946312e976542",
   "x-router-behavior": {
     "OPTIONS": "200, empty body, any path before authentication/bootstrap; existing CORS permits GET, POST, OPTIONS, DELETE.",
     "unknown-path": "GET/POST/DELETE unknown paths: 400 application/json {success:false,message:\"Invalid endpoint\"}.",
     "unsupported-method": "Other methods, including HEAD: 405 application/json {success:false,message:\"Method Not Allowed\"}, after bootstrap.",
-    "unhandled-failures": "Not all PHP, infrastructure or malformed-input failures are caught. No universal JSON-body guarantee. No HTTP/runtime validation performed."
+    "unhandled-failures": "Only controlled refusals are normalized. No new global exception/shutdown/warning handler: uncaught PHP, infrastructure and some malformed-input failures retain unspecified bodies; no universal JSON guarantee or full HTTP/client acceptance.",
+    "controlled-errors": "Only native api.php opts in with the strict server-owned CHRONO_API_JSON_ERRORS=true before config/security bootstrap; Accept, headers, query/body and script name cannot select this mode. abort_request retains the HTTP status, uses application/json; charset=UTF-8 and {success:false,message}, substituting invalid message UTF-8 bytes with U+FFFD. Existing Retry-After: 600 on login-budget 429 and all CORS/OPTIONS behavior remain unchanged. Non-API abort_request output stays text/plain with original message bytes. Inactive Laravel candidates/guards keep their previous mixed wire."
   }
 }

@@ -2,21 +2,39 @@
 
 ## Geltung und Nachweisstand
 
-Quellenstand: [`1b526453439f1ff6973131f0b2ebb8f40466a74b`](https://github.com/storminator89/Zeiterfassung/commit/1b526453439f1ff6973131f0b2ebb8f40466a74b),
-`main` am 27.10.2026. Dieses Paket korrigiert **nur Dokumentation und Schema**:
-`swagger.json`, diese Datei und die falsche Geolocation-Werbung im README.
-Es verändert weder `api.php`/Security/Framework noch UI, Auth, DB oder Hosting.
+Ausgangsstand dieses Laufzeitpakets:
+[`7d4077c6d62edf14a8ebe17ab51946312e976542`](https://github.com/storminator89/Zeiterfassung/commit/7d4077c6d62edf14a8ebe17ab51946312e976542),
+`main` am 27.10.2026, einschließlich der streng begrenzten Pagination aus #24
+und des akzeptierten Endes mit Abwesenheitswarnung aus #35. Die bereits
+geprüfte native Fehlerformatierung bleibt dabei inhaltlich unverändert;
+gegenüber ihrem Stand `77076181a819f50ab470f0eda4b00ba03fde998c` werden nur diese
+Vertragsdokumentation und `swagger.json` an den neuen Elternstand angeglichen.
+PR #131 hat zuvor nur Dokumentation/Schema und die falsche Geolocation-Werbung
+im README korrigiert. **Dieses Paket normalisiert die kontrollierten nativen
+`abort_request`-Fehler**, auch vor abgeschlossenem Bootstrap. Es ändert weder
+Erfolgsantworten noch Fehlerbedingungen, Auth, DB, UI oder Hosting.
 
-Maßgeblich ist der aktive native Router, nicht ein unregistrierter
-[Framework-Kandidat](framework/api-read-compatibility.md). Die alten
-`@OA`-Kommentare in `api.php` sind teilweise überholt; `apidoc.html` lädt
-`swagger.json`. Eine spätere automatische Neugenerierung aus diesen Kommentaren
-würde die Korrekturen nicht zuverlässig bewahren.
+Maßgeblich ist der aktive native Router. `api.php` aktiviert die JSON-Fehlerform
+explizit vor `config.php`; `security.php` lädt den definitions-only
+`lib/http_error_response.php` vor jedem kontrollierten Bootstrapabbruch.
+`Accept`, andere Header, URL-/Query-/Bodydaten und der Scriptname wählen diese
+Form nicht aus. Ohne das serverseitige, strikt boolesche Opt-in bleiben
+`abort_request`-Status, Text-Content-Type und Nachrichtbytes unverändert.
 
-**Keine vollständige Erledigung von #25:** JSON-Fehler werden unten als Ziel
-festgelegt, sind aber im aktuellen Router **nicht durchgängig implementiert**.
-Der Text/JSON-Vertragsbruch bleibt eine gesonderte Laufzeitkorrektur. Dieses
-Dokument ist weder eine Abnahme noch eine Aussage über einen Produktiv-Rollout.
+Der unregistrierte [Framework-Kandidat](framework/api-read-compatibility.md)
+behält **absichtlich seinen bisherigen gemischten Text-/JSON-Drahtvertrag**:
+insbesondere Text-401 im Bearerguard sowie Text-409 für die Löschsperre und
+bestehende Login-/Alias-Textfehler. Guard, Kandidatenquellen und Registrierung
+bleiben unangetastet. Die neue native JSON-Form ist vor einem späteren Cutover
+als expliziter Kompatibilitätsunterschied zu prüfen, nicht dort bereits erfüllt.
+Die alten `@OA`-Kommentare in `api.php` sind teilweise überholt; `apidoc.html`
+lädt `swagger.json`. Eine automatische Neugenerierung aus diesen Kommentaren
+würde die dokumentierten Korrekturen nicht zuverlässig bewahren.
+
+**Keine vollständige Abnahme von #25:** Kontrollierte native Fehler sind nun
+JSON, aber ungefangene PHP-/Infrastrukturfehler werden nicht pauschal abgefangen.
+Eine vollständige HTTP-/Client-/Erweiterungsabnahme bleibt offen. Dieses
+Dokument behauptet weder deren Erfolg noch einen Produktiv-Rollout.
 
 **CH-18 / #24-Nachtrag:** Die Pagination wurde auf Basis von
 `d01e569593bcc969d854ebc622ef6169fd671629` bewusst strenger und begrenzt:
@@ -26,7 +44,7 @@ JSON-400 vor SQL. Fehlendes Limit/Offset-only sind **nicht mehr unbegrenzt**,
 Nachweisgrenzen: [API-Paginierung](CH18-API-PAGINATION.md). Die obige Beschreibung
 des ursprünglichen reinen Dokumentationspakets ist historisch; dieser Nachtrag
 betrifft auch nativen und inaktiven Kandidat-Lesecode. Keine allgemeine
-Fehlernormalisierung aus #25, kein Auth-/Writer-/Produktiv-Cutover.
+Fehlernormalisierung im damaligen #24-Paket, kein Auth-/Writer-/Produktiv-Cutover.
 
 ## Routen und Erfolgsformen des aktuellen Bestands
 
@@ -45,7 +63,7 @@ Auch Administratoren lesen hier nur das eigene Konto, keine Mitarbeiterliste.
 | `POST /setendzeit` | Legacy-Endalias, `id` muss zur eigenen offenen Buchung passen; `event_id` und `confirm_end_pause` mitsenden. Antwort ist dieselbe Quittung mit **`record_id`**, nicht `id`. |
 | `GET /users` | `{success:true,data:[{id,username,email,role}]}` für das eigene Konto. Normalerweise genau ein Element; bei Kontolöschung zwischen Prüfung und Lesen kann die Liste leer sein. |
 | `GET /timeentries` | Eigene rohe Berichtszeilen und `meta`; siehe Filtergrenzen unten. |
-| `DELETE /timeentry/{numericId}` | **Kein Erfolgspfad:** authentifizierte Text-409-Sperre, auch ohne Datensatzabfrage. Keine direkte Löschung und keine implizite API zum Einreichen eines Korrekturantrags. |
+| `DELETE /timeentry/{numericId}` | **Kein Erfolgspfad:** authentifizierte JSON-409-Sperre, auch ohne Datensatzabfrage. Keine direkte Löschung und keine implizite API zum Einreichen eines Korrekturantrags. |
 
 `OPTIONS` auf beliebigem Pfad endet vor Bootstrap/Auth/DB mit HTTP 200 ohne
 Body; die bestehende CORS-Methodenliste ist GET, POST, OPTIONS, DELETE.
@@ -88,6 +106,49 @@ Mindestpause kann `pause_warning` hinzukommen; es wird keine fiktive Pause
 abgezogen. Erfasst werden tatsächliche Pausen. Der Startalias setzt aktuell
 leere Beschreibung und `office`, nicht frei übermittelte Clientfelder.
 
+### Akzeptiertes Ende mit Abwesenheitswarnung ist kein 409-Fehler
+
+Nach #35 wird das tatsächliche `end` auch dann gespeichert, wenn das beendete
+Arbeitsintervall eine ganztägige Abwesenheit überschneidet. Die normale
+Endquittung bleibt **HTTP 200, `success:true`, `state:"absent"`** mit der
+positiven betroffenen `record_id`. Nur wenn solche Überschneidungen gefunden
+werden, ergänzt der gemeinsame Writer:
+
+- `overlap_record_ids`: Array der eindeutigen ganzzahligen IDs der betroffenen
+  **Abwesenheits-Berichtszeilen**, nicht eine neue Arbeits-/Ereignis-ID.
+- `overlap_warning`: Zeichenkette mit dem Klärungshinweis. Sie wird an die
+  bestehende `message` angehängt, gegebenenfalls nach `pause_warning`.
+
+Beispiel ohne zusätzliche Pausenwarnung:
+
+```json
+{
+  "success": true,
+  "message": "Buchung bestätigt. Arbeitsende gespeichert. Arbeitszeit überschneidet sich mit einer ganztägigen Abwesenheit. Betroffene Summen sind bis zur manuellen Klärung nicht abschließend. Bitte Korrekturanträge prüfen.",
+  "time": "2026-10-27T05:00:00+00:00",
+  "local_time": "2026-10-27T06:00:00+01:00",
+  "event_id": "example-end-overlap-0001",
+  "record_id": 42,
+  "state": "absent",
+  "overlap_record_ids": [43],
+  "overlap_warning": "Arbeitsende gespeichert. Arbeitszeit überschneidet sich mit einer ganztägigen Abwesenheit. Betroffene Summen sind bis zur manuellen Klärung nicht abschließend. Bitte Korrekturanträge prüfen."
+}
+```
+
+Dies gilt für `POST /attendance` mit `action:"end"` und den vorhandenen
+`POST /setendzeit`-Endalias auf demselben Writer. Ohne gefundenen Konflikt fehlen
+diese beiden optionalen Felder; sie sind keine neuen Pflichtfelder. Eine
+Warnung macht weder die Buchung unbestätigt noch Summen abschließend: Korrekturanträge klären den
+Sachverhalt, ohne hier Arbeit automatisch zu kürzen oder Abwesenheit zu löschen.
+
+Echte Verweigerungen bleiben dagegen JSON-409 mit `success:false`, etwa
+Start-/Zustandskonflikt, andere aktive Datensatz-ID, abweichender Inhalt bei
+gleicher Ereignis-ID oder fehlende Bestätigung beim Ende einer aktiven Pause.
+Die akzeptierte Endüberschneidung ist **kein** solcher Fehler. Die gespeicherte
+Endwarnung bleibt bei identischer Ereigniswiederholung unverändert, auch nach
+einer späteren Klärung; sie ist historischer Quittungsinhalt, keine aktuelle
+Konfliktdiagnose. Details und Grenzen: [Nachtschicht und Abwesenheit](CH29-NIGHT-ABSENCE.md).
+
 ### Wiederholung und bestehender Erweiterungsclient
 
 `event_id` hat 16–80 Zeichen aus `A-Z`, `a-z`, `0-9`, `_`, `-`.
@@ -116,13 +177,13 @@ nur zur Anzeige. Start/Pausen laufen über POST `/attendance`, Ende über
 Client vor dem JSON-Parsing. Dies ist Quellenabgleich, **keine** Firefox-/Edge-,
 Store-, Netzwerk- oder Browserabnahme.
 
-## Fehler: heutiger Drahtvertrag und Ziel strikt getrennt
+## Fehler: kontrollierte native JSON-Antworten und verbleibende Grenzen
 
-### Festgelegtes JSON-Ziel (noch nicht überall umgesetzt)
+### Kanonische Form für kontrollierte native API-Fehler
 
-Für API-Fehler soll der vorhandene jeweilige HTTP-Status erhalten bleiben und
-`Content-Type: application/json; charset=UTF-8` mit dieser bestehenden Form
-verwendet werden:
+Die bestehenden JSON-Handler und nun auch `abort_request` im nativen API-Pfad
+behalten ihren jeweiligen HTTP-Status bei und verwenden
+`Content-Type: application/json; charset=UTF-8` mit dieser bestehenden Form:
 
 ```json
 {"success":false,"message":"Invalid or expired token."}
@@ -131,34 +192,43 @@ verwendet werden:
 Keine neuen Fehlercodes, kein versteckter 200-Fehler und keine automatische
 Umdeutung aller 409/503 in 400/500. `message` ist Anzeigetext, kein stabiler
 maschinenlesbarer Fehlercode. Bestehende Texte sind deutsch/englisch gemischt.
-Die Normalisierung der unten genannten Textpfade sowie ungefangener Fehler
-muss separat implementiert und überprüft werden; hier bleibt sie offen.
+Der neue Formatter ersetzt nur ungültige UTF-8-Bytes der Fehlermeldung durch
+U+FFFD, damit auch diese Meldung als JSON kodiert werden kann; gültiger Text
+bleibt inhaltlich erhalten. Er ergänzt keine Diagnostik oder Exceptiondetails.
+
+Die Loginbudgetprüfung setzt weiterhin `Retry-After: 600` **vor** dem Abbruch.
+CORS-Header und Reihenfolge bleiben unverändert. `OPTIONS` beendet die Anfrage
+weiter vor JSON-Opt-in, Bootstrap und Auth mit HTTP 200 und leerem Body.
+Weder Validierung, Berechtigungen, JWT-/Session-/CSRF-/Schlüssellogik noch
+Zähler, Attendance-Quittungen und Erfolgsdaten werden verändert.
 
 ### Tatsächlich aus dem Quelltext ableitbare Antworten
 
 | Pfad/Situation | Aktueller Status und Body |
 |---|---|
-| Login, fehlende/nicht-string Credentials | 400 **text/plain**, `Username and password required.` |
+| Login, fehlende/nicht-string Credentials | 400 JSON `{success:false,message:"Username and password required."}` |
 | Login, ungültige Credentials | 401 JSON `{success:false,message:"Invalid credentials"}` |
-| Geschützte Route, Bearer fehlt/ungültig/abgelaufen/Konto widerrufen | 401 **text/plain** aus `abort_request`, z. B. `Invalid or expired token.` |
-| Loginbudget erschöpft | 429 **text/plain**, `Too many login attempts. Try again later.`, `Retry-After: 600` |
+| Geschützte Route, Bearer fehlt/ungültig/abgelaufen/Konto widerrufen | 401 JSON aus `abort_request`, z. B. `{success:false,message:"Invalid or expired token."}` |
+| Loginbudget erschöpft | 429 JSON, `message:"Too many login attempts. Try again later."`, `Retry-After: 600` |
 | Attendance-Handler, ungültige Ereignis-ID/Aktion | 400 JSON; typfalsche/malformed Eingaben werden nicht universell auf 400 normalisiert. |
 | Attendance-Transition, Konto inzwischen nicht verfügbar | 403 JSON |
-| Attendance-Transition, Zustand/Überlappung/Datensatz/Bestätigung/ID-Konflikt | 409 JSON |
-| `/workentry`, kein JSON-Array/-Objekt bzw. nichtleere historische Felder | 400 bzw. 409 **text/plain**; `{}` ist eine gültige Alias-Eingabe. |
-| DELETE mit numerischem ID-Pfad nach Auth | 409 **text/plain**, `Use an approved correction request to cancel a record.` |
+| Attendance-Transition, tatsächlich verweigerter Start-/Zustands-/Datensatz-/Bestätigungs-/ID-Konflikt | 409 JSON; akzeptiertes Ende mit Abwesenheitswarnung bleibt dagegen 200 und `success:true`. |
+| `/workentry`, kein JSON-Array/-Objekt bzw. nichtleere historische Felder | 400 bzw. 409 JSON; `{}` ist eine gültige Alias-Eingabe. |
+| DELETE mit numerischem ID-Pfad nach Auth | 409 JSON, `message:"Use an approved correction request to cancel a record."` |
 | `/timeentries`, ungültiger Paginationtyp/-syntax/-bereich | 400 JSON vor SQL, z. B. `Invalid limit. Use an integer from 0 to 1000.` |
 | `/timeentries`, falsches skalares Datumsformat | 400 JSON; nur Formprüfung, keine vollständige Kalenderprüfung. |
 | `/users` oder `/timeentries`, gefangene `Exception` | 500 JSON, `Internal server error` |
 | GET/POST Attendance und Aliase, von `attendance_json` gefangener unerwarteter Fehler | 503 JSON, `Buchung nicht bestätigt. Verbindung prüfen und denselben Vorgang erneut versuchen.` |
-| Gemeinsamer Bootstrap, Speicher-/DB-Verweigerung | 503 **text/plain**, z. B. `Database unavailable.`; betrifft auch normalerweise JSON liefernde Routen. |
+| Gemeinsamer Bootstrap, Speicher-/DB-Verweigerung | 503 JSON, z. B. `{success:false,message:"Database unavailable."}`; gilt auch vor dem Handler. |
 
-`abort_request` überschreibt den Content-Type ausdrücklich auf Text; der
-JSON-Header oben in `api.php` ist also **keine** Gesamtgarantie. Nicht jede
-PHP-/Infrastrukturstörung läuft durch einen der Handler: z. B. kann eine
-nichtskalare Datumsquery einen ungefangenen `TypeError` auslösen. Body und
-Deploymentdarstellung ungefangener Fehler sind hier nicht garantiert; keine
-erfundene generelle JSON-500- oder „alle Invaliddaten sind 400“-Abnahme.
+Die kontrollierte Bootstrap-Sessionwiderrufung (`Please sign in again.`, 401)
+verwendet im nativen API-Pfad ebenfalls diese JSON-Form. Nicht jede
+PHP-/Infrastrukturstörung läuft durch `abort_request` oder einen bestehenden
+Handler: eine nichtskalare Datumsquery kann weiterhin einen ungefangenen
+`TypeError` auslösen. Es gibt **keinen** neuen globalen Exception-/Shutdown-
+oder Warninghandler. Body und Deploymentdarstellung ungefangener Fehler sind
+nicht garantiert; PHP-Warnungen werden nicht als Erfolg umgedeutet und es gibt
+keine erfundene generelle JSON-500- oder „alle Invaliddaten sind 400“-Abnahme.
 
 ## Zeitfilter und Pagination: aktuelle Grenzen bewahren
 
@@ -216,18 +286,38 @@ Clientzeit-/Historienmutation oder Frameworkaktivierung wird hier ergänzt.
 
 ## Tatsächlich durchgeführte Prüfung und offene Abnahme
 
-Nur lokale JSON-/Schema-/Quellenkonsistenz: JSON parsebar; lokale `$ref`-Ziele
-auflösbar; dokumentierte Methoden/Pfade mit dem nativen Router verglichen;
-Beispiele gegen ihre Schemas geprüft; Änderungen auf drei Dokumentationsdateien
-begrenzt. Python-CLI, **keine Anwendungslaufzeit gestartet**. Prüfprotokoll und
-exakte Werkzeugversion liegen im eingefrorenen Übergabepaket.
+Historischer Laufzeitnachweis des unveränderten Codepakets
+`77076181a819f50ab470f0eda4b00ba03fde998c` auf Ausgangsstand
+`15d8ea5ffacc38596397202fd85c77a51cdc0f37`: PHP **8.5.12 CLI**,
+Lint der geänderten PHP-Dateien und ein grober, bootstrapfreier Subprozesslauf
+(`php tests/api_error_response.php`) mit zwei Gruppen:
 
-Nicht ausgeführt: HTTP-/Auth-/Netzwerkfunktionstest, PHP-Bootstrap,
-Browser/Erweiterung, DB/Server, reale Zugangsdaten oder GitHub-CI-Neulauf.
-Original-UI und Laufzeitdateien bleiben byte-identisch. Vor einer späteren
-Freigabe separat nötig: unabhängiger integrierter Review, erneuter Abgleich mit
-dann aktuellem `main`, autorisierte Veröffentlichung sowie eigenständige Umsetzung
-und Abnahme der JSON-Fehlernormalisierung. Der Quellenabgleich nach #9-Merge ist
-für den oben genannten Commit durchgeführt und im Übergabepaket belegt; dies
-ist keine Laufzeitabnahme. #25 wird durch diese Dokumentation allein
-**nicht geschlossen**.
+- Nicht-API-Textbytes, Status und Terminierung bleiben erhalten; Requestheader,
+  Querydaten und Scriptname aktivieren JSON nicht. Nur echtes boolesches
+  serverseitiges `true` aktiviert den Formatter.
+- Repräsentative kontrollierte 400/401/403/409/429/503 bleiben Nicht-Erfolg mit
+  derselben Meldung im JSON-Envelope und demselben Status; gültige Sonderzeichen
+  und ungültige UTF-8-Bytes bleiben JSON-kodierbar. Der Abbruch kehrt nicht zurück.
+
+Der obige PHP-Nachweis gehört zum unveränderten ursprünglichen Codepaket
+`77076181a819f50ab470f0eda4b00ba03fde998c`; er wurde für diese reine
+Dokumentationsangleichung nicht erneut ausgeführt. Am neuen Elternstand wurde
+nur der bestehende grobe statische Quellen-/Schemaabgleich durchgeführt:
+JSON parsebar, lokale `$ref`-Ziele und Beispiele konsistent, Opt-in vor Bootstrap,
+unveränderte CORS-/OPTIONS- und Retry-After-Quellen, identische App-/Helper-/
+Testbytes zum geprüften Codepaket und alle nicht freigegebenen Pfade byte-
+identisch zum neuen Ausgangsstand. Die optionalen Endwarnfelder und der
+200-vs.-409-Unterschied sind aus dem tatsächlichen gemeinsamen Writer und
+seinem Konfliktleser abgeleitet, nicht neu zur Laufzeit abgenommen.
+Exakte Commit-/Baum-/Patchidentitäten, Werkzeugversionen und Protokolle stehen
+im eingefrorenen Übergabepaket. Dies ist **keine** vollständige OpenAPI- oder
+Laufzeitabnahme. Insbesondere beweist PHP CLI keine tatsächlichen HTTP-Header.
+
+Nicht ausgeführt: HTTP-/Header-/CORS-/Retry-After-Funktionstest, tatsächliche
+Login-/Tokenausgabe oder -prüfung, `config.php`-/`security.php`-Bootstrap,
+Session-/Schlüssel-/Datei-DB-/Serverzugriff, Browser/Erweiterung, produktive
+Zugangsdaten, Deployment oder ein manuell ausgelöster GitHub-CI-Neulauf.
+Vor einer abschließenden Abnahme bleiben unabhängiger integrierter Review,
+Abgleich mit dann aktuellem `main` sowie die vollständige autorisierte
+HTTP-/Clientabnahme erforderlich. #25 wird durch den begrenzten CLI-/Quellen-
+Nachweis allein **nicht geschlossen**.
