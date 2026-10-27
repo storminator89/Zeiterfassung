@@ -8,10 +8,10 @@ interface ChronoReads
     /** Existing attendance.php?format=status shape; always the authenticated user. */
     public function attendanceStatus(): array;
 
-    /** Unmodified own reporting/export rows, newest start first, including open rows. */
-    public function reportRows(): array;
+    /** Own raw rows; preserve legacy lexical order unless Home requests native instant/id ordering. */
+    public function reportRows(bool $chronological = false): array;
 
-    /** Native home statistics and stored weekly holidays; authenticated own user only. */
+    /** Native own Home statistics plus invalid/conflict diagnostics; unresolved totals are not numeric. */
     public function homeSummary(): array;
 
     /** Existing API own-only identity, including the current wire field types. */

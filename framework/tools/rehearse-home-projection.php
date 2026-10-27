@@ -89,7 +89,16 @@ try {
         && $fixed['holidays_this_week'] === [['date' => '2026-10-27', 'formatted_date' => '27.10.2026', 'name' => 'Synthetic <holiday>']]
         && $days['2026-10-26'] === 270 && planned_minutes($pdo, 1, '2026-10-26') === 360
         && ! isset($days['2026-10-28'], $days['2026-10-29']));
-    $ensure($reads->homeSummary() === home_summary($pdo, 1, $days, 7, new DateTimeImmutable('now', new DateTimeZone('Europe/Berlin'))));
+    $diagnosticDays = report_days($raw, $invalidRecords, $conflicts);
+    $expectedSummary = home_summary($pdo, 1, $diagnosticDays, 7, new DateTimeImmutable('now', new DateTimeZone('Europe/Berlin')));
+    $expectedSummary['invalid_records'] = $invalidRecords;
+    $expectedSummary['absence_conflicts'] = $conflicts;
+    $expectedSummary['report_finality'] = ['all' => false, 'week' => false, 'month' => false, 'year' => false];
+    $expectedSummary['total_overtime_hours'] = null;
+    $expectedSummary['total_overtime_formatted'] = 'Unvollständig';
+    $expectedSummary['positive_overtime'] = null;
+    $ensure($invalidRecords === [['id' => 5, 'error' => 'Endzeit liegt vor der Startzeit.']]
+        && $conflicts === [] && $reads->homeSummary() === $expectedSummary);
     $other = att_one($pdo, 'SELECT * FROM users WHERE id=2');
     $app->make('auth')->guard('web')->setUser((new LegacyUser)->newFromBuilder($other, 'chrono'));
     $ensure($reads->homeSummary()['total_overtime_formatted'] === '02:00'); // NULL carry-in remains zero.

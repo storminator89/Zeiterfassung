@@ -27,7 +27,7 @@
 
                     <form id="absence-form" method="post" action="save.php" class="space-y-5 mt-6 border-t border-base-200 pt-5">
                         @csrf
-                        <fieldset disabled class="space-y-5">
+                        <fieldset disabled @if ($page->interactions->absences) data-local-absence-enabled="1" @endif class="space-y-5">
                         <fieldset>
                             <legend class="text-lg font-semibold mb-3">Ereignistyp</legend>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -62,7 +62,7 @@
                     <h2 class="card-title text-2xl mb-4"><i class="fas fa-chart-bar mr-2"></i>{{ $page->copy->text('STATISTICS_WORKING_TIMES') }}</h2>
                     <div class="stats stats-vertical shadow w-full">
                         <div class="stat"><div class="stat-figure text-primary"><i class="fas fa-calendar-day fa-2x"></i></div><div class="stat-title">{{ $page->copy->text('TABLE_HEADER_WORKING_DAYS') }}</div><div class="stat-value">{{ $page->workingDaysThisMonth ?? '—' }}</div><div class="stat-desc">{{ $page->currentMonthName ?? 'Noch keine Berichtsprojektion verbunden' }}</div></div>
-                        <div class="stat"><div class="stat-figure text-primary"><i class="fas fa-clock fa-2x"></i></div><div class="stat-title">{{ $page->copy->text('TABLE_HEADER_TOTAL_OVERTIME') }}</div><div class="stat-value {{ $page->positiveOvertime === null ? '' : ($page->positiveOvertime ? 'text-success' : 'text-error') }}">{{ $page->totalOverHoursFormatted ?? '—' }}</div></div>
+                        <div class="stat"><div class="stat-figure text-primary"><i class="fas fa-clock fa-2x"></i></div><div class="stat-title">{{ $page->copy->text('TABLE_HEADER_TOTAL_OVERTIME') }}</div><div data-report-period="all" data-report-presentation="{{ $page->overtimePresentation() }}" class="stat-value {{ $page->reportUnresolved || $page->reportInvalidCount > 0 || $page->positiveOvertime === null ? '' : ($page->positiveOvertime ? 'text-success' : 'text-error') }}">{{ $page->overtimeLabel() }}</div></div>
                         <div class="stat"><div class="stat-figure text-primary"><i class="fas fa-business-time fa-2x"></i></div><div class="stat-title">{{ $page->copy->text('TABLE_HEADER_REGULAR_WORKING_HOURS') }}</div><div class="stat-value">{{ $page->dailyHoursFormatted ?? '—' }}</div><div class="stat-desc">{{ $page->copy->text('LABEL_HOURS_PER_DAY') }}</div></div>
                     </div>
                     @if ($page->holidaysThisWeek !== [])<div class="alert alert-info mt-4"><div><h3 class="font-bold">{{ $page->copy->text('HOLIDAYS_THIS_WEEK') }}</h3>@foreach ($page->holidaysThisWeek as $holiday)<p class="text-sm">{{ $holiday['date'] }} · {{ $holiday['name'] }}</p>@endforeach</div></div>@endif
@@ -71,6 +71,10 @@
             </section>
         </aside>
     </div>
-    <section id="timeRecordsContainer" class="mt-8" aria-label="Erfasste Arbeitszeiten"><p role="status">Die bestehende Arbeitszeittabelle wird erst nach Freigabe des authentifizierten Laravel-HTML-Fragments verbunden. Hier wird noch nichts geladen.</p></section>
+    @if ($page->interactions->home)
+    <section id="timeRecordsContainer" class="mt-8" aria-label="Erfasste Arbeitszeiten"><p role="status">Arbeitszeiten werden geladen …</p></section>
+    @else
+    <section class="mt-8" aria-label="Erfasste Arbeitszeiten"><p role="status">Die bestehende Arbeitszeittabelle wird erst nach Freigabe des authentifizierten Laravel-HTML-Fragments verbunden. Hier wird noch nichts geladen.</p></section>
+    @endif
 </main>
 @endsection

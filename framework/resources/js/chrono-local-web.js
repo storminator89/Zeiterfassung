@@ -26,6 +26,12 @@
     }
     const script = document.createElement('script');
     script.src = 'assets/js/attendance.js';
+    script.addEventListener('load', () => {
+        // Absence uses the existing client too. Never enable a bare form when
+        // pending storage blocked that client or initialization did not finish.
+        const fields = document.querySelector('#absence-form [data-local-absence-enabled="1"]');
+        if (document.documentElement.dataset.attendanceController === 'ready' && fields) fields.disabled = false;
+    });
     script.addEventListener('error', () => {
         document.querySelectorAll('#message, #attendance-message').forEach(element => {
             element.textContent = 'Buchungsoberfläche konnte nicht geladen werden. Bitte neu laden.';

@@ -32,15 +32,31 @@ final class LegacyChronoReads implements ChronoReads
             $records = $statement->fetchAll(PDO::FETCH_ASSOC);
             $statement->closeCursor();
 
-            return ['success' => true, 'records' => $records] + attendance_status($pdo, (int) $actor->getKey());
+            // Match native web status: full own context and state share this snapshot.
+            // Keep apiAttendanceStatus()'s independent raw API wire unchanged.
+            $context = $this->rows($pdo, 'SELECT * FROM zeiterfassung WHERE user_id=?', [$actor->getKey()]);
+            $today = new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin'));
+
+            return ['success' => true, 'records' => $records,
+                'report_finality' => $this->reportFinality(report_absence_conflicts($context), $today),
+            ] + attendance_status($pdo, (int) $actor->getKey());
         });
     }
 
-    public function reportRows(): array
+    public function reportRows(bool $chronological = false): array
     {
-        return $this->snapshot(fn (PDO $pdo, LegacyUser $actor): array =>
-            $this->rows($pdo, 'SELECT * FROM zeiterfassung WHERE user_id=? ORDER BY startzeit DESC', [$actor->getKey()])
-        );
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($chronological): array {
+            // Corrections retain their native lexical first-200 options. Only
+            // Home opts into the reviewed native instant/id ordering before paging.
+            $order = 'startzeit DESC';
+            if ($chronological) {
+                require_once dirname(__DIR__, 3).'/lib/report_ordering.php';
+                report_register_start_order($pdo);
+                $order = 'chrono_report_start_epoch(startzeit) DESC,id DESC';
+            }
+
+            return $this->rows($pdo, 'SELECT * FROM zeiterfassung WHERE user_id=? ORDER BY '.$order, [$actor->getKey()]);
+        });
     }
 
     public function homeSummary(): array
@@ -49,7 +65,22 @@ final class LegacyChronoReads implements ChronoReads
             $userData = $this->rows($pdo, 'SELECT regelarbeitszeit,ueberstunden FROM users WHERE id=?', [$actor->getKey()])[0];
             $records = $this->rows($pdo, 'SELECT * FROM zeiterfassung WHERE user_id=? ORDER BY startzeit DESC', [$actor->getKey()]);
 
-            return home_summary($pdo, (int) $actor->getKey(), report_days($records), (float) ($userData['ueberstunden'] ?? 0.0), new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')));
+            // Explicit diagnostic opt-in is paired with visible Home warnings.
+            // The shared helpers own all malformed-row/conflict rules; never
+            // suppress an exception and fabricate a zero or a final partial total.
+            $days = report_days($records, $invalidRecords, $conflicts);
+            $today = new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin'));
+            $summary = home_summary($pdo, (int) $actor->getKey(), $days, (float) ($userData['ueberstunden'] ?? 0.0), $today);
+            $summary['invalid_records'] = $invalidRecords;
+            $summary['absence_conflicts'] = $conflicts;
+            $summary['report_finality'] = $this->reportFinality($conflicts, $today);
+            if ($invalidRecords !== [] || $conflicts !== []) {
+                $summary['total_overtime_hours'] = null;
+                $summary['total_overtime_formatted'] = $conflicts !== [] ? 'Klärung offen' : 'Unvollständig';
+                $summary['positive_overtime'] = null;
+            }
+
+            return $summary;
         });
     }
 
@@ -200,6 +231,19 @@ final class LegacyChronoReads implements ChronoReads
 
             return $this->rows($pdo, 'SELECT id,username FROM users ORDER BY username', []);
         });
+    }
+
+    /** Shared native conflict evidence in, native web presentation flags out. */
+    private function reportFinality(array $conflicts, \DateTimeImmutable $today): array
+    {
+        [$weekStart, $weekEnd] = report_week_bounds($today->format('Y-m-d'));
+
+        return [
+            'all' => $conflicts !== [],
+            'week' => report_conflicts_in_period($conflicts, $weekStart, $weekEnd),
+            'month' => report_conflicts_in_period($conflicts, $today->format('Y-m-01'), $today->format('Y-m-t')),
+            'year' => report_conflicts_in_period($conflicts, $today->format('Y-01-01'), $today->format('Y-12-31')),
+        ];
     }
 
     private function snapshot(Closure $read, bool $requireKnownRole = true): array

@@ -20,4 +20,15 @@ final readonly class Copy
     {
         return $this->labels[$key] ?? throw new \InvalidArgumentException('Unknown existing UI label.');
     }
+
+    public function month(string $number): string
+    {
+        $key = [
+            '01' => 'JANUARY', '02' => 'FEBRUARY', '03' => 'MARCH', '04' => 'APRIL',
+            '05' => 'MAY', '06' => 'JUNE', '07' => 'JULY', '08' => 'AUGUST',
+            '09' => 'SEPTEMBER', '10' => 'OCTOBER', '11' => 'NOVEMBER', '12' => 'DECEMBER',
+        ][$number] ?? throw new \InvalidArgumentException('Unknown existing month.');
+
+        return $this->text('MONTH_'.$key);
+    }
 }

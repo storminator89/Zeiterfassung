@@ -217,7 +217,10 @@ final class LocalWebFixture
         $limiter = new RateLimiter($app->make('cache')->store('file'));
         $limiter->for('chrono-web-login', $definition);
         $app->instance(RateLimiter::class, $limiter);
-        $app->instance(Interactions::class, new Interactions(true, true, true, true));
+        $app->instance(Interactions::class, new Interactions(
+            login: true, attendance: true, logout: true, corrections: true,
+            home: true, absences: true,
+        ));
         LocalWebRoutes::register($app);
     }
 

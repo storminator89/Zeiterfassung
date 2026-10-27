@@ -32,6 +32,7 @@
 
     <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
     <link rel="stylesheet" href="assets/css/app_ui.css">
+    @if ($page->interactions->home)<script src="assets/js/main.js" defer></script>@endif
     @if ($page->interactions->attendance)<script src="assets/js/chrono-local-web.js" defer></script>@endif
     <style>
         @media (max-width: 640px) {
@@ -302,7 +303,7 @@
 
                 <a href="adjustments.php" class="sidebar-link {{ $page->activePage === 'adjustments.php' ? 'active' : '' }}"><i class="fas fa-pen-to-square w-6"></i><span>Korrekturanträge</span></a>
                 <a href="history.php" class="sidebar-link "><i class="fas fa-history w-6"></i><span>Änderungshistorie</span></a>
-                <a href="work_models.php" class="sidebar-link "><i class="fas fa-business-time w-6"></i><span>Arbeitszeitmodelle</span></a>
+                <a href="work_models.php" class="sidebar-link"><i class="fas fa-business-time w-6"></i><span>Arbeitszeitmodelle</span></a>
                 @if ($page->role === 'admin')<a href="terminals.php" class="sidebar-link "><i class="fas fa-desktop w-6"></i><span>Praxis-Terminals</span></a>@endif
             </nav>
         </div>
@@ -359,13 +360,31 @@
     <div id="main-content" class="main-content">
         <aside class="alert alert-info mb-4" role="note">
             @if ($page->interactions->attendance)
-            Laravel-Anwesenheit: Stempeln und Abmelden sind verbunden. Abwesenheiten und weitere Seiten sind in dieser Migrationswelle noch nicht verbunden.
+            Laravel-Anwesenheit: Stempeln und Abmelden sind verbunden.
+            @if ($page->interactions->home) Arbeitszeittabelle und Statistik sind verbunden. @endif
+            @if ($page->interactions->absences) Abwesenheiten sind verbunden. @else Abwesenheiten sind noch nicht verbunden. @endif
             @if ($page->interactions->corrections) Korrekturanträge sind ebenfalls verbunden. @endif
+            Weitere Seiten und CSV-Export sind in dieser Vorschau noch nicht verbunden.
             @else
             Inaktive Laravel-Ansicht: Anmeldung, Buchungen, Abwesenheiten und Abmeldung sind noch nicht verbunden.
             Navigationslinks behalten die bestehenden PHP-Ziele; diese Seiten sind weiterhin Legacy.
             @endif
         </aside>
+        <div id="report-finality-notice" class="alert alert-warning mb-4" role="alert" @if (! $page->reportUnresolved) hidden @endif>
+            <span data-report-finality-message><strong>Klärung offen: Arbeitszeit überschneidet sich mit ganztägiger Abwesenheit.</strong>
+            Betroffene Tages- und Zeitraumssummen sind bis zur manuellen Klärung nicht abschließend und nicht zur Abrechnung geeignet.
+            Tatsächliche Arbeits- und Pausenzeiten sowie Gutschriften bleiben unverändert sichtbar; nichts wurde automatisch gelöscht oder gekürzt.
+            Bitte über einen Korrekturantrag mit Freigabe durch eine andere berechtigte Person klären.</span>
+            <a class="link" href="adjustments.php">Korrekturanträge</a>
+        </div>
+        @if ($page->reportInvalidCount > 0)
+        <div class="alert alert-warning mb-4" role="alert">
+            <span><strong>Datenqualität: {{ $page->reportInvalidCount }} ungültige eigene Zeiteinträge.</strong>
+            Arbeitszeit-, Überstunden- und Berichtssummen sind unvollständig und nicht zur Abrechnung geeignet; auch die Kalenderdarstellung kann unvollständig sein.
+            Bitte die betroffenen Einträge in der Arbeitszeitliste über „Korrektur / Storno“ prüfen. Es wurden keine Bestandsdaten geändert.
+            <a class="link" href="adjustments.php">Korrekturanträge</a></span>
+        </div>
+        @endif
         @yield('content')
 
     <script>

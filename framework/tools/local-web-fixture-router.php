@@ -24,6 +24,7 @@ try {
         '/assets/css/main.css' => [$root.'/assets/css/main.css', 'text/css; charset=UTF-8'],
         '/assets/css/app_ui.css' => [$root.'/assets/css/app_ui.css', 'text/css; charset=UTF-8'],
         '/assets/js/attendance.js' => [$root.'/assets/js/attendance.js', 'text/javascript; charset=UTF-8'],
+        '/assets/js/main.js' => [$root.'/assets/js/main.js', 'text/javascript; charset=UTF-8'],
         '/assets/js/chrono-local-web.js' => [$root.'/framework/resources/js/chrono-local-web.js', 'text/javascript; charset=UTF-8'],
     ];
     if (is_string($path) && isset($assets[$path]) && in_array($_SERVER['REQUEST_METHOD'] ?? '', ['GET', 'HEAD'], true)) {
@@ -39,7 +40,7 @@ try {
         }
         exit;
     }
-    if (! in_array($path, ['/', '/index.php', '/attendance.php', '/adjustments.php', '/login.php', '/logout.php'], true)) {
+    if (! in_array($path, ['/', '/index.php', '/attendance.php', '/adjustments.php', '/get_time_records.php', '/save.php', '/login.php', '/logout.php'], true)) {
         http_response_code(410);
         header('Content-Type: text/plain; charset=UTF-8');
         echo 'Not available in the synthetic local preview.';

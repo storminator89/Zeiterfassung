@@ -94,7 +94,9 @@ try {
 
     $phase = 'own status and Berlin DST/model/absence projection parity';
     $statement = $pdo->query('SELECT id,startzeit,endzeit,pause,absence_kind,planned_minutes FROM zeiterfassung WHERE user_id=1 ORDER BY id DESC LIMIT 30');
-    $expectedStatus = ['success' => true, 'records' => $statement->fetchAll(PDO::FETCH_ASSOC)] + attendance_status($pdo, 1);
+    $expectedStatus = ['success' => true, 'records' => $statement->fetchAll(PDO::FETCH_ASSOC),
+        'report_finality' => ['all' => false, 'week' => false, 'month' => false, 'year' => false],
+    ] + attendance_status($pdo, 1);
     $statement->closeCursor();
     $ensure($reads->attendanceStatus() === $expectedStatus && $expectedStatus['state'] === 'paused');
     $raw = $pdo->query('SELECT * FROM zeiterfassung WHERE user_id=1 ORDER BY startzeit DESC')->fetchAll(PDO::FETCH_ASSOC);
