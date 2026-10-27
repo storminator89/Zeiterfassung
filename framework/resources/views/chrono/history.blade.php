@@ -35,7 +35,21 @@
         <p class="text-sm font-semibold opacity-70 mb-2">#{{ $r['id'] }} · {{ $r['occurred_at'] }}</p>
         <h2 class="text-xl font-semibold mb-4">{{ $r['entity'] }} #{{ $r['record_id'] }} · {{ $r['operation'] }}</h2>
         <p>{{ $r['actor'] }} · {{ $r['reason'] }}</p>
-        <details><summary>Vorher und nachher ansehen</summary><h3>Vorher</h3><pre style="white-space:pre-wrap;overflow-wrap:anywhere">{{ $r['before_json'] }}</pre><h3>Nachher</h3><pre style="white-space:pre-wrap;overflow-wrap:anywhere">{{ $r['after_json'] }}</pre></details>
+        <details><summary>Vorher und nachher ansehen</summary>
+            <p class="text-sm opacity-70 my-3">Feldvergleich und JSON zeigen nur ausgewählte freigegebene Felder, nicht den vollständigen Auditinhalt.</p>
+            @if ($r['presentation']['limited'])<p class="text-sm opacity-70 my-3">Weitere, nicht erkannte oder nicht darstellbare Inhalte wurden ausgelassen; lange Texte können gekürzt sein.</p>@endif
+            @if ($r['presentation']['rows'])
+            <div class="overflow-x-auto"><table class="table w-full"><thead><tr><th scope="col">Feld</th><th scope="col">Vorher</th><th scope="col">Nachher</th></tr></thead><tbody>
+                @foreach ($r['presentation']['rows'] as $change)
+                <tr><th scope="row">{{ $change['field'] }}</th><td style="white-space:pre-wrap;overflow-wrap:anywhere">{{ $change['before'] }}</td><td style="white-space:pre-wrap;overflow-wrap:anywhere">{{ $change['after'] }}</td></tr>
+                @endforeach
+            </tbody></table></div>
+            @else
+            <p class="my-3">{{ $r['presentation']['available'] ? 'Keine Änderungen an darstellbaren Feldern.' : 'Feldvergleich nicht verfügbar.' }}</p>
+            @endif
+            <h3 class="font-semibold mt-4">Vorher · ausgewählte Felder</h3><pre style="white-space:pre-wrap;overflow-wrap:anywhere">{{ $r['presentation']['before'] }}</pre>
+            <h3 class="font-semibold mt-4">Nachher · ausgewählte Felder</h3><pre style="white-space:pre-wrap;overflow-wrap:anywhere">{{ $r['presentation']['after'] }}</pre>
+        </details>
     </section>
     @endforeach
     @if ($history->olderUrl !== null)<a href="{{ $history->olderUrl }}">Ältere Einträge</a>@endif

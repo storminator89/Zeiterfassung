@@ -2,13 +2,15 @@
 
 namespace App\View\ExistingUi;
 
-/** Already-authorized native audit display text; no queries, permissions or JSON parsing. */
+/** Already-authorized selected audit display text; no queries, permissions or parsing here. */
 final readonly class HistoryPage
 {
     /**
      * @param list<array{id: int, occurred_at: string, entity: string, record_id: int,
-     *     operation: string, actor: string, reason: string, before_json: string,
-     *     after_json: string}> $entries Unescaped display values, in the reader's order.
+     *     operation: string, actor: string, reason: string,
+     *     presentation: array{rows: list<array{field: string, before: string, after: string}>,
+     *         before: string, after: string, limited: bool, available: bool}}>
+     *     $entries Unescaped selected display values, in the reader's order; no raw snapshots.
      * @param array<string, string> $values Native trimmed filter form values.
      * @param list<string> $errors Native filter errors, not exception details.
      * @param array<string, string> $entities Native entity labels.
