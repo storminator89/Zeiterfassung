@@ -169,6 +169,19 @@ final class LegacyChronoReads implements ChronoReads
         );
     }
 
+    public function historyQuery(HistoryQuery $query): array
+    {
+        if ($query->errors) {
+            return [];
+        }
+
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($query): array {
+            $statement = $query->statementFor((int) $actor->getKey(), $actor->role);
+
+            return $this->rows($pdo, $statement['sql'], $statement['params']);
+        });
+    }
+
     public function workModels(): array
     {
         return $this->snapshot(fn (PDO $pdo, LegacyUser $actor): array =>
