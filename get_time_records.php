@@ -40,8 +40,14 @@ $stmt->closeCursor();
 // Keep ten raw rows per page, but total their entire Berlin start-days. Since
 // the page is instant-ordered, its visible dates form one chronological range.
 $completeDayRows = [];
+$visibleDays = [];
 if ($records !== []) {
-    $visibleDays = array_map('report_day', $records);
+    foreach ($records as $record) {
+        $day = report_record_calculation($record)['day'];
+        if ($day !== null) { $visibleDays[] = $day; }
+    }
+}
+if (!empty($visibleDays)) {
     $firstDay = new DateTimeImmutable(min($visibleDays), new DateTimeZone('Europe/Berlin'));
     $afterLastDay = (new DateTimeImmutable(max($visibleDays), new DateTimeZone('Europe/Berlin')))->modify('+1 day');
     $totalsStmt = $conn->prepare('SELECT startzeit,endzeit,pause FROM zeiterfassung
@@ -94,15 +100,19 @@ $dailyTotals = [];
 
 // Details stay page-local; summary duration and pause cover the complete day.
 foreach ($recordGroups as $group) {
-    $workDate = $group['work_date'];
+    $workDate = $group['group_key'];
     $dayRecords = $group['records'];
     $formattedTotal = $group['total_duration'];
     $totalPause = $group['total_pause'];
+    $pauseLabel = $totalPause === null ? 'Ungültig' : $totalPause . ' min';
     $formattedDate = $group['formatted_date'];
     $entryCountLabel = $group['is_partial'] ? count($dayRecords) . ' / ' . $group['day_entry_count'] : (string)count($dayRecords);
     $entryCountTitle = $group['is_partial'] ? 'Sichtbare Einträge / alle Einträge des Tages' : 'Anzahl der Einträge';
     $partialDayNotice = $group['is_partial']
-        ? '<p class="text-sm opacity-70 mb-3">Teilansicht: ' . $entryCountLabel . ' Einträge auf dieser Seite. Dauer und Pause sind vollständige Tagessummen.</p>'
+        ? '<p class="text-sm opacity-70 mb-3">Teilansicht: ' . $entryCountLabel . ' Einträge auf dieser Seite. Dauer und Pause berücksichtigen alle Einträge des Tages.</p>'
+        : '';
+    $invalidNotice = $group['invalid_count'] > 0
+        ? '<p class="text-sm text-warning mb-3" role="alert">Datenqualität: ' . $group['invalid_count'] . ' ungültige Einträge. Keine verlässliche Tagessumme; bitte „Korrektur / Storno“ verwenden.</p>'
         : '';
 
     // Update the summary row output with entry count
@@ -117,6 +127,7 @@ foreach ($recordGroups as $group) {
                         <div class="badge badge-sm badge-ghost" title="' . $entryCountTitle . '">
                             ' . $entryCountLabel . ($group['is_partial'] ? ' · Teilansicht' : '') . '
                         </div>
+                        ' . ($group['invalid_count'] > 0 ? '<span class="badge badge-warning badge-sm">Daten prüfen</span>' : '') . '
                     </div>
                 </div>
             </td>
@@ -129,7 +140,7 @@ foreach ($recordGroups as $group) {
             <td class="px-6 py-4 w-32">
                 <div class="flex items-center justify-center gap-2">
                     <i class="fas fa-pause text-primary/75"></i>
-                    <span class="font-medium">' . $totalPause . ' min</span>
+                    <span class="font-medium">' . $pauseLabel . '</span>
                 </div>
             </td>
             <td></td>
@@ -140,6 +151,7 @@ foreach ($recordGroups as $group) {
             <td colspan="4" class="p-0">
                 <div class="pl-14 pr-6 py-4 border-l-4 border-primary/10">
                     ' . $partialDayNotice . '
+                    ' . $invalidNotice . '
                     <table class="table w-full">
                         <thead class="bg-base-200/50">
                             <tr>
@@ -222,5 +234,6 @@ function outputRecordRow($record) {
     $startLabel = $detail['start_label'];
     $endLabel = $detail['end_label'];
     $durationLabel = $detail['duration_label'];
-    echo '<tr><td>'.h($record['weekNumber']).'</td><td>'.h($startLabel).'</td><td>'.h($endLabel).'</td><td>'.h($durationLabel).'</td><td>'.h($record['pause']).'</td><td>'.h($record['standort']).'</td><td>'.h($record['beschreibung']).'</td><td><a class="link link-primary" href="adjustments.php?record_id='.(int)$record['id'].'">Korrektur / Storno</a></td></tr>';
+    $qualityLabel = $detail['is_invalid'] ? '<span class="block text-sm text-warning">'.h($detail['validation_error']).'</span>' : '';
+    echo '<tr><td>'.h($record['weekNumber']).'</td><td>'.h($startLabel).'</td><td>'.h($endLabel).'</td><td>'.h($durationLabel).$qualityLabel.'</td><td>'.h($record['pause']).'</td><td>'.h($record['standort']).'</td><td>'.h($record['beschreibung']).'</td><td><a class="link link-primary" href="adjustments.php?record_id='.(int)$record['id'].'">Korrektur / Storno</a></td></tr>';
 }
