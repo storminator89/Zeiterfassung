@@ -1,7 +1,7 @@
 <?php
 require __DIR__.'/../lib/attendance.php';require __DIR__.'/../lib/practice.php';
 function check($name,$ok) { if (!$ok) { throw new RuntimeException($name); } echo "PASS $name\n"; }
-$db=new PDO('sqlite::memory:',null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+$db=PDO::connect('sqlite::memory:',null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
 $db->exec("CREATE TABLE users(id INTEGER PRIMARY KEY,username TEXT,regelarbeitszeit REAL,ueberstunden REAL);
 CREATE TABLE Feiertage(id INTEGER PRIMARY KEY,datum TEXT,name TEXT);
 CREATE TABLE pause_settings(id INTEGER PRIMARY KEY,hours_threshold INTEGER,minimum_pause INTEGER);
@@ -21,6 +21,6 @@ check('weekly target includes Saturday and excludes holiday',planned_hours($db,1
 check('new model does not alter older target',planned_minutes($db,1,'2026-10-23')===270);
 check('DST Sunday can be a scheduled day',planned_minutes($db,1,'2026-10-25')===0);
 // A raw connection without the application's audit functions cannot silently mutate projections.
-$db->sqliteCreateFunction('audit_actor',fn()=>throw new RuntimeException('No audit context'),0);
+$db->createFunction('audit_actor',fn()=>throw new RuntimeException('No audit context'),0);
 try { $db->exec('UPDATE zeiterfassung SET pause=0 WHERE id=42');check('audit failure rolls back write',false); } catch(Throwable $e) {}
 check('audit failure preserves original row',att_one($db,'SELECT pause FROM zeiterfassung WHERE id=42')['pause']===30);

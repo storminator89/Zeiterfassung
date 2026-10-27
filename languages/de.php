@@ -250,7 +250,6 @@ define('TOTAL_OVERTIME_TITLE', 'Gesamtüberstunden');
 // Add these new constants for supervisor view
 define('TABLE_HEADER_TOTAL_DURATION', 'Gesamtdauer');
 define('TABLE_HEADER_TOTAL_BREAK', 'Gesamtpause');
-define('TABLE_HEADER_DATE', 'Datum');
 
 //Settings Page
 define('SETTINGS_LANGUAGE', 'Spracheinstellungen');

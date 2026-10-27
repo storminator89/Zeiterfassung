@@ -13,7 +13,7 @@ docker run -d --name chrono -p 127.0.0.1:8080:80 \
 
 A new database has no default accounts. To create the first administrator, temporarily pass an independently generated random `APP_SETUP_TOKEN` via a protected environment file (`--env-file`). Open `/register.php` and enter that token, a valid email and a password of at least 12 characters. Recreate the container without `APP_SETUP_TOKEN` after setup, retaining the same volume. Registration closes after the first account. Do not put setup tokens or data files in source control.
 
-For a local PHP installation (PHP 8.3, PDO SQLite, mbstring, OpenSSL):
+For a local PHP installation (PHP 8.5, PDO SQLite, SQLite3, mbstring, OpenSSL, ctype, fileinfo and iconv):
 
 ```sh
 APP_DATA_DIR=/absolute/private/chrono-data php -S 127.0.0.1:8080 router.php

@@ -1,4 +1,4 @@
-FROM php:8.3-apache
+FROM php:8.5.12-apache-trixie@sha256:7cd25eb48f9763dfeabe8fda3939897aca2001802fadeafa1b602f26c735ef96
 # PDO SQLite and mbstring are included in the official image.
 WORKDIR /var/www/html
 COPY . /var/www/html

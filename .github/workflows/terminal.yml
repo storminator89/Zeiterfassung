@@ -14,7 +14,7 @@ jobs:
             --user "$(id -u):$(id -g)" \
             -e APP_DATA_DIR=/data -e APP_TERMINAL_ENABLED=1 -e PHP_CLI_SERVER_WORKERS=4 \
             -v "$RUNNER_TEMP/chrono-data:/data" -v "$GITHUB_WORKSPACE:/app:ro" -w /app \
-            php:8.3-cli php -S 0.0.0.0:8080 router.php
+            php:8.5.12-cli-trixie@sha256:635a4b998025ab269194639a5549c6fdcd9b4f88ec8cd761b092de8653d40663 php -S 0.0.0.0:8080 router.php
           docker exec -e APP_TEST_MODE=1 chrono-test php tests/seed.php
       - name: PHP syntax and clock boundaries
         run: |
