@@ -2,6 +2,8 @@
 
 namespace App\LegacyDatabase;
 
+use App\Terminal\AdmittedTerminalKeys;
+use App\Terminal\LegacyTerminalRequest;
 use Closure;
 use Illuminate\Database\SQLiteConnection;
 use LogicException;
@@ -53,6 +55,55 @@ final class AttendanceWriter
             fn (): array => attendance_transition_locked($this->pdo, $user, $source, $eventId, $action, $confirm, $expectedRecord),
             fn (Closure $transaction): mixed => $this->context->run($source.':user:'.$user, 'Stempelereignis '.$action.' / '.$eventId, $transaction),
         );
+    }
+
+    /** Same captured PDO for the transport's pre-body check and its operation. */
+    public function terminalRequireEnabled(): void
+    {
+        $this->assertIdle();
+        require_once dirname(__DIR__, 3).'/lib/terminal_core.php';
+        attendance_require_enabled($this->pdo);
+        $this->assertIdle();
+    }
+
+    /** Native device/grant identity only; no web session, actor or SQL callback. */
+    public function terminal(LegacyTerminalRequest $request, AdmittedTerminalKeys $keys): array
+    {
+        // Match terminal_handle's repeated module check. Never wrap the entire
+        // request: native nonce, limits and identify writes must autocommit first.
+        $this->terminalRequireEnabled();
+        $input = $request->input;
+        if (($input['op'] ?? '') === 'pair') {
+            terminal_limit($this->pdo, 'pair:'.$request->remoteAddress, 20);
+            $device = $this->executeLocked(fn (): array => terminal_pair_locked($this->pdo, $input));
+
+            // Pairing has committed. Key failure remains an unconfirmed failure,
+            // not a rollback or retry. Do not imitate native invalid post-COMMIT
+            // ROLLBACK masking; the transport still returns the generic 503 shape.
+            $response = terminal_pair_response($device, fn (): string => $keys->deviceSecret());
+            $this->assertIdle();
+
+            return $response;
+        }
+
+        $device = terminal_auth_core($this->pdo, $request->body, [
+            'HTTP_X_TERMINAL_ID' => $request->terminalId,
+            'HTTP_X_TERMINAL_TIME' => $request->terminalTime,
+            'HTTP_X_TERMINAL_NONCE' => $request->terminalNonce,
+            'HTTP_X_TERMINAL_SIGNATURE' => $request->terminalSignature,
+        ], fn (): string => $keys->deviceSecret());
+        $this->assertIdle();
+        if (($input['op'] ?? '') === 'identify') {
+            $response = terminal_identify_core($this->pdo, $device, $input, fn (): string => $keys->cardSecret());
+            $this->assertIdle();
+
+            return $response;
+        }
+
+        return $this->executeLocked(fn (): array => terminal_dispatch_locked(
+            $this->pdo, $device, $input,
+            fn (string $actor, string $reason, Closure $operation): mixed => $this->context->run($actor, $reason, $operation),
+        ));
     }
 
     /** Trusted server identity/role only; never supplied by correction command data. */
