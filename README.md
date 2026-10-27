@@ -131,6 +131,7 @@ The REST API is available at `/api.php`
 - **POST /api.php/login:** User login. Requires `username` and `password`.
 - **POST /api.php/workentry:** Start work with server time (historical entries require correction). Send a unique `event_id` for safe retries; client timestamps are not authoritative.
 - **POST /api.php/setendzeit:** Set end time for a specific work entry. Requires `id`.
+- **GET /api.php/attendance:** Get authoritative own attendance as `{success:true,state,record_id}`. `state` is `absent`, `working` or `paused`; `record_id` is an integer for an active record, otherwise `null`. Requires the existing bearer token; no user selector or booking is accepted.
 - **GET /api.php/users:** Get the currently authenticated user as a one-element array.
 - **GET /api.php/timeentries:** Get all time entries for the authenticated user.
 - **DELETE /api.php/timeentry/{id}:** Disabled (409); use an approved cancellation request.

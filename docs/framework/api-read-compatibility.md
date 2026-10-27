@@ -1,5 +1,20 @@
 # FW-06 / #77 – inaktiver Bearer- und API-Lesekern
 
+**Additiver CH-16/#22-Statusvertrag:** Der aktive native Pfad und der weiterhin
+unregistrierte Kandidat kennen nun `GET /api.php/attendance`. Hinter der
+unveränderten Bearerprüfung liefert ein eigener Lesesnapshot exakt
+`{success:true,state,record_id}` aus `attendance_status`: `absent`, `working`
+oder `paused`, mit ganzzahliger aktiver `record_id`, sonst `null`. Keine
+Berichtszeilen, fremde Personenauswahl, neue Rollenfilterung oder Schreibaktion.
+Der Kandidat nutzt `apiAttendanceStatus()` auf derselben Snapshotgrenze;
+GET wird nach dem bestehenden POST-Kandidaten registriert, dessen Parsing,
+Guard und Writer unverändert bleiben. Rohe HEAD-/Override-/Pfadregeln gelten
+weiter. Der nativen `attendance_json`-Fehlerform entsprechend bleiben
+`AttendanceError`-Status erhalten und unerwartete Fehler JSON-503, nicht der
+JSON-500 der Berichtsleser. Keine Defaultregistrierung oder Runtimeumschaltung.
+Dies ist nur die API-Abhängigkeit der Erweiterungsreparatur, keine vollständige
+Firefox-/Edge-, JWT-, Browser- oder Produktivabnahme.
+
 **Begrenztes Vorbereitungspaket, kein API-Cutover und kein Abschluss von #77.**
 Die bestehende UI, `api.php`-Routen, Datenbank-/Hostkonfiguration und Clients
 bleiben aktiv unverändert. Die ausgelieferte Laravel-Routenliste enthält weiterhin

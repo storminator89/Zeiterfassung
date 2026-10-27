@@ -353,6 +353,19 @@ if ($method === 'POST') {
     }
 } elseif ($method === 'GET') {
     switch ($uri) {
+        case $basePath . '/attendance':
+            $tokenData = validateToken();
+            attendance_json(function () use ($conn, $tokenData) {
+                $conn->beginTransaction();
+                try {
+                    $status = ['success' => true] + attendance_status($conn, (int)$tokenData['user_id']);
+                    $conn->commit();
+                    return $status;
+                } catch (Throwable $error) {
+                    if ($conn->inTransaction()) { $conn->rollBack(); }
+                    throw $error;
+                }
+            });
         case $basePath . '/users':
             $tokenData = validateToken();
             getUsers($conn, $tokenData['user_id']);
