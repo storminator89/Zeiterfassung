@@ -12,6 +12,7 @@ Stand: 27.10.2026. Dieses Paket bearbeitet [FW-01/#71](https://github.com/stormi
 - [Inaktiver FW-05-Authkern](local-auth-foundation.md): Laravel-Sessionguard/Provider, aktuelle Rechte, CSRF-/Drosseladapter und eine grobe speicherinterne Abnahme. Keine Route, produktive Verbindung oder UI-/Loginumschaltung; #76 bleibt offen.
 - [Inaktive FW-07-Lesedienste](domain-read-adapters.md): ein Containervertrag für eigene Anwesenheit, Berichtsprojektion, Korrektur-/Auditlisten und historische Modelle; bestehende Fachfunktionen/Rechte unverändert. Keine Schreibmigration oder Route; #78 bleibt offen.
 - [Inaktiver lokaler FW-07-Web-Stempeldienst](local-web-attendance-service.md): typisierte lokale Webidentität und bestehender `web:{id}`-Namensraum auf dem einzigen #75-Writer; keine Route, PDOfactory oder Änderung der Fach-/Replayregeln.
+- [Inaktiver FW-06-Bearer-/API-Lesekern](api-read-compatibility.md): unveränderte Tokenverifikation und eigene Read-/Wireadapter; keine Anmeldung, Schreibmigration oder öffentliche Route, #77 bleibt offen.
 
 ## Geprüfte Quellen, nicht verwechseln
 

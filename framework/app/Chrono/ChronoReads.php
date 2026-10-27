@@ -11,6 +11,12 @@ interface ChronoReads
     /** Unmodified own reporting/export rows, newest start first, including open rows. */
     public function reportRows(): array;
 
+    /** Existing API own-only identity, including the current wire field types. */
+    public function apiIdentity(): array;
+
+    /** Existing API UTC SQL filtering/paging; no subject selector or domain math. */
+    public function apiTimeEntries(ApiTimeEntriesQuery $query): array;
+
     /** Completed start-day totals; subject is a selector, never an actor identity. */
     public function period(string $start, string $end, ?int $subject = null): array;
 
