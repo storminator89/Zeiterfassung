@@ -23,6 +23,7 @@ $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
  */
 
 require_once __DIR__ . '/lib/api_tokens.php';
+require_once __DIR__ . '/lib/api_booking_day.php';
 
 function generateJWT($header, $payload, $secret) {
     $headerEncoded = base64UrlEncode(json_encode($header));
@@ -229,7 +230,7 @@ function getTimeEntries($conn, $user_id) {
                 echo json_encode(['success' => false, 'message' => 'Invalid start_date format. Use YYYY-MM-DD']);
                 return;
             }
-            $whereConditions[] = "date(startzeit) >= :start_date";
+            $whereConditions[] = "chrono_api_booking_day(startzeit) >= :start_date";
             $params[':start_date'] = $_GET['start_date'];
         }
 
@@ -239,8 +240,12 @@ function getTimeEntries($conn, $user_id) {
                 echo json_encode(['success' => false, 'message' => 'Invalid end_date format. Use YYYY-MM-DD']);
                 return;
             }
-            $whereConditions[] = "date(startzeit) <= :end_date";
+            $whereConditions[] = "chrono_api_booking_day(startzeit) <= :end_date";
             $params[':end_date'] = $_GET['end_date'];
+        }
+
+        if (isset($_GET['start_date']) || isset($_GET['end_date'])) {
+            api_register_booking_day($conn);
         }
 
         // Build the base query
