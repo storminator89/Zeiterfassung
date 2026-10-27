@@ -11,6 +11,9 @@ interface ChronoReads
     /** Unmodified own reporting/export rows, newest start first, including open rows. */
     public function reportRows(): array;
 
+    /** Native home statistics and stored weekly holidays; authenticated own user only. */
+    public function homeSummary(): array;
+
     /** Existing API own-only identity, including the current wire field types. */
     public function apiIdentity(): array;
 

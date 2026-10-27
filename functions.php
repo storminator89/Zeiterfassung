@@ -14,6 +14,7 @@ if (file_exists($langFile)) {
 
 // Now include other dependencies
 require_once 'config.php';
+require_once __DIR__ . '/lib/home_projection.php';
 
 // Ensure the user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -116,21 +117,7 @@ function istFeiertag($datum)
 function getWorkingDays($startDate, $endDate)
 {
     global $conn, $user_id;
-    $begin = new DateTime($startDate);
-    $end = new DateTime($endDate);
-    $end->modify('+1 day');  // Adding one day to the end date
-
-    $interval = DateInterval::createFromDateString('1 day');
-    $dateRange = new DatePeriod($begin, $interval, $end);
-
-    $workingDays = 0;
-    foreach ($dateRange as $date) {
-        if (planned_minutes($conn,(int)$user_id,$date->format('Y-m-d'))>0) {
-            $workingDays++;
-        }
-    }
-
-    return $workingDays;
+    return home_working_days($conn, (int)$user_id, $startDate, $endDate);
 }
 
 // Function to get working hours between two dates
@@ -201,10 +188,7 @@ function fetchFeiertageDieseWoche($currentYear, $currentWeekNumber)
 {
     global $conn;
 
-    $monday=(new DateTimeImmutable('now',new DateTimeZone('Europe/Berlin')))->setISODate((int)$currentYear,(int)$currentWeekNumber,1);
-    $stmt=$conn->prepare('SELECT datum,name FROM Feiertage WHERE datum>=? AND datum<=? ORDER BY datum');
-    $stmt->execute([$monday->format('Y-m-d'),$monday->modify('+6 days')->format('Y-m-d')]);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return home_week_holidays($conn, $currentYear, $currentWeekNumber);
 }
 
 // Fetching holidays of this week
@@ -217,10 +201,9 @@ $firstDayOfTheMonth = "{$currentYear}-{$currentMonth}-01";
 $lastDayOfTheMonth = date("Y-m-t", strtotime($currentMonthStart));
 $workingDaysThisMonth = getWorkingDays($firstDayOfTheMonth, $lastDayOfTheMonth);
 
-$workHoursByDate=[];$totalOverHours=(float)$previousOvertime;
+$workHoursByDate=[];$totalOverHours=home_total_overtime($conn,(int)$user_id,$reportDays,(float)$previousOvertime);
 foreach ($reportDays as $day=>$minutes) {
     $workHoursByDate[$day]=$minutes/60;
-    $totalOverHours+=($minutes-planned_minutes($conn,(int)$user_id,$day))/60;
 }
 $totalOverHoursFormatted=report_format_hours($totalOverHours);
 $totalMinutesThisMonthFromRecords=report_period_minutes($reportDays,$currentMonthStart,$currentMonthEnd);
@@ -322,10 +305,6 @@ foreach ($feiertageThisYear as $feiertag) {
     ];
 }
 
-function calculateDuration($startzeit, $endzeit, $pause) {
-    $minutes=report_minutes(['startzeit'=>$startzeit,'endzeit'=>$endzeit,'pause'=>$pause]);
-    return $minutes===null ? '-' : report_format_hours($minutes/60);
-}
 
 function getPauseDuration($totalHours)
 {
