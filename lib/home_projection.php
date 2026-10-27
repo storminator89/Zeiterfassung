@@ -98,11 +98,14 @@ function report_time_record_detail(array $record): array
 /**
  * Call only AFTER the native ten-raw-row pagination; preserve caller row order.
  * The native list supplies instant DESC/ID DESC order (CH-12).
- * Deliberately retain page-local grouping and raw floor/duration/pause semantics,
- * even where a negative interval is rejected by the separate detail formatter.
+ * Without completeDayRows, retain the existing page-local summary contract.
+ * The native list can supply complete, already-own-user-scoped rows for these
+ * Berlin start-days: only totals change, never the visible detail rows/order.
+ * Retain raw floor/duration/pause semantics, even where a negative interval is
+ * rejected by the separate detail formatter.
  * No SQL, report_days validation, escaping, HTML or global timezone mutation.
  */
-function report_time_record_groups(array $pagedRows): array
+function report_time_record_groups(array $pagedRows, ?array $completeDayRows = null): array
 {
     $dailyRecords = [];
     foreach ($pagedRows as $record) {
@@ -111,11 +114,25 @@ function report_time_record_groups(array $pagedRows): array
         $dailyRecords[$record['workDate']][] = $record;
     }
 
+    $summaryRecords = $dailyRecords;
+    if ($completeDayRows !== null) {
+        $summaryRecords = [];
+        foreach ($completeDayRows as $record) {
+            $workDate = report_day($record);
+            if (isset($dailyRecords[$workDate])) {
+                $summaryRecords[$workDate][] = $record;
+            }
+        }
+    }
+
     $groups = [];
     foreach ($dailyRecords as $workDate => $dayRecords) {
+        if (!isset($summaryRecords[$workDate])) {
+            throw new RuntimeException('Complete day rows missing for a visible date.');
+        }
         $totalMinutes = 0;
         $totalPause = 0;
-        foreach ($dayRecords as $record) {
+        foreach ($summaryRecords[$workDate] as $record) {
             if ($record['endzeit']) {
                 // Native config fixes Berlin; do not inherit framework UTC here.
                 $start = new DateTime($record['startzeit'], new DateTimeZone('Europe/Berlin'));
@@ -140,6 +157,10 @@ function report_time_record_groups(array $pagedRows): array
             // Keep native raw keys as well as the agreed Blade presentation keys.
             'records' => array_map(static fn (array $record): array => array_merge($record, report_time_record_detail($record)), $dayRecords),
         ];
+        if ($completeDayRows !== null) {
+            $groups[array_key_last($groups)]['day_entry_count'] = count($summaryRecords[$workDate]);
+            $groups[array_key_last($groups)]['is_partial'] = count($dayRecords) < count($summaryRecords[$workDate]);
+        }
     }
 
     return $groups;

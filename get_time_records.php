@@ -35,7 +35,25 @@ $stmt = $conn->prepare("
 ");
 $stmt->execute([$user_id, $itemsPerPage, $offset]);
 $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
-$recordGroups = report_time_record_groups($records);
+$stmt->closeCursor();
+
+// Keep ten raw rows per page, but total their entire Berlin start-days. Since
+// the page is instant-ordered, its visible dates form one chronological range.
+$completeDayRows = [];
+if ($records !== []) {
+    $visibleDays = array_map('report_day', $records);
+    $firstDay = new DateTimeImmutable(min($visibleDays), new DateTimeZone('Europe/Berlin'));
+    $afterLastDay = (new DateTimeImmutable(max($visibleDays), new DateTimeZone('Europe/Berlin')))->modify('+1 day');
+    $totalsStmt = $conn->prepare('SELECT startzeit,endzeit,pause FROM zeiterfassung
+        WHERE user_id = ? AND chrono_report_start_epoch(startzeit) >= ? AND chrono_report_start_epoch(startzeit) < ?');
+    $totalsStmt->bindValue(1, (int)$user_id, PDO::PARAM_INT);
+    $totalsStmt->bindValue(2, $firstDay->getTimestamp(), PDO::PARAM_INT);
+    $totalsStmt->bindValue(3, $afterLastDay->getTimestamp(), PDO::PARAM_INT);
+    $totalsStmt->execute();
+    $completeDayRows = $totalsStmt->fetchAll(PDO::FETCH_ASSOC);
+    $totalsStmt->closeCursor();
+}
+$recordGroups = report_time_record_groups($records, $completeDayRows);
 
 // Group records by date for summary calculation
 $currentDate = null;
@@ -74,13 +92,18 @@ $currentDate = null;
 $dailyRecords = [];
 $dailyTotals = [];
 
-// Group and summarize only the already-paginated raw rows, using shared preparation.
+// Details stay page-local; summary duration and pause cover the complete day.
 foreach ($recordGroups as $group) {
     $workDate = $group['work_date'];
     $dayRecords = $group['records'];
     $formattedTotal = $group['total_duration'];
     $totalPause = $group['total_pause'];
     $formattedDate = $group['formatted_date'];
+    $entryCountLabel = $group['is_partial'] ? count($dayRecords) . ' / ' . $group['day_entry_count'] : (string)count($dayRecords);
+    $entryCountTitle = $group['is_partial'] ? 'Sichtbare Einträge / alle Einträge des Tages' : 'Anzahl der Einträge';
+    $partialDayNotice = $group['is_partial']
+        ? '<p class="text-sm opacity-70 mb-3">Teilansicht: ' . $entryCountLabel . ' Einträge auf dieser Seite. Dauer und Pause sind vollständige Tagessummen.</p>'
+        : '';
 
     // Update the summary row output with entry count
     echo '<tr class="summary-row hover:bg-base-200/50 cursor-pointer transition-colors" data-date="' . $workDate . '">
@@ -91,8 +114,8 @@ foreach ($recordGroups as $group) {
                     </div>
                     <div class="flex items-center gap-2">
                         <div class="font-medium">' . $formattedDate . '</div>
-                        <div class="badge badge-sm badge-ghost" title="Anzahl der Einträge">
-                            ' . count($dayRecords) . '
+                        <div class="badge badge-sm badge-ghost" title="' . $entryCountTitle . '">
+                            ' . $entryCountLabel . ($group['is_partial'] ? ' · Teilansicht' : '') . '
                         </div>
                     </div>
                 </div>
@@ -116,6 +139,7 @@ foreach ($recordGroups as $group) {
     echo '<tr class="details-row bg-base-100/50" data-date="' . $workDate . '" style="display: none;">
             <td colspan="4" class="p-0">
                 <div class="pl-14 pr-6 py-4 border-l-4 border-primary/10">
+                    ' . $partialDayNotice . '
                     <table class="table w-full">
                         <thead class="bg-base-200/50">
                             <tr>
