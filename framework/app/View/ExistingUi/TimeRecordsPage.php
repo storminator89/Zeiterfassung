@@ -11,5 +11,6 @@ final readonly class TimeRecordsPage
         public array $groups,
         public int $page,
         public int $totalPages,
+        public bool $csvExport = false,
     ) {}
 }
