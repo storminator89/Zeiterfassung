@@ -1,0 +1,55 @@
+{
+  "package": "chart.js",
+  "version": "4.6.1",
+  "release": "https://github.com/chartjs/Chart.js/releases/tag/v4.6.1",
+  "registry_metadata": "https://registry.npmjs.org/chart.js/4.6.1",
+  "tarball": "https://registry.npmjs.org/chart.js/-/chart.js-4.6.1.tgz",
+  "tarball_integrity": "sha512-hJyniucsFmq//EvXYvJ6c6mahPoI3kaxdjVH8awTaJ/fDNWeSqqqArixMJWkWNN6fcYvPU3HneSANFNYtRi61g==",
+  "tarball_sha1": "40a924bc0b92544ed66fa3f4873981152fc62c52",
+  "tarball_sha256": "9345dacdf4bb4c5d40321f4b9aafab6fe676d37a534fc0bc2d17c4c4e29c4f00",
+  "source_commit": "76d8cf895a7485dc838c90ef37e2bc9d9e388fcb",
+  "files": {
+    "chart.umd.min.js": {
+      "sha256": "87364cc2b2a76a6684929e7d6b80b18a897794db38400caff1fcf1791c6925d2",
+      "bytes": 210082,
+      "unchanged_upstream_bytes": true
+    },
+    "LICENSE.md": {
+      "sha256": "41a84aa2caba645f966a18d9c2056b73e6d3a81d80bc0046bc0011a2634d4cce",
+      "bytes": 1093,
+      "unchanged_upstream_bytes": true
+    },
+    "LICENSE-kurkle-color.md": {
+      "sha256": "2859c50313bad2ba77b081410c477beaf92b60ca13a77a248d89859a6dd6ac81",
+      "bytes": 1085,
+      "unchanged_upstream_bytes": true
+    }
+  },
+  "license": "MIT",
+  "bundled_package": {
+    "name": "@kurkle/color",
+    "version": "0.3.2",
+    "license": "MIT",
+    "license_file": "LICENSE-kurkle-color.md"
+  },
+  "inspection": {
+    "date": "2026-10-27",
+    "tarball_sha512_and_sha1_verified_against_registry": true,
+    "safe_regular_archive_members": 117,
+    "source_tag_and_attestation_subject_match_published_metadata": true,
+    "registry_signatures_and_sigstore_attestation_signatures_cryptographically_verified": false,
+    "package_or_javascript_executed": false
+  },
+  "scope": {
+    "consumer": "Existing Supervisor two fixed data-only bar chart configurations",
+    "no_external_options_plugins_or_defaults_paths": true,
+    "no_date_adapter_or_extra_runtime_dependency": true,
+    "external_cdn_fallback": false
+  },
+  "security_limits": {
+    "upstream_issue": "https://github.com/chartjs/Chart.js/issues/12265",
+    "unguarded_defaults_path_mechanism_still_statically_present": true,
+    "no_observed_user_to_defaults_path_in_fixed_supervisor_calls": "Static inference only; not an upstream fix, proof of non-exploitability or vulnerability-free claim.",
+    "runtime_security_or_browser_acceptance_performed": false
+  }
+}

@@ -14,5 +14,6 @@ final readonly class Interactions
         public bool $absences = false,
         public bool $workModels = false,
         public bool $history = false,
+        public bool $supervisor = false,
     ) {}
 }

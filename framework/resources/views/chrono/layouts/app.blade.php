@@ -34,6 +34,7 @@
     <link rel="stylesheet" href="assets/css/app_ui.css">
     @if ($page->interactions->home)<script src="assets/js/main.js" defer></script>@endif
     @if ($page->interactions->attendance)<script src="assets/js/chrono-local-web.js" defer></script>@endif
+    @if ($page->activePage === 'supervisor.php')<script src="assets/vendor/chartjs/4.6.1/chart.umd.min.js" defer></script>@endif
     <style>
         @media (max-width: 640px) {
             .table {
@@ -284,7 +285,7 @@
                     </a>
                 @endif
                 @if (in_array($page->role, ['supervisor', 'admin'], true))
-                    <a href="supervisor.php" class="sidebar-link ">
+                    <a href="supervisor.php" class="sidebar-link {{ $page->activePage === 'supervisor.php' ? 'active' : '' }}">
                         <i class="fas fa-user-tie w-6"></i>
                         <span>{{ $page->copy->text('NAV_SUPERVISOR') }}</span>
                     </a>
@@ -366,6 +367,7 @@
             @if ($page->interactions->corrections) Korrekturanträge sind ebenfalls verbunden. @endif
             @if ($page->interactions->workModels) Arbeitszeitmodelle sind ebenfalls verbunden. @endif
             @if ($page->interactions->history) Änderungshistorie ist ebenfalls verbunden. @endif
+            @if ($page->interactions->supervisor) Vorgesetztenauswertung ist ebenfalls verbunden. @endif
             Weitere Seiten und CSV-Export sind in dieser Vorschau noch nicht verbunden.
             @else
             Inaktive Laravel-Ansicht: Anmeldung, Buchungen, Abwesenheiten und Abmeldung sind noch nicht verbunden.

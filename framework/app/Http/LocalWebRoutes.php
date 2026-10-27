@@ -7,6 +7,7 @@ use App\Http\Controllers\LocalWebCorrectionsController;
 use App\Http\Controllers\LocalWebHomeController;
 use App\Http\Controllers\LocalWebHistoryController;
 use App\Http\Controllers\LocalWebSessionController;
+use App\Http\Controllers\LocalWebSupervisorController;
 use App\Http\Controllers\LocalWebWorkModelsController;
 use App\Http\Middleware\LegacyFormCsrf;
 use App\Http\Middleware\RefreshLocalAccount;
@@ -34,8 +35,12 @@ use Symfony\Component\HttpFoundation\Response;
 /** Explicit opt-in registrar. Never called by bootstrap/providers/default routes. */
 final class LocalWebRoutes
 {
-    public static function register(Application $app, bool $includeHistory = false): void
+    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false): void
     {
+        // No opt-in page may be registered against missing or replaced chart bytes.
+        if ($includeSupervisor) {
+            self::requireSupervisorChartAssets();
+        }
         self::requireSessionBlocking($app);
         $router = $app->make(Router::class);
         // Keep Laravel's middleware sorter from moving identity ahead of CSRF.
@@ -49,9 +54,10 @@ final class LocalWebRoutes
         TrimStrings::skipWhen($nativeFormPath);
         ConvertEmptyStringsToNull::skipWhen($nativeFormPath);
 
-        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory) {
-            // History is a full page, not an async fragment or form transport.
-            if ($includeHistory && $request->path() === 'history.php') {
+        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor) {
+            // These opt-in reports are full pages, never status/form transports.
+            if (($includeHistory && $request->path() === 'history.php')
+                || ($includeSupervisor && $request->path() === 'supervisor.php')) {
                 return new RedirectResponse('login.php');
             }
 
@@ -69,10 +75,10 @@ final class LocalWebRoutes
         $router->group(['middleware' => [
             EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class,
             ShareErrorsFromSession::class, LegacyFormCsrf::class, SubstituteBindings::class,
-        ]], function () use ($router, $includeHistory): void {
+        ]], function () use ($router, $includeHistory, $includeSupervisor): void {
             $router->get('login.php', [LocalWebSessionController::class, 'create'])->name('login');
             $router->post('login.php', [LocalWebSessionController::class, 'store'])->middleware('throttle:chrono-web-login');
-            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory): void {
+            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor): void {
                 foreach (['/', 'index.php', 'attendance.php'] as $path) {
                     $router->get($path, [LocalWebAttendanceController::class, 'page']);
                     $router->post($path, [LocalWebAttendanceController::class, 'transition']);
@@ -86,6 +92,9 @@ final class LocalWebRoutes
                 if ($includeHistory) {
                     $router->get('history.php', [LocalWebHistoryController::class, 'index']);
                 }
+                if ($includeSupervisor) {
+                    $router->get('supervisor.php', [LocalWebSupervisorController::class, 'index']);
+                }
                 $router->post('logout.php', [LocalWebSessionController::class, 'destroy']);
             });
         });
@@ -95,6 +104,24 @@ final class LocalWebRoutes
         // resolve its named login redirect before our exception renderer runs.
         $router->getRoutes()->refreshNameLookups();
         $router->getRoutes()->refreshActionLookups();
+    }
+
+    /** Exact reviewed public bytes only; never a request path, URL or config override. */
+    private static function requireSupervisorChartAssets(): void
+    {
+        $directory = dirname(__DIR__, 2).'/public/assets/vendor/chartjs/4.6.1/';
+        $assets = [
+            'chart.umd.min.js' => '87364cc2b2a76a6684929e7d6b80b18a897794db38400caff1fcf1791c6925d2',
+            'LICENSE.md' => '41a84aa2caba645f966a18d9c2056b73e6d3a81d80bc0046bc0011a2634d4cce',
+            'LICENSE-kurkle-color.md' => '2859c50313bad2ba77b081410c477beaf92b60ca13a77a248d89859a6dd6ac81',
+        ];
+        foreach ($assets as $name => $hash) {
+            $path = $directory.$name;
+            if (is_link($path) || ! is_file($path) || ! is_readable($path)
+                || ! hash_equals($hash, hash_file('sha256', $path) ?: '')) {
+                throw new LogicException('Pinned local Supervisor chart assets are not admitted.');
+            }
+        }
     }
 
     /** Admit the whole opt-in stack, including reads, before registering any route. */
