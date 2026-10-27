@@ -4,7 +4,6 @@ namespace App\Api;
 
 use App\Auth\LegacyUser;
 use Illuminate\Contracts\Config\Repository;
-use Illuminate\Contracts\Container\Container;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use LogicException;
@@ -13,7 +12,7 @@ use LogicException;
 final class LegacyApiIdentity
 {
     public function __construct(
-        private Container $container,
+        private AdmittedApiSigningKey $key,
         private Repository $config,
         private LegacyIssuedTokenVerifier $tokens,
     ) {}
@@ -26,14 +25,7 @@ final class LegacyApiIdentity
 
         // Resolve only on a syntactically valid bearer request. There is no
         // shipped key binding, automatic metadata-path read or generated key.
-        if (! $this->container->bound(LegacyApiTokenKey::class)) {
-            throw new LogicException('An explicitly admitted legacy API signing secret is required.');
-        }
-        $secret = $this->container->make(LegacyApiTokenKey::class)->secret();
-        if (! preg_match('/^[a-f0-9]{64}$/D', $secret)) {
-            throw new LogicException('The existing legacy API signing secret is required.');
-        }
-        $payload = $this->tokens->verify($matches[1], $secret);
+        $payload = $this->tokens->verify($matches[1], $this->key->secret());
         if (! $payload) {
             throw new HttpResponseException(LegacyApiResponse::text('Invalid or expired token.', 401));
         }

@@ -30,7 +30,7 @@ try {
     $ensure($argc === 1 && ! $config->has('database.connections.chrono') && $database->getConnections() === []
         && ! $app->bound(LegacyApiTokenKey::class) && ! defined('CHRONO_SECURITY_LOADED'));
     $ensure(count($app->make('router')->getRoutes()) === 1); // Only /up ships.
-    $app->make(LegacyApiRoutes::class)->registerReadCandidate($app->make('router'));
+    $app->make(LegacyApiRoutes::class)->registerCandidate($app->make('router'));
     $request = static function (string $method, string $uri, ?string $token = null, array $server = []) use ($app) {
         $server += ['HTTP_ACCEPT' => 'application/json', 'CONTENT_TYPE' => 'application/json'];
         if ($token !== null) {
@@ -131,7 +131,8 @@ try {
     $denied = $request('DELETE', '/api.php/timeentry/45', $directoryAdmin);
     $ensure($denied->getStatusCode() === 409 && $denied->getContent() === 'Use an approved correction request to cancel a record.'
         && $request('DELETE', '/api.php/timeentry/45/', $directoryAdmin)->getStatusCode() === 400);
-    $ensure($request('POST', '/api.php/login')->getStatusCode() === 503); // Not implemented or claimed compatible.
+    $ensure($request('POST', '/api.php/login')->getStatusCode() === 400
+        && $request('POST', '/api.php/workentry')->getStatusCode() === 503); // Legacy alias still unadmitted.
     $ensure(SourceSnapshot::capture($pdo, $mapping) === $before && ! $pdo->inTransaction()
         && $database->connection('chrono')->transactionLevel() === 0 && array_keys($database->getConnections()) === ['chrono']
         && $app->make('auth')->getDefaultDriver() === 'web' && ! defined('CHRONO_SECURITY_LOADED')
