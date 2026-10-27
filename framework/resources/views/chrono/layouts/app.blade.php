@@ -302,7 +302,7 @@
                 </form>
 
                 <a href="adjustments.php" class="sidebar-link {{ $page->activePage === 'adjustments.php' ? 'active' : '' }}"><i class="fas fa-pen-to-square w-6"></i><span>Korrekturanträge</span></a>
-                <a href="history.php" class="sidebar-link "><i class="fas fa-history w-6"></i><span>Änderungshistorie</span></a>
+                <a href="history.php" class="sidebar-link {{ $page->activePage === 'history.php' ? 'active' : '' }}"><i class="fas fa-history w-6"></i><span>Änderungshistorie</span></a>
                 <a href="work_models.php" class="sidebar-link {{ $page->activePage === 'work_models.php' ? 'active' : '' }}"><i class="fas fa-business-time w-6"></i><span>Arbeitszeitmodelle</span></a>
                 @if ($page->role === 'admin')<a href="terminals.php" class="sidebar-link "><i class="fas fa-desktop w-6"></i><span>Praxis-Terminals</span></a>@endif
             </nav>
@@ -365,6 +365,7 @@
             @if ($page->interactions->absences) Abwesenheiten sind verbunden. @else Abwesenheiten sind noch nicht verbunden. @endif
             @if ($page->interactions->corrections) Korrekturanträge sind ebenfalls verbunden. @endif
             @if ($page->interactions->workModels) Arbeitszeitmodelle sind ebenfalls verbunden. @endif
+            @if ($page->interactions->history) Änderungshistorie ist ebenfalls verbunden. @endif
             Weitere Seiten und CSV-Export sind in dieser Vorschau noch nicht verbunden.
             @else
             Inaktive Laravel-Ansicht: Anmeldung, Buchungen, Abwesenheiten und Abmeldung sind noch nicht verbunden.
