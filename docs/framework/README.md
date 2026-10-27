@@ -14,6 +14,7 @@ Stand: 27.10.2026. Dieses Paket bearbeitet [FW-01/#71](https://github.com/stormi
 - [Inaktiver lokaler FW-07-Web-Stempeldienst](local-web-attendance-service.md): typisierte lokale Webidentität und bestehender `web:{id}`-Namensraum auf dem einzigen #75-Writer; keine Route, PDOfactory oder Änderung der Fach-/Replayregeln.
 - [Inaktiver FW-06-Bearer-/API-Lesekern](api-read-compatibility.md): unveränderte Tokenverifikation und eigene Read-/Wireadapter; keine Anmeldung, Schreibmigration oder öffentliche Route, #77 bleibt offen.
 - [Gepflegtes JWT-Paket im inaktiven API-Guard](maintained-api-tokens.md): offizielles Composerpaket, festes HS256-/Issuerprofil und aktueller Passwortwiderruf; Altissuer/-verifier, Schlüssel und produktive Routen bleiben unverändert.
+- [Erste inaktive FW-08-Bestandsansichten](existing-ui-views.md): vorhandenes Login-/Header-/Anwesenheitsmarkup als Blade mit expliziten Anzeigedaten; keine neue Oberfläche, Route oder Schreibaktivierung. Synthetischer Ganzseitenvergleich bestanden, aktive Abläufe weiterhin offen; #79 bleibt offen.
 
 ## Geprüfte Quellen, nicht verwechseln
 
