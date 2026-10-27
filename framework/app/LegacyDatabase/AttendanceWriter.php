@@ -159,6 +159,36 @@ final class AttendanceWriter
         });
     }
 
+    /** Fixed department operations; native wrapper transactions must not nest here. */
+    public function department(int $user, string $operation, mixed $departmentId, mixed $departmentName): bool
+    {
+        require_once dirname(__DIR__, 3).'/lib/departments.php';
+        if (! in_array($operation, ['create', 'rename', 'delete'], true)) {
+            throw new \InvalidArgumentException('Unbekannte Abteilungsaktion.');
+        }
+
+        // Native validation remains before BEGIN; do not trim or coerce form values.
+        if ($operation === 'create' && \department_create_name_missing($departmentName)) {
+            return false;
+        }
+        $targetId = $operation === 'delete' ? \department_delete_id($departmentId) : $departmentId;
+
+        return $this->executeLocked(function () use ($user, $operation, $targetId, $departmentName): bool {
+            $actor = att_one($this->pdo, 'SELECT role,auth_source FROM users WHERE id=?', [$user]);
+            if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local') {
+                throw new AuthorizationException('Nur die Verwaltung darf Abteilungen ändern.');
+            }
+
+            match ($operation) {
+                'create' => \department_create_core($this->pdo, $departmentName),
+                'rename' => \department_rename_core($this->pdo, $targetId, $departmentName),
+                'delete' => \department_delete_locked($this->pdo, $targetId),
+            };
+
+            return true;
+        });
+    }
+
     /** Trusted own-user identity only; no caller-supplied audit actor/reason. */
     public function absence(int $user, string $start, string $end, string $kind): array
     {

@@ -115,4 +115,23 @@ return [
     'TABLE_HEADER_MINIMUM_PAUSE' => 'Mindestpause',
     'BUTTON_DELETE' => 'Löschen',
     'BUTTON_ADD_ROW' => 'Zeile hinzufügen',
+
+    // Exact existing native department-card/form/result copy.
+    'DEPARTMENT_MANAGEMENT_TITLE' => 'Abteilungsverwaltung',
+    'FORM_NEW_DEPARTMENT' => 'Neue Abteilung',
+    'BUTTON_ADD_DEPARTMENT' => 'Abteilung hinzufügen',
+    'TABLE_HEADER_DEPARTMENT_ID' => 'Abteilungs-ID',
+    'TABLE_HEADER_DEPARTMENT_NAME' => 'Abteilungsname',
+    'BUTTON_EDIT' => 'Bearbeiten',
+    'CONFIRM_DELETE_DEPARTMENT' => 'Sind Sie sicher, dass Sie diese Abteilung löschen möchten?',
+    'SEARCH_DEPARTMENTS' => 'Abteilung suchen',
+    'MODAL_TITLE_EDIT_DEPARTMENT' => 'Abteilung bearbeiten',
+    'FORM_DEPARTMENT_NAME' => 'Abteilungsname',
+    'BUTTON_CANCEL' => 'Abbrechen',
+    'DEPARTMENT_DELETED_SUCCESS' => 'Abteilung erfolgreich gelöscht.',
+    'DEPARTMENT_DELETED_ERROR' => 'Fehler beim Löschen der Abteilung: ',
+    'DEPARTMENT_CREATED_SUCCESS' => 'Abteilung erfolgreich erstellt.',
+    'DEPARTMENT_CREATED_ERROR' => 'Fehler beim Erstellen der Abteilung: ',
+    'DEPARTMENT_UPDATED_SUCCESS' => 'Abteilung erfolgreich aktualisiert.',
+    'DEPARTMENT_UPDATED_ERROR' => 'Fehler beim Aktualisieren der Abteilung: ',
 ];

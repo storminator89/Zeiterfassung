@@ -383,6 +383,18 @@ final class LegacyChronoReads implements ChronoReads
         });
     }
 
+    public function adminDepartments(): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
+            if ($actor->role !== 'admin' || $actor->auth_source !== 'local') {
+                throw new AuthorizationException('Nur die Verwaltung darf Abteilungen ändern.');
+            }
+
+            // Native query/order: no user fields, LDAP data, sorting or list cap.
+            return $this->rows($pdo, 'SELECT id, name FROM departments', []);
+        });
+    }
+
     public function workModelTargets(): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {

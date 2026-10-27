@@ -115,4 +115,23 @@ return [
     'TABLE_HEADER_MINIMUM_PAUSE' => 'Minimum Break',
     'BUTTON_DELETE' => 'Delete',
     'BUTTON_ADD_ROW' => 'Add Row',
+
+    // Exact existing native department-card/form/result copy.
+    'DEPARTMENT_MANAGEMENT_TITLE' => 'Department Management',
+    'FORM_NEW_DEPARTMENT' => 'New Department',
+    'BUTTON_ADD_DEPARTMENT' => 'Add Department',
+    'TABLE_HEADER_DEPARTMENT_ID' => 'Department ID',
+    'TABLE_HEADER_DEPARTMENT_NAME' => 'Department Name',
+    'BUTTON_EDIT' => 'Edit',
+    'CONFIRM_DELETE_DEPARTMENT' => 'Are you sure you want to delete this department?',
+    'SEARCH_DEPARTMENTS' => 'Search Departments',
+    'MODAL_TITLE_EDIT_DEPARTMENT' => 'Edit Department',
+    'FORM_DEPARTMENT_NAME' => 'Department Name',
+    'BUTTON_CANCEL' => 'Cancel',
+    'DEPARTMENT_DELETED_SUCCESS' => 'Department deleted successfully.',
+    'DEPARTMENT_DELETED_ERROR' => 'Error deleting department: ',
+    'DEPARTMENT_CREATED_SUCCESS' => 'Department created successfully.',
+    'DEPARTMENT_CREATED_ERROR' => 'Error creating department: ',
+    'DEPARTMENT_UPDATED_SUCCESS' => 'Department updated successfully.',
+    'DEPARTMENT_UPDATED_ERROR' => 'Error updating department: ',
 ];
