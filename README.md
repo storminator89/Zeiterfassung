@@ -66,8 +66,8 @@ Click on the image above to view the video on YouTube.
 🌐 **Multilingual Support:** Currently supports both German and English languages. Users can switch between languages based
     on their preference.
 
-🌍 **Webhook for Geolocation-based Time Booking:** Allows users to book times based on their geolocation via a webhook. This
-    feature automates time tracking when users enter or leave specific locations.
+🌍 **Geolocation webhook:** Not implemented in the current `/api.php` router. Location selection is a separate
+    reporting field; automatic booking on entering or leaving a location is not available.
 
 
 
