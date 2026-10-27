@@ -2,6 +2,7 @@
 
 namespace App\LegacyDatabase;
 
+use Closure;
 use Illuminate\Database\SQLiteConnection;
 use LogicException;
 use PDO;
@@ -48,24 +49,48 @@ final class AttendanceWriter
 
     public function transition(int $user, string $source, string $eventId, string $action, bool $confirm = false, ?int $expectedRecord = null): array
     {
+        return $this->executeLocked(
+            fn (): array => attendance_transition_locked($this->pdo, $user, $source, $eventId, $action, $confirm, $expectedRecord),
+            fn (Closure $transaction): mixed => $this->context->run($source.':user:'.$user, 'Stempelereignis '.$action.' / '.$eventId, $transaction),
+        );
+    }
+
+    /** Trusted server identity/role only; never supplied by correction command data. */
+    public function correction(int $user, string $role, array $command): void
+    {
+        require_once dirname(__DIR__, 3).'/lib/corrections.php';
+
+        $this->executeLocked(function () use ($user, $role, $command): void {
+            correction_apply_locked($this->pdo, $user, $role, $command,
+                fn (string $reason, Closure $operation): mixed => $this->context->run('web:'.$user, $reason, $operation),
+            );
+        });
+    }
+
+    // The single existing #75 transaction/guard/failure lifecycle, shared only
+    // internally. No public arbitrary-write API or second transaction manager.
+    private function executeLocked(Closure $body, ?Closure $auditScope = null): mixed
+    {
         $this->assertIdle();
         // The legacy operation still sets globals. Framework UDFs use scoped
         // context instead; nevertheless restore even pre-existing null values.
         $globals = array_intersect_key($GLOBALS, array_flip(['audit_actor', 'audit_reason']));
 
         try {
-            return $this->context->run($source.':user:'.$user, 'Stempelereignis '.$action.' / '.$eventId, function () use ($user, $source, $eventId, $action, $confirm, $expectedRecord): array {
+            $transaction = function () use ($body): mixed {
                 // Exactly one attempt. Laravel owns BEGIN/COMMIT/ROLLBACK and
                 // transactionLevel; the domain's raw-BEGIN wrapper is NOT used.
                 $this->connection->beginTransaction();
                 $this->assertActive();
-                $response = attendance_transition_locked($this->pdo, $user, $source, $eventId, $action, $confirm, $expectedRecord);
+                $response = $body();
                 $this->assertActive();
                 $this->connection->commit();
                 $this->assertIdle();
 
                 return $response;
-            });
+            };
+
+            return $auditScope === null ? $transaction() : $auditScope($transaction);
         } catch (Throwable $error) {
             try {
                 // Explicit begin/commit (not transaction()) leaves Laravel's
