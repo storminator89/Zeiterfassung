@@ -5,6 +5,7 @@ namespace App\Http;
 use App\Http\Controllers\LocalWebAttendanceController;
 use App\Http\Controllers\LocalWebCorrectionsController;
 use App\Http\Controllers\LocalWebHomeController;
+use App\Http\Controllers\LocalWebHistoryController;
 use App\Http\Controllers\LocalWebSessionController;
 use App\Http\Controllers\LocalWebWorkModelsController;
 use App\Http\Middleware\LegacyFormCsrf;
@@ -33,7 +34,7 @@ use Symfony\Component\HttpFoundation\Response;
 /** Explicit opt-in registrar. Never called by bootstrap/providers/default routes. */
 final class LocalWebRoutes
 {
-    public static function register(Application $app): void
+    public static function register(Application $app, bool $includeHistory = false): void
     {
         self::requireSessionBlocking($app);
         $router = $app->make(Router::class);
@@ -48,7 +49,12 @@ final class LocalWebRoutes
         TrimStrings::skipWhen($nativeFormPath);
         ConvertEmptyStringsToNull::skipWhen($nativeFormPath);
 
-        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) {
+        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory) {
+            // History is a full page, not an async fragment or form transport.
+            if ($includeHistory && $request->path() === 'history.php') {
+                return new RedirectResponse('login.php');
+            }
+
             if (in_array($request->path(), ['/', 'index.php', 'attendance.php', 'adjustments.php', 'get_time_records.php', 'save.php', 'work_models.php', 'logout.php'], true)) {
                 if ($request->path() !== 'logout.php'
                     && ($request->path() === 'get_time_records.php' || $request->isMethod('POST') || $request->query('format') === 'status')) {
@@ -63,10 +69,10 @@ final class LocalWebRoutes
         $router->group(['middleware' => [
             EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class,
             ShareErrorsFromSession::class, LegacyFormCsrf::class, SubstituteBindings::class,
-        ]], function () use ($router): void {
+        ]], function () use ($router, $includeHistory): void {
             $router->get('login.php', [LocalWebSessionController::class, 'create'])->name('login');
             $router->post('login.php', [LocalWebSessionController::class, 'store'])->middleware('throttle:chrono-web-login');
-            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router): void {
+            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory): void {
                 foreach (['/', 'index.php', 'attendance.php'] as $path) {
                     $router->get($path, [LocalWebAttendanceController::class, 'page']);
                     $router->post($path, [LocalWebAttendanceController::class, 'transition']);
@@ -77,6 +83,9 @@ final class LocalWebRoutes
                 $router->post('save.php', [LocalWebHomeController::class, 'absence']);
                 $router->get('work_models.php', [LocalWebWorkModelsController::class, 'index']);
                 $router->post('work_models.php', [LocalWebWorkModelsController::class, 'store']);
+                if ($includeHistory) {
+                    $router->get('history.php', [LocalWebHistoryController::class, 'index']);
+                }
                 $router->post('logout.php', [LocalWebSessionController::class, 'destroy']);
             });
         });
