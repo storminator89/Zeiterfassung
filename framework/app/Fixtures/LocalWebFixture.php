@@ -185,6 +185,8 @@ final class LocalWebFixture
             'session.cookie' => $this->manifest['cookie'], 'session.secure' => true,
             'session.http_only' => true, 'session.same_site' => 'lax',
             'session.domain' => null, 'session.path' => '/', 'session.encrypt' => true,
+            'session.block' => true, 'session.block_store' => 'file',
+            'session.block_lock_seconds' => 60, 'session.block_wait_seconds' => 10,
             'view.compiled' => $this->directory.'/compiled',
             'cache.default' => 'file', 'cache.stores.file.path' => $this->directory.'/cache',
             'cache.stores.file.lock_path' => $this->directory.'/locks',

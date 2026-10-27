@@ -60,6 +60,53 @@ adminexklusiv; dafür später `chrono-admin`, nicht die breitere `view`-Policy n
    sich in der Umsetzung vom alten SQLite-Zähler; Limits/Fenster bleiben gleich, keine
    cookieabhängige Abschwächung. Cutover startet einen neuen Namensraum und
    benötigt eine bewusste Drosselungsübergangsentscheidung.
+6. Der explizite `LocalWebRoutes`-Registrar verlangt **vor jeder Registrierung**
+   `session.block=true`, einen ausdrücklich benannten `session.block_store`
+   und positive ganzzahlige `session.block_lock_seconds`/`block_wait_seconds`.
+   Grundlage ist [Laravels Standard-Sessionblocking](https://laravel.com/docs/13.x/session#session-blocking),
+   nicht PHPs native Sessionsperre oder ein eigener Sessionhandler.
+   Diese erste Zulassung akzeptiert ausschließlich den vorhandenen Standard-
+   `file`-Treiber und tatsächlich einen Laravel-`FileStore` als `LockProvider`;
+   `array`, andere/unbewiesene Backends, fehlende Konfiguration und Cookie-
+   Sessions werden verweigert. Kein Defaultcache-Fallback oder Datenbankzugriff
+   zur Zulassungsprüfung. Laravels
+   `StartSession` serialisiert damit **alle** Routen dieses Stacks einschließlich
+   Status-/Seiten-GETs, Login und Logout. Nur mutierende Routen zu sperren reicht
+   nicht: auch ein Statusrequest speichert seinen vollständigen Sessionsnapshot.
+   Die standardmäßig inaktive globale Sessionkonfiguration bleibt unverändert.
+
+### Lock-Betriebsgrenze vor Aktivierung
+
+Die private synthetische Fixture nutzt ihren vorhandenen Filecache/Lockpfad mit
+**60 Sekunden Lock-TTL und 10 Sekunden Wartezeit**, ohne neuen Dienst oder
+Cookieänderung. Produktionswerte sind bewusst zu konfigurieren: Das wirksame
+serverseitige Requestbudget vom Lock-Erwerb bis zum Speichern muss **unterhalb
+der TTL** liegen. Laravel verlängert diese Sperre nicht automatisch; ein
+abgebrochener Clientrequest beendet die Serverarbeit nicht zuverlässig. Nach
+Ablauf der TTL kann ein weiterer Worker trotz weiterlaufendem Request eintreten.
+Bei überschrittener Wartezeit wirft Laravel `LockTimeoutException`, bevor der
+Handler ausgeführt wird; es gibt keinen ungesperrten Fallback. Der normale
+Laravel-Kernel fängt diese Exception ab und rendert ohne eigenen Handler 500;
+der äußere Fixture-Router wandelt diese Antwort nicht in 503 um. Dessen 503-
+Catch gilt für außerhalb des Kernels hochgereichte Start-/Routerfehler. Ein
+späterer produktiver Einstieg muss seinen Exception-/Retryvertrag ausdrücklich
+abnehmen.
+
+Filelocks sind nur für Worker mit demselben wirksamen Session-/Lockbestand
+geeignet. Andere Lockbackends und Mehrinstanzbetrieb bleiben spätere
+Aktivierungsgates: Sie brauchen einen ausdrücklich freigegebenen gemeinsamen
+persistenten Lockstore, gemeinsamen Namensraum und nachgewiesene Atomizität.
+Ein Datenbanktreibername allein genügt nicht (etwa SQLite `:memory:`); lokale
+Dateipfade je Host oder prozesslokales `array` ebenfalls nicht. Die aktuelle
+Zulassung prüft den deklarierten Filebackend, beweist aber weder gemeinsame
+Pfade/Topologie noch die Requestlaufzeit und richtet keinen neuen Store ein.
+
+Sessionblocking verhindert den überlappenden Read/Logout/Stale-save-Fall, ist
+aber kein allgemeiner Logout-/Kontowechselbeweis: Sperren gelten je eingehender
+Session-ID; alte Cookieantworten können nach ID-Rotation noch ankommen. Browser-
+Cookie-Reihenfolge, paralleler Kontowechsel und sitzungsübergreifende Pending-
+Ereignisse bleiben gesonderte Aktivierungsgates. Keine eigene Sessionengine,
+Tombstone-/Sessionversionlogik oder Sicherheitsabschwächung wird eingeführt.
 
 ## Reauth, Pendingereignisse und Betriebsgates
 

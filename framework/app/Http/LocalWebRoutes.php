@@ -8,7 +8,10 @@ use App\Http\Controllers\LocalWebSessionController;
 use App\Http\Middleware\LegacyFormCsrf;
 use App\Http\Middleware\RefreshLocalAccount;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Cache\FileStore;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
+use Illuminate\Contracts\Cache\Factory as CacheFactory;
+use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -22,6 +25,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Routing\Router;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use LogicException;
 use Symfony\Component\HttpFoundation\Response;
 
 /** Explicit opt-in registrar. Never called by bootstrap/providers/default routes. */
@@ -29,6 +33,7 @@ final class LocalWebRoutes
 {
     public static function register(Application $app): void
     {
+        self::requireSessionBlocking($app);
         $router = $app->make(Router::class);
         // Keep Laravel's middleware sorter from moving identity ahead of CSRF.
         $kernel = $app->make(Kernel::class);
@@ -75,5 +80,27 @@ final class LocalWebRoutes
         // resolve its named login redirect before our exception renderer runs.
         $router->getRoutes()->refreshNameLookups();
         $router->getRoutes()->refreshActionLookups();
+    }
+
+    /** Admit the whole opt-in stack, including reads, before registering any route. */
+    private static function requireSessionBlocking(Application $app): void
+    {
+        $config = $app->make('config');
+        $store = $config->get('session.block_store');
+        if ($config->get('session.block') !== true || ! is_string($store) || $store === ''
+            || $config->get('session.driver') === 'cookie'
+            || $config->get('cache.stores.'.$store.'.driver') !== 'file') {
+            throw new LogicException('The opt-in local web stack requires explicit persistent Laravel session blocking.');
+        }
+        foreach (['session.block_lock_seconds', 'session.block_wait_seconds'] as $key) {
+            $seconds = $config->get($key);
+            if (! is_int($seconds) || $seconds < 1) {
+                throw new LogicException('Positive integer Laravel session lock and wait durations are required.');
+            }
+        }
+        $backend = $app->make(CacheFactory::class)->store($store)->getStore();
+        if (! $backend instanceof FileStore || ! $backend instanceof LockProvider) {
+            throw new LogicException('A stock Laravel FileStore LockProvider is required for local web sessions.');
+        }
     }
 }
