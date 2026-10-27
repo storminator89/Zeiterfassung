@@ -27,6 +27,13 @@ try {
         '/assets/js/main.js' => [$root.'/assets/js/main.js', 'text/javascript; charset=UTF-8'],
         '/assets/js/chrono-local-web.js' => [$root.'/framework/resources/js/chrono-local-web.js', 'text/javascript; charset=UTF-8'],
         '/assets/vendor/chartjs/4.6.1/chart.umd.min.js' => [$root.'/framework/public/assets/vendor/chartjs/4.6.1/chart.umd.min.js', 'text/javascript; charset=UTF-8'],
+        '/vendor/fullcalendar/7.1.3/all/global.js' => [$root.'/framework/public/vendor/fullcalendar/7.1.3/all/global.js', 'text/javascript; charset=UTF-8'],
+        '/vendor/fullcalendar/7.1.3/themes/classic/global.js' => [$root.'/framework/public/vendor/fullcalendar/7.1.3/themes/classic/global.js', 'text/javascript; charset=UTF-8'],
+        '/vendor/fullcalendar/7.1.3/locales/de/global.js' => [$root.'/framework/public/vendor/fullcalendar/7.1.3/locales/de/global.js', 'text/javascript; charset=UTF-8'],
+        '/vendor/fullcalendar/7.1.3/skeleton.css' => [$root.'/framework/public/vendor/fullcalendar/7.1.3/skeleton.css', 'text/css; charset=UTF-8'],
+        '/vendor/fullcalendar/7.1.3/themes/classic/theme.css' => [$root.'/framework/public/vendor/fullcalendar/7.1.3/themes/classic/theme.css', 'text/css; charset=UTF-8'],
+        '/vendor/fullcalendar/7.1.3/themes/classic/palette.css' => [$root.'/framework/public/vendor/fullcalendar/7.1.3/themes/classic/palette.css', 'text/css; charset=UTF-8'],
+        '/assets/js/chrono-calendar.js' => [$root.'/framework/public/assets/js/chrono-calendar.js', 'text/javascript; charset=UTF-8'],
     ];
     if (is_string($path) && isset($assets[$path]) && in_array($_SERVER['REQUEST_METHOD'] ?? '', ['GET', 'HEAD'], true)) {
         if (! is_file($assets[$path][0]) || ! is_readable($assets[$path][0])) {
@@ -41,7 +48,7 @@ try {
         }
         exit;
     }
-    if (! in_array($path, ['/', '/index.php', '/attendance.php', '/adjustments.php', '/get_time_records.php', '/save.php', '/work_models.php', '/history.php', '/supervisor.php', '/login.php', '/logout.php'], true)) {
+    if (! in_array($path, ['/', '/index.php', '/attendance.php', '/adjustments.php', '/get_time_records.php', '/save.php', '/work_models.php', '/history.php', '/supervisor.php', '/dashboard.php', '/login.php', '/logout.php'], true)) {
         http_response_code(410);
         header('Content-Type: text/plain; charset=UTF-8');
         echo 'Not available in the synthetic local preview.';
