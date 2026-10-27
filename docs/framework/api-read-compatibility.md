@@ -18,15 +18,18 @@ Preflight-Ausnahme davor bleiben unverändert. Die neue Datei bootet weder
 `config.php` noch `security.php`, erstellt keine Schlüssel, öffnet keine DB und
 startet keine Session. Admin-Tokenausgabe wird nicht angefasst.
 
-Der Laravel-Requestguard verwendet dieselbe bestehende Verifikation:
+Der aktive Altpfad verwendet diese unveränderten Definitionen. Der inaktive
+Laravel-Requestguard delegiert inzwischen an das
+[gepflegte JWT-Paket mit Issuerprofiladapter](maintained-api-tokens.md).
+Der beizubehaltende tatsächliche Issuervertrag ist:
 HS256/`typ=JWT`, `iss=aud=localhost`, ganzzahlige `exp > now`, ganzzahlige
 `iat <= now+30`, positive ganzzahlige `user_id`, Zeichenketten-`ver`,
 4096-Byte-Grenze und unveränderte Signaturprüfung. Das ist ausdrücklich ein
 **temporärer Legacy-Kompatibilitätsadapter**, keine neue gewünschte
-Kryptographiearchitektur. Eine gepflegte JWT-Bibliothek bleibt der nächste
-separat zu reviewende #77-Schritt: insbesondere zukünftige `iat`-Toleranz,
-Header-/Claimtypen, Issuer/Audience und Fehler dürfen dabei nicht unbemerkt
-strenger oder lockerer werden. Sanctum ist kein Drop-in-Ersatz für diese Tokens.
+Kryptographiearchitektur. Das gepflegte Paket ist für den inaktiven Laravel-Guard implementiert; die
+aktive Altprüfung wird damit nicht geändert. Dessen dokumentierte `nbf`-
+Nichtgleichheit und alle übrigen Cutovergates müssen vor Produktivumschaltung
+entschieden werden. Sanctum ist kein Drop-in-Ersatz für diese Tokens.
 
 `LegacyApiTokenKey` ist ausschließlich ein expliziter Containervertrag und hat
 **keine** Standardbindung oder Dateiimplementierung. Eine spätere gesondert
@@ -98,7 +101,7 @@ verboten. Auch exotische, von Laravels `any` nicht erfasste HTTP-Methoden benöt
 vor einer späteren Gesamtaktivierung eine separate 405-/CORS-Gesamtkante.
 
 Noch offen: kompatible lokale APIanmeldung und Loginlimit ohne
-Schlüssel-/Accountnebenwirkungen; Maintained-JWT-Bibliothek; APIvariante desselben
+Schlüssel-/Accountnebenwirkungen; produktive JWT-Migration/Profilentscheidung; APIvariante desselben
 synchronen #75/#78-Writers mit `source=api:{id}`, Idempotenz und Legacyaliasen;
 Start/Pause/Ende/Retry-/`expectedRecord`-Abnahme; Swaggerkorrekturen #24/#25;
 repräsentative vollständige Firefox-/Edge-Abläufe und deren reale Verteilung.
