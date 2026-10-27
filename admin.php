@@ -136,45 +136,73 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['generate_token'])) {
 
 // LDAP-Synchronisation
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
-    if (!function_exists('ldap_connect')) { abort_request(503, 'PHP LDAP extension is required.'); }
-    $ldapHost = $_POST['ldap_host'];
-    $ldapPort = $_POST['ldap_port'];
-    $ldapUser = $_POST['ldap_user'];
-    $ldapPass = $_POST['ldap_pass'];
-    $ldapBaseDN = $_POST['ldap_base_dn'];
+    $ldapHost = is_string($_POST['ldap_host'] ?? null) ? $_POST['ldap_host'] : '';
+    $ldapPort = is_string($_POST['ldap_port'] ?? null) ? $_POST['ldap_port'] : '';
+    $ldapUser = is_string($_POST['ldap_user'] ?? null) ? $_POST['ldap_user'] : '';
+    $ldapPass = is_string($_POST['ldap_pass'] ?? null) ? $_POST['ldap_pass'] : '';
+    $ldapBaseDN = is_string($_POST['ldap_base_dn'] ?? null) ? $_POST['ldap_base_dn'] : '';
+    $ldapConn = null;
+    $result = false;
+    $ldapFailureMessage = LDAP_SETTINGS_INVALID;
 
     try {
-        // Speichern der LDAP-Einstellungen in der Datenbank, bevor der LDAP-Bind ausgeführt wird
-        $encryptedLdapPass = encryptData($ldapPass, ENCRYPTION_KEY, ENCRYPTION_METHOD);
-
-        // Überprüfen, ob bereits ein Eintrag existiert
-        $stmt = $conn->prepare("SELECT COUNT(*) FROM ldap_settings");
-        $stmt->execute();
-        $count = $stmt->fetchColumn();
-
-        if ($count > 0) {
-            // Eintrag aktualisieren
-            $stmt = $conn->prepare("UPDATE ldap_settings SET ldap_host = ?, ldap_port = ?, ldap_user = ?, ldap_pass = ?, ldap_base_dn = ? WHERE id = (SELECT id FROM ldap_settings ORDER BY id DESC LIMIT 1)");
-            $stmt->execute([$ldapHost, $ldapPort, $ldapUser, $encryptedLdapPass, $ldapBaseDN]);
-        } else {
-            // Neuer Eintrag erstellen
-            $stmt = $conn->prepare("INSERT INTO ldap_settings (ldap_host, ldap_port, ldap_user, ldap_pass, ldap_base_dn) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$ldapHost, $ldapPort, $ldapUser, $encryptedLdapPass, $ldapBaseDN]);
+        // Leere Bind-Daten dürfen nicht versehentlich als anonymer Test gelten.
+        if (trim($ldapHost) === '' || trim($ldapUser) === '' || $ldapPass === '' || trim($ldapBaseDN) === ''
+            || !ctype_digit($ldapPort) || (int)$ldapPort < 1 || (int)$ldapPort > 65535) {
+            throw new RuntimeException();
         }
+        $ldapFailureMessage = LDAP_EXTENSION_REQUIRED;
+        if (!function_exists('ldap_connect')) { throw new RuntimeException(); }
 
-        // LDAP-Verbindung herstellen
-        $ldapConn = ldap_connect($ldapHost, $ldapPort);
+        // Erst vollständig prüfen; bis einschließlich Suchergebnis keine DB-Schreibzugriffe.
+        $ldapFailureMessage = LDAP_CONNECTION_FAILED;
+        $ldapConn = @ldap_connect($ldapHost, (int)$ldapPort);
         if ($ldapConn) {
-            ldap_set_option($ldapConn, LDAP_OPT_PROTOCOL_VERSION, 3);
-            ldap_set_option($ldapConn, LDAP_OPT_NETWORK_TIMEOUT, 5);
-            if (!str_starts_with(strtolower($ldapHost), 'ldaps://') && !ldap_start_tls($ldapConn)) { abort_request(503, 'LDAP TLS required.'); }
-            if (ldap_bind($ldapConn, $ldapUser, $ldapPass)) {
+            if (!@ldap_set_option($ldapConn, LDAP_OPT_PROTOCOL_VERSION, 3)
+                || !@ldap_set_option($ldapConn, LDAP_OPT_NETWORK_TIMEOUT, 5)) {
+                throw new RuntimeException();
+            }
+            $ldapFailureMessage = LDAP_TLS_FAILED;
+            if (!str_starts_with(strtolower($ldapHost), 'ldaps://') && !@ldap_start_tls($ldapConn)) {
+                throw new RuntimeException();
+            }
+            $ldapFailureMessage = LDAP_BIND_FAILED;
+            if (@ldap_bind($ldapConn, $ldapUser, $ldapPass)) {
                 $searchFilter = "(objectClass=inetOrgPerson)";
                 $attributes = ["uid", "cn", "sn", "mail", "ou", "manager"];
-                $result = ldap_search($ldapConn, $ldapBaseDN, $searchFilter, $attributes);
+                $ldapFailureMessage = LDAP_SEARCH_FAILED;
+                $result = @ldap_search($ldapConn, $ldapBaseDN, $searchFilter, $attributes);
                 if ($result) {
+                    // Auch ein partielles Ergebnis mit LDAP-Fehlercode ist kein bestandener Test.
+                    $ldapResultCode = -1;
+                    if (!@ldap_parse_result($ldapConn, $result, $ldapResultCode) || $ldapResultCode !== 0) {
+                        throw new RuntimeException();
+                    }
+                    $entries = @ldap_get_entries($ldapConn, $result);
+                    if (!is_array($entries) || !isset($entries['count']) || !is_int($entries['count']) || $entries['count'] < 0
+                        || count($entries) !== $entries['count'] + 1) {
+                        throw new RuntimeException();
+                    }
+                    for ($entryIndex = 0; $entryIndex < $entries['count']; $entryIndex++) {
+                        if (!isset($entries[$entryIndex]) || !is_array($entries[$entryIndex])) { throw new RuntimeException(); }
+                    }
+
+                    // Nur den erfolgreich geprüften Stand verschlüsselt übernehmen.
+                    $ldapFailureMessage = LDAP_SYNC_FAILED;
+                    $encryptedLdapPass = encryptData($ldapPass, ENCRYPTION_KEY, ENCRYPTION_METHOD);
+                    $stmt = $conn->prepare("SELECT COUNT(*) FROM ldap_settings");
+                    $stmt->execute();
+                    $count = $stmt->fetchColumn();
+
+                    if ($count > 0) {
+                        $stmt = $conn->prepare("UPDATE ldap_settings SET ldap_host = ?, ldap_port = ?, ldap_user = ?, ldap_pass = ?, ldap_base_dn = ? WHERE id = (SELECT id FROM ldap_settings ORDER BY id DESC LIMIT 1)");
+                        $stmt->execute([$ldapHost, $ldapPort, $ldapUser, $encryptedLdapPass, $ldapBaseDN]);
+                    } else {
+                        $stmt = $conn->prepare("INSERT INTO ldap_settings (ldap_host, ldap_port, ldap_user, ldap_pass, ldap_base_dn) VALUES (?, ?, ?, ?, ?)");
+                        $stmt->execute([$ldapHost, $ldapPort, $ldapUser, $encryptedLdapPass, $ldapBaseDN]);
+                    }
+
                     require_once __DIR__ . '/lib/ldap_manager_mapping.php';
-                    $entries = ldap_get_entries($ldapConn, $result);
                     $ldapIdentities = [];
                     // Pass 1: Identitäten importieren, bestehende Beziehungen nicht anfassen.
                     foreach ($entries as $entry) {
@@ -269,16 +297,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
                     } else {
                         $successMessage = LDAP_SYNC_SUCCESS;
                     }
+                } else {
+                    $error = LDAP_SEARCH_FAILED;
                 }
-                ldap_unbind($ldapConn);
             } else {
                 $error = LDAP_BIND_FAILED;
             }
         } else {
             $error = LDAP_CONNECTION_FAILED;
         }
-    } catch (\PDOException $e) {
-        $error = DATABASE_CONNECTION_FAILED . $e->getMessage();
+    } catch (Throwable $e) {
+        // Keine Serverdiagnosen oder eingereichten Zugangsdaten in die UI übernehmen.
+        $error = $ldapFailureMessage;
+    } finally {
+        // Ein Fehler beim Freigeben des Ergebnisses darf das Unbind nicht überspringen.
+        try { if ($result) { @ldap_free_result($result); } }
+        catch (Throwable $e) { $error = $error ?: LDAP_SYNC_FAILED; $successMessage = ''; }
+        try { if ($ldapConn) { @ldap_unbind($ldapConn); } }
+        catch (Throwable $e) { $error = $error ?: LDAP_SYNC_FAILED; $successMessage = ''; }
     }
 }
 
