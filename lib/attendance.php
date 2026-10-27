@@ -56,7 +56,12 @@ function attendance_assert_unmanaged(PDO $db, array $ids): void {
         }
     }
 }
-function attendance_transition_locked(PDO $db, int $user, string $source, string $eventId, string $action, bool $confirm=false, ?int $expectedRecord=null): array {
+/**
+ * Caller owns the active transaction. A trusted optional runner receives only
+ * the derived actor/reason and this fixed mutation continuation, after native
+ * validation and replay decisions. Native fallback preserves audit globals.
+ */
+function attendance_transition_locked(PDO $db, int $user, string $source, string $eventId, string $action, bool $confirm=false, ?int $expectedRecord=null, ?Closure $auditRunner=null): array {
     if (!preg_match('/^[A-Za-z0-9_-]{16,80}$/D',$eventId)) { throw new AttendanceError('Ungültige Ereignis-ID.',400); }
     if (!in_array($action,['start','pause_start','pause_end','end'],true)) { throw new AttendanceError('Ungültige Aktion.',400); }
     if (!att_one($db,'SELECT id FROM users WHERE id=?',[$user])) { throw new AttendanceError('Konto nicht verfügbar.',403); }
@@ -66,8 +71,12 @@ function attendance_transition_locked(PDO $db, int $user, string $source, string
         if (!hash_equals($old['payload_hash'],$hash)) { throw new AttendanceError('Ereignis-ID bereits anders verwendet.'); }
         return json_decode($old['response'],true);
     }
-    $GLOBALS['audit_actor']=$source.':user:'.$user;
-    $GLOBALS['audit_reason']='Stempelereignis '.$action.' / '.$eventId;
+    $auditRunner ??= static function (string $actor, string $reason, Closure $operation): array {
+        $GLOBALS['audit_actor']=$actor;
+        $GLOBALS['audit_reason']=$reason;
+        return $operation();
+    };
+    return $auditRunner($source.':user:'.$user,'Stempelereignis '.$action.' / '.$eventId,static function () use ($db,$user,$source,$eventId,$action,$confirm,$expectedRecord,$hash): array {
     $now=time();
     $s=att_one($db,'SELECT * FROM work_sessions WHERE user_id=? AND ended_at IS NULL',[$user]);
     if (!$s && $action!=='start') {
@@ -135,6 +144,7 @@ function attendance_transition_locked(PDO $db, int $user, string $source, string
     }
     att_exec($db,'INSERT INTO attendance_events(source,event_id,user_id,session_id,kind,received_at,payload_hash,response) VALUES(?,?,?,?,?,?,?,?)',[$source,$eventId,$user,$s['id'],$action,$now,$hash,json_encode($response)]);
     return $response;
+    });
 }
 function attendance_transition(PDO $db, int $user, string $source, string $eventId, string $action, bool $confirm=false, ?int $record=null): array {
     $db->exec('BEGIN IMMEDIATE');
