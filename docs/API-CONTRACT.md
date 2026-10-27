@@ -18,6 +18,16 @@ festgelegt, sind aber im aktuellen Router **nicht durchgängig implementiert**.
 Der Text/JSON-Vertragsbruch bleibt eine gesonderte Laufzeitkorrektur. Dieses
 Dokument ist weder eine Abnahme noch eine Aussage über einen Produktiv-Rollout.
 
+**CH-18 / #24-Nachtrag:** Die Pagination wurde auf Basis von
+`d01e569593bcc969d854ebc622ef6169fd671629` bewusst strenger und begrenzt:
+Default `limit=100`, Maximum `1000`, Offset `0..2147483647`; Invalidwerte
+JSON-400 vor SQL. Fehlendes Limit/Offset-only sind **nicht mehr unbegrenzt**,
+`meta.limit` ist die wirksame Ganzzahl. Details, Clientumstellung und getrennte
+Nachweisgrenzen: [API-Paginierung](CH18-API-PAGINATION.md). Die obige Beschreibung
+des ursprünglichen reinen Dokumentationspakets ist historisch; dieser Nachtrag
+betrifft auch nativen und inaktiven Kandidat-Lesecode. Keine allgemeine
+Fehlernormalisierung aus #25, kein Auth-/Writer-/Produktiv-Cutover.
+
 ## Routen und Erfolgsformen des aktuellen Bestands
 
 Alle Pfade beginnen exakt mit `/api.php`; kein beworbener Subpfad-/Slashalias.
@@ -137,6 +147,7 @@ muss separat implementiert und überprüft werden; hier bleibt sie offen.
 | Attendance-Transition, Zustand/Überlappung/Datensatz/Bestätigung/ID-Konflikt | 409 JSON |
 | `/workentry`, kein JSON-Array/-Objekt bzw. nichtleere historische Felder | 400 bzw. 409 **text/plain**; `{}` ist eine gültige Alias-Eingabe. |
 | DELETE mit numerischem ID-Pfad nach Auth | 409 **text/plain**, `Use an approved correction request to cancel a record.` |
+| `/timeentries`, ungültiger Paginationtyp/-syntax/-bereich | 400 JSON vor SQL, z. B. `Invalid limit. Use an integer from 0 to 1000.` |
 | `/timeentries`, falsches skalares Datumsformat | 400 JSON; nur Formprüfung, keine vollständige Kalenderprüfung. |
 | `/users` oder `/timeentries`, gefangene `Exception` | 500 JSON, `Internal server error` |
 | GET/POST Attendance und Aliase, von `attendance_json` gefangener unerwarteter Fehler | 503 JSON, `Buchung nicht bestätigt. Verbindung prüfen und denselben Vorgang erneut versuchen.` |
@@ -177,17 +188,23 @@ rohe Zeilen erhalten. Keine Datenreparatur oder erweiterte Parserzusage.
 Geprüft wird bei Querydaten weiterhin nur `YYYY-MM-DD` per Regex, nicht
 Kalendergültigkeit, Reihenfolge oder Intervallüberlappung.
 
-`limit`/`offset` haben derzeit keine Standard-/Maximalwerte oder vollständige
-Integergrenzen (#24 bleibt teilweise offen). Für neue Clients positive bzw.
-nichtnegative Ganzzahlen verwenden; der Bestand akzeptiert `is_numeric`,
-koerziert dann nach PHP-Integer und reicht auch negative Werte weiter.
-Nichtnumerische Werte verändern SQL nicht, werden bei vorhandenem Parameter
-in `meta` aber dennoch integer-gecastet. Numerischer Offset ohne wirksames
-Limit ergänzt das bereits gemergte `LIMIT -1`; **kein** neuer SQLfehler mehr,
-aber auch keine künstliche Seitengröße. `meta.total` zählt eigene date-gefilterte
-Treffer vor Pagination, `filtered` nur zurückgegebene Zeilen; fehlende Parameter
-stehen in `meta` als `null`. Das Schema erfindet keine inzwischen erzwungene
-Mindest-/Maximalvalidierung.
+`limit` und `offset` werden nun durch denselben strengen Parser in nativer
+API und inaktivem Framework-Kandidaten geprüft. `limit`: Standard **100**,
+Bereich **0..1000**; `offset`: effektiv **0**, Bereich **0..2147483647**.
+Nur ASCII-Ziffernstrings (führende Nullen zulässig) oder interne echte Integer;
+Arrays, null/bool/float, Vorzeichen, Leer-/Whitespace-, Dezimal-/Exponenten-
+und Überlaufwerte werden **vor SQL** als JSON-400 verweigert. Keine implizite
+PHP-Zahlkoerzierung oder stille Begrenzung. `limit=0` liefert eine leere Seite.
+
+**Bewusste Kompatibilitätsänderung:** fehlendes Limit und Offset allein sind
+nicht mehr unbeschränkt; `meta.limit` meldet die wirksame **100**, nicht `null`.
+Fehlender Offset steht weiter als `null` in `meta`, wirksam werden null Zeilen
+übersprungen. `meta.total` zählt eigene date-gefilterte Treffer vor Pagination,
+`filtered` nur zurückgegebene Zeilen. Die bestehenden Popup-Clients senden
+explizit `limit=1`; Clients mit bisher implizit vollständigem Abruf müssen
+[Seiten iterieren](CH18-API-PAGINATION.md#absichtliche-kompatibilitätsänderung-und-clientumstellung).
+Der gemergte `LIMIT -1`-Fallback bleibt defensiv im Builder erhalten, wird aber
+von normal validierten HTTP-Querys nicht mehr benötigt.
 
 ## Geolocation und ausdrücklich nicht angebotene Funktionen
 

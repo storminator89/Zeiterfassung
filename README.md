@@ -133,7 +133,7 @@ The REST API is available at `/api.php`
 - **POST /api.php/setendzeit:** Set end time for a specific work entry. Requires `id`.
 - **GET /api.php/attendance:** Get authoritative own attendance as `{success:true,state,record_id}`. `state` is `absent`, `working` or `paused`; `record_id` is an integer for an active record, otherwise `null`. Requires the existing bearer token; no user selector or booking is accepted.
 - **GET /api.php/users:** Get the currently authenticated user as a one-element array.
-- **GET /api.php/timeentries:** Get all time entries for the authenticated user.
+- **GET /api.php/timeentries:** Get a bounded page of own time entries (`limit` default 100, maximum 1000; nonnegative integer `offset`). [Pagination contract and migration](docs/CH18-API-PAGINATION.md).
 - **DELETE /api.php/timeentry/{id}:** Disabled (409); use an approved cancellation request.
 
 ## Authentication
