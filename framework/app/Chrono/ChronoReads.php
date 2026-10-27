@@ -32,6 +32,9 @@ interface ChronoReads
     /** Existing history.php cursor/order/scope, not a journal mutation API. */
     public function history(int $before = PHP_INT_MAX): array;
 
+    /** Native validated filters narrow the same history scope; invalid means no audit query. */
+    public function historyQuery(HistoryQuery $query): array;
+
     /** Existing work_models.php list: own models, or all for current admins. */
     public function workModels(): array;
 
