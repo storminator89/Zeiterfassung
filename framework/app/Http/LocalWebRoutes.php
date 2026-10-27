@@ -3,6 +3,7 @@
 namespace App\Http;
 
 use App\Http\Controllers\LocalWebAttendanceController;
+use App\Http\Controllers\LocalWebCorrectionsController;
 use App\Http\Controllers\LocalWebSessionController;
 use App\Http\Middleware\LegacyFormCsrf;
 use App\Http\Middleware\RefreshLocalAccount;
@@ -34,14 +35,14 @@ final class LocalWebRoutes
         $kernel->addToMiddlewarePriorityBefore(AuthenticatesRequests::class, LegacyFormCsrf::class);
         $kernel->addToMiddlewarePriorityBefore(AuthenticatesRequests::class, RefreshLocalAccount::class);
 
-        // These form fields were never trimmed/coerced by attendance.php.
-        // In particular " 1 " must NOT become a confirmed end-pause flag.
-        $attendancePath = fn (Request $request): bool => in_array($request->path(), ['/', 'index.php', 'attendance.php'], true);
-        TrimStrings::skipWhen($attendancePath);
-        ConvertEmptyStringsToNull::skipWhen($attendancePath);
+        // Native attendance/correction fields were never globally trimmed/coerced.
+        // " 1 " must not become either a confirmation or a cancellation flag.
+        $nativeFormPath = fn (Request $request): bool => in_array($request->path(), ['/', 'index.php', 'attendance.php', 'adjustments.php'], true);
+        TrimStrings::skipWhen($nativeFormPath);
+        ConvertEmptyStringsToNull::skipWhen($nativeFormPath);
 
         $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) {
-            if (in_array($request->path(), ['/', 'index.php', 'attendance.php', 'logout.php'], true)) {
+            if (in_array($request->path(), ['/', 'index.php', 'attendance.php', 'adjustments.php', 'logout.php'], true)) {
                 if ($request->path() !== 'logout.php'
                     && ($request->isMethod('POST') || $request->query('format') === 'status')) {
                     return new Response('Please sign in again.', 401, ['Content-Type' => 'text/plain; charset=UTF-8']);
@@ -63,6 +64,8 @@ final class LocalWebRoutes
                     $router->get($path, [LocalWebAttendanceController::class, 'page']);
                     $router->post($path, [LocalWebAttendanceController::class, 'transition']);
                 }
+                $router->get('adjustments.php', [LocalWebCorrectionsController::class, 'index']);
+                $router->post('adjustments.php', [LocalWebCorrectionsController::class, 'store']);
                 $router->post('logout.php', [LocalWebSessionController::class, 'destroy']);
             });
         });

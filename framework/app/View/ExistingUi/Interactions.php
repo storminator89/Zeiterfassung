@@ -9,5 +9,6 @@ final readonly class Interactions
         public bool $login = false,
         public bool $attendance = false,
         public bool $logout = false,
+        public bool $corrections = false,
     ) {}
 }

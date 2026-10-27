@@ -4,7 +4,7 @@ namespace App\View\ExistingUi;
 
 /**
  * Explicit, already-authorized display data only. No queries, clocks, accounting,
- * actor construction, HTML fragments or activation flags belong in this model.
+ * actor construction or HTML fragments belong in this model.
  *
  * $status is the existing ChronoReads::attendanceStatus() shape. The remaining
  * metrics must come from a reviewed shared report projection; absent is unknown,
@@ -29,9 +29,11 @@ final readonly class AttendancePage
         public ?string $dailyHoursFormatted = null,
         public array $holidaysThisWeek = [],
         public Interactions $interactions = new Interactions,
+        public string $activePage = 'index.php',
     ) {
         if ($userId < 1 || ! in_array($role, ['user', 'supervisor', 'admin'], true)
             || ! in_array($theme, ['light', 'dark'], true)
+            || ! in_array($activePage, ['index.php', 'attendance.php', 'adjustments.php'], true)
             || ($status['success'] ?? null) !== true
             || ! in_array($status['state'] ?? null, ['absent', 'working', 'paused'], true)) {
             throw new \InvalidArgumentException('Invalid existing attendance display data.');
