@@ -19,4 +19,13 @@ return [
     'TABLE_HEADER_TOTAL_DURATION' => 'Gesamtdauer',
     'TABLE_HEADER_USERNAME' => 'Benutzername',
     'TOTAL_OVERTIME_TITLE' => 'Gesamtüberstunden',
+    // Additive minimal current-team clocking labels.
+    'TEAM_STATUS_TITLE' => 'Aktueller Team-Stempelstatus',
+    'TEAM_STATUS_SNAPSHOT_NOTE' => 'Stand beim Serverabruf; kein Echtzeit- oder Online-Nachweis:',
+    'TEAM_STATUS_STATE' => 'Stempelstatus',
+    'TEAM_STATUS_WORKING' => 'Arbeitet',
+    'TEAM_STATUS_PAUSED' => 'Pause',
+    'TEAM_STATUS_ABSENT' => 'Nicht anwesend',
+    'TEAM_STATUS_UNKNOWN' => 'Status unklar',
+    'TEAM_STATUS_EMPTY' => 'Keine zugeordneten Teammitglieder.',
 ];

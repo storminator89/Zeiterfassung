@@ -20,4 +20,13 @@ return [
     'TABLE_HEADER_TOTAL_DURATION' => '總工時',
     'TABLE_HEADER_USERNAME' => '用戶名',
     'TOTAL_OVERTIME_TITLE' => '總加班時數',
+    // Additive minimal current-team clocking labels.
+    'TEAM_STATUS_TITLE' => '團隊目前打卡狀態',
+    'TEAM_STATUS_SNAPSHOT_NOTE' => '伺服器讀取時間；並非即時或在線狀態證明：',
+    'TEAM_STATUS_STATE' => '打卡狀態',
+    'TEAM_STATUS_WORKING' => '工作中',
+    'TEAM_STATUS_PAUSED' => '休息中',
+    'TEAM_STATUS_ABSENT' => '未在崗',
+    'TEAM_STATUS_UNKNOWN' => '狀態不明',
+    'TEAM_STATUS_EMPTY' => '沒有已指派的團隊成員。',
 ];

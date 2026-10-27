@@ -190,8 +190,81 @@ final class LegacyChronoReads implements ChronoReads
                             WHERE u.supervisor_id = ? OR ?='admin'
                             ORDER BY z.startzeit DESC", [$actor->getKey(), $actor->role]);
 
-            return \supervisor_report_projection($pdo, $records, $userSearch, $page);
+            $report = \supervisor_report_projection($pdo, $records, $userSearch, $page);
+
+            return $report + ['team_status' => $this->currentTeamStatus($pdo, $actor)];
         });
+    }
+
+    /** Current authorized roster only, independent of historical report rows/pages. */
+    private function currentTeamStatus(PDO $pdo, LegacyUser $actor): array
+    {
+        $loaded = new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin'));
+        $people = [];
+        foreach ($this->rows($pdo, "SELECT id,username FROM users WHERE supervisor_id = ? OR ?='admin' ORDER BY username,id", [$actor->getKey(), $actor->role]) as $person) {
+            $people[] = [
+                'username' => $person['username'],
+                'state' => $this->currentTeamState($pdo, (int) $person['id'], $loaded->getTimestamp()),
+            ];
+        }
+
+        return ['loaded_at' => $loaded->format(\DateTimeInterface::ATOM), 'people' => $people];
+    }
+
+    /** Display reliability only: no reconciliation, mutation or historical rule. */
+    private function currentTeamState(PDO $pdo, int $user, int $now): string
+    {
+        // At most two candidates detect ambiguity without scanning closed history.
+        // No notes, absence reasons, projects, credentials or record IDs leave here.
+        $sessions = $this->rows($pdo, "SELECT id,record_id,started_at,ended_at FROM work_sessions WHERE user_id=? AND (ended_at IS NULL OR ended_at='') LIMIT 2", [$user]);
+        $projections = $this->rows($pdo, "SELECT id,startzeit,endzeit FROM zeiterfassung WHERE user_id=? AND (endzeit IS NULL OR endzeit='') LIMIT 2", [$user]);
+        $breaks = $this->rows($pdo, "SELECT b.session_id,b.started_at,b.ended_at,s.ended_at AS session_ended FROM break_intervals b JOIN work_sessions s ON s.id=b.session_id WHERE s.user_id=? AND (b.ended_at IS NULL OR b.ended_at='') LIMIT 2", [$user]);
+        if (count($sessions) > 1 || count($projections) > 1 || count($breaks) > 1) {
+            return 'unknown';
+        }
+        $session = $sessions[0] ?? null;
+        $projection = $projections[0] ?? null;
+        $break = $breaks[0] ?? null;
+        $expectedRecord = null;
+        $projectionStart = null;
+        if ($projection !== null) {
+            $projectionStart = report_stored_epoch($projection['startzeit']);
+            if ($projectionStart === null || $projectionStart > $now) {
+                return 'unknown';
+            }
+            $expectedRecord = (int) $projection['id'];
+        }
+        if ($session !== null) {
+            $started = filter_var($session['started_at'], FILTER_VALIDATE_INT);
+            if ($session['ended_at'] !== null || $projection === null
+                || filter_var($session['record_id'], FILTER_VALIDATE_INT) !== $expectedRecord
+                || $started === false || $started > $now || $started !== $projectionStart) {
+                return 'unknown';
+            }
+            if ($break !== null) {
+                $breakStarted = filter_var($break['started_at'], FILTER_VALIDATE_INT);
+                if ($break['ended_at'] !== null || $break['session_ended'] !== null
+                    || (int) $break['session_id'] !== (int) $session['id']
+                    || $breakStarted === false || $breakStarted < $started || $breakStarted > $now) {
+                    return 'unknown';
+                }
+            }
+        } elseif ($break !== null || ($projection !== null && $projection['endzeit'] !== null)) {
+            // attendance_status intentionally recognizes NULL, not an unmanaged
+            // empty-end marker. Never present that ambiguous case as absent.
+            return 'unknown';
+        }
+
+        $status = attendance_status($pdo, $user);
+        $state = $status['state'] ?? null;
+        if (! in_array($state, ['working', 'paused', 'absent'], true)
+            || ($status['record_id'] ?? null) !== $expectedRecord
+            || ($state === 'absent') !== ($expectedRecord === null)
+            || ($state === 'paused') !== ($break !== null)) {
+            return 'unknown';
+        }
+
+        return $state;
     }
 
     public function apiIdentity(): array
