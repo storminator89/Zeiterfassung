@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 require_once 'functions.php';
+require_once __DIR__ . '/lib/report_ordering.php';
 
 // Ensure user is logged in
 require_once __DIR__ . '/security.php';
@@ -30,7 +31,8 @@ try {
         'Gutschrift (Min)'
     ], ';', '"', '\\');
 
-    // Fetch records
+    // Use the same instant/ID order as the native list, without a page limit.
+    report_register_start_order($conn);
     $stmt = $conn->prepare('
         SELECT
             startzeit,
@@ -40,13 +42,13 @@ try {
             beschreibung, absence_kind, planned_minutes
         FROM zeiterfassung
         WHERE user_id = :user_id
-        ORDER BY startzeit DESC
+        ORDER BY chrono_report_start_epoch(startzeit) DESC, id DESC
     ');
     $stmt->execute(['user_id' => $_SESSION['user_id']]);
 
     while ($record = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $startzeit = new DateTime($record['startzeit']);
-        $endzeit = $record['endzeit'] ? new DateTime($record['endzeit']) : null;
+        $startzeit = booking_local_date(booking_time($record['startzeit']));
+        $endzeit = $record['endzeit'] ? booking_local_date(booking_time($record['endzeit'])) : null;
 
         fputcsv($output, [
             $startzeit->format('d.m.Y'),

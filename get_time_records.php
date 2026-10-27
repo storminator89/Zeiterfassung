@@ -14,6 +14,7 @@ if (file_exists($langFile)) {
 }
 
 include 'functions.php';
+require_once __DIR__ . '/lib/report_ordering.php';
 $user_id = $_SESSION['user_id'];
 
 // Pagination
@@ -21,14 +22,15 @@ $itemsPerPage = 10;
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $offset = ($page - 1) * $itemsPerPage;
 
-// Modify the query to order by date and time
+// Sort actual instants before pagination; equal instants use the stable row ID.
+report_register_start_order($conn);
 $stmt = $conn->prepare("
     SELECT *,
            NULL AS weekNumber,
            substr(startzeit,1,10) as workDate
     FROM zeiterfassung
     WHERE user_id = ?
-    ORDER BY startzeit DESC
+    ORDER BY chrono_report_start_epoch(startzeit) DESC, id DESC
     LIMIT ? OFFSET ?
 ");
 $stmt->execute([$user_id, $itemsPerPage, $offset]);

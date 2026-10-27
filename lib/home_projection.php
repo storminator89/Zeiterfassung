@@ -96,7 +96,8 @@ function report_time_record_detail(array $record): array
 }
 
 /**
- * Call only AFTER the native ten-raw-row pagination, in raw startzeit DESC order.
+ * Call only AFTER the native ten-raw-row pagination; preserve caller row order.
+ * The native list supplies instant DESC/ID DESC order (CH-12).
  * Deliberately retain page-local grouping and raw floor/duration/pause semantics,
  * even where a negative interval is rejected by the separate detail formatter.
  * No SQL, report_days validation, escaping, HTML or global timezone mutation.
