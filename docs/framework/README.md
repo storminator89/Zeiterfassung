@@ -7,6 +7,7 @@ Stand: 27.10.2026. Dieses Paket bearbeitet [FW-01/#71](https://github.com/stormi
 - [Schemaspezifikation](schema.md): Bestand, Übernahme-/Rollbackverfahren und verbleibende FW-03-Arbeit.
 - [Deklaratives Schema-Mapping](schema-map.json): sämtliche 21 im Quellcode angelegten Anwendungstabellen, Spaltendeklarationen und spätere Ergänzungen, 3 explizite Indizes, 34 Trigger sowie Schlüsselpfade. Kein DB-Dump, keine ausführbare Migration.
 - [Erster ausführbarer FW-03-Schritt](adoption-rehearsal.md): strikt speicherinterne Quellfixture, echte Laravel-PDO/UDF-Lebenszyklen und kontrollierte V2-Vorprüfung/Trackingregistrierung. Keine private Datei-/Produktivübernahme.
+- [Inaktiver FW-05-Authkern](local-auth-foundation.md): Laravel-Sessionguard/Provider, aktuelle Rechte, CSRF-/Drosseladapter und eine grobe speicherinterne Abnahme. Keine Route, produktive Verbindung oder UI-/Loginumschaltung; #76 bleibt offen.
 
 ## Geprüfte Quellen, nicht verwechseln
 

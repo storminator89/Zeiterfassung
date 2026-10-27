@@ -139,9 +139,12 @@ abgenommen. Session-/CSRF-Schutz wird nicht abgeschaltet.
    Laravel-Scratch nutzt Foreign Keys an/DEFERRED; Legacy-FK-Verhalten,
    `BEGIN IMMEDIATE`, `busy_timeout=5000`, Konkurrenz, Wiederholung und Audit
    müssen gesondert geklärt werden, nicht blind Defaults übernehmen.
-3. **Auth (#76):** Guard/Provider/Passwordbroker bleiben leer. Keine
-   Registrierung, Passwortresets oder Userdefaults. Rollen/Teamrechte,
-   existierende Hashes/IDs, LDAP- und Websessions separat kompatibel migrieren.
+3. **Auth (#76):** [Inaktiver Backendkern](../docs/framework/local-auth-foundation.md)
+   mit Laravel-Sessionguard/Eloquent-Provider für die bestehenden Benutzer.
+   Die benannte Verbindung `chrono` bleibt absichtlich unkonfiguriert, keine
+   Authroute wird registriert. Keine Registrierung, Passwortresets, Userdefaults
+   oder native Sessionbrücke. Produktive Aktivierung und LDAP-/Pending-/UI-
+   Integration bleiben eigene Gates; #76 ist damit nicht abgeschlossen.
 4. **API/Terminal:** Keine API-Routen registriert, keine JWT-Umstellung und kein
    Sanctum. Endpunkte/Status/Antworten, Tokeninvalidierung, Idempotenz und
    Geräte-HMAC bleiben bei den späteren Paketen. Ein Request-Klasse kann dort
