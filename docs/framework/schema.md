@@ -4,6 +4,8 @@ Status: **statische, nichtschreibende Bestandsaufnahme** zu #74. Keine ausführb
 
 **Späteres Inkrement:** Der [strikt speicherinterne V2-Rehearsalkern](adoption-rehearsal.md) implementiert nun einen begrenzten Vorprüfungs-/Laraveltracking-/UDF-Lebenszyklus für synthetische Quellfixtures. Die folgende Bestandsaufnahme/volle Dateiübernahmeplanung bleibt ihre ursprüngliche Quelle und ist keine Behauptung, dass die noch offenen Datei-/Neuinstallations-/vor-v2-/Rollbackgates erledigt seien.
 
+**Weiterer Lieferstand:** [explizite bekannte V2-Dateiadoption](offline-v2-adoption.md) mit Read-only-/Backupgate und eigener additiver Ledger-Rücknahme ist implementiert und ausschließlich an gestoppten synthetischen privaten Kopien geprüft. Die untenstehende ursprüngliche Plan-/Offenmatrix dokumentiert den Aufnahmestand; der neue Lieferstand ersetzt keine reale Betriebs-/Neuinstallations-/vor-v2-/#75-Abnahme.
+
 ## 1. Vollständiges deklaratives Inventar
 
 [`schema-map.json`](schema-map.json) enthält die exakten `CREATE TABLE`-Deklarationen aus `config.php`, `security.php`, `lib/attendance.php`, `lib/practice.php`, die vier später hinzugefügten Spalten, alle drei explizit benannten Indizes und sämtliche 34 generierten Trigger. Erfassung nur durch Lesen des Quelltexts, **nicht** durch Ausführen der Bootstraps oder Öffnen einer Datenbank. Die dortigen SHA-256-Werte identifizieren **Quelldateien**, keine Datenbank, kein Produktivschema und keine personenbezogenen Daten.

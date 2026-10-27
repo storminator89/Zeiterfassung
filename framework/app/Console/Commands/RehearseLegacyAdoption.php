@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\LegacyDatabase\AuditContext;
 use App\LegacyDatabase\AuditFunctions;
-use App\LegacyDatabase\FixtureSnapshot;
+use App\LegacyDatabase\SourceSnapshot;
 use App\LegacyDatabase\MemoryOnly;
 use App\LegacyDatabase\V2Adoption;
 use App\LegacyDatabase\V2Preflight;
@@ -37,7 +37,7 @@ final class RehearseLegacyAdoption extends Command
                 $this->laravel->make('config')->set('database.connections.'.$name, [
                     'driver' => 'chrono_fixture', 'database' => ':memory:', 'prefix' => '',
                     'foreign_key_constraints' => false, 'busy_timeout' => 5000,
-                    'journal_mode' => null, 'synchronous' => null, 'transaction_mode' => 'DEFERRED',
+                    'journal_mode' => null, 'synchronous' => null, 'transaction_mode' => 'IMMEDIATE',
                 ]);
             }
             $target = $database->connection($names[0])->getPdo();
@@ -57,13 +57,13 @@ final class RehearseLegacyAdoption extends Command
             $context->run('fixture:history', 'Synthetic approved cancellation', fn () => $this->cancelSyntheticRecord($target));
             $preflight = new V2Preflight($mapping);
             $adoption = new V2Adoption($database, $preflight, $this->laravel->make('config'));
-            $before = FixtureSnapshot::capture($target, $mapping);
+            $before = SourceSnapshot::capture($target, $mapping);
 
             $phase = 'v2 adoption and repetition';
             $first = $context->run('fixture:adopter', 'Synthetic source-v2 adoption', fn () => $adoption->register($names[0], $reference));
             $second = $context->run('fixture:adopter', 'Repeated source-v2 adoption', fn () => $adoption->register($names[0], $reference));
             $this->require($first['registered'] && ! $second['registered'], 'Adoption repetition changed registration.');
-            $this->require($before === FixtureSnapshot::capture($target, $mapping), 'Adoption changed source data or sequences.');
+            $this->require($before === SourceSnapshot::capture($target, $mapping), 'Adoption changed source data or sequences.');
             $this->require((int) $target->query('SELECT count(*) FROM framework_migrations')->fetchColumn() === 1, 'Adoption ledger was duplicated.');
 
             $phase = 'preflight refusal before tracking';
@@ -90,7 +90,7 @@ final class RehearseLegacyAdoption extends Command
                 $target->exec('ROLLBACK');
             }
             $this->expectRefusal(fn () => $target->exec('UPDATE zeiterfassung SET pause=pause WHERE id=42'), LogicException::class);
-            $this->require($before === FixtureSnapshot::capture($target, $mapping), 'Missing context did not fail closed.');
+            $this->require($before === SourceSnapshot::capture($target, $mapping), 'Missing context did not fail closed.');
 
             $phase = 'reconnect lifecycle and ingress guard';
             $database->disconnect($names[0]);

@@ -11,12 +11,21 @@ final class V2Preflight
 
     public function __construct(private readonly array $mapping) {}
 
-    // Both handles are supplied explicitly; this service never opens a path or
-    // executes schema DDL. File ingress remains unsupported in this increment.
+    // Both handles are supplied explicitly. This read-only service never opens
+    // a path or executes DDL; callers own memory/private-offline file admission.
     public function inspect(PDO $target, PDO $reference): array
     {
-        MemoryOnly::connection($target);
         MemoryOnly::connection($reference);
+
+        foreach ($target->query('PRAGMA database_list')->fetchAll(PDO::FETCH_ASSOC) as $attached) {
+            if (! in_array($attached['name'], ['main', 'temp'], true)) {
+                throw new RuntimeException('Attached databases require a separate admission policy.');
+            }
+        }
+        if ((int) $target->query("SELECT count(*) FROM sqlite_schema WHERE type='view'")->fetchColumn() !== 0
+            || (int) $target->query("SELECT count(*) FROM sqlite_temp_schema WHERE name NOT LIKE 'sqlite_%'")->fetchColumn() !== 0) {
+            throw new RuntimeException('Unexpected view or temporary schema requires review.');
+        }
 
         if ($target->query('PRAGMA quick_check')->fetchColumn() !== 'ok') {
             throw new RuntimeException('SQLite integrity preflight failed.');
