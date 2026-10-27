@@ -31,16 +31,18 @@ von null verschiedenem Mantissenwert, der im Zahlenformat zu null unterläuft,
 folgt ein ausdrücklicher 400-Fehler ohne Übertragsänderung.
 
 Die repräsentative Dezimalschreibweise muss nach rein textueller Normalisierung
-(Vorzeichen, führende/nachlaufende Nullen, Exponent) der kürzesten zurücklesbaren
-binary64-Schreibweise entsprechen. Mathematisch ganzzahlige Eingaben werden
-zusätzlich mit der vollständig ausgeschriebenen binary64-Ganzzahl verglichen:
+(Vorzeichen, führende/nachlaufende Nullen, Exponent) bei nicht ganzzahligem
+binary64-Wert der kürzesten zurücklesbaren Schreibweise entsprechen. Ganze
+binary64-Werte verwenden stattdessen die vollständig ausgeschriebene exakte
+Ganzzahl, nicht eine kürzere Dezimalschreibweise eines anderen Integerwerts:
 so kann etwa `1000000000000000100` nicht still zu `1000000000000000128` werden.
 Keine feste Stellenzahl-, Betrags-, Tages- oder Payrollgrenze. Exponenten werden
 nicht in riesige Dezimalstrings expandiert; integer-overflow der technischen
 Normalisierung führt zur Ablehnung statt numerischer Koercion.
 
 Beispiele: `0.1`, `-12.5`, `+.5`, `1.`, `1e3`, `1.2345678901234567` und
-`9007199254740994` sind innerhalb dieses Vertrags repräsentierbar. Dagegen werden
+`9007199254740994` sowie die exakte Ganzzahl `1267650600228229401496703205376`
+(2^100) sind innerhalb dieses Vertrags repräsentierbar. Dagegen werden
 `9007199254740993`, `1000000000000000100`, `0.10000000000000001`, `1e309`,
 `1e-400`, leere/Whitespace-/Kommawerte und nachlaufender Text abgewiesen. Das ist
 ein konservativer Dezimal-Roundtrip-Vertrag, kein beliebig genauer Dezimalrechner.
@@ -48,8 +50,9 @@ Die abschließende SQLite-REAL-Rückleseprüfung kann zusätzlich eine Abweichun
 konkret zugelassenen SQLite-Parsers feststellen und rollt dann alles zurück.
 Vorzeichenlose und negative null bedeuten denselben numerischen Saldo null.
 
-`%H` mit expliziter signifikanter Präzision liefert die Formatierung ohne
-Locale- oder `precision`-/`serialize_precision`-INI-Mutation. Der originale
+`%H` mit expliziter signifikanter Präzision liefert die nicht ganzzahlige
+Formatierung, `%.0F` die exakte Ganzzahl ohne Locale- oder
+`precision`-/`serialize_precision`-INI-Mutation. Der originale
 validierte **String** wird mit `PDO::PARAM_STR`, die Guard-ID separat mit
 `PDO::PARAM_INT` gebunden, niemals erst ein Float implizit zurück in einen String.
 Das vermeidet zusätzliche `precision=14`-Stellenverluste. Anzeige nach Commit
@@ -149,3 +152,13 @@ oder künstliche Anmeldung/Session. Inerte DE/EN/ZH-Inhalte und PHP-/Blade-/JS-S
 bestanden. Ein anfänglicher Evidence-Helferfehler erwartete die Admin-Snapshotkarte
 auch beim Nichtadmin; nur diese Erwartung wurde auf die bestehende Sichtbarkeit
 berichtigt, keine Anwendung/Trigger/Validierung wurde abgeschwächt.
+
+### Begrenzte Ganzzahlkorrektur auf Main 993d7e6
+
+Ein reiner gepaarter Nachweis akzeptiert die exakt darstellbare Ganzzahl 2^100
+und bestätigt denselben Anzeige-/erneuten Eingabestring; die gerundete Eingabe
+`9007199254740993` bleibt abgewiesen. Nur Formatierungshelper und dieses Dokument
+ändern sich. Native `floatval`-Zeilen, Schreib-/Auditpfade, Schema und Altwerte
+bleiben unverändert; keine zusätzliche Betrags-, OLD-Wert- oder Auditpräzisionsgrenze.
+PHP-Syntax und vollständiger Quellerhalt wurden geprüft, keine Datenbank,
+Konten, Session, HTTP-/Browser-/Serverausführung oder Aktivierung.
