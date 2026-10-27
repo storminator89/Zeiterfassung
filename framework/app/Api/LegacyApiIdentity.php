@@ -12,7 +12,11 @@ use LogicException;
 /** Legacy JWT verification plus current account binding, never local-web login. */
 final class LegacyApiIdentity
 {
-    public function __construct(private Container $container, private Repository $config) {}
+    public function __construct(
+        private Container $container,
+        private Repository $config,
+        private LegacyIssuedTokenVerifier $tokens,
+    ) {}
 
     public function authenticate(Request $request): LegacyUser
     {
@@ -25,12 +29,11 @@ final class LegacyApiIdentity
         if (! $this->container->bound(LegacyApiTokenKey::class)) {
             throw new LogicException('An explicitly admitted legacy API signing secret is required.');
         }
-        require_once dirname(__DIR__, 3).'/lib/api_tokens.php';
         $secret = $this->container->make(LegacyApiTokenKey::class)->secret();
         if (! preg_match('/^[a-f0-9]{64}$/D', $secret)) {
             throw new LogicException('The existing legacy API signing secret is required.');
         }
-        $payload = validateJWT($matches[1], $secret);
+        $payload = $this->tokens->verify($matches[1], $secret);
         if (! $payload) {
             throw new HttpResponseException(LegacyApiResponse::text('Invalid or expired token.', 401));
         }
