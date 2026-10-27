@@ -97,6 +97,7 @@
     </style>
     <div class="container mx-auto px-4 py-8 chrono-dashboard">
         <h2 class="text-4xl font-bold mb-8 text-center">{{ $page->copy->text('DASHBOARD_TITLE') }}</h2>
+        <p class="text-sm mb-6">{{ $page->copy->text('DASHBOARD_PERIOD_BASIS') }}</p>
 
         <!-- Overall Stats -->
         <div class="mb-8">
@@ -142,6 +143,7 @@
         <!-- Weekly Overview -->
         <div class="mb-8">
             <h3 class="text-2xl font-semibold mb-4">{{ $page->copy->text('DASHBOARD_WEEKLY_OVERVIEW') }}</h3>
+            <p class="text-sm mb-4">{{ sprintf($page->copy->text('DASHBOARD_PERIOD_RANGE'), $dashboard->statistics['week_from'], $dashboard->statistics['week_to']) }}</p>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div class="stat bg-gradient-to-br from-blue-600 to-blue-700 rounded-box shadow-lg">
                     <div class="stat-figure opacity-70">
@@ -149,6 +151,10 @@
                     </div>
                     <div class="stat-title text-lg font-semibold opacity-80">{{ $page->copy->text('DASHBOARD_WEEKLY_HOURS') }}</div>
                     <div data-report-period="week" data-report-presentation="{{ $dashboard->presentation('week') }}" class="stat-value">{{ $dashboard->value('week_hours', 'week') }}</div>
+                    <div data-report-period="week" data-report-presentation="{{ $dashboard->presentation('week') }}" class="stat-desc text-sm font-medium opacity-80" style="white-space:normal">
+                        <span class="block" data-report-component="work">{{ sprintf($page->copy->text('DASHBOARD_COMPLETED_WORK'), $dashboard->value('week_work_hours', 'week')) }}</span>
+                        <span class="block" data-report-component="absence">{{ sprintf($page->copy->text('DASHBOARD_ABSENCE_CREDIT'), $dashboard->value('week_absence_hours', 'week')) }}</span>
+                    </div>
                 </div>
                 <div class="stat bg-gradient-to-br from-blue-500 to-blue-600 rounded-box shadow-lg">
                     <div class="stat-figure opacity-70">
@@ -176,6 +182,7 @@
         <!-- Monthly Overview -->
         <div class="mb-8">
             <h3 class="text-2xl font-semibold mb-4">{{ $page->copy->text('DASHBOARD_MONTHLY_OVERVIEW') }}</h3>
+            <p class="text-sm mb-4">{{ sprintf($page->copy->text('DASHBOARD_PERIOD_RANGE'), $dashboard->statistics['month_from'], $dashboard->statistics['month_to']) }}</p>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div class="stat bg-gradient-to-br from-teal-600 to-teal-700 rounded-box shadow-lg">
                     <div class="stat-figure opacity-70">
@@ -183,6 +190,10 @@
                     </div>
                     <div class="stat-title text-lg font-semibold opacity-80">{{ $page->copy->text('DASHBOARD_MONTHLY_HOURS') }}</div>
                     <div data-report-period="month" data-report-presentation="{{ $dashboard->presentation('month') }}" class="stat-value">{{ $dashboard->value('month_hours', 'month') }}</div>
+                    <div data-report-period="month" data-report-presentation="{{ $dashboard->presentation('month') }}" class="stat-desc text-sm font-medium opacity-80" style="white-space:normal">
+                        <span class="block" data-report-component="work">{{ sprintf($page->copy->text('DASHBOARD_COMPLETED_WORK'), $dashboard->value('month_work_hours', 'month')) }}</span>
+                        <span class="block" data-report-component="absence">{{ sprintf($page->copy->text('DASHBOARD_ABSENCE_CREDIT'), $dashboard->value('month_absence_hours', 'month')) }}</span>
+                    </div>
                     <div data-report-period="month" data-report-presentation="{{ $dashboard->presentation('month') }}" class="stat-desc text-sm font-medium opacity-80">
                         {{ sprintf($page->copy->text('DASHBOARD_MONTHLY_HOURS_PROGRESS'), $dashboard->value('month_hours', 'month'), $dashboard->statistics['planned_month']) }}
                     </div>
