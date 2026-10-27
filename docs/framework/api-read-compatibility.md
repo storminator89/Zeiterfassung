@@ -84,9 +84,15 @@ implizites HEAD oder `_method`-/Headeroverride. JSON verwendet wie im Bestand
 
 **Bewusst nicht repariert:** SQLite-`date(startzeit)` filtert UTC statt
 Berlin-Kalendertagen; Formprüfung ist keine Kalenderprüfung. Numerische
-Pagination bleibt die bisherige PHP-Koerzierung, einschließlich negativer Werte,
-separater Metadaten und des Offset-ohne-Limit-SQLfehlers als JSON-500. Die
-Änderungen aus [#9](https://github.com/storminator89/Zeiterfassung/issues/9) und
+Pagination bleibt die bisherige PHP-Koerzierung, einschließlich negativer Werte
+und separater Metadaten. Der native Pfad und der inaktive Lesekandidat ergänzen
+bei numerischem Offset ohne wirksames Limit jetzt SQLite-`LIMIT -1`: alle eigenen
+Treffer nach dem Offset, ohne künstliche Seitengröße; `meta.limit` bleibt
+unverändert. Dies behebt nur den SQLfehler aus
+[#24 / CH-18](https://github.com/storminator89/Zeiterfassung/issues/24), nicht die
+dort ebenfalls offenen Integergrenzen, Standard- und Maximalwerte. SQLite
+dokumentiert [negative Limits als unbeschränkt und OFFSET nach LIMIT](https://www.sqlite.org/lang_select.html#limitoffset).
+Die übrigen Änderungen aus [#9](https://github.com/storminator89/Zeiterfassung/issues/9) und
 [#25](https://github.com/storminator89/Zeiterfassung/issues/25) müssen separat
 abgestimmt werden, nicht als Carbon-/Paginatornebenwirkung entstehen.
 Strukturell nichtskalare Datumsquerys werden im Kandidaten ebenfalls als

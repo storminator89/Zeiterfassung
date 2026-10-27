@@ -257,6 +257,10 @@ function getTimeEntries($conn, $user_id) {
         }
 
         if (isset($_GET['offset']) && is_numeric($_GET['offset'])) {
+            if (!array_key_exists(':limit', $params)) {
+                // SQLite requires LIMIT before OFFSET; -1 leaves the page unbounded.
+                $query .= " LIMIT -1";
+            }
             $offset = (int)$_GET['offset'];
             $query .= " OFFSET :offset";
             $params[':offset'] = $offset;
