@@ -87,13 +87,17 @@ final class LegacyChronoReads implements ChronoReads
                 $parameters[':limit'] = $query->limit;
             }
             if ($query->offset !== null) {
+                if ($query->limit === null) {
+                    // SQLite requires LIMIT before OFFSET; -1 leaves the page unbounded.
+                    $sql .= ' LIMIT -1';
+                }
                 $sql .= ' OFFSET :offset';
                 $parameters[':offset'] = $query->offset;
             }
             $statement = $pdo->prepare($sql);
             foreach ($parameters as $name => $value) {
                 // Preserve PDO's original default binding type, numeric coercion,
-                // negative limits and the offset-without-limit failure (#9/#25).
+                // negative limits and separate pagination metadata.
                 $statement->bindValue($name, $value);
             }
             $statement->execute();

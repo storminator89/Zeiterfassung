@@ -121,7 +121,9 @@ try {
     $phase = 'legacy errors, no historical CRUD and unchanged snapshot';
     $invalidDate = $request('GET', '/api.php/timeentries?start_date=', $directoryAdmin);
     $ensure($invalidDate->getStatusCode() === 400 && $invalidDate->getContent() === json_encode(['success' => false, 'message' => 'Invalid start_date format. Use YYYY-MM-DD']));
-    $ensure($request('GET', '/api.php/timeentries?offset=1', $directoryAdmin)->getStatusCode() === 500);
+    $offsetOnly = $request('GET', '/api.php/timeentries?offset=1', $directoryAdmin);
+    $ensure($offsetOnly->getStatusCode() === 200
+        && $offsetOnly->getContent() === json_encode(['success' => true, 'data' => [], 'meta' => ['total' => 1, 'filtered' => 0, 'limit' => null, 'offset' => 1]]));
     $ensure($request('GET', '/api.php/unknown')->getStatusCode() === 400
         && $request('GET', '/api.php/users/')->getStatusCode() === 400
         && $request('GET', '/api.php/%75sers')->getStatusCode() === 400
