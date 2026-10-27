@@ -1,5 +1,5 @@
 <?php
-require __DIR__.'/../lib/attendance.php';require __DIR__.'/../lib/practice.php';require __DIR__.'/../lib/reporting.php';
+require __DIR__.'/../lib/attendance.php';require __DIR__.'/../lib/practice.php';require_once __DIR__.'/../lib/reporting.php';
 $passed=0;
 function check(string $name,bool $ok): void { global $passed;if(!$ok){throw new RuntimeException($name);} $passed++;echo "PASS $name\n"; }
 function denied(callable $action): bool { try {$action();return false;}catch(AttendanceError $e){return in_array($e->status,[400,409],true);} }
