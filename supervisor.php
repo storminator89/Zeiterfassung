@@ -14,6 +14,9 @@ $user_role = $_SESSION['role'] ?? '';
 $zeiten = [];
 $ueberstundenListe = [];
 $detaillierteDaten = [];
+$userSearch = isset($_GET['user_search']) && is_string($_GET['user_search']) ? trim($_GET['user_search']) : '';
+$tableQuery = ['lang' => $lang, 'user_search' => $userSearch];
+$pageUrl = static fn (int $page): string => '?' . htmlspecialchars(http_build_query(array_merge($tableQuery, ['page' => $page])), ENT_QUOTES, 'UTF-8');
 if ($user_role === 'admin' || $user_role === 'supervisor') {
     $stmt = $conn->prepare("SELECT z.*, u.username, u.id as user_id, u.regelarbeitszeit, u.ueberstunden as vorherige_ueberstunden, substr(z.startzeit,1,10) AS day, NULL AS weekNumber
                             FROM zeiterfassung z
@@ -244,6 +247,8 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                                     </div>
                                 </div>
                             <?php endforeach; ?>
+                        <?php else : ?>
+                            <p class="col-span-full text-center opacity-70"><?= NO_ENTRIES_FOUND ?></p>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -256,19 +261,23 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                     <div class="card bg-base-100 shadow-xl">
                         <div class="card-body">
                             <!-- Search and Filter Bar -->
-                            <div class="flex flex-wrap gap-4 mb-4">
+                            <form method="get" action="supervisor.php" class="flex flex-wrap gap-4 mb-4">
+                                <input type="hidden" name="lang" value="<?= htmlspecialchars($lang, ENT_QUOTES, 'UTF-8') ?>">
                                 <div class="form-control w-full max-w-xs">
                                     <div class="input-group">
-                                        <span class="input-group-text">
-                                            <i class="fas fa-search"></i>
-                                        </span>
-                                        <input type="text"
+                                        <input type="search"
                                             id="userSearchInput"
+                                            name="user_search"
+                                            value="<?= htmlspecialchars($userSearch, ENT_QUOTES, 'UTF-8') ?>"
                                             class="input input-bordered w-full"
+                                            aria-label="<?= SEARCH_USERS ?>"
                                             placeholder="Mitarbeiter suchen...">
+                                        <button type="submit" class="btn btn-square" aria-label="<?= SEARCH_USERS ?>">
+                                            <i class="fas fa-search" aria-hidden="true"></i>
+                                        </button>
                                     </div>
                                 </div>
-                            </div>
+                            </form>
 
                             <div class="overflow-x-auto">
                                 <table class="table w-full">
@@ -327,14 +336,23 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                                             $groupedEntries[$key]['total_break'] += $break;
                                         }
 
-                                        // Output grouped entries
-                                        $itemsPerPage = 10; // Number of items per page
+                                        // Search the authorized groups before slicing, so matches on other pages are included.
+                                        if ($userSearch !== '') {
+                                            $groupedEntries = array_filter($groupedEntries, static fn (array $group): bool => mb_stripos($group['username'], $userSearch) !== false);
+                                        }
+
+                                        // This is the only table render/pagination path.
+                                        $itemsPerPage = 10;
                                         $totalRecords = count($groupedEntries);
-                                        $totalPages = ceil($totalRecords / $itemsPerPage);
-                                        $currentPage = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+                                        $totalPages = max(1, (int) ceil($totalRecords / $itemsPerPage));
+                                        $currentPage = isset($_GET['page']) && is_string($_GET['page']) ? (int)$_GET['page'] : 1;
                                         $currentPage = max(1, min($currentPage, $totalPages));
                                         $start = ($currentPage - 1) * $itemsPerPage;
                                         $pagedEntries = array_slice($groupedEntries, $start, $itemsPerPage, true);
+
+                                        if ($totalRecords === 0) {
+                                            echo '<tr><td colspan="7" class="text-center opacity-70">' . NO_ENTRIES_FOUND . '</td></tr>';
+                                        }
 
                                         foreach ($pagedEntries as $group) {
                                             $totalDuration = $group['total_duration']; // Already includes break deduction
@@ -344,9 +362,11 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                                             $overtimeHours = floor(abs($overtime) / 60);
                                             $overtimeMinutes = abs($overtime % 60);
 
+                                            $detailId = 'time-details-' . $group['user_id'] . '-' . $group['date'];
+
                                             // Summary row
                                             echo '<tr class="group-header hover:bg-base-200 cursor-pointer" data-user-id="' . $group['user_id'] . '" data-date="' . $group['date'] . '">
-                                                    <td><i class="fas fa-chevron-right transition-transform duration-200"></i></td>
+                                                    <td><button type="button" class="btn btn-ghost btn-xs" aria-expanded="false" aria-controls="' . $detailId . '" aria-label="Details"><i class="fas fa-chevron-right transition-transform duration-200" aria-hidden="true"></i></button></td>
                                                     <td>' . htmlspecialchars($group['username']) . '</td>
                                                     <td>' . date('d.m.Y', strtotime($group['date'])) . '</td>
                                                     <td>' . sprintf("%02d:%02d", $hours, $minutes) . '</td>
@@ -358,7 +378,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                                                 </tr>';
 
                                             // Detail rows (initially hidden)
-                                            echo '<tr class="detail-row hidden" data-parent="' . $group['user_id'] . '_' . $group['date'] . '">
+                                            echo '<tr id="' . $detailId . '" class="detail-row hidden" data-parent="' . $group['user_id'] . '_' . $group['date'] . '">
                                                     <td colspan="7" class="p-0">
                                                         <div class="bg-base-200/50 p-4">
                                                             <table class="table w-full">
@@ -402,46 +422,49 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                             </div>
                         </div>
                     </div>
+                    <?php if ($totalRecords > 0) : ?>
                     <div class="flex justify-center mt-4">
                         <div class="btn-group">
                             <?php
-                            // Vorherige-Seite-Button
-                            $prevClass = $currentPage == 1 ? ' btn-disabled' : '';
-                            echo "<a href='?page=".($currentPage-1)."' class='btn btn-sm$prevClass'>&laquo;</a>";
+                            if ($currentPage > 1) {
+                                echo '<a href="' . $pageUrl($currentPage - 1) . '" class="btn btn-sm">&laquo;</a>';
+                            } else {
+                                echo '<span class="btn btn-sm btn-disabled" aria-disabled="true">&laquo;</span>';
+                            }
 
-                            // Maximal anzuzeigende Seitenzahlen
                             $maxVisible = 5;
-                            $start = max(1, min($currentPage - floor($maxVisible/2), $totalPages - $maxVisible + 1));
+                            $start = max(1, min($currentPage - (int) floor($maxVisible / 2), $totalPages - $maxVisible + 1));
                             $end = min($start + $maxVisible - 1, $totalPages);
 
-                            // Erste Seite anzeigen, wenn wir nicht bei 1 beginnen
                             if ($start > 1) {
-                                echo "<a href='?page=1' class='btn btn-sm'>1</a>";
+                                echo '<a href="' . $pageUrl(1) . '" class="btn btn-sm">1</a>';
                                 if ($start > 2) {
-                                    echo "<span class='btn btn-sm btn-disabled'>...</span>";
+                                    echo '<span class="btn btn-sm btn-disabled">...</span>';
                                 }
                             }
 
-                            // Seitenzahlen
                             for ($i = $start; $i <= $end; $i++) {
-                                $activeClass = $i == $currentPage ? ' btn-active' : '';
-                                echo "<a href='?page=$i' class='btn btn-sm$activeClass'>$i</a>";
+                                $activeClass = $i === $currentPage ? ' btn-active' : '';
+                                $currentAttribute = $i === $currentPage ? ' aria-current="page"' : '';
+                                echo '<a href="' . $pageUrl($i) . '" class="btn btn-sm' . $activeClass . '"' . $currentAttribute . '>' . $i . '</a>';
                             }
 
-                            // Letzte Seite anzeigen, wenn wir nicht beim Maximum enden
                             if ($end < $totalPages) {
                                 if ($end < $totalPages - 1) {
-                                    echo "<span class='btn btn-sm btn-disabled'>...</span>";
+                                    echo '<span class="btn btn-sm btn-disabled">...</span>';
                                 }
-                                echo "<a href='?page=$totalPages' class='btn btn-sm'>$totalPages</a>";
+                                echo '<a href="' . $pageUrl($totalPages) . '" class="btn btn-sm">' . $totalPages . '</a>';
                             }
 
-                            // Nächste-Seite-Button
-                            $nextClass = $currentPage == $totalPages ? ' btn-disabled' : '';
-                            echo "<a href='?page=".($currentPage+1)."' class='btn btn-sm$nextClass'>&raquo;</a>";
+                            if ($currentPage < $totalPages) {
+                                echo '<a href="' . $pageUrl($currentPage + 1) . '" class="btn btn-sm">&raquo;</a>';
+                            } else {
+                                echo '<span class="btn btn-sm btn-disabled" aria-disabled="true">&raquo;</span>';
+                            }
                             ?>
                         </div>
                     </div>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
         </div>
@@ -473,9 +496,6 @@ function escapeHTML(value) {
 }
 
         const detaillierteDaten = <?= json_encode($detaillierteDaten, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-        const itemsPerPage = 10; // Anzahl der Einträge pro Seite
-        let currentPage = 1;
-        const zeiten = <?= json_encode($zeiten, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>; // PHP-Array in JavaScript-Variable umwandeln
 
         function showDetails(userId) {
             const modal = document.getElementById('details_modal');
@@ -550,90 +570,12 @@ function escapeHTML(value) {
             modal.showModal();
         }
 
-        function formatTime(minutes) {
-            const hours = Math.floor(minutes / 60);
-            const mins = Math.round(minutes % 60);
-            return `${hours}h ${mins}m`;
-        }
-
-        function displayTable(page) {
-            const tableBody = document.getElementById('tableBody');
-            const startIndex = (page - 1) * itemsPerPage;
-            const endIndex = startIndex + itemsPerPage;
-            const pageItems = zeiten.slice(startIndex, endIndex);
-
-            tableBody.innerHTML = '';
-
-            pageItems.forEach(zeit => {
-                const start = new Date(zeit.startzeit);
-                const end = new Date(zeit.endzeit);
-                const interval = (end - start) / (1000 * 60); // Differenz in Minuten
-                const pauseMinuten = parseInt(zeit.pause) || 0;
-
-                const gesamtMinuten = zeit.net_minutes ?? 0;
-                const dauer = zeit.net_minutes === null ? 'Läuft' : formatTime(gesamtMinuten);
-
-                const regelarbeitszeit = zeit.regelarbeitszeit || 8.0;
-                const regularWorkingMinutesPerDay = zeit.planned_minutes_day;
-                const ueberstunden = zeit.net_minutes === null ? 0 : gesamtMinuten - regularWorkingMinutesPerDay;
-                const ueberstundenFormat = formatTime(Math.abs(ueberstunden));
-
-                const row = `
-                <tr class="hover:bg-base-200 transition-colors duration-200">
-                    <td>${escapeHTML(zeit.username)}</td>
-                    <td>${zeit.weekNumber}</td>
-                    <td>${start.toLocaleString()}</td>
-                    <td>${zeit.endzeit ? end.toLocaleString() : 'Läuft'}</td>
-                    <td>${dauer}</td>
-                    <td>${escapeHTML(zeit.pause)} min</td>
-                    <td>${escapeHTML(zeit.standort)}</td>
-                    <td class="${ueberstunden >= 0 ? 'text-success' : 'text-error'} font-semibold">${ueberstunden >= 0 ? '+' : '-'}${ueberstundenFormat}</td>
-                </tr>
-            `;
-                tableBody.innerHTML += row;
-            });
-
-            updatePagination();
-        }
-
-        function updatePagination() {
-            const paginationContainer = document.getElementById('pagination');
-            const totalPages = Math.ceil(zeiten.length / itemsPerPage);
-
-            let paginationHTML = `
-            <button class="btn btn-sm" onclick="changePage(1)" ${currentPage === 1 ? 'disabled' : ''}>«</button>
-            <button class="btn btn-sm" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>‹</button>
-        `;
-
-            const maxVisiblePages = 5;
-            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-            if (endPage - startPage + 1 < maxVisiblePages) {
-                startPage = Math.max(1, endPage - maxVisiblePages + 1);
-            }
-
-            for (let i = startPage; i <= endPage; i++) {
-                paginationHTML += `
-                <button class="btn btn-sm ${i === currentPage ? 'btn-active' : ''}" onclick="changePage(${i})">${i}</button>
-            `;
-            }
-
-            paginationHTML += `
-            <button class="btn btn-sm" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>›</button>
-            <button class="btn btn-sm" onclick="changePage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>»</button>
-        `;
-
-            paginationContainer.innerHTML = paginationHTML;
-        }
-
-        function changePage(page) {
-            currentPage = page;
-            displayTable(currentPage);
-        }
-
         // Initialize Charts
         function initializeCharts() {
+            const overtimeCanvas = document.getElementById('overtimeChart');
+            const regularHoursCanvas = document.getElementById('regularHoursChart');
+            if (typeof Chart === 'undefined' || !overtimeCanvas || !regularHoursCanvas) return;
+
             // Convert the PHP array to the correct format for charts
             const overtimeData = Object.values(<?= json_encode($ueberstundenListe, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>).map(user => ({
                 label: user.username,
@@ -641,7 +583,7 @@ function escapeHTML(value) {
             }));
 
             // Overtime Chart
-            new Chart(document.getElementById('overtimeChart'), {
+            new Chart(overtimeCanvas, {
                 type: 'bar',
                 data: {
                     labels: overtimeData.map(d => d.label),
@@ -679,7 +621,7 @@ function escapeHTML(value) {
             }));
 
             // Working Hours Chart
-            new Chart(document.getElementById('regularHoursChart'), {
+            new Chart(regularHoursCanvas, {
                 type: 'bar',
                 data: {
                     labels: Object.values(<?= json_encode($detaillierteDaten, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>).map(d => d.username),
@@ -707,82 +649,58 @@ function escapeHTML(value) {
             });
         }
 
-        // Search and Filter Functionality
-        document.getElementById('searchInput').addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            filterCards(searchTerm);
-        });
+        let cardSearchTerm = '';
+        let cardFilter = 'all';
 
-        document.querySelectorAll('.filter-badge').forEach(badge => {
-            badge.addEventListener('click', function() {
-                const filter = this.dataset.filter;
-                document.querySelectorAll('.filter-badge').forEach(b => b.classList.remove('badge-accent'));
-                this.classList.add('badge-accent');
-                filterByType(filter);
-            });
-        });
-
-        function filterCards(searchTerm) {
-            const cards = document.querySelectorAll('#overtimeCards .card');
-            cards.forEach(card => {
-                const username = card.querySelector('.card-title').textContent.toLowerCase();
-                card.style.display = username.includes(searchTerm) ? '' : 'none';
-            });
-        }
-
-        function filterByType(type) {
-            const cards = document.querySelectorAll('#overtimeCards .card');
-            cards.forEach(card => {
+        function filterCards() {
+            document.querySelectorAll('#overtimeCards .card').forEach(card => {
+                const username = card.querySelector('.card-title')?.textContent.toLowerCase() ?? '';
                 const minutes = Number(card.dataset.overtimeMinutes);
-                if (type === 'all' ||
-                    (type === 'overtime' && minutes > 0) ||
-                    (type === 'undertime' && minutes < 0)) {
-                    card.style.display = '';
-                } else {
-                    card.style.display = 'none';
-                }
+                const matchesType = cardFilter === 'all' ||
+                    (cardFilter === 'overtime' && minutes > 0) ||
+                    (cardFilter === 'undertime' && minutes < 0);
+                card.style.display = username.includes(cardSearchTerm) && matchesType ? '' : 'none';
             });
         }
 
-        // Initialize everything when the page loads
+        // JavaScript only enhances existing server-rendered cards and detail rows.
         document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                cardSearchTerm = searchInput.value.toLowerCase();
+                searchInput.addEventListener('input', function() {
+                    cardSearchTerm = this.value.toLowerCase();
+                    filterCards();
+                });
+            }
+
+            document.querySelectorAll('.filter-badge').forEach(badge => {
+                badge.addEventListener('click', function() {
+                    cardFilter = this.dataset.filter;
+                    document.querySelectorAll('.filter-badge').forEach(item => item.classList.remove('badge-accent'));
+                    this.classList.add('badge-accent');
+                    filterCards();
+                });
+            });
+            filterCards();
+
+            const tableBody = document.getElementById('timeRecordsBody');
+            if (tableBody) {
+                tableBody.querySelectorAll('.group-header').forEach(header => {
+                    const detailRow = header.nextElementSibling;
+                    if (!detailRow || !detailRow.classList.contains('detail-row')) return;
+                    const toggle = header.querySelector('button[aria-expanded]');
+                    const chevron = header.querySelector('.fa-chevron-right');
+
+                    header.addEventListener('click', function() {
+                        const collapsed = detailRow.classList.toggle('hidden');
+                        if (toggle) toggle.setAttribute('aria-expanded', String(!collapsed));
+                        if (chevron) chevron.style.transform = collapsed ? '' : 'rotate(90deg)';
+                    });
+                });
+            }
+
             initializeCharts();
-            displayTable(currentPage);
-        });
-
-        // Add these JavaScript functions after your existing script
-        document.addEventListener('DOMContentLoaded', function() {
-            // User search functionality
-            const userSearchInput = document.getElementById('userSearchInput');
-            userSearchInput.addEventListener('input', function() {
-                const searchTerm = this.value.toLowerCase();
-                const rows = document.querySelectorAll('.group-header');
-
-                rows.forEach(row => {
-                    const username = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
-                    const shouldShow = username.includes(searchTerm);
-                    row.style.display = shouldShow ? '' : 'none';
-
-                    // Hide/show corresponding detail row
-                    const detailRow = document.querySelector(`.detail-row[data-parent="${row.dataset.userId}_${row.dataset.date}"]`);
-                    if (detailRow && detailRow.classList.contains('show')) {
-                        detailRow.style.display = shouldShow ? '' : 'none';
-                    }
-                });
-            });
-
-            // Expand/collapse functionality
-            document.querySelectorAll('.group-header').forEach(header => {
-                header.addEventListener('click', function() {
-                    const userId = this.dataset.userId;
-                    const date = this.dataset.date;
-                    const detailRow = document.querySelector(`.detail-row[data-parent="${userId}_${date}"]`);
-                    const chevron = this.querySelector('.fa-chevron-right');
-
-                    detailRow.classList.toggle('hidden');
-                    chevron.style.transform = detailRow.classList.contains('hidden') ? '' : 'rotate(90deg)';
-                });
-            });
         });
     </script>
 </body>
