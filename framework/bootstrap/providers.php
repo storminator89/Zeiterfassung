@@ -5,6 +5,7 @@ use App\Providers\LegacyFixtureServiceProvider;
 use App\Providers\LegacyAuthServiceProvider;
 use App\Providers\ChronoDomainServiceProvider;
 use App\Providers\LegacyApiServiceProvider;
+use App\Providers\LegacyRuntimeDatabaseServiceProvider;
 
 return [
     AppServiceProvider::class,
@@ -12,4 +13,5 @@ return [
     LegacyAuthServiceProvider::class,
     ChronoDomainServiceProvider::class,
     LegacyApiServiceProvider::class,
+    LegacyRuntimeDatabaseServiceProvider::class,
 ];
