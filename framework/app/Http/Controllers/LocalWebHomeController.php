@@ -10,13 +10,14 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Router;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 /** Native own-record fragment and absence form transport, never a second rule engine. */
 final class LocalWebHomeController extends Controller
 {
-    public function __construct(private ChronoReads $reads, private LocalWebAbsences $absences) {}
+    public function __construct(private ChronoReads $reads, private LocalWebAbsences $absences, private Router $router) {}
 
     public function records(Request $request): View
     {
@@ -32,6 +33,7 @@ final class LocalWebHomeController extends Controller
         return view('chrono.time-records', ['records' => new TimeRecordsPage(
             new Copy($language), \report_time_record_groups(array_slice($records, ($page - 1) * 10, 10), $records),
             $page, (int) ceil(count($records) / 10),
+            csvExport: $this->router->has('chrono.export-csv'),
         )]);
     }
 

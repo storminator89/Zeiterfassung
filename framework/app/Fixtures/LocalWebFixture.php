@@ -221,7 +221,7 @@ final class LocalWebFixture
             login: true, attendance: true, logout: true, corrections: true,
             home: true, absences: true, workModels: true, history: true, supervisor: true, dashboard: true,
         ));
-        LocalWebRoutes::register($app, includeHistory: true, includeSupervisor: true, includeDashboard: true);
+        LocalWebRoutes::register($app, includeHistory: true, includeSupervisor: true, includeDashboard: true, includeCsv: true);
     }
 
     private static function support(string $root): string

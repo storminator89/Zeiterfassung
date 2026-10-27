@@ -72,8 +72,8 @@ function csrf_field(): string {
     return '<input type="hidden" name="csrf_token" value="' . h($_SESSION['csrf_token']) . '">';
 }
 function csv_safe($value): string {
-    $value = (string)($value ?? '');
-    return preg_match('/^[\s]*[=+@\-]|^[\t\r\n]/u', $value) ? "'" . $value : $value;
+    require_once __DIR__ . '/lib/csv_safety.php';
+    return csv_safe_text($value);
 }
 
 // Counters live in SQLite, so changing cookies does not reset the login budget.

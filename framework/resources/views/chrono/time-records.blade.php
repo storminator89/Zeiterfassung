@@ -1,11 +1,19 @@
 {{-- Native get_time_records.php fragment; all prepared values are escaped here. --}}
 <div class="flex justify-between items-center mb-4">
     <h2 class="text-xl font-bold"><i class="fas fa-clock mr-2"></i>{{ $records->copy->text('TABLE_HEADER_TIME_RECORDS') }}</h2>
+    @if ($records->csvExport)
+    <a href="export_csv.php" aria-label="{{ $records->copy->text('BUTTON_EXPORT_CSV') }}"
+            class="btn btn-outline btn-success btn-sm gap-2 hover:scale-105 transform transition-transform duration-200">
+        <i class="fas fa-file-csv text-lg"></i>
+        <span class="hidden sm:inline">{{ $records->copy->text('BUTTON_EXPORT_CSV') }}</span>
+    </a>
+    @else
     <button disabled aria-label="{{ $records->copy->text('BUTTON_EXPORT_CSV') }}" title="CSV-Export ist in dieser Vorschau noch nicht verbunden."
             class="btn btn-outline btn-success btn-sm gap-2 hover:scale-105 transform transition-transform duration-200">
         <i class="fas fa-file-csv text-lg"></i>
         <span class="hidden sm:inline">{{ $records->copy->text('BUTTON_EXPORT_CSV') }}</span>
     </button>
+    @endif
 </div>
 <div id="timeRecordsTable" class="card bg-base-100 shadow-xl">
     <div class="card-body p-6">

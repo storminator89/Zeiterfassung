@@ -4,6 +4,7 @@ namespace App\Http;
 
 use App\Http\Controllers\LocalWebAttendanceController;
 use App\Http\Controllers\LocalWebCorrectionsController;
+use App\Http\Controllers\LocalWebCsvExportController;
 use App\Http\Controllers\LocalWebDashboardController;
 use App\Http\Controllers\LocalWebHomeController;
 use App\Http\Controllers\LocalWebHistoryController;
@@ -36,7 +37,7 @@ use Symfony\Component\HttpFoundation\Response;
 /** Explicit opt-in registrar. Never called by bootstrap/providers/default routes. */
 final class LocalWebRoutes
 {
-    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false): void
+    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false): void
     {
         // No opt-in page may be registered against missing or replaced chart bytes.
         if ($includeSupervisor) {
@@ -58,11 +59,12 @@ final class LocalWebRoutes
         TrimStrings::skipWhen($nativeFormPath);
         ConvertEmptyStringsToNull::skipWhen($nativeFormPath);
 
-        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor, $includeDashboard) {
+        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor, $includeDashboard, $includeCsv) {
             // These opt-in reports are full pages, never status/form transports.
             if (($includeHistory && $request->path() === 'history.php')
                 || ($includeSupervisor && $request->path() === 'supervisor.php')
-                || ($includeDashboard && $request->path() === 'dashboard.php')) {
+                || ($includeDashboard && $request->path() === 'dashboard.php')
+                || ($includeCsv && $request->path() === 'export_csv.php')) {
                 return new RedirectResponse('login.php');
             }
 
@@ -80,10 +82,10 @@ final class LocalWebRoutes
         $router->group(['middleware' => [
             EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class,
             ShareErrorsFromSession::class, LegacyFormCsrf::class, SubstituteBindings::class,
-        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard): void {
+        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv): void {
             $router->get('login.php', [LocalWebSessionController::class, 'create'])->name('login');
             $router->post('login.php', [LocalWebSessionController::class, 'store'])->middleware('throttle:chrono-web-login');
-            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard): void {
+            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv): void {
                 foreach (['/', 'index.php', 'attendance.php'] as $path) {
                     $router->get($path, [LocalWebAttendanceController::class, 'page']);
                     $router->post($path, [LocalWebAttendanceController::class, 'transition']);
@@ -102,6 +104,9 @@ final class LocalWebRoutes
                 }
                 if ($includeDashboard) {
                     $router->get('dashboard.php', [LocalWebDashboardController::class, 'index']);
+                }
+                if ($includeCsv) {
+                    $router->get('export_csv.php', [LocalWebCsvExportController::class, 'index'])->name('chrono.export-csv');
                 }
                 $router->post('logout.php', [LocalWebSessionController::class, 'destroy']);
             });

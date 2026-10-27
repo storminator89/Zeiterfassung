@@ -368,7 +368,7 @@
             @if ($page->interactions->workModels) Arbeitszeitmodelle sind ebenfalls verbunden. @endif
             @if ($page->interactions->history) Änderungshistorie ist ebenfalls verbunden. @endif
             @if ($page->interactions->supervisor) Vorgesetztenauswertung ist ebenfalls verbunden. @endif
-            Weitere Seiten und CSV-Export sind in dieser Vorschau noch nicht verbunden.
+            Weitere Seiten sind in dieser Vorschau noch nicht verbunden.
             @else
             Inaktive Laravel-Ansicht: Anmeldung, Buchungen, Abwesenheiten und Abmeldung sind noch nicht verbunden.
             Navigationslinks behalten die bestehenden PHP-Ziele; diese Seiten sind weiterhin Legacy.
