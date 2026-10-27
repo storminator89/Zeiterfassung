@@ -31,4 +31,7 @@ interface ChronoReads
 
     /** Existing work_models.php list: own models, or all for current admins. */
     public function workModels(): array;
+
+    /** Native work-model target options, only after a fresh current-admin check. */
+    public function workModelTargets(): array;
 }
