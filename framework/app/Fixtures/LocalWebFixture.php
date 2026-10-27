@@ -4,6 +4,8 @@ namespace App\Fixtures;
 
 use App\Http\LocalWebRoutes;
 use App\LegacyDatabase\AttendanceWriter;
+use App\LegacyDatabase\RuntimeAdmission;
+use App\LegacyDatabase\RuntimeDatabase;
 use App\LegacyDatabase\AuditContext;
 use App\LegacyDatabase\AuditFunctions;
 use App\LegacyDatabase\OfflineFiles;
@@ -34,7 +36,7 @@ final class LocalWebFixture
     public static function prepare(Application $app): array
     {
         if (PHP_SAPI !== 'cli' || $app->make('config')->has('database.connections.chrono')
-            || $app->make('db')->getConnections() !== [] || $app->bound(AttendanceWriter::class)) {
+            || $app->make('db')->getConnections() !== [] || $app->bound(AttendanceWriter::class) || $app->bound(RuntimeDatabase::class)) {
             throw new LogicException('Synthetic preparation requires the inactive application.');
         }
         umask(0077);
@@ -152,7 +154,7 @@ final class LocalWebFixture
         $config = $app->make('config');
         $database = $app->make('db');
         if (PHP_SAPI !== 'cli-server' || $config->has('database.connections.chrono')
-            || $database->getConnections() !== [] || $app->bound(AttendanceWriter::class)
+            || $database->getConnections() !== [] || $app->bound(AttendanceWriter::class) || $app->bound(RuntimeDatabase::class)
             || $app->resolved('encrypter') || $app->resolved('session.store')) {
             throw new LogicException('Synthetic runtime cannot replace an activated application.');
         }
@@ -178,6 +180,18 @@ final class LocalWebFixture
             throw new RuntimeException('Only the adopted synthetic browser fixture is supported.');
         }
         $reference = $connection = $repository = null;
+        // This binding can only describe the already verified invented fixture;
+        // never a request/ENV-selected source. It opens no native export handle.
+        $stat = lstat($path);
+        $snapshotAdmission = RuntimeAdmission::fromConfiguration([
+            'path' => $path, 'device' => $stat['dev'], 'inode' => $stat['ino'],
+            'schema_version' => $read->query('PRAGMA schema_version')->fetchColumn(),
+            'schema_signature' => $checked['schema_signature'],
+            'foreign_keys' => $read->query('PRAGMA foreign_keys')->fetchColumn(),
+            'journal_mode' => $read->query('PRAGMA journal_mode')->fetchColumn(),
+            'synchronous' => $read->query('PRAGMA synchronous')->fetchColumn(),
+        ]);
+        $app->instance(RuntimeDatabase::class, new RuntimeDatabase($snapshotAdmission, $files));
         $config->set([
             'app.key' => $this->manifest['app_key'], 'app.debug' => false,
             'app.url' => 'http://localhost:'.self::PORT,
@@ -221,7 +235,7 @@ final class LocalWebFixture
             login: true, attendance: true, logout: true, corrections: true,
             home: true, absences: true, workModels: true, history: true, supervisor: true, dashboard: true, adminPauseSettings: true,
         ));
-        LocalWebRoutes::register($app, includeHistory: true, includeSupervisor: true, includeDashboard: true, includeCsv: true, includeSettings: true, includeAdminPauseSettings: true, includeTerminalDevices: true);
+        LocalWebRoutes::register($app, includeHistory: true, includeSupervisor: true, includeDashboard: true, includeCsv: true, includeSettings: true, includeAdminPauseSettings: true, includeTerminalDevices: true, includeDatabaseSnapshot: true);
     }
 
     private static function support(string $root): string

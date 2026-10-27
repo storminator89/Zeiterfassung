@@ -2,12 +2,17 @@
 
 namespace App\LegacyDatabase;
 
+use App\Auth\LegacyUser;
+use App\Chrono\DatabaseSnapshotArtifact;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Connectors\SQLiteConnector;
 use Illuminate\Database\SQLiteConnection;
 use LogicException;
 use PDO;
 use Pdo\Sqlite;
 use RuntimeException;
+use SQLite3;
 use Throwable;
 
 /** Opens only the already admitted existing identity; never creates/adopts it. */
@@ -36,6 +41,164 @@ final class RuntimeDatabase
         } catch (Throwable) {
             throw new RuntimeException('Runtime database writer admission refused.');
         }
+    }
+
+    /** Fixed secret-bearing operation; no source/path selector or raw-handle callback. */
+    public function databaseSnapshot(LegacyUser $authenticated): DatabaseSnapshotArtifact
+    {
+        $identifier = (int) $authenticated->getKey();
+        $password = $authenticated->getAuthPassword();
+        if ($identifier < 1 || $authenticated->auth_source !== 'local' || ! is_string($password) || $password === '') {
+            throw new AuthenticationException;
+        }
+        if ($authenticated->role !== 'admin') {
+            throw new AuthorizationException('Only administrators may export a database snapshot.');
+        }
+
+        $source = null;
+        $artifact = null;
+        $transaction = false;
+        try {
+            $source = $this->openSnapshotSource();
+            if (! $source->exec('BEGIN DEFERRED')) {
+                throw new RuntimeException;
+            }
+            $transaction = true;
+            $this->requireSnapshotSource($source);
+            $statement = $source->prepare('SELECT id,role,auth_source,password FROM users WHERE id=:actor');
+            try {
+                $statement->bindValue(':actor', $identifier, SQLITE3_INTEGER);
+                $result = $statement->execute();
+                try {
+                    $actor = $result->fetchArray(SQLITE3_ASSOC);
+                    if ($result->fetchArray(SQLITE3_ASSOC) !== false) {
+                        throw new RuntimeException;
+                    }
+                } finally {
+                    $result->finalize();
+                }
+            } finally {
+                $statement->close();
+            }
+            if ($actor === false || $actor['id'] !== $identifier || $actor['auth_source'] !== 'local'
+                || ! is_string($actor['password']) || ! hash_equals($password, $actor['password'])) {
+                throw new AuthenticationException;
+            }
+            if ($actor['role'] !== 'admin') {
+                throw new AuthorizationException('Only administrators may export a database snapshot.');
+            }
+            unset($actor, $password);
+
+            // The destination is allocated only AFTER this same-source fresh check.
+            $artifact = DatabaseSnapshotArtifact::capture($source, $this->admission, $this->files);
+            $this->requireSnapshotSource($source);
+            @$this->identity(false);
+            if (! $source->exec('ROLLBACK')) {
+                throw new RuntimeException;
+            }
+            $transaction = false;
+            @$this->identity(false);
+            if (! $source->close()) {
+                throw new RuntimeException;
+            }
+            $source = null;
+
+            return $artifact;
+        } catch (AuthenticationException|AuthorizationException $error) {
+            $artifact?->discard();
+            throw $error;
+        } catch (Throwable) {
+            $artifact?->discard();
+            // No native message/previous exception, SQL, hashes or private paths.
+            throw new RuntimeException('Database snapshot could not be created.');
+        } finally {
+            if ($source instanceof SQLite3) {
+                try {
+                    if ($transaction && ! $source->exec('ROLLBACK')) {
+                        error_log('Chrono snapshot source cleanup failed.');
+                    }
+                } catch (Throwable) {
+                    error_log('Chrono snapshot source cleanup failed.');
+                }
+                try {
+                    if (! $source->close()) {
+                        error_log('Chrono snapshot source cleanup failed.');
+                    }
+                } catch (Throwable) {
+                    error_log('Chrono snapshot source cleanup failed.');
+                }
+            }
+        }
+    }
+
+    /** Separate native driver admission; existing PDO reader/writer bodies stay untouched. */
+    private function openSnapshotSource(): SQLite3
+    {
+        $source = null;
+        try {
+            @$this->identity(false);
+            $source = new SQLite3($this->admission->path, SQLITE3_OPEN_READONLY);
+            $source->enableExceptions(true);
+            if (! $source->busyTimeout(5000) || ! $source->exec('PRAGMA query_only=ON')) {
+                throw new RuntimeException;
+            }
+            $this->requireSnapshotSource($source);
+            @$this->identity(false);
+
+            return $source;
+        } catch (Throwable) {
+            if ($source instanceof SQLite3) {
+                try {
+                    if (! $source->close()) {
+                        error_log('Chrono snapshot source cleanup failed.');
+                    }
+                } catch (Throwable) {
+                    error_log('Chrono snapshot source cleanup failed.');
+                }
+            }
+            throw new RuntimeException('Runtime snapshot source admission refused.');
+        }
+    }
+
+    private function requireSnapshotSource(SQLite3 $source): void
+    {
+        $databases = $this->snapshotRows($source, 'PRAGMA database_list');
+        if (count($databases) !== 1 || $databases[0]['name'] !== 'main' || $databases[0]['file'] !== $this->admission->path) {
+            throw new RuntimeException;
+        }
+        foreach ([
+            'schema_version' => $this->admission->schemaVersion,
+            'foreign_keys' => $this->admission->foreignKeys,
+            'journal_mode' => $this->admission->journalMode,
+            'synchronous' => $this->admission->synchronous,
+            'busy_timeout' => 5000,
+            'query_only' => 1,
+        ] as $pragma => $expected) {
+            if ($source->querySingle('PRAGMA '.$pragma) !== $expected) {
+                throw new RuntimeException;
+            }
+        }
+        // Mechanical SQLite3 equivalent of V2Adoption::ledgerState(PDO).
+        if ($this->snapshotRows($source, 'SELECT id,migration,batch FROM framework_migrations ORDER BY id') !== [[
+            'id' => 1, 'migration' => V2Adoption::migrationName($this->admission->schemaSignature), 'batch' => 1,
+        ]]) {
+            throw new RuntimeException;
+        }
+    }
+
+    private function snapshotRows(SQLite3 $source, string $sql): array
+    {
+        $result = $source->query($sql);
+        $rows = [];
+        try {
+            while (($row = $result->fetchArray(SQLITE3_ASSOC)) !== false) {
+                $rows[] = $row;
+            }
+        } finally {
+            $result->finalize();
+        }
+
+        return $rows;
     }
 
     private function open(bool $write): PDO
