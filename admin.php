@@ -265,10 +265,6 @@ $stmt = $conn->prepare("SELECT id, name FROM departments");
 $stmt->execute();
 $departments = $stmt->fetchAll(PDO::FETCH_OBJ);
 
-$stmt = $conn->prepare("SELECT id, username FROM users");
-$stmt->execute();
-$allUsers = $stmt->fetchAll(PDO::FETCH_OBJ);
-
 // Abteilung löschen
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_department'])) {
     $department_id = $_POST['department_id'];
@@ -312,14 +308,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_department'])) {
     }
 }
 
+function validateUserAssignment(PDO $conn, $role, $supervisor): ?int
+{
+    if (!in_array($role, ['user', 'admin', 'supervisor'], true)) {
+        throw new InvalidArgumentException('Ungültige Benutzerrolle.');
+    }
+    if ($supervisor === '') {
+        return null;
+    }
+    $supervisorId = filter_var($supervisor, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if ($supervisorId === false) {
+        throw new InvalidArgumentException('Ungültiger Vorgesetzter.');
+    }
+    $stmt = $conn->prepare("SELECT id FROM users WHERE id = ? AND role IN ('supervisor', 'admin')");
+    $stmt->execute([$supervisorId]);
+    if ($stmt->fetchColumn() === false) {
+        throw new InvalidArgumentException('Ungültiger Vorgesetzter.');
+    }
+    return $supervisorId;
+}
+
 // Benutzer hinzufügen
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
     $username = $_POST['username'];
     $password = $_POST['password'];
     $email = $_POST['email'];
-    $role = $_POST['role'];
+    $role = $_POST['role'] ?? null;
     $department_id = $_POST['department'];
-    $supervisor = $_POST['supervisor'];
+    $supervisor = $_POST['supervisor'] ?? null;
     $regelarbeitszeit = $_POST['regelarbeitszeit'];
     $ueberstunden = $_POST['ueberstunden'];
 
@@ -327,14 +343,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
     if (empty($username) || empty($password) || empty($email) || empty($role) || empty($department_id) || empty($regelarbeitszeit)) {
         $error = ERROR_ALL_FIELDS_REQUIRED;
     } else {
-        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-
         try {
+            $supervisor = validateUserAssignment($conn, $role, $supervisor);
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
             // Statement vorbereiten und ausführen, um den neuen Benutzer einzufügen
             $stmt = $conn->prepare("INSERT INTO users (username, password, email, role, department_id, supervisor_id, regelarbeitszeit, ueberstunden) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([$username, $hashedPassword, $email, $role, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden]);
 
             $successMessage = USER_CREATED_SUCCESS;
+        } catch (InvalidArgumentException $e) {
+            $error = $e->getMessage();
         } catch (PDOException $e) {
             $error = USER_CREATED_ERROR . $e->getMessage();
         }
@@ -362,14 +380,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_user'])) {
     $user_id = $_POST['user_id'];
     $username = $_POST['username'];
     $email = $_POST['email'];
-    $role = $_POST['role'];
+    $role = $_POST['role'] ?? null;
     $password = $_POST['password'];
     $department_id = $_POST['department'];
-    $supervisor = $_POST['supervisor'];
+    $supervisor = $_POST['supervisor'] ?? null;
     $regelarbeitszeit = $_POST['regelarbeitszeit'];
     $ueberstunden = $_POST['ueberstunden'];
 
     try {
+        $supervisor = validateUserAssignment($conn, $role, $supervisor);
         if (!empty($password)) {
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
             $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ?, password = ?, department_id = ?, supervisor_id = ?, regelarbeitszeit = ?, ueberstunden = ? WHERE id = ?");
@@ -380,6 +399,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_user'])) {
         }
 
         $successMessage = USER_UPDATED_SUCCESS;
+    } catch (InvalidArgumentException $e) {
+        $error = $e->getMessage();
     } catch (PDOException $e) {
         $error = USER_UPDATED_ERROR . $e->getMessage();
     }
@@ -403,6 +424,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_department'])) {
         $error = DEPARTMENT_UPDATED_ERROR . $e->getMessage();
     }
 }
+
+// Vorgesetzte unabhängig von Suche und Benutzerseite laden, nach allen Änderungen.
+$stmt = $conn->prepare("SELECT id, username FROM users WHERE role IN ('supervisor', 'admin') ORDER BY username");
+$stmt->execute();
+$supervisors = $stmt->fetchAll(PDO::FETCH_OBJ);
 
 // Suchparameter und Paginierung
 $search = isset($_GET['search']) ? $_GET['search'] : '';
@@ -523,10 +549,8 @@ include 'header.php';
                                 </label>
                                 <select id="supervisor" name="supervisor" class="select select-bordered">
                                     <option value=""><?= FORM_NO_SUPERVISOR ?></option>
-                                    <?php foreach ($users as $user): ?>
-                                        <?php if ($user->role === 'supervisor' || $user->role === 'admin'): ?>
-                                            <option value="<?= $user->id ?>"><?= htmlspecialchars($user->username) ?></option>
-                                        <?php endif; ?>
+                                    <?php foreach ($supervisors as $supervisorOption): ?>
+                                        <option value="<?= $supervisorOption->id ?>"><?= htmlspecialchars($supervisorOption->username) ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -831,10 +855,8 @@ include 'header.php';
             </label>
             <select id="edit_supervisor" name="supervisor" class="select select-bordered">
                 <option value=""><?= FORM_NO_SUPERVISOR ?></option>
-                <?php foreach ($users as $user): ?>
-                    <?php if ($user->role === 'supervisor' || $user->role === 'admin'): ?>
-                        <option value="<?= $user->id ?>"><?= htmlspecialchars($user->username) ?></option>
-                    <?php endif; ?>
+                <?php foreach ($supervisors as $supervisorOption): ?>
+                    <option value="<?= $supervisorOption->id ?>"><?= htmlspecialchars($supervisorOption->username) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
