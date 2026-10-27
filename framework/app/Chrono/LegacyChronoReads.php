@@ -136,6 +136,8 @@ final class LegacyChronoReads implements ChronoReads
             $plannedYear = planned_hours($pdo, $user, ...$periods['year']);
             $monthDays = array_filter($days, static fn (string $day): bool => $day >= $periods['month'][0] && $day <= $periods['month'][1], ARRAY_FILTER_USE_KEY);
             $workedDays = count($monthDays);
+            require_once dirname(__DIR__, 3).'/lib/dashboard_presentation.php';
+            $components = \chrono_dashboard_components($records, $weekStart, $weekEnd, ...$periods['month']);
             // The native cards remain CURRENT-period statistics when browsing an old week.
             $statistics = [
                 'regular_hours' => home_daily_hours($pdo, $user, $today),
@@ -143,9 +145,15 @@ final class LegacyChronoReads implements ChronoReads
                 'total_overtime' => report_format_hours(home_total_overtime($pdo, $user, $days, (float) ($userData['ueberstunden'] ?? 0.0))),
                 'year_overtime' => report_format_hours($yearHours - $plannedYear),
                 'week_hours' => report_format_hours($weekHours),
+                'week_work_hours' => report_format_hours($components['week_work_minutes'] / 60),
+                'week_absence_hours' => report_format_hours($components['week_absence_minutes'] / 60),
+                'week_from' => $weekStart, 'week_to' => $weekEnd,
                 'remaining_week' => report_format_hours(max(0, $plannedWeek - $weekHours)),
                 'weekly_productivity' => number_format(report_percentage($weekHours, $plannedWeek), 1).'%',
                 'month_hours' => report_format_hours($monthHours),
+                'month_work_hours' => report_format_hours($components['month_work_minutes'] / 60),
+                'month_absence_hours' => report_format_hours($components['month_absence_minutes'] / 60),
+                'month_from' => $periods['month'][0], 'month_to' => $periods['month'][1],
                 'planned_month' => report_format_hours($plannedMonth),
                 'average_daily_hours' => report_format_hours($workedDays > 0 ? $monthHours / $workedDays : 0),
                 'worked_days' => $workedDays,
@@ -154,8 +162,8 @@ final class LegacyChronoReads implements ChronoReads
             foreach ([
                 'all' => ['weeks_count', 'is_first_week', 'total_overtime'],
                 'year' => ['year_overtime'],
-                'week' => ['week_hours', 'remaining_week', 'weekly_productivity'],
-                'month' => ['month_hours', 'average_daily_hours', 'worked_days', 'monthly_productivity'],
+                'week' => ['week_hours', 'week_work_hours', 'week_absence_hours', 'remaining_week', 'weekly_productivity'],
+                'month' => ['month_hours', 'month_work_hours', 'month_absence_hours', 'average_daily_hours', 'worked_days', 'monthly_productivity'],
             ] as $period => $keys) {
                 if ($finality[$period] || $incomplete[$period]) {
                     foreach ($keys as $key) {
