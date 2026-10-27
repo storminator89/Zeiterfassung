@@ -27,7 +27,7 @@
 
                     <form id="absence-form" method="post" action="save.php" class="space-y-5 mt-6 border-t border-base-200 pt-5">
                         @csrf
-                        <fieldset disabled class="space-y-5">
+                        <fieldset disabled @if ($page->interactions->absences) data-local-absence-enabled="1" @endif class="space-y-5">
                         <fieldset>
                             <legend class="text-lg font-semibold mb-3">Ereignistyp</legend>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -71,6 +71,10 @@
             </section>
         </aside>
     </div>
-    <section id="timeRecordsContainer" class="mt-8" aria-label="Erfasste Arbeitszeiten"><p role="status">Die bestehende Arbeitszeittabelle wird erst nach Freigabe des authentifizierten Laravel-HTML-Fragments verbunden. Hier wird noch nichts geladen.</p></section>
+    @if ($page->interactions->home)
+    <section id="timeRecordsContainer" class="mt-8" aria-label="Erfasste Arbeitszeiten"><p role="status">Arbeitszeiten werden geladen …</p></section>
+    @else
+    <section class="mt-8" aria-label="Erfasste Arbeitszeiten"><p role="status">Die bestehende Arbeitszeittabelle wird erst nach Freigabe des authentifizierten Laravel-HTML-Fragments verbunden. Hier wird noch nichts geladen.</p></section>
+    @endif
 </main>
 @endsection

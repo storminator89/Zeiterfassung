@@ -10,5 +10,7 @@ final readonly class Interactions
         public bool $attendance = false,
         public bool $logout = false,
         public bool $corrections = false,
+        public bool $home = false,
+        public bool $absences = false,
     ) {}
 }

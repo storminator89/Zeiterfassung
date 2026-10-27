@@ -32,6 +32,7 @@
 
     <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
     <link rel="stylesheet" href="assets/css/app_ui.css">
+    @if ($page->interactions->home)<script src="assets/js/main.js" defer></script>@endif
     @if ($page->interactions->attendance)<script src="assets/js/chrono-local-web.js" defer></script>@endif
     <style>
         @media (max-width: 640px) {
@@ -359,8 +360,11 @@
     <div id="main-content" class="main-content">
         <aside class="alert alert-info mb-4" role="note">
             @if ($page->interactions->attendance)
-            Laravel-Anwesenheit: Stempeln und Abmelden sind verbunden. Abwesenheiten und weitere Seiten sind in dieser Migrationswelle noch nicht verbunden.
+            Laravel-Anwesenheit: Stempeln und Abmelden sind verbunden.
+            @if ($page->interactions->home) Arbeitszeittabelle und Statistik sind verbunden. @endif
+            @if ($page->interactions->absences) Abwesenheiten sind verbunden. @else Abwesenheiten sind noch nicht verbunden. @endif
             @if ($page->interactions->corrections) Korrekturanträge sind ebenfalls verbunden. @endif
+            Weitere Seiten und CSV-Export sind in dieser Vorschau noch nicht verbunden.
             @else
             Inaktive Laravel-Ansicht: Anmeldung, Buchungen, Abwesenheiten und Abmeldung sind noch nicht verbunden.
             Navigationslinks behalten die bestehenden PHP-Ziele; diese Seiten sind weiterhin Legacy.

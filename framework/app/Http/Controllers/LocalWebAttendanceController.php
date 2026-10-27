@@ -35,10 +35,21 @@ final class LocalWebAttendanceController extends Controller
         $language = $request->query('lang', $request->session()->get('lang', 'de'));
         $language = is_string($language) && in_array($language, ['de', 'en'], true) ? $language : 'de';
         $request->session()->put('lang', $language);
+        $copy = new Copy($language);
+        $summary = $this->interactions->home ? $this->reads->homeSummary() : null;
 
         return view('chrono.attendance', ['page' => new AttendancePage(
-            new Copy($language), (int) $actor->getAuthIdentifier(), $actor->username,
-            $actor->role, $this->reads->attendanceStatus(), interactions: $this->interactions,
+            $copy, (int) $actor->getAuthIdentifier(), $actor->username,
+            $actor->role, $this->reads->attendanceStatus(),
+            workingDaysThisMonth: $summary['working_days_this_month'] ?? null,
+            currentMonthName: $summary === null ? null : $copy->month($summary['current_month']),
+            totalOverHoursFormatted: $summary['total_overtime_formatted'] ?? null,
+            positiveOvertime: $summary['positive_overtime'] ?? null,
+            dailyHoursFormatted: $summary['daily_hours_formatted'] ?? null,
+            holidaysThisWeek: $summary === null ? [] : array_map(static fn (array $holiday): array => [
+                'date' => $holiday['formatted_date'], 'name' => $holiday['name'],
+            ], $summary['holidays_this_week']),
+            interactions: $this->interactions,
         )]);
     }
 
