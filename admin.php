@@ -337,6 +337,8 @@ function validateUserAssignment(PDO $conn, $role, $supervisor): ?int
     return $supervisorId;
 }
 
+require_once __DIR__ . '/lib/admin_users.php';
+
 // Benutzer hinzufügen
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
     $username = $_POST['username'];
@@ -370,15 +372,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
 
 // Benutzer löschen
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_user'])) {
-    if (att_one($conn, 'SELECT id FROM audit_log WHERE user_id=?', [(int)($_POST['user_id'] ?? 0)])) { abort_request(409, 'Konten mit Zeithistorie bleiben erhalten. Zugang über Passwortänderung und Terminal-Sperre entziehen.'); }
-    $user_id = $_POST['user_id'];
+    $user_id = $_POST['user_id'] ?? null;
 
     try {
-        // Statement vorbereiten und ausführen, um den Benutzer zu löschen
-        $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
-        $stmt->execute([$user_id]);
+        admin_mutate_existing_user($conn, $user_id, null, function (int $targetId) use ($conn): void {
+            if (att_one($conn, 'SELECT id FROM audit_log WHERE user_id=?', [$targetId])) { throw new AttendanceError('Konten mit Zeithistorie bleiben erhalten. Zugang über Passwortänderung und Terminal-Sperre entziehen.', 409); }
+            // Statement vorbereiten und ausführen, um den Benutzer zu löschen
+            $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
+            $stmt->execute([$targetId]);
+        });
 
         $successMessage = USER_DELETED_SUCCESS;
+    } catch (AttendanceError $e) {
+        abort_request($e->status, $e->getMessage());
+    } catch (InvalidArgumentException $e) {
+        $error = $e->getMessage();
     } catch (PDOException $e) {
         $error = USER_DELETED_ERROR . $e->getMessage();
     }
@@ -386,7 +394,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_user'])) {
 
 // Benutzer bearbeiten
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_user'])) {
-    $user_id = $_POST['user_id'];
+    $user_id = $_POST['user_id'] ?? null;
     $username = $_POST['username'];
     $email = $_POST['email'];
     $role = $_POST['role'] ?? null;
@@ -398,14 +406,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_user'])) {
 
     try {
         $supervisor = validateUserAssignment($conn, $role, $supervisor);
-        if (!empty($password)) {
-            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ?, password = ?, department_id = ?, supervisor_id = ?, regelarbeitszeit = ?, ueberstunden = ? WHERE id = ?");
-            $stmt->execute([$username, $email, $role, $hashedPassword, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden, $user_id]);
-        } else {
-            $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ?, department_id = ?, supervisor_id = ?, regelarbeitszeit = ?, ueberstunden = ? WHERE id = ?");
-            $stmt->execute([$username, $email, $role, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden, $user_id]);
-        }
+        admin_mutate_existing_user($conn, $user_id, $role, function (int $targetId) use ($conn, $username, $email, $role, $password, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden): void {
+            if (!empty($password)) {
+                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+                $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ?, password = ?, department_id = ?, supervisor_id = ?, regelarbeitszeit = ?, ueberstunden = ? WHERE id = ?");
+                $stmt->execute([$username, $email, $role, $hashedPassword, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden, $targetId]);
+            } else {
+                $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ?, department_id = ?, supervisor_id = ?, regelarbeitszeit = ?, ueberstunden = ? WHERE id = ?");
+                $stmt->execute([$username, $email, $role, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden, $targetId]);
+            }
+        });
 
         $successMessage = USER_UPDATED_SUCCESS;
     } catch (InvalidArgumentException $e) {
