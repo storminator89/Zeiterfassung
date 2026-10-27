@@ -1,0 +1,3 @@
+# This source tree is not an ingress under the unchanged legacy web root.
+# A later reviewed cutover must serve only public/, never this directory.
+Require all denied
