@@ -31,7 +31,14 @@ function correction_apply_locked(PDO $db, int $user, string $role, array $comman
         $cancel=($command['cancel']??'')==='1';
         if ($cancel && !$r) { throw new AttendanceError('Stornierung erfordert eine bestehende Buchung.'); }
         $start=$cancel?strtotime($r['startzeit']):correction_time((string)($command['start']??''));$end=$cancel?max($start+1,strtotime($r['endzeit']??'now')):correction_time((string)($command['end']??''));$pause=$cancel?0:filter_var($command['pause']??'',FILTER_VALIDATE_INT);$reason=trim((string)($command['reason']??''));
-        if ((!$cancel&&($end<=$start||$end-$start>7*86400||$pause===false||$pause<0||$pause>floor(($end-$start)/60)))||strlen($reason)<5||strlen($reason)>1000) { throw new AttendanceError('Zeitraum, Pausen und Begründung prüfen.',400); }
+        // Same rejection set and left-to-right precedence; only fixed feedback differs.
+        if (!$cancel) {
+            if ($end<=$start) { throw new AttendanceError('Das Ende muss nach dem Beginn liegen. Bei einer Nachtschicht bitte Folgedatum und Zeitzonenoffset prüfen.',400); }
+            if ($end-$start>7*86400) { throw new AttendanceError('Zeitraum, Pausen und Begründung prüfen.',400); }
+            if ($pause===false||$pause<0) { throw new AttendanceError('Die tatsächliche Pause muss eine nicht negative ganze Minutenzahl sein.',400); }
+            if ($pause>floor(($end-$start)/60)) { throw new AttendanceError('Die tatsächliche Pause überschreitet die Dauer in ganzen Minuten zwischen Beginn und Ende. Bitte Zeitangaben und Pause prüfen.',400); }
+        }
+        if (strlen($reason)<5||strlen($reason)>1000) { throw new AttendanceError('Zeitraum, Pausen und Begründung prüfen.',400); }
         if (!$cancel) { booking_validate_correction($r,$start,$end,$pause,time()); }
         $auditRunner('Korrekturantrag: '.$reason, static function () use ($db,$user,$record,$start,$end,$pause,$reason,$r,$cancel): void {
             att_exec($db,'INSERT INTO time_adjustments(user_id,record_id,proposed_start,proposed_end,proposed_pause,reason,original_json,created_at,cancel) VALUES(?,?,?,?,?,?,?,?,?)',[$user,$record?:null,$start,$end,$pause,$reason,$r?json_encode($r):null,time(),(int)$cancel]);

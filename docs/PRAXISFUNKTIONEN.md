@@ -22,6 +22,30 @@ Diese Anwendung enthält keine Urlaubsanspruchsverwaltung, keine automatische me
 
 `adjustments.php` nimmt Nachträge, Änderungen und Stornierungen mit Begründung an. Eine andere berechtigte Person (Administrator oder zugeordnete Führungskraft) muss entscheiden. Ein alleiniger Administrator braucht für eigene Anträge eine zweite berechtigte Person. Aktuell laufende neue Arbeitszeiten zuerst beenden. Offene Altbuchungen können beendet oder per Antrag bereinigt werden. Gleichzeitige Änderungen am Original machen einen Antrag ungültig; die Freigabe erfolgt transaktional.
 
+Begrenzte #60-Ergänzung: Die gemeinsame bestehende Antragsvalidierung nennt bei
+bereits abgelehnten unmöglichen Angaben nun den konkreten Grund: Ende nicht nach
+Beginn, Pause nicht als nicht negative ganze Minutenzahl oder Pause länger als
+die Dauer in ganzen Minuten zwischen Beginn und Ende. Die festen Hinweise
+enthalten keine zurückgespiegelten Eingabewerte und erscheinen in den vorhandenen
+escaped Fehlerbereichen von nativer und Laravel-Korrekturseite. Bei einem
+Ende-/Beginnfehler wird auf Folgedatum und individuellen Zeitzonenoffset einer
+Nachtschicht hingewiesen. Valide Nachtschichten und DST-Zeitabstände bleiben
+unverändert erlaubt.
+
+Dies ändert ausschließlich Fehlermeldungen, weder die akzeptierten/abgelehnten
+Anträge noch die bisherige Links-nach-rechts-Reihenfolge bei mehreren Fehlern.
+Bestehende Sieben-Tage-Grenze, Begründungslängen, Storno-Ausnahme, Zeitparser,
+Zukunfts-/Gutschriftenregeln und Freigabe-/Berechtigungs-/Audit-/Schreibpfade
+bleiben gleich; für Grenze und Begründung bleibt der vorhandene allgemeine
+Hinweis erhalten. Keine automatische Reparatur, Endzeit oder Pause und kein
+neuer gesetzlicher/betrieblicher Schwellenwert entstehen. Das ist **keine**
+Erinnerung an vergessene Buchungen und kein vollständiger Abschluss von #60.
+Der grobe synthetische Guard-Äquivalenznachweis und PHP-Syntax bestanden am
+27.10.2026 unter PHP 8.5.12; nur die reinen alten/neuen Prüffragmente wurden
+ausgeführt, kein Korrekturbefehl oder Datenbankzugriff. Die vorhandene Formular-/
+HTTP-Antwortsemantik bleibt unverändert. Das ist keine geschützte Browser- oder
+reale Datenabnahme; keine Aktivierung oder Berechtigungsänderung.
+
 `history.php` zeigt Beschäftigten ihre Historie, Führungskräften die ihrer zugeordneten Personen und Administratoren alle Einträge. Datenbank-Trigger erfassen Änderungen an Buchungen, Arbeits-/Pausenintervallen, Anträgen, Modellen, Feiertagen und relevanten Kontostammdaten einschließlich Überstundenguthaben. Erfasst werden Zeitpunkt, Akteur, Vorgang und Vorher-/Nachher-Werte. Passwörter, PINs und Geräteschlüssel gehören nicht in das Protokoll.
 
 Das Journal, ursprüngliche Stempelereignisse und Modellversionen erlauben keine UPDATE-/DELETE-Operationen. Abgeschlossene Originalintervalle und abgeschlossene Freigaben bleiben geschützt. Eine freigegebene Stornierung entfernt nur die Berichtszeile; Originalwerte, Antrag, Entscheidung und Ereignisse bleiben erhalten. Schreibvorgänge ohne Audit-Kontext schlagen fehl. Die Anwendung hat keinen Weg zum Löschen der Historie; ein Betreiber mit direktem Datenbank-/Serverzugriff kann Schutz-Trigger entfernen oder alte Backups einspielen. Gegen diesen Betreiber ist das Protokoll **nicht extern manipulationssicher versiegelt**. Dafür wären separat verwaltete unveränderliche Sicherungen/Archivierung erforderlich.
