@@ -26,6 +26,15 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
     $stmt->execute([$user_id,$user_role]);
     $zeiten = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // This legacy report has independent cards, day sums, modal and chart
+    // rollups. Until that whole contract supports unresolved totals, refuse
+    // this affected authorized report set rather than publish numeric credits.
+    // No raw source row is changed; own list/history/corrections remain usable.
+    if (report_absence_conflicts($zeiten)!==[]) {
+        echo '<div class="alert alert-warning mb-4" role="alert"><span><strong>Klärung offen.</strong> Arbeitszeit und ganztägige Abwesenheit überschneiden sich im freigegebenen Berichtsumfang. Diese Auswertung enthält deshalb keine abschließenden Summen. Bitte die betroffenen Originaleinträge in der <a class="link" href="history.php">Historie</a> prüfen und die Korrektur durch die betroffene Person mit anschließender Vier-Augen-Freigabe klären. Die <a class="link" href="index.php">eigene Arbeitszeitliste</a> und <a class="link" href="adjustments.php">Korrekturanträge</a> bleiben verfügbar; es wurden keine Zeiten gelöscht oder gekürzt.</span></div></div></body></html>';
+        return;
+    }
+
     foreach ($zeiten as &$entry) { $entry['weekNumber']=substr(report_week($entry),5);$entry['day']=report_day($entry);$entry['net_minutes']=report_minutes($entry);$entry['planned_minutes_day']=planned_minutes($conn,(int)$entry['user_id'],$entry['day']); } unset($entry);
     // Berechnung der Überstunden und detaillierte Daten
     $workHoursByUser = [];

@@ -134,7 +134,10 @@ final class LegacyChronoReads implements ChronoReads
                 ? $actor : $this->account($pdo, $subject);
             $this->gate->forUser($actor)->authorize('view', $target);
             $records = $this->rows($pdo, 'SELECT * FROM zeiterfassung WHERE user_id=? ORDER BY startzeit DESC', [$target->getKey()]);
-            $days = report_days($records);
+            // Full effective context catches a counterpart outside the period;
+            // unrelated historical conflicts must not invalidate this period.
+            // The shared helper retains the existing malformed-data fail-close.
+            $days = report_days_for_period($records, $start, $end);
             $minutes = report_period_minutes($days, $start, $end);
             $planned = planned_hours($pdo, (int) $target->getKey(), $start, $end);
 

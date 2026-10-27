@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/booking.php';
+require_once __DIR__.'/reporting.php';
 // UTC event times are authoritative; zeiterfassung is the legacy reporting projection.
 class AttendanceError extends RuntimeException {
     public function __construct(string $message, public int $status = 409) { parent::__construct($message); }
@@ -116,6 +117,20 @@ function attendance_transition_locked(PDO $db, int $user, string $source, string
         if ($actual<$required) {
             $response['pause_warning']='Erfasste Pause: '.$actual.' Minuten; konfigurierte Mindestpause: '.$required.' Minuten. Bitte prüfen.';
             $response['message'].=' '.$response['pause_warning'];
+        }
+        // A pre-booked next-day absence must never make the real end fail or
+        // invent a shortened interval. Derive evidence from effective rows;
+        // corrections resolve that evidence without rewriting original punches.
+        $rows=$db->prepare('SELECT * FROM zeiterfassung WHERE user_id=?');
+        $rows->execute([$user]);$records=$rows->fetchAll(PDO::FETCH_ASSOC);$rows->closeCursor();
+        $overlaps=[];
+        foreach (report_absence_conflicts($records) as $conflict) {
+            if ($conflict['work_id']===(int)$s['record_id']) { $overlaps[]=$conflict['absence_id']; }
+        }
+        if ($overlaps!==[]) {
+            $response['overlap_record_ids']=array_values(array_unique($overlaps));
+            $response['overlap_warning']='Arbeitsende gespeichert. Arbeitszeit überschneidet sich mit einer ganztägigen Abwesenheit. Betroffene Summen sind bis zur manuellen Klärung nicht abschließend. Bitte Korrekturanträge prüfen.';
+            $response['message'].=' '.$response['overlap_warning'];
         }
     }
     att_exec($db,'INSERT INTO attendance_events(source,event_id,user_id,session_id,kind,received_at,payload_hash,response) VALUES(?,?,?,?,?,?,?,?)',[$source,$eventId,$user,$s['id'],$action,$now,$hash,json_encode($response)]);
