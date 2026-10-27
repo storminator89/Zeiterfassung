@@ -6,6 +6,7 @@ use App\Http\Controllers\LocalWebAdminPauseSettingsController;
 use App\Http\Controllers\LocalWebAttendanceController;
 use App\Http\Controllers\LocalWebCorrectionsController;
 use App\Http\Controllers\LocalWebCsvExportController;
+use App\Http\Controllers\LocalWebDatabaseSnapshotController;
 use App\Http\Controllers\LocalWebDashboardController;
 use App\Http\Controllers\LocalWebHomeController;
 use App\Http\Controllers\LocalWebHistoryController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\LocalWebTerminalDevicesController;
 use App\Http\Controllers\LocalWebWorkModelsController;
 use App\Http\Middleware\LegacyFormCsrf;
 use App\Http\Middleware\RefreshLocalAccount;
+use App\LegacyDatabase\RuntimeDatabase;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Cache\FileStore;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
@@ -40,7 +42,7 @@ use Symfony\Component\HttpFoundation\Response;
 /** Explicit opt-in registrar. Never called by bootstrap/providers/default routes. */
 final class LocalWebRoutes
 {
-    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false): void
+    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false): void
     {
         // No opt-in page may be registered against missing or replaced chart bytes.
         if ($includeSupervisor) {
@@ -48,6 +50,9 @@ final class LocalWebRoutes
         }
         if ($includeDashboard) {
             self::requireDashboardCalendarAssets();
+        }
+        if ($includeDatabaseSnapshot && ! $app->bound(RuntimeDatabase::class)) {
+            throw new LogicException('Database snapshots require a separately admitted runtime source.');
         }
         self::requireSessionBlocking($app);
         $router = $app->make(Router::class);
@@ -64,7 +69,11 @@ final class LocalWebRoutes
         TrimStrings::skipWhen($nativeFormPath);
         ConvertEmptyStringsToNull::skipWhen($nativeFormPath);
 
-        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices) {
+        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot) {
+            if ($includeDatabaseSnapshot && $request->path() === 'download.php') {
+                return new Response('Please sign in again.', 401,
+                    ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
+            }
             if ($includeAdminPauseSettings && $request->path() === 'get_user.php') {
                 return new Response('Please sign in again.', 401,
                     ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
@@ -99,10 +108,10 @@ final class LocalWebRoutes
         $router->group(['middleware' => [
             EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class,
             ShareErrorsFromSession::class, LegacyFormCsrf::class, SubstituteBindings::class,
-        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices): void {
+        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot): void {
             $router->get('login.php', [LocalWebSessionController::class, 'create'])->name('login');
             $router->post('login.php', [LocalWebSessionController::class, 'store'])->middleware('throttle:chrono-web-login');
-            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices): void {
+            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot): void {
                 foreach (['/', 'index.php', 'attendance.php'] as $path) {
                     $router->get($path, [LocalWebAttendanceController::class, 'page']);
                     $router->post($path, [LocalWebAttendanceController::class, 'transition']);
@@ -136,6 +145,9 @@ final class LocalWebRoutes
                 }
                 if ($includeTerminalDevices) {
                     $router->get('terminals.php', [LocalWebTerminalDevicesController::class, 'index']);
+                }
+                if ($includeDatabaseSnapshot) {
+                    $router->get('download.php', [LocalWebDatabaseSnapshotController::class, 'index'])->name('chrono.database-snapshot');
                 }
                 $router->post('logout.php', [LocalWebSessionController::class, 'destroy']);
             });

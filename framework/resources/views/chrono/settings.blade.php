@@ -90,8 +90,13 @@
                         <div class="card-body">
                             <h3 class="card-title"><i class="fas fa-download mr-2"></i>{{ $page->copy->text('SETTINGS_BACKUP_SNAPSHOT_TITLE') }}</h3>
                             <p class="mb-4">{{ $page->copy->text('SETTINGS_BACKUP_SNAPSHOT_DESCRIPTION') }}</p>
-                            <button type="button" class="btn btn-primary w-full" disabled aria-describedby="snapshot-hold"><i class="fas fa-download mr-2"></i>{{ $page->copy->text('SETTINGS_BACKUP_SNAPSHOT_DOWNLOAD') }}</button>
-                            <p id="snapshot-hold" class="text-sm opacity-70 mt-2">Der Datenbank-Snapshot ist in dieser Laravel-Ansicht noch nicht angebunden. Es wird kein Download oder Restore ausgeführt.</p>
+                            @if (\Illuminate\Support\Facades\Route::has('chrono.database-snapshot'))
+                                <a href="download.php" class="btn btn-primary w-full" aria-describedby="snapshot-sensitive"><i class="fas fa-download mr-2"></i>{{ $page->copy->text('SETTINGS_BACKUP_SNAPSHOT_DOWNLOAD') }}</a>
+                                <p id="snapshot-sensitive" class="text-sm opacity-70 mt-2">Der vollständige Datenbank-Snapshot enthält sensible Konto- und Personaldaten. Externe Schlüssel, Anwendungscode und Betriebskonfiguration sind nicht enthalten.</p>
+                            @else
+                                <button type="button" class="btn btn-primary w-full" disabled aria-describedby="snapshot-hold"><i class="fas fa-download mr-2"></i>{{ $page->copy->text('SETTINGS_BACKUP_SNAPSHOT_DOWNLOAD') }}</button>
+                                <p id="snapshot-hold" class="text-sm opacity-70 mt-2">Der Datenbank-Snapshot ist in dieser Laravel-Ansicht noch nicht angebunden. Es wird kein Download oder Restore ausgeführt.</p>
+                            @endif
                         </div>
                     </div>
                 </div>

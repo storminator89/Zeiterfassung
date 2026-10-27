@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Chrono\DatabaseSnapshotExport;
 use App\Chrono\LegacyLocalWebAttendance;
 use App\Chrono\LegacyLocalWebAbsences;
 use App\Chrono\LegacyLocalWebCorrections;
@@ -17,6 +18,7 @@ use App\Chrono\LocalWebWorkModels;
 use App\Chrono\LocalWebPauseSettings;
 use App\Chrono\LegacyLocalWebPauseSettings;
 use App\LegacyDatabase\AttendanceWriter;
+use App\LegacyDatabase\RuntimeDatabase;
 use Illuminate\Support\ServiceProvider;
 use LogicException;
 
@@ -27,6 +29,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->scoped(DatabaseSnapshotExport::class, function ($app): DatabaseSnapshotExport {
+            // No autowired/default/environment source. Construction is pure;
+            // only the fixed guarded operation may open its private source.
+            if (! $app->bound(RuntimeDatabase::class)) {
+                throw new LogicException('No explicitly admitted database snapshot source is configured.');
+            }
+
+            return new DatabaseSnapshotExport($app->make('auth'), $app->make(RuntimeDatabase::class));
+        });
         $this->app->scoped(LocalWebAttendance::class, fn ($app) => new LegacyLocalWebAttendance(
             $app->make('auth'),
             function () use ($app): AttendanceWriter {
