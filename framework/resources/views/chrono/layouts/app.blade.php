@@ -32,6 +32,7 @@
 
     <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
     <link rel="stylesheet" href="assets/css/app_ui.css">
+    @if ($page->interactions->attendance)<script src="assets/js/chrono-local-web.js" defer></script>@endif
     <style>
         @media (max-width: 640px) {
             .table {
@@ -293,7 +294,7 @@
                 </button>
                 <form action="logout.php" method="post">
                     @csrf
-                    <button type="submit" disabled class="sidebar-link w-full" title="Laravel-Abmeldung noch nicht aktiviert">
+                    <button type="submit" @disabled(! $page->interactions->logout) class="sidebar-link w-full">
                         <i class="fas fa-sign-out-alt w-6"></i>
                         <span>{{ $page->copy->text('NAV_LOGOUT') }}</span>
                     </button>
@@ -357,8 +358,12 @@
     <!-- Main content wrapper -->
     <div id="main-content" class="main-content">
         <aside class="alert alert-info mb-4" role="note">
+            @if ($page->interactions->attendance)
+            Laravel-Anwesenheit: Stempeln und Abmelden sind verbunden. Abwesenheiten und weitere Seiten sind in dieser Migrationswelle noch nicht verbunden.
+            @else
             Inaktive Laravel-Ansicht: Anmeldung, Buchungen, Abwesenheiten und Abmeldung sind noch nicht verbunden.
             Navigationslinks behalten die bestehenden PHP-Ziele; diese Seiten sind weiterhin Legacy.
+            @endif
         </aside>
         @yield('content')
 

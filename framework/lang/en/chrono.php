@@ -23,4 +23,6 @@ return [
     'PASSWORD_LABEL' => 'Password',
     'LOGIN_BUTTON' => 'Login',
     'REGISTER_BUTTON' => 'Register',
+    'ERROR_ALL_FIELDS_REQUIRED' => 'Please fill in all fields.',
+    'ERROR_INVALID_CREDENTIALS' => 'Username or password incorrect!',
 ];

@@ -10,5 +10,6 @@ final readonly class LoginPage
         public ?string $error = null,
         public ?string $successMessage = null,
         public bool $showRegistration = false,
+        public Interactions $interactions = new Interactions,
     ) {}
 }

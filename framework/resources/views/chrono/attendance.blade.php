@@ -12,7 +12,7 @@
                     </header>
                     <p class="text-lg">Willkommen zurück, {{ $page->username }}!</p>
                     <div id="status" data-attendance-status class="text-2xl font-bold mt-2" role="status">{{ $page->statusLabel() }}</div>
-                    <p id="message" class="text-sm opacity-70" role="status" aria-live="polite">Jede Buchung wird mit Serverzeit bestätigt. Laravel-Buchungen sind in dieser Ansicht noch nicht aktiviert.</p>
+                    <p id="message" class="text-sm opacity-70" role="status" aria-live="polite">Jede Buchung wird mit Serverzeit bestätigt.@if (! $page->interactions->attendance) Laravel-Buchungen sind in dieser Ansicht noch nicht aktiviert.@endif</p>
                     <div id="actions" data-state="{{ $page->state }}" class="flex flex-wrap gap-3 mt-3 mb-5" aria-label="Arbeitszeit buchen">
                         <button type="button" disabled data-action="start" class="btn btn-primary" @if ($page->state !== 'absent') hidden @endif><i class="fas fa-sign-in-alt"></i>Kommen</button>
                         <button type="button" disabled data-action="pause_start" class="btn btn-outline" @if ($page->state !== 'working') hidden @endif><i class="fas fa-pause"></i>Pause beginnen</button>
