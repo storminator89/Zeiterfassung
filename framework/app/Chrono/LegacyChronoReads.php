@@ -4,6 +4,7 @@ namespace App\Chrono;
 
 use App\Auth\LegacyUser;
 use Closure;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Contracts\Auth\Factory;
@@ -156,6 +157,17 @@ final class LegacyChronoReads implements ChronoReads
                 $actor->getKey(), (int) ($actor->role === 'admin'),
             ])
         );
+    }
+
+    public function workModelTargets(): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
+            if ($actor->role !== 'admin') {
+                throw new AuthorizationException('Nur die Verwaltung darf Arbeitszeitmodelle festlegen.');
+            }
+
+            return $this->rows($pdo, 'SELECT id,username FROM users ORDER BY username', []);
+        });
     }
 
     private function snapshot(Closure $read, bool $requireKnownRole = true): array
