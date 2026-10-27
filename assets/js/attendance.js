@@ -141,7 +141,7 @@
             try {
                 const response = await request('attendance.php', {method: 'POST', redirect: 'error',
                     body: new URLSearchParams({...pending, csrf_token: token})});
-                if (!response.ok && response.status < 500) { pending = null; rememberPending(); }
+                if (!response.ok && response.status < 500 && ![401, 403].includes(response.status)) { pending = null; rememberPending(); }
                 const data = await readJson(response);
                 if (!response.ok) throw new Error(data.message || 'Buchung wurde nicht bestätigt.');
                 if (!data.success || !Object.hasOwn(allowed, data.state)) throw new Error('Keine gültige Buchungsbestätigung erhalten. Dieselbe Aktion erneut versuchen.');

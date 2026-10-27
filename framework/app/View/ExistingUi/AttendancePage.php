@@ -28,6 +28,7 @@ final readonly class AttendancePage
         public ?bool $positiveOvertime = null,
         public ?string $dailyHoursFormatted = null,
         public array $holidaysThisWeek = [],
+        public Interactions $interactions = new Interactions,
     ) {
         if ($userId < 1 || ! in_array($role, ['user', 'supervisor', 'admin'], true)
             || ! in_array($theme, ['light', 'dark'], true)
