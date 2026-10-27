@@ -12,6 +12,7 @@ use App\Http\Controllers\LocalWebHistoryController;
 use App\Http\Controllers\LocalWebSessionController;
 use App\Http\Controllers\LocalWebSettingsController;
 use App\Http\Controllers\LocalWebSupervisorController;
+use App\Http\Controllers\LocalWebTerminalDevicesController;
 use App\Http\Controllers\LocalWebWorkModelsController;
 use App\Http\Middleware\LegacyFormCsrf;
 use App\Http\Middleware\RefreshLocalAccount;
@@ -39,7 +40,7 @@ use Symfony\Component\HttpFoundation\Response;
 /** Explicit opt-in registrar. Never called by bootstrap/providers/default routes. */
 final class LocalWebRoutes
 {
-    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false): void
+    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false): void
     {
         // No opt-in page may be registered against missing or replaced chart bytes.
         if ($includeSupervisor) {
@@ -63,7 +64,7 @@ final class LocalWebRoutes
         TrimStrings::skipWhen($nativeFormPath);
         ConvertEmptyStringsToNull::skipWhen($nativeFormPath);
 
-        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings) {
+        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices) {
             if (($includeSettings && $request->path() === 'settings.php')
                 || ($includeAdminPauseSettings && $request->path() === 'admin.php')) {
                 return $request->isMethod('POST')
@@ -75,7 +76,8 @@ final class LocalWebRoutes
             if (($includeHistory && $request->path() === 'history.php')
                 || ($includeSupervisor && $request->path() === 'supervisor.php')
                 || ($includeDashboard && $request->path() === 'dashboard.php')
-                || ($includeCsv && $request->path() === 'export_csv.php')) {
+                || ($includeCsv && $request->path() === 'export_csv.php')
+                || ($includeTerminalDevices && $request->path() === 'terminals.php')) {
                 return new RedirectResponse('login.php');
             }
 
@@ -93,10 +95,10 @@ final class LocalWebRoutes
         $router->group(['middleware' => [
             EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class,
             ShareErrorsFromSession::class, LegacyFormCsrf::class, SubstituteBindings::class,
-        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings): void {
+        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices): void {
             $router->get('login.php', [LocalWebSessionController::class, 'create'])->name('login');
             $router->post('login.php', [LocalWebSessionController::class, 'store'])->middleware('throttle:chrono-web-login');
-            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings): void {
+            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices): void {
                 foreach (['/', 'index.php', 'attendance.php'] as $path) {
                     $router->get($path, [LocalWebAttendanceController::class, 'page']);
                     $router->post($path, [LocalWebAttendanceController::class, 'transition']);
@@ -126,6 +128,9 @@ final class LocalWebRoutes
                 if ($includeAdminPauseSettings) {
                     $router->get('admin.php', [LocalWebAdminPauseSettingsController::class, 'index']);
                     $router->post('admin.php', [LocalWebAdminPauseSettingsController::class, 'store']);
+                }
+                if ($includeTerminalDevices) {
+                    $router->get('terminals.php', [LocalWebTerminalDevicesController::class, 'index']);
                 }
                 $router->post('logout.php', [LocalWebSessionController::class, 'destroy']);
             });

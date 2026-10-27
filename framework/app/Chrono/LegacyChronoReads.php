@@ -395,6 +395,39 @@ final class LegacyChronoReads implements ChronoReads
         });
     }
 
+    public function adminTerminalDevices(): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
+            if ($actor->role !== 'admin' || $actor->auth_source !== 'local') {
+                throw new AuthorizationException('Nur die Verwaltung darf die Terminal-Geräteliste sehen.');
+            }
+            require_once dirname(__DIR__, 3).'/lib/terminal_status.php';
+            // One server timestamp for the complete snapshot, never a request clock.
+            $now = time();
+            // Do not select t.*, generation, any pairing hash/code, credentials,
+            // users, grants or key sources. Only nonsecret presence is projected.
+            $rows = $this->rows($pdo, "SELECT t.id,t.name,t.enabled,t.last_seen,s.name AS site,
+                CASE WHEN t.pairing_hash IS NULL OR t.pairing_hash IN ('','0') THEN 0 ELSE 1 END AS has_pending_pairing,
+                t.pairing_expires AS pairing_expiry
+                FROM terminals t JOIN terminal_sites s ON s.id=t.site_id ORDER BY t.id DESC", []);
+            $devices = array_map(static function (array $row) use ($now): array {
+                $contact = terminal_contact_status($row['last_seen'], $now);
+
+                return [
+                    'id' => (int) $row['id'], 'name' => $row['name'], 'site' => $row['site'],
+                    // Native display metadata only, never an authorization grant.
+                    'permission_label' => $row['enabled'] ? 'Freigegeben'
+                        : ($row['has_pending_pairing'] && $row['pairing_expiry'] > $now ? 'Kopplung offen' : 'Gesperrt / abgelaufen'),
+                    'contact_state' => $contact['state'], 'contact_label' => $contact['label'],
+                    'last_seen_label' => $contact['last_seen'] === null ? '—' : attendance_local($contact['last_seen']),
+                ];
+            }, $rows);
+
+            // Raw pairing presence/expiry and enabled/last_seen never leave this read boundary.
+            return ['devices' => $devices, 'contact_max_age' => TERMINAL_CONTACT_MAX_AGE];
+        });
+    }
+
     public function workModelTargets(): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
