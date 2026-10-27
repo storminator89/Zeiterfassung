@@ -65,6 +65,10 @@ final class LocalWebRoutes
         ConvertEmptyStringsToNull::skipWhen($nativeFormPath);
 
         $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices) {
+            if ($includeAdminPauseSettings && $request->path() === 'get_user.php') {
+                return new Response('Please sign in again.', 401,
+                    ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
+            }
             if (($includeSettings && $request->path() === 'settings.php')
                 || ($includeAdminPauseSettings && $request->path() === 'admin.php')) {
                 return $request->isMethod('POST')
@@ -128,6 +132,7 @@ final class LocalWebRoutes
                 if ($includeAdminPauseSettings) {
                     $router->get('admin.php', [LocalWebAdminPauseSettingsController::class, 'index']);
                     $router->post('admin.php', [LocalWebAdminPauseSettingsController::class, 'store']);
+                    $router->get('get_user.php', [LocalWebAdminPauseSettingsController::class, 'user']);
                 }
                 if ($includeTerminalDevices) {
                     $router->get('terminals.php', [LocalWebTerminalDevicesController::class, 'index']);

@@ -2,10 +2,56 @@
 
 @section('content')
 <main class="container mx-auto px-4 py-8 chrono-page">
-    <div class="alert alert-info mb-4" role="note">In dieser Laravel-Ansicht sind die vorhandene Pausenregel- und Abteilungsverwaltung verbunden. Benutzer, LDAP, Zugangsdaten und API-Token sind hier noch nicht zur Verwaltung angebunden.</div>
+    <div class="alert alert-info mb-4" role="note">In dieser Laravel-Ansicht sind die vorhandene Pausenregel- und Abteilungsverwaltung verbunden; Benutzerliste und Benutzerdetails sind nur lesend verfügbar. Benutzeränderungen, LDAP, Zugangsdaten und API-Token sind hier noch nicht zur Verwaltung angebunden.</div>
     @if ($adminPauseSettings->error)
     <div class="alert alert-error shadow-lg mb-4" role="alert"><div><i class="fas fa-exclamation-circle"></i><span>{{ $adminPauseSettings->error }}</span></div></div>
     @endif
+    <div id="user-management" class="card bg-base-100 shadow-xl mb-8">
+        <div class="card-body">
+            <h2 class="card-title text-2xl mb-4">{{ $page->copy->text('USER_MANAGEMENT_TITLE') }}</h2>
+            <div id="user-mutations-hold" class="alert alert-info mb-4" role="note">Nur lesend: Benutzer erstellen, ändern oder löschen und Passwortänderungen sind hier noch nicht verbunden. Die angezeigten Werte werden nicht gespeichert.</div>
+            <button type="button" class="btn btn-primary mb-4" id="toggleUserForm" disabled aria-describedby="user-mutations-hold"><i class="fas fa-plus mr-2"></i>{{ $page->copy->text('BUTTON_CREATE_USER') }}</button>
+            <div id="user-detail-error" class="alert alert-error mb-4 hidden" role="alert"></div>
+            <form action="" method="GET" class="mb-4">
+                <div class="form-control"><div class="input-group">
+                    <input type="text" name="search" id="userSearch" class="input input-bordered" placeholder="{{ $page->copy->text('SEARCH_USERS') }}" value="{{ $adminPauseSettings->users['search'] ?? '' }}">
+                    <button class="btn btn-square" type="submit"><i class="fas fa-search"></i></button>
+                </div></div>
+            </form>
+            <div class="overflow-x-auto">
+                <table class="table w-full">
+                    <thead><tr>
+                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_USERNAME') }}</th>
+                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_EMAIL') }}</th>
+                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_ROLE') }}</th>
+                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_DEPARTMENT') }}</th>
+                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_SUPERVISOR') }}</th>
+                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_REGULAR_WORKING_HOURS') }}</th>
+                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_OVERTIME') }}</th>
+                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_ACTIONS') }}</th>
+                    </tr></thead>
+                    <tbody>
+                    @foreach (($adminPauseSettings->users['users'] ?? []) as $user)
+                        <tr>
+                            <td>{{ $user['username'] }}</td><td>{{ $user['email'] }}</td><td>{{ $user['role'] }}</td>
+                            <td>{{ $user['department_name'] ?? '' }}</td><td>{{ $user['supervisor_name'] ?? '' }}</td>
+                            <td>{{ $user['regelarbeitszeit'] }}</td><td>{{ $user['ueberstunden'] }}</td>
+                            <td>
+                                <button type="button" class="btn btn-ghost btn-sm" data-read-user="{{ $user['id'] }}" title="{{ $page->copy->text('BUTTON_EDIT') }}"><i class="fas fa-edit"></i></button>
+                                <button type="button" class="btn btn-ghost btn-sm" title="{{ $page->copy->text('BUTTON_DELETE') }}" disabled aria-describedby="user-mutations-hold"><i class="fas fa-trash-alt"></i></button>
+                            </td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div class="btn-group mt-4">
+            @for ($i = 1; $i <= ($adminPauseSettings->users['total_pages'] ?? 0); $i++)
+                <a href="?page={{ $i }}&amp;search={{ urlencode($adminPauseSettings->users['search']) }}" class="btn {{ $i === $adminPauseSettings->users['page'] ? 'btn-active' : '' }}">{{ $i }}</a>
+            @endfor
+            </div>
+        </div>
+    </div>
     <div id="pause-settings" class="card bg-base-100 shadow-xl mb-8">
         <div class="card-body">
             <h2 class="card-title text-2xl mb-4">{{ $page->copy->text('PAUSE_SETTINGS_TITLE') }}</h2>
@@ -74,6 +120,31 @@
         </div>
     </div>
 </main>
+<dialog id="editUserModal" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">{{ $page->copy->text('MODAL_TITLE_EDIT_USER') }}</h3>
+        <div id="user-detail-hold" class="alert alert-info mb-4" role="note">Nur lesende Benutzerdetails. Änderungen und Passwortaktionen sind nicht verbunden; es gibt hier keine Speicherung.</div>
+        <input type="hidden" id="edit_user_id">
+        <div class="form-control mb-4"><label class="label" for="edit_username"><span class="label-text">{{ $page->copy->text('FORM_USERNAME') }}</span></label><input type="text" id="edit_username" class="input input-bordered" readonly></div>
+        <div class="form-control mb-4"><label class="label" for="edit_email"><span class="label-text">{{ $page->copy->text('FORM_EMAIL') }}</span></label><input type="email" id="edit_email" class="input input-bordered" readonly></div>
+        <div class="form-control mb-4"><label class="label" for="edit_role"><span class="label-text">{{ $page->copy->text('FORM_ROLE') }}</span></label>
+            <select id="edit_role" class="select select-bordered" disabled>
+                <option value="user">{{ $page->copy->text('FORM_ROLE_USER') }}</option><option value="admin">{{ $page->copy->text('FORM_ROLE_ADMIN') }}</option><option value="supervisor">{{ $page->copy->text('FORM_ROLE_SUPERVISOR') }}</option>
+            </select>
+        </div>
+        <div class="form-control mb-4"><label class="label" for="edit_department"><span class="label-text">{{ $page->copy->text('FORM_DEPARTMENT') }}</span></label><select id="edit_department" class="select select-bordered" disabled></select></div>
+        <div class="form-control mb-4"><label class="label" for="edit_supervisor"><span class="label-text">{{ $page->copy->text('FORM_SUPERVISOR') }}</span></label><select id="edit_supervisor" class="select select-bordered" disabled></select></div>
+        <div class="form-control mb-4"><label class="label" for="edit_regelarbeitszeit"><span class="label-text">{{ $page->copy->text('FORM_REGULAR_WORKING_HOURS') }}</span></label>
+            <p>Änderungen am Soll bitte unter <a href="work_models.php">Arbeitszeitmodelle</a> mit Gültigkeitsdatum speichern.</p><input readonly type="number" id="edit_regelarbeitszeit" class="input input-bordered" step="0.01">
+        </div>
+        <div class="form-control mb-4"><label class="label" for="edit_ueberstunden"><span class="label-text">{{ $page->copy->text('FORM_OVERTIME') }}</span></label><input type="number" id="edit_ueberstunden" class="input input-bordered" step="0.01" readonly></div>
+        <div class="form-control mb-4"><label class="label" for="edit_password"><span class="label-text">{{ $page->copy->text('FORM_NEW_PASSWORD') }}</span></label><input type="password" id="edit_password" class="input input-bordered" value="" disabled aria-describedby="user-detail-hold"></div>
+        <div class="modal-action">
+            <button type="button" class="btn btn-primary" disabled aria-describedby="user-detail-hold">{{ $page->copy->text('BUTTON_SAVE_CHANGES') }}</button>
+            <button type="button" class="btn" onclick="closeEditUserModal()">{{ $page->copy->text('BUTTON_CANCEL') }}</button>
+        </div>
+    </div>
+</dialog>
 <dialog id="editDepartmentModal" class="modal">
     <form method="post" class="modal-box">
         @csrf
@@ -140,6 +211,48 @@
     }
     function closeEditDepartmentModal() {
         document.getElementById('editDepartmentModal').close();
+    }
+</script>
+<script>
+    // Existing get_user.php fresh-on-open interaction, with UI-only read projection.
+    let userDetailRequest = 0;
+    document.querySelectorAll('[data-read-user]').forEach(function (button) {
+        button.addEventListener('click', function () { editUser(button.dataset.readUser); });
+    });
+    async function editUser(userId) {
+        const request = ++userDetailRequest;
+        const modal = document.getElementById('editUserModal');
+        const error = document.getElementById('user-detail-error');
+        if (modal.open) modal.close();
+        error.textContent = '';
+        error.classList.add('hidden');
+        ['edit_user_id', 'edit_username', 'edit_email', 'edit_role', 'edit_regelarbeitszeit', 'edit_ueberstunden', 'edit_password'].forEach(function (id) { document.getElementById(id).value = ''; });
+        document.getElementById('edit_department').replaceChildren();
+        document.getElementById('edit_supervisor').replaceChildren();
+        try {
+            const response = await fetch('get_user.php?id=' + encodeURIComponent(userId), {headers: {'Accept': 'application/json'}});
+            if (!response.ok) throw new Error('Benutzerdetails nicht verfügbar. Bitte neu laden und erneut anmelden.');
+            const data = await response.json();
+            if (request !== userDetailRequest) return;
+            if (!data || String(data.id) !== String(userId)) throw new Error('Benutzerdetails nicht verfügbar. Bitte neu laden.');
+            document.getElementById('edit_user_id').value = data.id;
+            document.getElementById('edit_username').value = data.username;
+            document.getElementById('edit_email').value = data.email;
+            document.getElementById('edit_role').value = data.role;
+            document.getElementById('edit_department').replaceChildren(new Option(data.department_name ?? '', data.department_id ?? '', true, true));
+            document.getElementById('edit_supervisor').replaceChildren(new Option(data.supervisor_name ?? (data.supervisor_id ? '' : {!! \Illuminate\Support\Js::from($page->copy->text('FORM_NO_SUPERVISOR')) !!}), data.supervisor_id || '', true, true));
+            document.getElementById('edit_regelarbeitszeit').value = data.regelarbeitszeit;
+            document.getElementById('edit_ueberstunden').value = data.ueberstunden;
+            modal.showModal();
+        } catch (failure) {
+            if (request !== userDetailRequest) return;
+            error.textContent = 'Benutzerdetails nicht verfügbar. Bitte neu laden und erneut anmelden.';
+            error.classList.remove('hidden');
+        }
+    }
+    function closeEditUserModal() {
+        ++userDetailRequest;
+        document.getElementById('editUserModal').close();
     }
 </script>
 @endsection

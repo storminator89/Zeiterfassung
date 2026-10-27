@@ -428,6 +428,66 @@ final class LegacyChronoReads implements ChronoReads
         });
     }
 
+    public function adminUsersPage(string $search = '', int $page = 1): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($search, $page): array {
+            if ($actor->role !== 'admin' || $actor->auth_source !== 'local') {
+                throw new AuthorizationException('Nur die Verwaltung darf Benutzer einsehen.');
+            }
+
+            // Native scope/LIKE/order/paging; explicitly select only current table fields.
+            $perPage = 10;
+            $searchParam = "%$search%";
+            $offset = ($page - 1) * $perPage;
+            $statement = $pdo->prepare('SELECT users.id, users.username, users.email, users.role,
+                departments.name AS department_name, supervisors.username AS supervisor_name,
+                users.regelarbeitszeit, users.ueberstunden
+                FROM users
+                LEFT JOIN departments ON users.department_id = departments.id
+                LEFT JOIN users AS supervisors ON users.supervisor_id = supervisors.id
+                WHERE users.username LIKE :search OR users.email LIKE :search
+                ORDER BY users.username LIMIT :offset, :perPage');
+            $statement->bindValue(':search', $searchParam, PDO::PARAM_STR);
+            $statement->bindValue(':offset', $offset, PDO::PARAM_INT);
+            $statement->bindValue(':perPage', $perPage, PDO::PARAM_INT);
+            $statement->execute();
+            $users = $statement->fetchAll(PDO::FETCH_ASSOC);
+            $statement->closeCursor();
+            $total = (int) $this->rows($pdo,
+                'SELECT COUNT(*) AS total FROM users WHERE username LIKE :search OR email LIKE :search',
+                ['search' => $searchParam],
+            )[0]['total'];
+
+            return ['users' => $users, 'search' => $search, 'page' => $page,
+                'per_page' => $perPage, 'total' => $total, 'total_pages' => (int) ceil($total / $perPage)];
+        });
+    }
+
+    public function adminUserDetail(mixed $identifier): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($identifier): array {
+            if ($actor->role !== 'admin' || $actor->auth_source !== 'local') {
+                throw new AuthorizationException('Nur die Verwaltung darf Benutzer einsehen.');
+            }
+            if ($identifier === null) {
+                throw new \InvalidArgumentException('Benutzer-ID nicht angegeben');
+            }
+            if (! is_scalar($identifier)) {
+                throw new \InvalidArgumentException('Ungültige Benutzer-ID.');
+            }
+
+            // No SELECT *, model serialization, password, token or auth_source.
+            // Identifier stays a bound scalar, preserving native SQLite lookup coercion.
+            return $this->rows($pdo, 'SELECT users.id, users.username, users.email, users.role,
+                users.department_id, users.supervisor_id, users.regelarbeitszeit, users.ueberstunden,
+                departments.name AS department_name, supervisors.username AS supervisor_name
+                FROM users
+                LEFT JOIN departments ON users.department_id = departments.id
+                LEFT JOIN users AS supervisors ON users.supervisor_id = supervisors.id
+                WHERE users.id = ?', [$identifier])[0] ?? [];
+        });
+    }
+
     public function workModelTargets(): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
