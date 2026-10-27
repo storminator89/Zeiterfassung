@@ -3,7 +3,7 @@
   "info": {
     "title": "Zeiterfassung API",
     "version": "2.0",
-    "description": "Server-time attendance with actual breaks. Historical changes and cancellations require approved correction requests."
+    "description": "Source-checked native api.php contract at 1b526453439f1ff6973131f0b2ebb8f40466a74b (2026-10-27); documentation only, not a runtime acceptance. Server-time attendance and actual breaks; own-account reads only. Errors remain mixed JSON and text/plain as shown per response, including bootstrap failures. See docs/API-CONTRACT.md for legacy limits and the unimplemented canonical JSON-error target. No geolocation webhook is implemented in this router. Inactive framework candidates are not published endpoints."
   },
   "paths": {
     "/api.php/login": {
@@ -33,132 +33,90 @@
         },
         "responses": {
           "200": {
-            "description": "Successful login",
+            "description": "Successful login.",
             "content": {
               "application/json": {
-                "examples": {
-                  "success": {
-                    "summary": "Successful login",
-                    "value": {
-                      "success": true,
-                      "token": "your_jwt_token_here"
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "token"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "token": {
+                      "type": "string"
                     }
                   }
+                },
+                "example": {
+                  "success": true,
+                  "token": "your_jwt_token_here"
                 }
               }
             }
           },
+          "400": {
+            "description": "Missing/non-string username or password: text/plain.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "Username and password required."
+              }
+            }
+          },
           "401": {
-            "description": "Invalid credentials",
+            "description": "Invalid credentials: JSON (unlike protected-route bearer 401).",
             "content": {
               "application/json": {
-                "examples": {
-                  "error": {
-                    "summary": "Invalid credentials",
-                    "value": {
-                      "success": false,
-                      "message": "Invalid credentials"
-                    }
-                  }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Invalid credentials"
                 }
               }
             }
+          },
+          "429": {
+            "description": "Shared login budget exceeded: text/plain.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "Too many login attempts. Try again later."
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Current retry delay in seconds.",
+                "schema": {
+                  "type": "integer"
+                },
+                "example": 600
+              }
+            }
+          },
+          "503": {
+            "$ref": "#/components/responses/BootstrapUnavailable"
           }
-        }
+        },
+        "description": "Local-account credential login only; no LDAP login here. Token lasts one hour, is invalidated by password change/account deletion. Pre-handler and malformed-input exceptions are not all normalized.",
+        "security": []
       }
     },
     "/api.php/workentry": {
       "post": {
         "summary": "Start work using server time",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "event_id": {
-                    "type": "string",
-                    "minLength": 16,
-                    "maxLength": 80
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Work entry created",
-            "content": {
-              "application/json": {
-                "examples": {
-                  "success": {
-                    "summary": "Work entry created",
-                    "value": {
-                      "success": true,
-                      "message": "Eintrag erstellt",
-                      "data": {
-                        "id": 1,
-                        "startzeit": "2024-05-24T09:00:00",
-                        "endzeit": "2024-05-24T17:00:00",
-                        "pause": 60,
-                        "beschreibung": "Worked on project X",
-                        "standort": "Office",
-                        "user_id": 1
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "examples": {
-                  "error": {
-                    "summary": "Unauthorized",
-                    "value": {
-                      "success": false,
-                      "message": "Authorization header missing"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "examples": {
-                  "error": {
-                    "summary": "Internal server error",
-                    "value": {
-                      "success": false,
-                      "message": "Internal server error"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Already working or historical entry requires correction"
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "description": "Compatibility alias for attendance/start. Client startzeit is not authoritative; endzeit or nonzero pause are rejected (409)."
-      }
-    },
-    "/api.php/setendzeit": {
-      "post": {
-        "summary": "Set end time of a specific work entry",
         "requestBody": {
           "required": true,
           "content": {
@@ -166,66 +124,88 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "id": {
-                    "type": "integer"
+                  "event_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{16,80}$",
+                    "minLength": 16,
+                    "maxLength": 80
                   }
-                },
-                "required": [
-                  "id"
-                ]
+                }
+              },
+              "example": {
+                "event_id": "example-start-000001"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "End time updated",
+            "description": "Confirmed server-time start; top-level record_id, no data.id.",
             "content": {
               "application/json": {
-                "examples": {
-                  "success": {
-                    "summary": "End time updated",
-                    "value": {
-                      "success": true,
-                      "message": "Endzeit aktualisiert",
-                      "id": 1
-                    }
-                  }
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceReceipt"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Buchung bestätigt.",
+                  "time": "2026-10-27T08:00:00+00:00",
+                  "local_time": "2026-10-27T09:00:00+01:00",
+                  "event_id": "example-start-000001",
+                  "record_id": 42,
+                  "state": "working"
                 }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON or decoded body that is neither array nor object: text/plain. Arrays, including [], pass the legacy array check. Invalid event ID: JSON. Other malformed types need runtime hardening.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Ungültige Ereignis-ID."
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "Invalid request."
               }
             }
           },
           "401": {
-            "description": "Unauthorized",
+            "$ref": "#/components/responses/BearerUnauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/AttendanceForbidden"
+          },
+          "409": {
+            "description": "Historical fields rejected as text/plain; attendance state/overlap conflicts use JSON.",
             "content": {
               "application/json": {
-                "examples": {
-                  "error": {
-                    "summary": "Unauthorized",
-                    "value": {
-                      "success": false,
-                      "message": "Authorization header missing"
-                    }
-                  }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Bereits eine offene Arbeitszeit vorhanden."
                 }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "Use a correction request for historical entries."
               }
             }
           },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "examples": {
-                  "error": {
-                    "summary": "Internal server error",
-                    "value": {
-                      "success": false,
-                      "message": "Internal server error"
-                    }
-                  }
-                }
-              }
-            }
+          "503": {
+            "$ref": "#/components/responses/AttendanceUnavailable"
           }
         },
         "security": [
@@ -233,7 +213,88 @@
             "bearerAuth": []
           }
         ],
-        "description": "End the current work session using server time. id must match the current record. Actual breaks only; optional event_id and confirm_end_pause."
+        "description": "Compatibility alias for attendance/start, not a historical entry writer. Send an object and stable event_id for safe retries. If event_id is absent/null, a random ID is generated, so retry cannot be correlated. Non-empty endzeit or pause triggers text-409; client startzeit/description/location are not used. Actual start uses server time, empty description and office."
+      }
+    },
+    "/api.php/setendzeit": {
+      "post": {
+        "summary": "End the current own work session using server time",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "event_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{16,80}$",
+                    "minLength": 16,
+                    "maxLength": 80
+                  },
+                  "confirm_end_pause": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              },
+              "example": {
+                "id": 42,
+                "event_id": "example-end-00000001",
+                "confirm_end_pause": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Confirmed end; affected record_id stays positive even though state is absent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceReceipt"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Buchung bestätigt.",
+                  "time": "2026-10-27T16:00:00+00:00",
+                  "local_time": "2026-10-27T17:00:00+01:00",
+                  "event_id": "example-end-00000001",
+                  "record_id": 42,
+                  "state": "absent"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/AttendanceBadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/BearerUnauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/AttendanceForbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/AttendanceConflict"
+          },
+          "503": {
+            "$ref": "#/components/responses/AttendanceUnavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Compatibility alias for attendance/end. Request id must match the current record; it is integer-coerced by the legacy adapter (missing/null becomes 0 and conflicts). Response uses top-level record_id, not id. Omitted/null event_id generates a random ID: supply a stable ID for retries. Only boolean true confirms an active pause; client timestamps are ignored."
       }
     },
     "/api.php/users": {
@@ -241,72 +302,42 @@
         "summary": "Get the authenticated user",
         "responses": {
           "200": {
-            "description": "Current user (one-element array)",
+            "description": "Current own user.",
             "content": {
               "application/json": {
-                "examples": {
-                  "success": {
-                    "summary": "Current user (one-element array)",
-                    "value": {
-                      "success": true,
-                      "data": [
-                        {
-                          "id": 1,
-                          "username": "admin",
-                          "email": "admin@example.com",
-                          "role": "admin"
-                        },
-                        {
-                          "id": 2,
-                          "username": "user",
-                          "email": "user@example.com",
-                          "role": "user"
-                        }
-                      ]
+                "schema": {
+                  "$ref": "#/components/schemas/UsersResponse"
+                },
+                "example": {
+                  "success": true,
+                  "data": [
+                    {
+                      "id": 7,
+                      "username": "example-user",
+                      "email": "example@example.invalid",
+                      "role": "user"
                     }
-                  }
+                  ]
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "examples": {
-                  "error": {
-                    "summary": "Unauthorized",
-                    "value": {
-                      "success": false,
-                      "message": "Authorization header missing"
-                    }
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/responses/BearerUnauthorized"
           },
           "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "examples": {
-                  "error": {
-                    "summary": "Internal server error",
-                    "value": {
-                      "success": false,
-                      "message": "Internal server error"
-                    }
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/responses/ReadFailure"
+          },
+          "503": {
+            "$ref": "#/components/responses/BootstrapUnavailable"
           }
         },
         "security": [
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "description": "Own account only, even for an administrator. No user/team selector. Normally one item, never a directory of multiple people."
       }
     },
     "/api.php/timeentries": {
@@ -316,170 +347,103 @@
           {
             "name": "start_date",
             "in": "query",
-            "description": "Start date (YYYY-MM-DD)",
             "required": false,
+            "description": "Inclusive Europe/Berlin reporting start-day lower bound via chrono_api_booking_day(startzeit); YYYY-MM-DD syntax only. Offset-free stored values are interpreted in Berlin; offset/Z values are converted to Berlin. Unreadable starts are excluded only when date filtering is used.",
             "schema": {
               "type": "string",
-              "format": "date"
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
             }
           },
           {
             "name": "end_date",
             "in": "query",
-            "description": "End date (YYYY-MM-DD)",
             "required": false,
+            "description": "Inclusive Europe/Berlin reporting start-day upper bound via chrono_api_booking_day(startzeit); no calendar or start<=end validation. Overnight entries belong to their Berlin start day; count and page use the same predicate.",
             "schema": {
               "type": "string",
-              "format": "date"
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
             }
           },
           {
             "name": "limit",
             "in": "query",
-            "description": "Maximum number of entries to return",
             "required": false,
+            "description": "Use a positive integer. Current handler accepts is_numeric then PHP int-casts, with no enforced minimum/maximum/default. Non-numeric input is ignored by SQL but still cast in meta.",
             "schema": {
-              "type": "integer",
-              "minimum": 1
+              "type": "string"
             }
           },
           {
             "name": "offset",
             "in": "query",
-            "description": "Number of entries to skip",
             "required": false,
+            "description": "Use a non-negative integer. Current handler accepts is_numeric then PHP int-casts, no enforced range; offset without numeric limit adds LIMIT -1.",
             "schema": {
-              "type": "integer",
-              "minimum": 0
+              "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "List of time entries with pagination metadata",
+            "description": "Own entries with raw legacy fields and pagination metadata.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "integer"
-                          },
-                          "startzeit": {
-                            "type": "string",
-                            "format": "date-time"
-                          },
-                          "endzeit": {
-                            "type": "string",
-                            "format": "date-time"
-                          },
-                          "pause": {
-                            "type": "integer"
-                          },
-                          "beschreibung": {
-                            "type": "string"
-                          },
-                          "standort": {
-                            "type": "string"
-                          },
-                          "user_id": {
-                            "type": "integer"
-                          }
-                        }
-                      }
-                    },
-                    "meta": {
-                      "type": "object",
-                      "properties": {
-                        "total": {
-                          "type": "integer",
-                          "description": "Total number of entries"
-                        },
-                        "filtered": {
-                          "type": "integer",
-                          "description": "Number of entries in current response"
-                        },
-                        "limit": {
-                          "type": "integer",
-                          "nullable": true,
-                          "description": "Number of entries per page"
-                        },
-                        "offset": {
-                          "type": "integer",
-                          "nullable": true,
-                          "description": "Number of entries skipped"
-                        }
-                      }
+                  "$ref": "#/components/schemas/TimeEntriesResponse"
+                },
+                "example": {
+                  "success": true,
+                  "data": [
+                    {
+                      "id": 42,
+                      "startzeit": "2026-10-27T09:00:00+01:00",
+                      "endzeit": null,
+                      "pause": 0,
+                      "beschreibung": "",
+                      "standort": "office",
+                      "user_id": 7
                     }
+                  ],
+                  "meta": {
+                    "total": 1,
+                    "filtered": 1,
+                    "limit": 1,
+                    "offset": null
                   }
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid parameters",
+            "description": "Invalid scalar date syntax (not a full calendar-validation guarantee).",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Invalid start_date format. Use YYYY-MM-DD"
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "examples": {
-                  "error": {
-                    "summary": "Unauthorized",
-                    "value": {
-                      "success": false,
-                      "message": "Authorization header missing"
-                    }
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/responses/BearerUnauthorized"
           },
           "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "examples": {
-                  "error": {
-                    "summary": "Internal server error",
-                    "value": {
-                      "success": false,
-                      "message": "Internal server error"
-                    }
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/responses/ReadFailure"
+          },
+          "503": {
+            "$ref": "#/components/responses/BootstrapUnavailable"
           }
         },
         "security": [
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "description": "Own raw reporting rows ordered by stored startzeit DESC; no user_id selector, overlap-window selection or normalization. Inclusive date bounds use the Europe/Berlin reporting start day via chrono_api_booking_day(startzeit), shared with report_day; no day splitting. Empty/unreadable starts are excluded under date filters, not repaired. Syntax-only query dates, PHP numeric/int coercion, no default/max page size. Offset alone uses LIMIT -1. See docs/API-CONTRACT.md for date and pagination limits."
       }
     },
     "/api.php/timeentry/{id}": {
@@ -491,16 +455,28 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "pattern": "^\\d+$"
             }
           }
         ],
         "responses": {
-          "409": {
-            "description": "Cancellation requires approved correction"
-          },
           "401": {
-            "description": "Unauthorized"
+            "$ref": "#/components/responses/BearerUnauthorized"
+          },
+          "409": {
+            "description": "Cancellation requires an approved correction request: text/plain.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "Use an approved correction request to cancel a record."
+              }
+            }
+          },
+          "503": {
+            "$ref": "#/components/responses/BootstrapUnavailable"
           }
         },
         "security": [
@@ -508,7 +484,8 @@
             "bearerAuth": []
           }
         ],
-        "deprecated": true
+        "deprecated": true,
+        "description": "Native numeric-ID route is an authenticated lock, not a deletion endpoint. It always refuses with text-409; no record lookup and no 200/403/404 record-specific outcome. No correction-submission API is implied."
       }
     },
     "/api.php/attendance": {
@@ -541,32 +518,109 @@
                   },
                   "event_id": {
                     "type": "string",
-                    "pattern": "^[A-Za-z0-9_-]{16,80}$"
+                    "pattern": "^[A-Za-z0-9_-]{16,80}$",
+                    "minLength": 16,
+                    "maxLength": 80
                   },
                   "confirm_end_pause": {
                     "type": "boolean",
                     "default": false
                   }
                 }
+              },
+              "example": {
+                "action": "start",
+                "event_id": "example-start-000001",
+                "confirm_end_pause": false
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Confirmed transition; retry same event_id and content to receive same result"
+            "description": "Confirmed event, or stored idempotent replay. Refresh GET status after an acknowledgement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceReceipt"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Buchung bestätigt.",
+                  "time": "2026-10-27T08:00:00+00:00",
+                  "local_time": "2026-10-27T09:00:00+01:00",
+                  "event_id": "example-start-000001",
+                  "record_id": 42,
+                  "state": "working"
+                }
+              }
+            }
           },
           "400": {
-            "description": "Invalid event"
+            "$ref": "#/components/responses/AttendanceBadRequest"
           },
           "401": {
-            "description": "Unauthorized"
+            "$ref": "#/components/responses/BearerUnauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/AttendanceForbidden"
           },
           "409": {
-            "description": "State conflict or confirmation required"
+            "$ref": "#/components/responses/AttendanceConflict"
           },
           "503": {
-            "description": "Unconfirmed; retry same event ID"
+            "$ref": "#/components/responses/AttendanceUnavailable"
+          }
+        },
+        "description": "Own server-time start/pause/end transition. event_id is required; reuse the identical ID and parsed action/confirmation/expected-record semantics after an unconfirmed response. Same-ID payload conflict is 409; stored replay can be stale. Only boolean true confirms ending an active pause. This route ignores id; use setendzeit when the extension binds end to a known record. Request timestamps/location/user selectors are not authoritative."
+      },
+      "get": {
+        "summary": "Read authoritative own attendance status",
+        "description": "Read-only own status snapshot with existing bearer validation. No query/body user selector, booking, event_id, time or local_time. absent -> record_id null; working/paused -> positive integer. A legacy open reporting row can return working without a managed session; multiple legacy open rows are not diagnosed by this read.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current own state, not a historical acknowledgement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceStatus"
+                },
+                "examples": {
+                  "absent": {
+                    "value": {
+                      "success": true,
+                      "state": "absent",
+                      "record_id": null
+                    }
+                  },
+                  "working": {
+                    "value": {
+                      "success": true,
+                      "state": "working",
+                      "record_id": 42
+                    }
+                  },
+                  "paused": {
+                    "value": {
+                      "success": true,
+                      "state": "paused",
+                      "record_id": 42
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BearerUnauthorized"
+          },
+          "503": {
+            "$ref": "#/components/responses/AttendanceUnavailable"
           }
         }
       }
@@ -579,6 +633,362 @@
         "scheme": "bearer",
         "bearerFormat": "JWT"
       }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "description": "Existing JSON error envelope, and proposed canonical target for remaining text errors. This schema does not claim all current errors are JSON. Message text is not a stable machine error code."
+      },
+      "AttendanceStatus": {
+        "type": "object",
+        "required": [
+          "success",
+          "state",
+          "record_id"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "absent",
+              "working",
+              "paused"
+            ]
+          },
+          "record_id": {
+            "type": "integer",
+            "minimum": 1,
+            "nullable": true,
+            "description": "Current own open record, otherwise null. Legacy open reporting rows can yield working."
+          }
+        },
+        "description": "Read-only status: absent has null record_id; working/paused have a positive integer record_id. No event ID or timestamp is returned."
+      },
+      "AttendanceReceipt": {
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "time",
+          "local_time",
+          "event_id",
+          "record_id",
+          "state"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Server UTC event time."
+          },
+          "local_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Same event in Europe/Berlin with explicit offset."
+          },
+          "event_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{16,80}$",
+            "minLength": 16,
+            "maxLength": 80
+          },
+          "record_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Confirmed affected record, including after end; not data.id and not null when state is absent."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "absent",
+              "working",
+              "paused"
+            ]
+          },
+          "pause_warning": {
+            "type": "string",
+            "description": "Optional warning after end; a configured minimum pause is not automatically deducted."
+          }
+        },
+        "description": "Stored acknowledgement of this event. A replay can describe an older state: refresh GET /attendance before another action."
+      },
+      "User": {
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "email",
+          "role"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "description": "Own selected DB fields; no global user list or new role enum."
+      },
+      "UsersResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "array",
+            "maxItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/User"
+            }
+          }
+        },
+        "description": "Normally one own user; SELECT can return an empty array if the account disappears between token validation and the read."
+      },
+      "TimeEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "startzeit",
+          "endzeit",
+          "pause",
+          "beschreibung",
+          "standort",
+          "user_id"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Legacy reporting-row ID (different field name from attendance receipt record_id)."
+          },
+          "startzeit": {
+            "type": "string",
+            "description": "Stored timestamp, not normalized by the read endpoint; legacy strings may lack an offset."
+          },
+          "endzeit": {
+            "type": "string",
+            "nullable": true
+          },
+          "pause": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Stored pause minutes; not recalculated by this endpoint."
+          },
+          "beschreibung": {
+            "type": "string",
+            "nullable": true
+          },
+          "standort": {
+            "type": "string",
+            "nullable": true
+          },
+          "user_id": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": true,
+        "description": "Raw own SELECT * reporting projection; legacy nullable fields and additional DB columns are not removed. Numeric examples assume normal SQLite/PDO serialization; values are not explicitly cast by the reader."
+      },
+      "TimeEntriesResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimeEntry"
+            }
+          },
+          "meta": {
+            "type": "object",
+            "required": [
+              "total",
+              "filtered",
+              "limit",
+              "offset"
+            ],
+            "properties": {
+              "total": {
+                "type": "integer",
+                "description": "Count of own date-filtered rows before pagination; PDO value is not explicitly cast."
+              },
+              "filtered": {
+                "type": "integer",
+                "description": "Rows returned on this page, not total matching rows."
+              },
+              "limit": {
+                "type": "integer",
+                "nullable": true
+              },
+              "offset": {
+                "type": "integer",
+                "nullable": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "BearerUnauthorized": {
+        "description": "Native bearer validation failure: text/plain, not JSON.",
+        "content": {
+          "text/plain": {
+            "schema": {
+              "type": "string"
+            },
+            "example": "Invalid or expired token."
+          }
+        }
+      },
+      "BootstrapUnavailable": {
+        "description": "Shared bootstrap/storage/database refusal before handler: text/plain. Other uncaught failures are not normalized.",
+        "content": {
+          "text/plain": {
+            "schema": {
+              "type": "string"
+            },
+            "example": "Database unavailable."
+          }
+        }
+      },
+      "AttendanceUnavailable": {
+        "description": "Handler failure: JSON-503, outcome unconfirmed; retry the same event ID and content for mutations. Earlier bootstrap refusal instead uses text/plain.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "success": false,
+              "message": "Buchung nicht bestätigt. Verbindung prüfen und denselben Vorgang erneut versuchen."
+            }
+          },
+          "text/plain": {
+            "schema": {
+              "type": "string"
+            },
+            "example": "Database unavailable."
+          }
+        }
+      },
+      "AttendanceBadRequest": {
+        "description": "Invalid event ID or action (JSON). Malformed types are not universally normalized to 400.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "success": false,
+              "message": "Ungültige Ereignis-ID."
+            }
+          }
+        }
+      },
+      "AttendanceForbidden": {
+        "description": "Account unavailable during transition (JSON).",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "success": false,
+              "message": "Konto nicht verfügbar."
+            }
+          }
+        }
+      },
+      "AttendanceConflict": {
+        "description": "State conflict, event ID reused with different content, expected record mismatch, overlap or missing active-pause confirmation (JSON).",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "success": false,
+              "message": "Aktive Pause und Arbeitszeit gemeinsam beenden? Bitte bestätigen."
+            }
+          }
+        }
+      },
+      "ReadFailure": {
+        "description": "Caught read exception (JSON).",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "success": false,
+              "message": "Internal server error"
+            }
+          }
+        }
+      }
     }
+  },
+  "x-source-commit": "1b526453439f1ff6973131f0b2ebb8f40466a74b",
+  "x-router-behavior": {
+    "OPTIONS": "200, empty body, any path before authentication/bootstrap; existing CORS permits GET, POST, OPTIONS, DELETE.",
+    "unknown-path": "GET/POST/DELETE unknown paths: 400 application/json {success:false,message:\"Invalid endpoint\"}.",
+    "unsupported-method": "Other methods, including HEAD: 405 application/json {success:false,message:\"Method Not Allowed\"}, after bootstrap.",
+    "unhandled-failures": "Not all PHP, infrastructure or malformed-input failures are caught. No universal JSON-body guarantee. No HTTP/runtime validation performed."
   }
 }
