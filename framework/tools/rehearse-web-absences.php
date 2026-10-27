@@ -20,7 +20,7 @@ $root = dirname(__DIR__, 2);
 require dirname(__DIR__).'/vendor/autoload.php';
 require $root.'/lib/attendance.php';
 require $root.'/lib/practice.php';
-require $root.'/lib/reporting.php';
+require_once $root.'/lib/reporting.php';
 $app = require dirname(__DIR__).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 $config = $app->make('config');

@@ -24,7 +24,12 @@ $offset = ($page - 1) * $itemsPerPage;
 
 // Sort actual instants before pagination; equal instants use the stable row ID.
 report_register_start_order($conn);
-$stmt = $conn->prepare("
+// Page rows and full conflict/day context must describe the same own-user
+// snapshot. Do not search only visible start-days: overnight counterparts can
+// belong to another day or page. functions.php has finished its native reads.
+$conn->beginTransaction();
+try {
+    $stmt = $conn->prepare("
     SELECT *,
            NULL AS weekNumber,
            substr(startzeit,1,10) as workDate
@@ -33,33 +38,22 @@ $stmt = $conn->prepare("
     ORDER BY chrono_report_start_epoch(startzeit) DESC, id DESC
     LIMIT ? OFFSET ?
 ");
-$stmt->execute([$user_id, $itemsPerPage, $offset]);
-$records = $stmt->fetchAll(PDO::FETCH_ASSOC);
-$stmt->closeCursor();
-
-// Keep ten raw rows per page, but total their entire Berlin start-days. Since
-// the page is instant-ordered, its visible dates form one chronological range.
-$completeDayRows = [];
-$visibleDays = [];
-if ($records !== []) {
-    foreach ($records as $record) {
-        $day = report_record_calculation($record)['day'];
-        if ($day !== null) { $visibleDays[] = $day; }
-    }
-}
-if (!empty($visibleDays)) {
-    $firstDay = new DateTimeImmutable(min($visibleDays), new DateTimeZone('Europe/Berlin'));
-    $afterLastDay = (new DateTimeImmutable(max($visibleDays), new DateTimeZone('Europe/Berlin')))->modify('+1 day');
-    $totalsStmt = $conn->prepare('SELECT startzeit,endzeit,pause FROM zeiterfassung
-        WHERE user_id = ? AND chrono_report_start_epoch(startzeit) >= ? AND chrono_report_start_epoch(startzeit) < ?');
+    $stmt->execute([$user_id, $itemsPerPage, $offset]);
+    $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt->closeCursor();
+    $totalsStmt = $conn->prepare('SELECT * FROM zeiterfassung WHERE user_id = ?');
     $totalsStmt->bindValue(1, (int)$user_id, PDO::PARAM_INT);
-    $totalsStmt->bindValue(2, $firstDay->getTimestamp(), PDO::PARAM_INT);
-    $totalsStmt->bindValue(3, $afterLastDay->getTimestamp(), PDO::PARAM_INT);
     $totalsStmt->execute();
     $completeDayRows = $totalsStmt->fetchAll(PDO::FETCH_ASSOC);
     $totalsStmt->closeCursor();
+    $listConflicts = report_absence_conflicts($completeDayRows);
+    $totalRecords = count($completeDayRows);
+    $conn->commit();
+} catch (Throwable $error) {
+    if ($conn->inTransaction()) { $conn->rollBack(); }
+    throw $error;
 }
-$recordGroups = report_time_record_groups($records, $completeDayRows);
+$recordGroups = report_time_record_groups($records, $completeDayRows, $listConflicts);
 
 // Group records by date for summary calculation
 $currentDate = null;
@@ -114,6 +108,9 @@ foreach ($recordGroups as $group) {
     $invalidNotice = $group['invalid_count'] > 0
         ? '<p class="text-sm text-warning mb-3" role="alert">Datenqualität: ' . $group['invalid_count'] . ' ungültige Einträge. Keine verlässliche Tagessumme; bitte „Korrektur / Storno“ verwenden.</p>'
         : '';
+    $conflictNotice = $group['is_unresolved']
+        ? '<p class="text-sm text-warning mb-3" role="alert">Klärung offen: Arbeitszeit und ganztägige Abwesenheit überschneiden sich. Die Tagessumme ist nicht abschließend. Einzelwerte bleiben unverändert; bitte über „Korrektur / Storno“ mit Freigabe klären.</p>'
+        : '';
 
     // Update the summary row output with entry count
     echo '<tr class="summary-row hover:bg-base-200/50 cursor-pointer transition-colors" data-date="' . $workDate . '">
@@ -128,6 +125,7 @@ foreach ($recordGroups as $group) {
                             ' . $entryCountLabel . ($group['is_partial'] ? ' · Teilansicht' : '') . '
                         </div>
                         ' . ($group['invalid_count'] > 0 ? '<span class="badge badge-warning badge-sm">Daten prüfen</span>' : '') . '
+                        ' . ($group['is_unresolved'] ? '<span class="badge badge-warning badge-sm">Klärung offen</span>' : '') . '
                     </div>
                 </div>
             </td>
@@ -152,6 +150,7 @@ foreach ($recordGroups as $group) {
                 <div class="pl-14 pr-6 py-4 border-l-4 border-primary/10">
                     ' . $partialDayNotice . '
                     ' . $invalidNotice . '
+                    ' . $conflictNotice . '
                     <table class="table w-full">
                         <thead class="bg-base-200/50">
                             <tr>
@@ -180,10 +179,7 @@ foreach ($recordGroups as $group) {
 
 echo '</tbody></table></div>';
 
-// Fetch total number of records
-$stmt = $conn->prepare("SELECT COUNT(*) FROM zeiterfassung WHERE user_id = ?");
-$stmt->execute([$user_id]);
-$totalRecords = $stmt->fetchColumn();
+// Pagination count belongs to the same snapshot as the displayed page/context.
 $totalPages = ceil($totalRecords / $itemsPerPage);
 
 // Generate pagination HTML
@@ -235,5 +231,6 @@ function outputRecordRow($record) {
     $endLabel = $detail['end_label'];
     $durationLabel = $detail['duration_label'];
     $qualityLabel = $detail['is_invalid'] ? '<span class="block text-sm text-warning">'.h($detail['validation_error']).'</span>' : '';
-    echo '<tr><td>'.h($record['weekNumber']).'</td><td>'.h($startLabel).'</td><td>'.h($endLabel).'</td><td>'.h($durationLabel).$qualityLabel.'</td><td>'.h($record['pause']).'</td><td>'.h($record['standort']).'</td><td>'.h($record['beschreibung']).'</td><td><a class="link link-primary" href="adjustments.php?record_id='.(int)$record['id'].'">Korrektur / Storno</a></td></tr>';
+    $conflictLabel = $detail['is_unresolved'] ? '<span class="block text-sm text-warning">Klärung offen · Überschneidung mit Arbeitszeit / Abwesenheit. Einzelwert unverändert.</span>' : '';
+    echo '<tr><td>'.h($record['weekNumber']).'</td><td>'.h($startLabel).'</td><td>'.h($endLabel).'</td><td>'.h($durationLabel).$qualityLabel.$conflictLabel.'</td><td>'.h($record['pause']).'</td><td>'.h($record['standort']).'</td><td>'.h($record['beschreibung']).'</td><td><a class="link link-primary" href="adjustments.php?record_id='.(int)$record['id'].'">Korrektur / Storno</a></td></tr>';
 }

@@ -91,11 +91,16 @@ $currentMonthName = $months[$currentMonth];
 fetchFeiertageDB($currentYear);
 [$firstDayOfWeek,$lastDayOfWeek]=report_week_bounds(date('Y-m-d'));
 $reportInvalidRecords=[];
-$reportDays=report_days($records,$reportInvalidRecords);
+$reportAbsenceConflicts=[];
+$reportDays=report_days($records,$reportInvalidRecords,$reportAbsenceConflicts);
+$reportTotalUnresolved=$reportAbsenceConflicts!==[];
+$reportWeekUnresolved=report_conflicts_in_period($reportAbsenceConflicts,$firstDayOfWeek,$lastDayOfWeek);
 $totalMinutesThisWeek=report_period_minutes($reportDays,$firstDayOfWeek,$lastDayOfWeek);
 $totalHoursThisWeek=$totalMinutesThisWeek/60;
 $currentMonthStart="{$currentYear}-{$currentMonth}-01";
 $currentMonthEnd=date('Y-m-t');
+$reportMonthUnresolved=report_conflicts_in_period($reportAbsenceConflicts,$currentMonthStart,$currentMonthEnd);
+$reportYearUnresolved=report_conflicts_in_period($reportAbsenceConflicts,"$currentYear-01-01","$currentYear-12-31");
 $workingHoursThisMonth=getWorkingHours($currentMonthStart,$currentMonthEnd,$userRegularWorkingHours);
 $currentDate=date('Y-m-d');
 $workHoursPerDay=[];$days=[];$hours=[];
@@ -209,7 +214,7 @@ $workHoursByDate=[];$totalOverHours=home_total_overtime($conn,(int)$user_id,$rep
 foreach ($reportDays as $day=>$minutes) {
     $workHoursByDate[$day]=$minutes/60;
 }
-$totalOverHoursFormatted=report_format_hours($totalOverHours);
+$totalOverHoursFormatted=$reportTotalUnresolved ? 'Klärung offen' : report_format_hours($totalOverHours);
 $totalMinutesThisMonthFromRecords=report_period_minutes($reportDays,$currentMonthStart,$currentMonthEnd);
 $totalHoursThisMonthFromRecords=$totalMinutesThisMonthFromRecords/60;
 $overHoursThisMonth=$totalHoursThisMonthFromRecords-$workingHoursThisMonth;

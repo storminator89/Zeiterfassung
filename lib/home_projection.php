@@ -96,6 +96,7 @@ function report_time_record_detail(array $record): array
         'comment' => $record['beschreibung'],
         'is_invalid' => $invalid,
         'validation_error' => $calculation['error'],
+        'is_unresolved' => !empty($record['has_absence_conflict']),
     ];
 }
 
@@ -104,15 +105,22 @@ function report_time_record_detail(array $record): array
  * Complete, already-own-user-scoped rows affect totals only (CH-05), not rows.
  * A bad completed interval/pause invalidates its whole day's displayed total;
  * unreadable starts remain visible without acquiring an invented calendar day.
+ * Conflicts must be derived from complete own-user rows before pagination or
+ * start-day filtering. A counterpart can start on a different, off-page day.
+ * Measured source durations/pauses remain visible; conflicted day totals are
+ * explicitly unresolved, not a choice to zero either source projection.
  * No SQL, escaping, HTML, data changes or global timezone mutation.
  */
-function report_time_record_groups(array $pagedRows, ?array $completeDayRows = null): array
+function report_time_record_groups(array $pagedRows, ?array $completeDayRows = null, ?array $conflicts = null): array
 {
+    $conflicts ??= report_absence_conflicts($completeDayRows ?? $pagedRows);
+    $conflictLookup = report_conflict_lookup($conflicts);
     $dailyRecords = [];
     foreach ($pagedRows as $index => $record) {
         $calculation = report_record_calculation($record);
         $record['weekNumber'] = $calculation['week'] === null ? '-' : substr($calculation['week'], 5);
         $record['workDate'] = $calculation['day'];
+        $record['has_absence_conflict'] = isset($conflictLookup[report_conflict_key($record)]);
         // An opaque DOM key is not a report date; keep each undated source row.
         $key = $calculation['day'] ?? 'invalid-start-' . (int)$record['id'] . '-' . $index;
         $dailyRecords[$key][] = $record;
@@ -149,13 +157,23 @@ function report_time_record_groups(array $pagedRows, ?array $completeDayRows = n
             }
         }
         $workDate = $dayRecords[0]['workDate'];
+        $subject = (int)($dayRecords[0]['user_id'] ?? 0);
+        $conflictCount = 0;
+        foreach ($conflicts as $conflict) {
+            if ((int)$conflict['user_id'] === $subject && $workDate !== null
+                && ($conflict['work_day'] === $workDate || $conflict['absence_day'] === $workDate)) {
+                $conflictCount++;
+            }
+        }
         $groups[] = [
             'work_date' => $workDate,
             'group_key' => $key,
             'formatted_date' => $workDate === null ? 'Datum ungültig' : (new DateTimeImmutable($workDate, new DateTimeZone('Europe/Berlin')))->format('d.m.Y'),
-            'total_duration' => $invalidCount > 0 ? 'Ungültig' : report_format_hours($totalMinutes / 60),
+            'total_duration' => $invalidCount > 0 ? 'Ungültig' : ($conflictCount > 0 ? 'Klärung offen' : report_format_hours($totalMinutes / 60)),
             'total_pause' => $invalidCount > 0 ? null : $totalPause,
             'invalid_count' => $invalidCount,
+            'is_unresolved' => $conflictCount > 0,
+            'conflict_count' => $conflictCount,
             'entry_count' => count($dayRecords),
             // Keep raw keys as well as the agreed presentation keys.
             'records' => array_map(static fn (array $record): array => array_merge($record, report_time_record_detail($record)), $dayRecords),

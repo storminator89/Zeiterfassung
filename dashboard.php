@@ -179,9 +179,9 @@ function calculateRemainingHours($workedHours, $expectedHours)
                         <i class="fas fa-trophy fa-3x"></i>
                     </div>
                     <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_WEEKS_WORKED ?></div>
-                    <div class="stat-value"><?= $weeksCount ?></div>
-                    <div class="stat-desc text-sm font-medium opacity-80">
-                        <?= $isFirstWeek ? DASHBOARD_FIRST_WEEK : DASHBOARD_KEEP_GOING ?>
+                    <div data-report-period="all" data-report-presentation="<?= $reportTotalUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportTotalUnresolved ? 'Klärung offen' : $weeksCount ?></div>
+                    <div data-report-period="all" data-report-presentation="<?= $reportTotalUnresolved ? 'unresolved' : 'current' ?>" class="stat-desc text-sm font-medium opacity-80">
+                        <?= $reportTotalUnresolved ? 'Buchungen bitte manuell klären.' : ($isFirstWeek ? DASHBOARD_FIRST_WEEK : DASHBOARD_KEEP_GOING) ?>
                     </div>
                 </div>
                 <div class="stat bg-gradient-to-br from-indigo-400 to-indigo-500 rounded-box shadow-lg">
@@ -195,9 +195,9 @@ function calculateRemainingHours($workedHours, $expectedHours)
                             <span class="tooltiptext"><?= nl2br(DASHBOARD_OVERTIME_INFO) ?></span>
                         </span>
                     </div>
-                    <div class="stat-value"><?= formatHoursAsHHMM($totalOverHours) ?></div>
-                    <div class="stat-desc text-sm font-medium opacity-80">
-                        <?= sprintf(DASHBOARD_OVER_HOURS_YEAR, formatHoursAsHHMM($overHoursThisYear)) ?>
+                    <div data-report-period="all" data-report-presentation="<?= $reportTotalUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportTotalUnresolved ? 'Klärung offen' : formatHoursAsHHMM($totalOverHours) ?></div>
+                    <div data-report-period="year" data-report-presentation="<?= $reportYearUnresolved ? 'unresolved' : 'current' ?>" class="stat-desc text-sm font-medium opacity-80">
+                        <?= sprintf(DASHBOARD_OVER_HOURS_YEAR, $reportYearUnresolved ? 'Klärung offen' : formatHoursAsHHMM($overHoursThisYear)) ?>
                     </div>
                 </div>
             </div>
@@ -212,14 +212,14 @@ function calculateRemainingHours($workedHours, $expectedHours)
                         <i class="fas fa-clock fa-3x"></i>
                     </div>
                     <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_WEEKLY_HOURS ?></div>
-                    <div class="stat-value"><?= formatHoursAsHHMM($totalHoursThisWeek) ?></div>
+                    <div data-report-period="week" data-report-presentation="<?= $reportWeekUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportWeekUnresolved ? 'Klärung offen' : formatHoursAsHHMM($totalHoursThisWeek) ?></div>
                 </div>
                 <div class="stat bg-gradient-to-br from-blue-500 to-blue-600 rounded-box shadow-lg">
                     <div class="stat-figure opacity-70">
                         <i class="fas fa-hourglass-half fa-3x"></i>
                     </div>
                     <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_REMAINING_HOURS_WEEK ?></div>
-                    <div class="stat-value"><?= calculateRemainingHours($totalHoursThisWeek, $expectedHoursThisWeek) ?></div>
+                    <div data-report-period="week" data-report-presentation="<?= $reportWeekUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportWeekUnresolved ? 'Klärung offen' : calculateRemainingHours($totalHoursThisWeek, $expectedHoursThisWeek) ?></div>
                 </div>
                 <div class="stat bg-gradient-to-br from-blue-400 to-blue-500 rounded-box shadow-lg">
                     <div class="stat-figure opacity-70">
@@ -232,7 +232,7 @@ function calculateRemainingHours($workedHours, $expectedHours)
                             <span class="tooltiptext"><?= nl2br(DASHBOARD_WEEKLY_PRODUCTIVITY_INFO) ?></span>
                         </span>
                     </div>
-                    <div class="stat-value"><?= number_format($weeklyProductivityScore, 1) ?>%</div>
+                    <div data-report-period="week" data-report-presentation="<?= $reportWeekUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportWeekUnresolved ? 'Klärung offen' : number_format($weeklyProductivityScore, 1) . '%' ?></div>
                 </div>
             </div>
         </div>
@@ -246,9 +246,9 @@ function calculateRemainingHours($workedHours, $expectedHours)
                         <i class="fas fa-calendar fa-3x"></i>
                     </div>
                     <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_MONTHLY_HOURS ?></div>
-                    <div class="stat-value"><?= formatHoursAsHHMM($totalHoursThisMonth) ?></div>
-                    <div class="stat-desc text-sm font-medium opacity-80">
-                        <?= sprintf(DASHBOARD_MONTHLY_HOURS_PROGRESS, formatHoursAsHHMM($totalHoursThisMonth), formatHoursAsHHMM($workingHoursThisMonth)) ?>
+                    <div data-report-period="month" data-report-presentation="<?= $reportMonthUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportMonthUnresolved ? 'Klärung offen' : formatHoursAsHHMM($totalHoursThisMonth) ?></div>
+                    <div data-report-period="month" data-report-presentation="<?= $reportMonthUnresolved ? 'unresolved' : 'current' ?>" class="stat-desc text-sm font-medium opacity-80">
+                        <?= sprintf(DASHBOARD_MONTHLY_HOURS_PROGRESS, $reportMonthUnresolved ? 'Klärung offen' : formatHoursAsHHMM($totalHoursThisMonth), formatHoursAsHHMM($workingHoursThisMonth)) ?>
                     </div>
                 </div>
                 <div class="stat bg-gradient-to-br from-teal-500 to-teal-600 rounded-box shadow-lg">
@@ -256,9 +256,9 @@ function calculateRemainingHours($workedHours, $expectedHours)
                         <i class="fas fa-chart-line fa-3x"></i>
                     </div>
                     <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_AVERAGE_DAILY_HOURS ?></div>
-                    <div class="stat-value"><?= formatHoursAsHHMM($averageDailyHours) ?></div>
-                    <div class="stat-desc text-sm font-medium opacity-80">
-                        <?= sprintf(DASHBOARD_WORKED_DAYS_THIS_MONTH, $workedDays) ?>
+                    <div data-report-period="month" data-report-presentation="<?= $reportMonthUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportMonthUnresolved ? 'Klärung offen' : formatHoursAsHHMM($averageDailyHours) ?></div>
+                    <div data-report-period="month" data-report-presentation="<?= $reportMonthUnresolved ? 'unresolved' : 'current' ?>" class="stat-desc text-sm font-medium opacity-80">
+                        <?= $reportMonthUnresolved ? 'Betroffene Buchungstage sind noch nicht abschließend geklärt.' : sprintf(DASHBOARD_WORKED_DAYS_THIS_MONTH, $workedDays) ?>
                     </div>
                 </div>
                 <div class="stat bg-gradient-to-br from-teal-400 to-teal-500 rounded-box shadow-lg">
@@ -272,7 +272,7 @@ function calculateRemainingHours($workedHours, $expectedHours)
                             <span class="tooltiptext"><?= nl2br(DASHBOARD_PRODUCTIVITY_SCORE_INFO) ?></span>
                         </span>
                     </div>
-                    <div class="stat-value"><?= number_format($productivityScore, 1) ?>%</div>
+                    <div data-report-period="month" data-report-presentation="<?= $reportMonthUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportMonthUnresolved ? 'Klärung offen' : number_format($productivityScore, 1) . '%' ?></div>
                 </div>
             </div>
         </div>
