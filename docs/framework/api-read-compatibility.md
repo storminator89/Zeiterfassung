@@ -17,7 +17,8 @@ Firefox-/Edge-, JWT-, Browser- oder Produktivabnahme.
 
 **Begrenztes Vorbereitungspaket, kein API-Cutover und kein Abschluss von #77.**
 Die bestehende UI, `api.php`-Routen, Datenbank-/Hostkonfiguration und Clients
-bleiben aktiv unverändert. Die ausgelieferte Laravel-Routenliste enthält weiterhin
+bleiben aktiv; nur der unten dokumentierte CH-18-Paginationvertrag ändert sich
+bewusst in beiden Lesepfaden. Die ausgelieferte Laravel-Routenliste enthält weiterhin
 nur `GET|HEAD /up`. Weder `LegacyApiRoutes::registerCandidate()` noch ein
 API-Routenfile wird vom Bootstrap aufgerufen. Der neue Guard ist nicht der
 Defaultguard; `chrono`, ein API-Schlüssel und eine öffentliche API bleiben
@@ -101,15 +102,25 @@ implizites HEAD oder `_method`-/Headeroverride. JSON verwendet wie im Bestand
 gemeinsamen `chrono_api_booking_day`-Adapter nach demselben Berliner Starttag
 wie Berichte, nicht nach SQLite-UTC. Grenzen, Datenfehler und grober Nachweis:
 [API-Buchungstag](../CH04-API-BUCHUNGSTAG.md). Formprüfung bleibt keine
-Kalenderprüfung. Numerische
-Pagination bleibt die bisherige PHP-Koerzierung, einschließlich negativer Werte
-und separater Metadaten. Der native Pfad und der inaktive Lesekandidat ergänzen
-bei numerischem Offset ohne wirksames Limit jetzt SQLite-`LIMIT -1`: alle eigenen
-Treffer nach dem Offset, ohne künstliche Seitengröße; `meta.limit` bleibt
-unverändert. Dies behebt nur den SQLfehler aus
-[#24 / CH-18](https://github.com/storminator89/Zeiterfassung/issues/24), nicht die
-dort ebenfalls offenen Integergrenzen, Standard- und Maximalwerte. SQLite
-dokumentiert [negative Limits als unbeschränkt und OFFSET nach LIMIT](https://www.sqlite.org/lang_select.html#limitoffset).
+Kalenderprüfung.
+
+**CH-18 / #24:** Beide HTTP-Adapter verwenden jetzt denselben definitions-only
+Parser für strenge nichtnegative Integer. `limit`: Standard **100**, Maximum
+**1000**, **0** ergibt leere Seite; `offset`: effektiv **0**, Maximum
+**2147483647**, bei Auslassung `meta.offset:null`. `meta.limit` meldet immer das
+wirksame Limit. Invalidtypen/-syntax/-bereich liefern JSON-400 **vor** dem
+Lesesnapshot, keine PHP-Koerzierung, SQL-500 oder Laravel-422. Die rohe PHP-Query
+bleibt maßgeblich, keine Trim-/Nullnormalisierung der Pagination.
+
+Dies ändert den bisherigen Vertrag **bewusst**: fehlendes Limit und Offset
+allein liefern nun höchstens **100**, nicht alle übrigen Treffer. Die
+bestehenden Popup-Clients mit explizitem `limit=1` bleiben kompatibel. Externe
+Vollabruf-Clients müssen Seiten iterieren. Der bereits gemergte SQLite-
+`LIMIT -1`-Fallback bleibt defensiv erhalten, ist für normal validierte
+HTTP-Querys aber nicht mehr erreichbar. Genaue Eingaben, Defaults/Maxima,
+Migrationshinweise und begrenzte Nachweise: [API-Paginierung](../CH18-API-PAGINATION.md).
+Keine Aktivierung des Kandidaten, Auth-/Writeränderung oder neue
+Cross-Request-Snapshotgarantie.
 Die übrigen Änderungen aus
 [#25](https://github.com/storminator89/Zeiterfassung/issues/25) müssen separat
 abgestimmt werden, nicht als Carbon-/Paginatornebenwirkung entstehen.
@@ -128,7 +139,7 @@ vor einer späteren Gesamtaktivierung eine separate 405-/CORS-Gesamtkante.
 
 Noch offen: zugelassenes persistentes gemeinsames Loginbudget; produktive
 JWT-Migration/Profilentscheidung; vollständige Erweiterungsabnahme;
-reale vollständige Start/Pause/Ende/Retry-/`expectedRecord`-Abnahme; Swaggerkorrekturen #24/#25;
+reale vollständige Start/Pause/Ende/Retry-/`expectedRecord`-Abnahme; allgemeine Fehlernormalisierung #25;
 repräsentative vollständige Firefox-/Edge-Abläufe und deren reale Verteilung.
 Kein Swaggerendpoint wird aus dem inaktiven Kandidaten als verfügbar behauptet.
 Web-/Terminalschreiber werden nicht umgangen. Keine neue UI, kein realer

@@ -368,18 +368,24 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Use a positive integer. Current handler accepts is_numeric then PHP int-casts, with no enforced minimum/maximum/default. Non-numeric input is ignored by SQL but still cast in meta.",
+            "description": "Single ASCII decimal-digit integer 0..1000; leading zeros allowed. Omitted defaults to 100, including offset-only queries; 0 returns an empty page. Invalid scalar/array, signed, decimal, exponential, whitespace or out-of-range input returns JSON 400 before SQL. Deliberate change: omission is no longer unlimited.",
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000,
+              "default": 100
             }
           },
           {
             "name": "offset",
             "in": "query",
             "required": false,
-            "description": "Use a non-negative integer. Current handler accepts is_numeric then PHP int-casts, no enforced range; offset without numeric limit adds LIMIT -1.",
+            "description": "Single ASCII decimal-digit integer 0..2147483647; leading zeros allowed. Omitted skips zero and meta.offset remains null. Invalid scalar/array or out-of-range input returns JSON 400 before SQL. Offset-only uses the default limit 100, not unlimited LIMIT -1.",
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647,
+              "default": 0
             }
           }
         ],
@@ -415,7 +421,7 @@
             }
           },
           "400": {
-            "description": "Invalid scalar date syntax (not a full calendar-validation guarantee).",
+            "description": "Invalid pagination type/syntax/range, or invalid scalar date syntax (not a full calendar-validation guarantee). Pagination rejection is JSON 400 before SQL; bootstrap and authentication run earlier.",
             "content": {
               "application/json": {
                 "schema": {
@@ -443,7 +449,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Own raw reporting rows ordered by stored startzeit DESC; no user_id selector, overlap-window selection or normalization. Inclusive date bounds use the Europe/Berlin reporting start day via chrono_api_booking_day(startzeit), shared with report_day; no day splitting. Empty/unreadable starts are excluded under date filters, not repaired. Syntax-only query dates, PHP numeric/int coercion, no default/max page size. Offset alone uses LIMIT -1. See docs/API-CONTRACT.md for date and pagination limits."
+        "description": "Own raw reporting rows ordered by stored startzeit DESC; no user_id selector, overlap-window selection or normalization. Inclusive date bounds use the Europe/Berlin reporting start day via chrono_api_booking_day(startzeit), shared with report_day; no day splitting. Empty/unreadable starts are excluded under date filters, not repaired. Syntax-only query dates. Strict nonnegative integer pagination: limit defaults to 100, maximum 1000, 0 returns no rows; offset defaults to zero, maximum 2147483647. meta.limit is the effective integer limit; omitted meta.offset stays null. Deliberate compatibility change: omitted limit and offset-only no longer return unlimited rows. Iterate pages using explicit limit/offset; see docs/API-CONTRACT.md."
       }
     },
     "/api.php/timeentry/{id}": {
@@ -851,7 +857,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/TimeEntry"
-            }
+            },
+            "maxItems": 1000
           },
           "meta": {
             "type": "object",
@@ -868,15 +875,22 @@
               },
               "filtered": {
                 "type": "integer",
-                "description": "Rows returned on this page, not total matching rows."
+                "description": "Rows returned on this page, not total matching rows.",
+                "minimum": 0,
+                "maximum": 1000
               },
               "limit": {
                 "type": "integer",
-                "nullable": true
+                "minimum": 0,
+                "maximum": 1000,
+                "description": "Effective limit, including default 100 when omitted; no longer null."
               },
               "offset": {
                 "type": "integer",
-                "nullable": true
+                "minimum": 0,
+                "maximum": 2147483647,
+                "nullable": true,
+                "description": "Validated explicit offset; null when omitted (effective zero)."
               }
             }
           }

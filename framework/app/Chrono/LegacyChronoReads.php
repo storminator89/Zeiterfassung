@@ -108,8 +108,8 @@ final class LegacyChronoReads implements ChronoReads
             }
             $statement = $pdo->prepare($sql);
             foreach ($parameters as $name => $value) {
-                // Preserve PDO's original default binding type, numeric coercion,
-                // negative limits and separate pagination metadata.
+                // Keep the existing PDO binding and response shape. The HTTP
+                // adapter validates pagination before this read snapshot.
                 $statement->bindValue($name, $value);
             }
             $statement->execute();

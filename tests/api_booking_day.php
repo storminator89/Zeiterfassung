@@ -3,6 +3,7 @@
 // Coarse CLI-only proof: no bootstrap, HTTP/authentication, server or file DB.
 require_once __DIR__.'/../lib/attendance.php';
 require_once __DIR__.'/../lib/api_booking_day.php';
+require_once __DIR__.'/../lib/api_pagination.php';
 
 function ensure_booking_day(bool $condition, string $group): void
 {
@@ -83,7 +84,7 @@ ensure_booking_day(array_column($page['data'], 'id') === [1]
     && $page['meta'] === ['total' => 4, 'filtered' => 1, 'limit' => 1, 'offset' => 1], 'filtered pagination preserves raw ordering and metadata');
 $offset = native_day_read($db, $bounds + ['offset' => 1]);
 ensure_booking_day(array_column($offset['data'], 'id') === [1, 3, 2]
-    && $offset['meta'] === ['total' => 4, 'filtered' => 3, 'limit' => null, 'offset' => 1], 'offset-only remains unbounded after day filtering');
+    && $offset['meta'] === ['total' => 4, 'filtered' => 3, 'limit' => CHRONO_API_DEFAULT_LIMIT, 'offset' => 1], 'offset-only uses the bounded default after day filtering');
 foreach ([['start_date' => '2026-10-27'], ['end_date' => '2026-10-27']] as $query) {
     $expected = 0;
     foreach ($cases as $case) {

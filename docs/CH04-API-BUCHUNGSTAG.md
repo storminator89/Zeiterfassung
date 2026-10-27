@@ -3,6 +3,11 @@
 Basis: `e49e5185e35ee92a27927917a42d2c672acb17af`.
 Bezug: [Issue #9](https://github.com/storminator89/Zeiterfassung/issues/9).
 
+**Späterer CH-18-Nachtrag:** Der Tagesvertrag unten bleibt erhalten, die damalige
+unbeschränkte Pagination ist inzwischen bewusst auf Default100/Max1000 geändert.
+Offset-only bleibt gültig, liefert aber eine begrenzte Seite; `meta.limit` ist
+das wirksame Limit. [Aktueller Paginationvertrag](CH18-API-PAGINATION.md).
+
 ## Ein gemeinsamer Tagesvertrag
 
 `GET /api.php/timeentries` verwendet für `start_date` und `end_date` jetzt
