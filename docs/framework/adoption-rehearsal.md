@@ -2,6 +2,8 @@
 
 Dieses Paket ergänzt #74 nach der Dokumentationsbasis `9aa478aa2622050c23b387ea99ad6309dfe618ab` und Foundation `b9e0822174d580c4c83c15c6b2f789a7be29be3f`. Tatsächliche gemeinsame Basis ist Main **`a4deb81c650391f30e8f8b28546f1de92a7af9c7`**, Baum `9040015e6825cecc51903670f1ed36ee99f2ba77`. Der zunächst lokal benannte Integrationscommit `cf3f141…` hatte exakt denselben Baum; er wird nicht als Ersatz-Mainhistorie veröffentlicht.
 
+**Nachfolgend separat geliefert:** [expliziter bekannter V2-Offline-Dateipfad](offline-v2-adoption.md). Der hier beschriebene Memorybefehl bleibt strikt speicherintern; sein Snapshothelfer heißt inzwischen `SourceSnapshot`, die gemeinsame Adoptionsfunktion verwendet nun Laravel-Transaktionsverwaltung mit ausdrücklich Immediate-Modus. Die damalige Memorygrenze ist keine Aussage, dass auch der separate Offlinebefehl auf den Speicher beschränkt wäre.
+
 **Ergebnisgrenze:** Ein kontrollierter, wiederverwendbarer V2-Vorprüfungs-/Trackingkern und der echte Laravel-PDO/UDF-Lebenszyklus sind implementiert. Sie sind aktuell ausschließlich für vom Quellcode erzeugte anonyme **`:memory:`-Fixtures** zugänglich. Das ist **keine vollständige #74-Abnahme**, kein produktiver Writer, keine private Dateiübernahme und kein bestandener #75-Konkurrenz-/Rollback-/Cutovernachweis.
 
 ## Benutzung und feste Sicherheitsgrenze
@@ -27,7 +29,7 @@ Kein `config.php`/`security.php`-Include, keine Schlüssel-/Sessionanlage, kein 
 | `database/fixtures/legacy_v2.php` | Sechs Basistabellen/Authquelle aus Mapping, ausschließlich synthetische Ausgangszeilen; dann echte `attendance_migrate()` und `practice_migrate()` aus den bestehenden Bibliotheken. Keine kopierte Buchungs-/Migrationslogik und keine nutzbaren Testpasswörter. |
 | `app/LegacyDatabase/V2Preflight.php` | Native SQLite-Metadaten/Definitionen, Versions-/Beziehungs-/Tombstoneprüfung ohne DDL; unbekannter Drift wird abgelehnt, nicht repariert. |
 | `app/LegacyDatabase/V2Adoption.php` | Vorprüfung vor jeder Ledgeranlage; erneute Prüfung unter eigener `BEGIN IMMEDIATE`-Grenze, wirkliche Laravel-`DatabaseMigrationRepository`, Commit auf identischem PDO. Kein `down()`/`fresh`/Reseed. |
-| `app/LegacyDatabase/FixtureSnapshot.php` | In-Memory-Vor-/Nachvergleich aller Quellzeilen und Quellsequenzen; ausgegeben werden nur Aggregate, keine Zeilen. |
+| `app/LegacyDatabase/SourceSnapshot.php` | In-Memory-Vor-/Nachvergleich aller Quellzeilen und Quellsequenzen; ausgegeben werden nur Aggregate, keine Zeilen. |
 | `app/Console/Commands/RehearseLegacyAdoption.php` | Ein grober gemeinsamer Rehearsalablauf mit begrenzten Ablehnungs-/Lebenszyklusfällen, keine Testframework-/HTTP-/Microtestsuite. |
 
 Die eigentlichen SQLite-/Schema-/Repositorydienste sind Laravel und PDO; der kleine Adapter ist auf den bestehenden Quodara-Vertrag begrenzt. Die für spätere Dateiübernahme nutzbaren Komponenten öffnen selbst keinen Pfad. Eine Lockerung der derzeitigen Memorygrenze benötigt ein gesondert geprüftes Offline-Adoptionspaket.
@@ -49,7 +51,7 @@ Diese Aufnahme vergleicht Haupttabellen und ihre zugehörigen Schemaobjekte. Sie
 
 Die einzige Adoptionsänderung an der ZielDB ist die neue getrennte `framework_migrations`-Tabelle mit einem Laravel-Trackingeintrag, dessen Name Version + Schemasignatur enthält. Die ursprünglichen Marker, IDs/Sequenzen, Zeitwerte, Audit-/Event-/Modellzeilen und Schutzmechanismen bleiben unangetastet. Wiederholung erlaubt genau diesen Schritt in Batch 1; andere/mehrfache Ledgerstände stoppen. Ein vorhandener V2-Marker löst keine zweite Legacybaseline aus.
 
-Die manuell besessene `BEGIN IMMEDIATE`-Grenze wird nicht mit einer konkurrierenden Laraveltransaktion verschachtelt. Frameworkbuchungsdienste und generische Retrymechanik sind hier bewusst noch nicht angeschlossen. Bei Reconnect im laufenden Adoptionsschritt darf nicht auf einem anderen PDO committet werden.
+Die gemeinsame Adoptionsfunktion besitzt inzwischen die Laravel-Transaktionsverwaltung mit ausdrücklich `transaction_mode=IMMEDIATE`; sie wird nicht mit einer konkurrierenden Transaktion verschachtelt. Frameworkbuchungsdienste und generische Retrymechanik sind hier bewusst noch nicht angeschlossen. Bei Reconnect im laufenden Adoptionsschritt darf nicht auf einem anderen PDO committet werden.
 
 ## Tatsächlicher grober Nachweis
 
@@ -64,7 +66,7 @@ Der Reconnect erzeugt bei `:memory:` absichtlich eine **neue leere Datenbank**. 
 
 Notwendige PHP-Syntax-/Plattform-/Diffprüfung wird getrennt von diesem Rehearsalergebnis berichtet. Keine neue CI ausgelöst; keine produktiven Daten, APIs, LDAPverzeichnisse oder Hardware verwendet.
 
-## Nächster klar abgegrenzter Schritt – nicht weitere Fixtureausweitung
+## Damals nächster Schritt – inzwischen separat als Offlinepfad geliefert
 
 Nach Review dieses Inkrements: explizit unterstützte **Offline-Adoption eines vorgeprüften privaten V2-Dateibestands** abgrenzen. Dazu gehören echtes Read-only-Open ohne Dateierzeugung, unverwechselbarer Zielpfad/Write-Pause, #55-Datenqualität, effektive FK-/Journal-/Synchronous-Einstellungen, konsistentes Backup mit #65 und kontrollierte Freigabe des tatsächlich schreibenden Connectors. Sichere Referenznachweise müssen auf den tatsächlich unterstützten Speicher-/Dateifall erweitert werden, nicht durch immer mehr Memorymikrotests ersetzt werden.
 
