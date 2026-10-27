@@ -25,6 +25,7 @@ final class LocalWebHistoryController extends Controller
     {
         // Definitions only: native Berlin display formatting, never its bootstrap.
         require_once dirname(__DIR__, 4).'/lib/attendance.php';
+        require_once dirname(__DIR__, 4).'/lib/history_presentation.php';
         $actor = $this->auth->guard('web')->user();
         $language = $request->query('lang', $request->session()->get('lang', 'de'));
         $language = is_string($language) && in_array($language, ['de', 'en', 'zh'], true) ? $language : 'de';
@@ -40,9 +41,10 @@ final class LocalWebHistoryController extends Controller
             'entity' => $labels[$row['entity']] ?? $row['entity'],
             'record_id' => (int) $row['record_id'],
             'operation' => $row['operation'], 'actor' => $row['actor'], 'reason' => $row['reason'],
-            // Stored JSON remains verbatim text; only null receives the native fallback.
-            'before_json' => $row['before_json'] ?? 'Kein vorheriger Eintrag',
-            'after_json' => $row['after_json'] ?? 'Storniert',
+            // Never pass unfiltered snapshots to the view alongside the selected diff.
+            'presentation' => \chrono_history_presentation(
+                $row['entity'], $row['before_json'] ?? null, $row['after_json'] ?? null,
+            ),
         ], $rows);
 
         return response()->view('chrono.history', [

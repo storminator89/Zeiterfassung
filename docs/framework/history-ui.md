@@ -10,7 +10,9 @@ setzt ausschließlich auf dem eingefrorenen lokalen Home-/Modell-Unionsstand
 Abhängigkeit, keine Behauptung eines bereits gemergten Home-/Modell-Mains.
 `history.php`, `lib/app_ui.php` und die mit PR126 übernommenen nativen
 `lib/history_filters.php`-Definitionen sind die Markup-/Vertragsquelle.
-Die Originalseiten und ihre Assets bleiben unverändert.
+Die gemeinsame Webverdrahtung änderte die Originalseiten und Assets nicht.
+Der unten beschriebene spätere #52/A-Schritt ergänzt nun gezielt die bestehenden
+nativen und Laravel-Historydetails, nicht ihre Filter, Sichtrechte oder Routen.
 
 ## Zwei getrennte, additive Teile
 
@@ -47,7 +49,8 @@ sämtliche nativen Bedeutungen: alle gemeinsam mit `AND`, positive IDs,
 exklusiver Folgetagsgrenze. `request_id` bezeichnet nur die eigene Auditzeile
 von `time_adjustments`, keine automatische Korrelation zu Buchung oder Sitzung.
 Es gibt keinen Lookup in aktuellen Buchungs-/Antragstabellen und keine neue
-Feldänderungs-, Such-, Export- oder Korrelationsfunktion.
+Such-, Export- oder Korrelationsfunktion. Der spätere #52/A-Feldvergleich unten
+verwendet ausschließlich die bereits autorisierten Snapshotwerte derselben Zeile.
 
 Der Reader ruft `HistoryQuery::statementFor` ausschließlich innerhalb seines
 vorhandenen DEFERRED-Snapshots mit der aus dem Guard stammenden, dort frisch
@@ -70,7 +73,7 @@ zusätzliche Existenzabfrage. `chrono_history_url` erhält dabei alle Filter.
 „Neueste Treffer“ entfernt ausschließlich den Cursor; ein neues Filterformular
 sendet keinen alten Cursor. „Filter zurücksetzen“ führt weiter zu `history.php`.
 
-## Originalkarten und unveränderte Payloadtexte
+## Originalkarten und ausgewählte Snapshotdarstellung (#52/A)
 
 Titel, Baselinehinweis, Klassen, Entitätslabels, Akteur/Begründung und aufklappbare
 Vorher-/Nachherbereiche mit umbrechenden `pre`-Blöcken bleiben erhalten.
@@ -79,16 +82,66 @@ Unbekannte Entitäten bleiben als Originaltext sichtbar. Der reine native
 Es werden nur Definitionen geladen, niemals native Bootstrap-/Headerdateien.
 
 `HistoryPage` enthält nur bereits autorisierte Anzeigewerte, native Filtertexte,
-Fehler/Labels und relative Paginglinks. Gespeichertes JSON wird **nicht** geparst,
-neu codiert, formatiert oder in Skripte eingebettet. Blade escaped alle dynamischen
-Werte, einschließlich Filter, Links und JSON. Nur `null`/fehlende Snapshotfelder
-bekommen „Kein vorheriger Eintrag“ oder „Storniert“; leere Strings bleiben leer.
-Kein HTML-Rohoutput, Downloadendpoint, Logger oder Writer kommt hinzu.
-Das sensible Journal wird nicht in Prüfprotokolle oder Beispieldaten kopiert.
+Fehler/Labels und relative Paginglinks. Der gemeinsame definitionsreine Helfer
+`lib/history_presentation.php` ergänzt innerhalb der bestehenden Details einen
+lesbaren Feldvergleich und **ersetzt zugleich beide bisherigen Roh-JSON-Blöcke**
+durch eine ausgewählte, neu formatierte Projektion. Der Laravel-Controller gibt
+die ungekürzten Originalsnapshots nicht zusätzlich an die Vorlage weiter.
+Native `h()`-Ausgaben und Blade escaped alle dynamischen Werte, einschließlich
+Feldwerte, Filter, Links und ausgewähltem JSON. Kein HTML-Rohoutput, Skriptpayload,
+Downloadendpoint, Logger oder Writer kommt hinzu. Das sensible Journal wird
+nicht in Prüfprotokolle oder Beispieldaten kopiert.
+
+### Feste Auswahl statt beliebiger JSON-Erkundung
+
+Die Auswahl ist pro Entität fest im Helfer definiert: Buchungsdaten (ID, Person,
+Beginn/Ende, Pause, Notiz, Arbeitsort, Abwesenheitsart und gespeicherte Gutschrift),
+die vier bisherigen Konto-Auditfelder `id`, `username`, `regelarbeitszeit` und
+`ueberstunden`, Feiertagsdaten, Arbeits-/Pausenintervalle, Korrekturanträge und
+Arbeitszeitmodelle. Unbekannte Snapshotfelder werden **weder mit Namen noch mit
+Werten** ausgegeben. Eine unbekannte Entität bekommt keine Snapshotprojektion.
+Unveränderte Kartenmetadaten (Bereich, Akteur und Begründung) behalten ihren
+bisherigen Vertrag und ihre bisherige Sichtbarkeit.
+
+`time_adjustments.original_json` wird nur als ursprüngliche Buchung mit derselben
+festen Buchungsfeldliste gelesen, nicht beliebig rekursiv aufgefaltet.
+`work_models.minutes_json` wird nur als Liste von genau sieben endlichen Zahlen
+für Montag bis Sonntag angezeigt; andere Strukturen/Typen werden nicht enthüllt.
+Ein erlaubtes skalares Feld darf String, Zahl, Boolean oder `null` enthalten;
+Arrays/Objekte in solchen Feldern werden durch einen festen Hinweis ersetzt.
+Passwörter, PINs, Tokens und andere unbekannte Konto-/Snapshotfelder gelangen
+somit nicht über eine generische JSONansicht daneben wieder in die Darstellung.
+Das ist eine strukturelle Feldfreigabe, **keine allgemeine semantische
+Geheimnis-/Personendatenerkennung**: erlaubte Freitexte können weiterhin sensible
+Angaben enthalten und bleiben dem bereits vorhandenen Audit-Sichtrecht unterworfen.
+
+Jeder JSON-String wird auf höchstens 65.536 Bytes und Parser-Tiefe 8 begrenzt;
+angezeigte skalare Strings werden nach 512 Unicodezeichen mit Hinweis gekürzt.
+Die feste Feld-/Unterfeldliste begrenzt auch die Tabellenstruktur. Fehlendes/SQL-
+`null` heißt „Kein Snapshot vorhanden“; leere, ungültige, zu große, zu tiefe oder
+nicht objektförmige Snapshots heißen „Snapshot nicht darstellbar“. Bei einer
+solchen Seite wird kein künstlicher Hinzufüge-/Löschvergleich erfunden.
+Dasselbe gilt für die Kinder eines nicht darstellbaren Buchungs-/Wochenfeldes:
+der Vergleich nennt nur das nicht darstellbare Elternfeld, statt fehlende
+Kinderwerte zu behaupten.
+
+Strings, Zahlen, Boolean, `null` und nicht vorhandene Felder werden unterschieden.
+Verglichen werden die vollständigen **erlaubten dekodierten Skalarwerte**, nicht
+nur ihre gekürzte Anzeige. Sehr große JSON-Ganzzahlen werden zur Präzision als
+Strings dekodiert; die Projektion ist kein byteforensischer Vergleich der
+gespeicherten JSONdarstellung. Verschachtelte Buchungs-JSONstrings und Wochen-
+JSONstrings erscheinen ausgewählt als Objekt bzw. Liste. Das Audit selbst bleibt
+unverändert. Ein leerer Vergleich bedeutet ausdrücklich nur „Keine Änderungen
+an darstellbaren Feldern“, nicht keine Änderung im vollständigen Journal.
+
+Beide Detailsansichten nennen die Auswahl immer und weisen bei ausgelassenen,
+nicht erkannten, nicht darstellbaren oder gekürzten Inhalten zusätzlich darauf
+hin, ohne die ausgelassenen Schlüssel oder Werte preiszugeben. Diese Begrenzung
+ist bewusst auch eine Verengung der bisherigen ungefilterten JSONanzeige.
 
 ## Explizite optionale Webintegration, Default weiterhin geschlossen
 
-Der historische Controller-/Read-/DTO-/Blade-Body aus PR143 bleibt bytegleich.
+Im damaligen Integrationsschritt blieb der Controller-/Read-/DTO-/Blade-Body aus PR143 bytegleich.
 Das gilt ebenso für `HistoryQuery`, `ChronoReads`, `LegacyChronoReads`, sämtliche
 nativen Dateien und Assets. Nur die vorher separat offene gemeinsame Verdrahtung
 ist ergänzt; es gibt weder eine zweite Chromeansicht noch einen neuen Reader.
@@ -177,3 +230,26 @@ oder Runtimeaktivierung, neuen GitHub-CI-Läufe oder Deployments. Insbesondere
 sind Filtertransport, authentifizierter Seitenaufruf und Historypaging nicht
 funktional beziehungsweise im geschützten Browser abgenommen. Das bleibt ein
 offenes, gesondertes Gate; #79 ist damit nicht vollständig abgeschlossen.
+
+## Abgrenzung und Nachweis des späteren #52/A-Pakets
+
+Basis dieses ergänzenden Pakets ist Main
+`c7169dedb5537e71641564e3fd2489e6c04787a9`. Genau sechs Pfade sind betroffen:
+neuer Präsentationshelfer, native `history.php`, Laravel-Historycontroller,
+HistoryPage-Payloaddokumentation, bestehende History-Bladevorlage und dieses
+Dokument. Filterhelper, Reader, SQL, Rollen, Keysetpaging mit Limit 100, Audit-
+Schema/-Bytes und sämtliche Routen bleiben unverändert. Die bestehende native
+Seite nutzt den Helfer; Laravel bleibt im bisherigen standardmäßig inaktiven
+Integrationszustand. Kein neuer Export und keine neue Erfassung/Verknüpfung
+zusammengehöriger Auditzeilen wird eingeführt.
+
+Der grobe Nachweis am 27.10.2026 unter PHP 8.5.12 bestand mit 15 ausschließlich
+erfundenen Auditkarten für gemeinsame
+Auswahl, verschachtelte Buchung, Wochentage, Typunterschiede, Auslassung, Kürzung
+und escaped Ausgabe der beiden vorhandenen Detailsdarstellungen. Hinzu kommen
+PHP-Syntax, direkte Blade-Kompilierung und `git diff --check` bestanden; kein Appbootstrap,
+Controllerdispatch, echter Audit-/DBzugriff, Session/Login, Browser oder neuer
+CI-Lauf. Der separate eingefrorene Nachweis nennt die tatsächlichen Ergebnisse.
+Eine solche Quellen-/synthetische Darstellungsprüfung ist keine geschützte
+Browserabnahme. #52 ist damit nur um den begrenzten Feldvergleich ergänzt;
+Export-/Korrelations- und vollständige Akzeptanzanforderungen bleiben offen.

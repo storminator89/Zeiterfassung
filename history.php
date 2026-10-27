@@ -2,6 +2,7 @@
 require_once __DIR__.'/config.php';require_once __DIR__.'/lib/app_ui.php';
 if (!isset($_SESSION['user_id'])) { header('Location: login.php');exit; }
 require_once __DIR__.'/lib/history_filters.php';
+require_once __DIR__.'/lib/history_presentation.php';
 $user=(int)$_SESSION['user_id'];$role=$_SESSION['role'];$filters=chrono_history_filters($_GET);$values=$filters['values'];$rows=[];
 if ($filters['errors']) { http_response_code(400); }
 else { $query=chrono_history_query($filters,$user,$role);$s=$conn->prepare($query['sql']);$s->execute($query['params']);$rows=$s->fetchAll(PDO::FETCH_ASSOC); }
@@ -29,6 +30,18 @@ chrono_page('Änderungshistorie');
 <?php if($filters['errors']): ?><div class="alert alert-error mb-6" role="alert"><ul><?php foreach($filters['errors'] as $error): ?><li><?= h($error) ?></li><?php endforeach; ?></ul></div>
 <?php elseif(!$rows): ?><p class="mb-6" role="status">Keine sichtbaren Einträge für diese Filter.</p><?php endif; ?>
 <?php if(!$filters['errors']&&$filters['ids']['before']!==null): ?><p class="mb-6"><a href="<?= h(chrono_history_url($filters)) ?>">Neueste Treffer mit diesen Filtern</a></p><?php endif; ?>
-<?php foreach($rows as $r): ?><section class="card bg-base-100 shadow-xl p-6 mb-6"><p class="text-sm font-semibold opacity-70 mb-2">#<?= (int)$r['id'] ?> · <?= h(attendance_local((int)$r['occurred_at'])) ?></p><h2 class="text-xl font-semibold mb-4"><?= h(chrono_history_entities()[$r['entity']]??$r['entity']) ?> #<?= (int)$r['record_id'] ?> · <?= h($r['operation']) ?></h2><p><?= h($r['actor']) ?> · <?= h($r['reason']) ?></p><details><summary>Vorher und nachher ansehen</summary><h3>Vorher</h3><pre style="white-space:pre-wrap;overflow-wrap:anywhere"><?= h($r['before_json']??'Kein vorheriger Eintrag') ?></pre><h3>Nachher</h3><pre style="white-space:pre-wrap;overflow-wrap:anywhere"><?= h($r['after_json']??'Storniert') ?></pre></details></section><?php endforeach; ?>
+<?php foreach($rows as $r): $presentation=chrono_history_presentation($r['entity'],$r['before_json']??null,$r['after_json']??null); ?>
+<section class="card bg-base-100 shadow-xl p-6 mb-6"><p class="text-sm font-semibold opacity-70 mb-2">#<?= (int)$r['id'] ?> · <?= h(attendance_local((int)$r['occurred_at'])) ?></p><h2 class="text-xl font-semibold mb-4"><?= h(chrono_history_entities()[$r['entity']]??$r['entity']) ?> #<?= (int)$r['record_id'] ?> · <?= h($r['operation']) ?></h2><p><?= h($r['actor']) ?> · <?= h($r['reason']) ?></p>
+<details><summary>Vorher und nachher ansehen</summary>
+<p class="text-sm opacity-70 my-3">Feldvergleich und JSON zeigen nur ausgewählte freigegebene Felder, nicht den vollständigen Auditinhalt.</p>
+<?php if($presentation['limited']): ?><p class="text-sm opacity-70 my-3">Weitere, nicht erkannte oder nicht darstellbare Inhalte wurden ausgelassen; lange Texte können gekürzt sein.</p><?php endif; ?>
+<?php if($presentation['rows']): ?>
+<div class="overflow-x-auto"><table class="table w-full"><thead><tr><th scope="col">Feld</th><th scope="col">Vorher</th><th scope="col">Nachher</th></tr></thead><tbody>
+<?php foreach($presentation['rows'] as $change): ?><tr><th scope="row"><?= h($change['field']) ?></th><td style="white-space:pre-wrap;overflow-wrap:anywhere"><?= h($change['before']) ?></td><td style="white-space:pre-wrap;overflow-wrap:anywhere"><?= h($change['after']) ?></td></tr><?php endforeach; ?>
+</tbody></table></div>
+<?php else: ?><p class="my-3"><?= h($presentation['available']?'Keine Änderungen an darstellbaren Feldern.':'Feldvergleich nicht verfügbar.') ?></p><?php endif; ?>
+<h3 class="font-semibold mt-4">Vorher · ausgewählte Felder</h3><pre style="white-space:pre-wrap;overflow-wrap:anywhere"><?= h($presentation['before']) ?></pre>
+<h3 class="font-semibold mt-4">Nachher · ausgewählte Felder</h3><pre style="white-space:pre-wrap;overflow-wrap:anywhere"><?= h($presentation['after']) ?></pre>
+</details></section><?php endforeach; ?>
 <?php if(count($rows)===100): ?><a href="<?= h(chrono_history_url($filters,(int)end($rows)['id'])) ?>">Ältere Einträge</a><?php endif; ?>
 <?php chrono_page_end(); ?>
