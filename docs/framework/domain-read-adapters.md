@@ -14,11 +14,12 @@ Die Routenliste bleibt ausschließlich `GET|HEAD /up`.
 | Dienstmethode | Imminenter Bestandskonsument / unveränderte Quelle | Ergebnis und Grenze |
 |---|---|---|
 | `attendanceStatus()` | `attendance.php?format=status`, `attendance_status()` | Eigener Nutzer, eine Lesetransaktion, exakt `success,records,state,record_id`; die zuletzt **angelegten** 30 Projektionen nach `id DESC`, keine neue Startzeit-Sortierung. |
-| `reportRows()` | Eigene Berichte/Export, `zeiterfassung`-Lesepfad | Eigene vollständige unveränderte Projektionszeilen nach `startzeit DESC`; offene Zeilen, gespeicherte Abwesenheitsart und Sollgutschrift bleiben erhalten. Kein fertiger CSV-Serializer oder API-Paginator. |
+| `reportRows(bool $chronological = false)` | Eigene Berichte/Export, `zeiterfassung`-Lesepfad | Eigene vollständige unveränderte Projektionszeilen nach `startzeit DESC`; offene Zeilen, gespeicherte Abwesenheitsart und Sollgutschrift bleiben erhalten. Nur opt-in Home verwendet `chronological: true` mit nativer Instant-/ID-Sortierung; Standard/Korrekturen bleiben unverändert. Kein fertiger CSV-Serializer oder API-Paginator. |
 | `period(start,end,subject?)` | Dashboard-/Teamprojektion | `report_days`, `report_period_minutes`, `planned_hours`, `report_format_hours`, `report_percentage` bleiben die einzigen Rechenfunktionen. Liefert interne Felder `days,actual_minutes,planned_hours,actual_formatted,percentage`, **kein neues HTTP-Antwortformat**. Ohne Subjekt eigene Daten; explizites Subjekt nur nach bestehender `view`-Policy. |
 | `corrections()` | Antragshistorie in `adjustments.php` | Derselbe Join, Scope, `id DESC LIMIT 100`, Originalsnapshot und finale Entscheidung wie im Bestand. Keine Antrag-/Freigabe-/Stornofunktion. |
 | `history(before)` | `history.php` | Derselbe Cursor `max(1,before)`, `id DESC LIMIT 100`, eigene/direkte Team-/Adminsicht; Admin sieht auch Benutzer-0-Kalenderjournal und Historie gelöschter Konten. Keine Audit-CRUD-API. |
 | `workModels()` | `work_models.php` | Derselbe Join, `valid_from DESC,id DESC LIMIT 200`; nur eigene Modelle oder alle für aktuelle Admins. Supervisorrechte werden **nicht** auf fremde Modelle ausgeweitet. |
+| `workModelsPage(int $page = 1, ?int $selectedModelId = null)` | Opt-in Home/Modell-UI nach PR136 | Ein autorisierter Snapshot: 50er-Versionenliste, Anzahl/Seite, scoped Auswahl und heute maßgebliches Modell desselben Eigentümers. `null` ohne Auswahl; `0` ungültige explizite Auswahl. Alter `workModels()`-Vertrag bleibt erhalten. |
 
 Die weiteren Listen verwenden bewusst die aufgenommenen SQL-Projektionen:
 deren Logik liegt noch in den Seiten, nicht in aufrufbaren Fachfunktionen.

@@ -21,21 +21,34 @@ Die Verwaltung sieht wie bisher alle username-sortierten Zieloptionen, ohne
 automatische Auswahl des angemeldeten Kontos. Neues Modell: heutiges Datum,
 alle Minuten 0, leerer Grund. Das Datum wird ausdrücklich als Berlin-Datum
 formatiert, weil der native Bootstrap `Europe/Berlin`, Laravel hingegen UTC
-verwendet. Dieser reine Form-Anzeigewert wird im Controller erzeugt, nicht im
-DTO oder als neue Datumsvalidierung. Nach Fehlern werden die Felder wie im
+verwendet. Der reine Form-Anzeigewert kommt in der aktuellen Integration aus
+dem Berliner Datum desselben gemeinsamen Lesesnapshots, nicht aus dem DTO oder
+einer neuen Datumsvalidierung. Nach Fehlern werden die Felder wie im
 Bestand nicht aus der Eingabe wiederbefüllt. Mitglieder sehen keine
 Verwaltungskarte. Ein standardmäßig deaktiviertes Fieldset folgt dem bereits
 vorhandenen inaktiven UI-Muster; es ist keine Autorisierungsprüfung.
 
 ## Ein Lese- und Schreibweg
 
-`ChronoReads::workModels()` liefert bereits die native Liste: eigene Modelle
-für Mitglieder/Supervisoren, alle für Admins, `valid_from DESC,id DESC`, maximal
-200. Der Controller wählt nur sichtbare Felder und dekodiert/castet die bereits
-gespeicherten Minuten zur Darstellung wie die native Tabelle. Er berechnet
-keine Sollzeit, Priorität, Gutschrift oder Historie neu. `WorkModelsPage`
-enthält ausschließlich diese Zeilen, Zieloptionen, Wochentagslabels und
-Anzeigewerte; insbesondere keine Abfragen, Uhr oder Autorisierungslogik.
+Die aktuelle Integration übernimmt den nativen PR136-Stand, nicht mehr die
+historische feste 200er-Anzeige. `ChronoReads::workModelsPage(page, selectedId)`
+liefert einen einzigen frischen autorisierten Snapshot: sichtbare Versionszahl,
+50er-Liste mit `valid_from DESC,id DESC`, geklemmte Seite, ausgewählte Version
+und das **heute für denselben Eigentümer maßgebliche** Modell. Ohne Auswahl
+ist das aktuelle eigene Modell unabhängig von der Listenseite sichtbar. Frühere,
+künftige und heute maßgebliche Versionen bleiben unterscheidbar; die Ansicht
+kann kein Modell verändern. Berechtigte Adminauswahl bleibt Adminauswahl,
+Mitglieder/Supervisoren erhalten nur eigene Modelle.
+
+Der Controller übernimmt ausschließlich die native Queryprüfung: positive
+`model_page`, streng positive dezimale String-`model_id`; explizit ungültige,
+gelöschte oder nicht sichtbare Auswahl liefert denselben generischen Hinweis.
+Der Read akzeptiert keine Eigentümer-/Rollenangabe, lädt Rolle/Identität im
+Snapshot erneut und scope-prüft Auswahl und aktuelles Eigentümermodell getrennt.
+Die alte parameterlose `workModels()`-Methode bleibt zur Kompatibilität unverändert.
+Der Controller dekodiert/castet bereits gespeicherte Minuten, das DTO erzeugt
+nur Anzeige-URLs (Paging erhält Auswahl, explizite Nullauswahl setzt sie zurück).
+Das Formdatum kommt aus demselben Berliner Snapshotdatum.
 
 Die separat geprüfte parameterlose Methode `ChronoReads::workModelTargets(): array`
 lädt im vorhandenen Snapshot den aktuellen Akteur nach und verweigert Nichtadmins
@@ -155,3 +168,18 @@ Session. Es wurde kein Server/Browser gestartet und keine Fixture vorbereitet.
 Der Secure-Login-Freigabeblock der Home-Abnahme bleibt unangetastet; bis zur
 gesonderten Freigabe ist auch der Arbeitsmodell-Browserablauf offen. Keine
 Merge-/Veröffentlichungsfreigabe wird aus dieser statischen Prüfung abgeleitet.
+
+
+## Aktuelle Integration auf Main165ce380
+
+Das vorhandene UI-Paket aus Draft #111 bleibt auf dem vorhandenen Home #110
+aufgebaut. Die aktuelle Vorlage übernimmt native Versionsdetails, Heute-Status,
+Auswahlhinweis und ältere/neuere Seiten in denselben Karten/Tabellen/Linkklassen.
+Keine neue UI, kein anderer Writer und kein neues Standardrouting.
+Fünf ganze synthetische Bladeansichten plus reine native Arrayaufbereitung,
+PHP-/Blade-Syntax, Composer und Plattform wurden statisch geprüft, nicht die
+DB-/Auth-/Berechtigungsabfolge. Keine Guard-/Credential-/CSRF-Injektion,
+HTTPanfrage oder Browser-/Serveraktivierung. Die vorstehenden Abnahmeberichte
+beschreiben ihre historischen Originalstände; sie sind keine Funktionsabnahme
+der neuen Versionsansicht. Der blockierte Home-Login wird nicht umgangen.
+Draft, keine Ready-/Merge-/Cutoverfreigabe, keine reale Modellmutation.

@@ -1,5 +1,6 @@
 <?php
 include 'header.php';
+require_once __DIR__ . '/lib/calendar_range.php';
 
 // Fetch user's regular working hours and previous overtime
 $stmt = $conn->prepare('SELECT regelarbeitszeit, ueberstunden FROM users WHERE id = :user_id');
@@ -24,10 +25,14 @@ $overHoursThisWeek = $totalHoursThisWeek - $expectedHoursThisWeek;
 $overHoursThisMonth = $overHoursThisMonth ?? 0;
 $overHoursThisYear = $overHoursThisYear ?? 0;
 
-// Fetch events for the calendar
-$stmt = $conn->prepare("SELECT id, startzeit as start, endzeit as end, beschreibung, standort FROM zeiterfassung WHERE user_id = ? AND startzeit >= ? ORDER BY startzeit");
-$stmt->execute([$user_id, date('Y-m-d', strtotime('-1 month'))]);
-$events = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Use the visible week, not a fixed cutoff relative to today. The reporting
+// records from header.php are already restricted to this signed-in user.
+$calendarRange = calendar_visible_week($_GET['calendar_date'] ?? null, new DateTimeImmutable('now', new DateTimeZone('Europe/Berlin')));
+$stmt = $conn->prepare('SELECT datum, name FROM Feiertage WHERE datum >= ? AND datum < ? ORDER BY datum');
+$stmt->execute([$calendarRange['start']->format('Y-m-d'), $calendarRange['end']->format('Y-m-d')]);
+$eventLabels = ['Arbeit' => WORK, 'Urlaub' => EVENT_VACATION, 'Krankheit' => EVENT_SICK, 'Feiertag' => EVENT_HOLIDAY];
+$events = calendar_range_events($records, $stmt->fetchAll(PDO::FETCH_ASSOC), $calendarRange, $eventLabels);
+$calendarLink = static fn(string $day): string => 'dashboard.php?calendar_date=' . rawurlencode($day) . '#calendar';
 
 // Completed booking days only, using local dates rather than SQLite UTC DATE().
 $monthDays=array_filter($reportDays,fn($day)=>$day>=$currentMonthStart&&$day<=$currentMonthEnd,ARRAY_FILTER_USE_KEY);
@@ -97,7 +102,6 @@ function calculateRemainingHours($workedHours, $expectedHours)
         }
 
         .toastui-calendar-milestone,
-        .toastui-calendar-allday,
         .toastui-calendar-task {
             display: none !important;
         }
@@ -175,9 +179,9 @@ function calculateRemainingHours($workedHours, $expectedHours)
                         <i class="fas fa-trophy fa-3x"></i>
                     </div>
                     <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_WEEKS_WORKED ?></div>
-                    <div class="stat-value"><?= $weeksCount ?></div>
-                    <div class="stat-desc text-sm font-medium opacity-80">
-                        <?= $isFirstWeek ? DASHBOARD_FIRST_WEEK : DASHBOARD_KEEP_GOING ?>
+                    <div data-report-period="all" data-report-presentation="<?= $reportTotalUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportTotalUnresolved ? 'Klärung offen' : $weeksCount ?></div>
+                    <div data-report-period="all" data-report-presentation="<?= $reportTotalUnresolved ? 'unresolved' : 'current' ?>" class="stat-desc text-sm font-medium opacity-80">
+                        <?= $reportTotalUnresolved ? 'Buchungen bitte manuell klären.' : ($isFirstWeek ? DASHBOARD_FIRST_WEEK : DASHBOARD_KEEP_GOING) ?>
                     </div>
                 </div>
                 <div class="stat bg-gradient-to-br from-indigo-400 to-indigo-500 rounded-box shadow-lg">
@@ -191,9 +195,9 @@ function calculateRemainingHours($workedHours, $expectedHours)
                             <span class="tooltiptext"><?= nl2br(DASHBOARD_OVERTIME_INFO) ?></span>
                         </span>
                     </div>
-                    <div class="stat-value"><?= formatHoursAsHHMM($totalOverHours) ?></div>
-                    <div class="stat-desc text-sm font-medium opacity-80">
-                        <?= sprintf(DASHBOARD_OVER_HOURS_YEAR, formatHoursAsHHMM($overHoursThisYear)) ?>
+                    <div data-report-period="all" data-report-presentation="<?= $reportTotalUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportTotalUnresolved ? 'Klärung offen' : formatHoursAsHHMM($totalOverHours) ?></div>
+                    <div data-report-period="year" data-report-presentation="<?= $reportYearUnresolved ? 'unresolved' : 'current' ?>" class="stat-desc text-sm font-medium opacity-80">
+                        <?= sprintf(DASHBOARD_OVER_HOURS_YEAR, $reportYearUnresolved ? 'Klärung offen' : formatHoursAsHHMM($overHoursThisYear)) ?>
                     </div>
                 </div>
             </div>
@@ -208,14 +212,14 @@ function calculateRemainingHours($workedHours, $expectedHours)
                         <i class="fas fa-clock fa-3x"></i>
                     </div>
                     <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_WEEKLY_HOURS ?></div>
-                    <div class="stat-value"><?= formatHoursAsHHMM($totalHoursThisWeek) ?></div>
+                    <div data-report-period="week" data-report-presentation="<?= $reportWeekUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportWeekUnresolved ? 'Klärung offen' : formatHoursAsHHMM($totalHoursThisWeek) ?></div>
                 </div>
                 <div class="stat bg-gradient-to-br from-blue-500 to-blue-600 rounded-box shadow-lg">
                     <div class="stat-figure opacity-70">
                         <i class="fas fa-hourglass-half fa-3x"></i>
                     </div>
                     <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_REMAINING_HOURS_WEEK ?></div>
-                    <div class="stat-value"><?= calculateRemainingHours($totalHoursThisWeek, $expectedHoursThisWeek) ?></div>
+                    <div data-report-period="week" data-report-presentation="<?= $reportWeekUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportWeekUnresolved ? 'Klärung offen' : calculateRemainingHours($totalHoursThisWeek, $expectedHoursThisWeek) ?></div>
                 </div>
                 <div class="stat bg-gradient-to-br from-blue-400 to-blue-500 rounded-box shadow-lg">
                     <div class="stat-figure opacity-70">
@@ -228,7 +232,7 @@ function calculateRemainingHours($workedHours, $expectedHours)
                             <span class="tooltiptext"><?= nl2br(DASHBOARD_WEEKLY_PRODUCTIVITY_INFO) ?></span>
                         </span>
                     </div>
-                    <div class="stat-value"><?= number_format($weeklyProductivityScore, 1) ?>%</div>
+                    <div data-report-period="week" data-report-presentation="<?= $reportWeekUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportWeekUnresolved ? 'Klärung offen' : number_format($weeklyProductivityScore, 1) . '%' ?></div>
                 </div>
             </div>
         </div>
@@ -242,9 +246,9 @@ function calculateRemainingHours($workedHours, $expectedHours)
                         <i class="fas fa-calendar fa-3x"></i>
                     </div>
                     <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_MONTHLY_HOURS ?></div>
-                    <div class="stat-value"><?= formatHoursAsHHMM($totalHoursThisMonth) ?></div>
-                    <div class="stat-desc text-sm font-medium opacity-80">
-                        <?= sprintf(DASHBOARD_MONTHLY_HOURS_PROGRESS, formatHoursAsHHMM($totalHoursThisMonth), formatHoursAsHHMM($workingHoursThisMonth)) ?>
+                    <div data-report-period="month" data-report-presentation="<?= $reportMonthUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportMonthUnresolved ? 'Klärung offen' : formatHoursAsHHMM($totalHoursThisMonth) ?></div>
+                    <div data-report-period="month" data-report-presentation="<?= $reportMonthUnresolved ? 'unresolved' : 'current' ?>" class="stat-desc text-sm font-medium opacity-80">
+                        <?= sprintf(DASHBOARD_MONTHLY_HOURS_PROGRESS, $reportMonthUnresolved ? 'Klärung offen' : formatHoursAsHHMM($totalHoursThisMonth), formatHoursAsHHMM($workingHoursThisMonth)) ?>
                     </div>
                 </div>
                 <div class="stat bg-gradient-to-br from-teal-500 to-teal-600 rounded-box shadow-lg">
@@ -252,9 +256,9 @@ function calculateRemainingHours($workedHours, $expectedHours)
                         <i class="fas fa-chart-line fa-3x"></i>
                     </div>
                     <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_AVERAGE_DAILY_HOURS ?></div>
-                    <div class="stat-value"><?= formatHoursAsHHMM($averageDailyHours) ?></div>
-                    <div class="stat-desc text-sm font-medium opacity-80">
-                        <?= sprintf(DASHBOARD_WORKED_DAYS_THIS_MONTH, $workedDays) ?>
+                    <div data-report-period="month" data-report-presentation="<?= $reportMonthUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportMonthUnresolved ? 'Klärung offen' : formatHoursAsHHMM($averageDailyHours) ?></div>
+                    <div data-report-period="month" data-report-presentation="<?= $reportMonthUnresolved ? 'unresolved' : 'current' ?>" class="stat-desc text-sm font-medium opacity-80">
+                        <?= $reportMonthUnresolved ? 'Betroffene Buchungstage sind noch nicht abschließend geklärt.' : sprintf(DASHBOARD_WORKED_DAYS_THIS_MONTH, $workedDays) ?>
                     </div>
                 </div>
                 <div class="stat bg-gradient-to-br from-teal-400 to-teal-500 rounded-box shadow-lg">
@@ -268,7 +272,7 @@ function calculateRemainingHours($workedHours, $expectedHours)
                             <span class="tooltiptext"><?= nl2br(DASHBOARD_PRODUCTIVITY_SCORE_INFO) ?></span>
                         </span>
                     </div>
-                    <div class="stat-value"><?= number_format($productivityScore, 1) ?>%</div>
+                    <div data-report-period="month" data-report-presentation="<?= $reportMonthUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportMonthUnresolved ? 'Klärung offen' : number_format($productivityScore, 1) . '%' ?></div>
                 </div>
             </div>
         </div>
@@ -278,9 +282,9 @@ function calculateRemainingHours($workedHours, $expectedHours)
             <div class="card-body">
                 <h3 class="card-title text-2xl mb-6"><?= DASHBOARD_CALENDAR ?></h3>
                 <div class="flex justify-between mb-6">
-                    <button id="prevWeekBtn" class="btn btn-primary btn-sm"><i class="fas fa-arrow-left mr-2"></i><?= BUTTON_PREV_WEEK ?></button>
-                    <button id="todayBtn" class="btn btn-secondary btn-sm"><i class="fas fa-calendar-day mr-2"></i><?= BUTTON_TODAY ?></button>
-                    <button id="nextWeekBtn" class="btn btn-primary btn-sm"><?= BUTTON_NEXT_WEEK ?><i class="fas fa-arrow-right ml-2"></i></button>
+                    <a id="prevWeekBtn" href="<?= h($calendarLink($calendarRange['previous'])) ?>" class="btn btn-primary btn-sm"><i class="fas fa-arrow-left mr-2"></i><?= BUTTON_PREV_WEEK ?></a>
+                    <a id="todayBtn" href="<?= h($calendarLink($calendarRange['today'])) ?>" class="btn btn-secondary btn-sm"><i class="fas fa-calendar-day mr-2"></i><?= BUTTON_TODAY ?></a>
+                    <a id="nextWeekBtn" href="<?= h($calendarLink($calendarRange['next'])) ?>" class="btn btn-primary btn-sm"><?= BUTTON_NEXT_WEEK ?><i class="fas fa-arrow-right ml-2"></i></a>
                 </div>
                 <div id="calendar" class="calendar-container"></div>
             </div>
@@ -314,16 +318,22 @@ function calculateRemainingHours($workedHours, $expectedHours)
             week: {
                 dayNames: ['<?= SUNDAY ?>', '<?= MONDAY ?>', '<?= TUESDAY ?>', '<?= WEDNESDAY ?>', '<?= THURSDAY ?>', '<?= FRIDAY ?>', '<?= SATURDAY ?>'],
                 startDayOfWeek: 1,
-                workweek: true,
+                workweek: false,
                 hourStart: 6,
                 hourEnd: 22,
                 taskView: false,
-                eventView: ['time']
+                eventView: ['allday', 'time']
             },
             month: {
                 visibleWeeksCount: 0 // Hide the month view completely
             },
             template: {
+                allday: function(event) {
+                    // Template strings are HTML; cached holiday names are text.
+                    const label = document.createElement('span');
+                    label.textContent = event.title;
+                    return label.outerHTML;
+                },
                 time: function(event) {
                     const start = new Date(event.start);
                     const end = new Date(event.end);
@@ -333,47 +343,26 @@ function calculateRemainingHours($workedHours, $expectedHours)
                 }
             },
             taskView: false,
-            scheduleView: ['time'],
             milestone: {
                 visible: false
             },
-            timezones: [{
-                timezoneOffset: 0,
-                displayLabel: 'GMT',
-                tooltip: 'GMT'
-            }],
+            timezone: {
+                zones: [{
+                    timezoneName: 'Europe/Berlin',
+                    displayLabel: 'Berlin',
+                    tooltip: 'Europe/Berlin'
+                }]
+            },
             disableClick: true,
             disableDblClick: true,
         });
 
-        // Populate calendar with events
+        // Server-rendered navigation reloads both bookings and cached holidays
+        // for the same selected week, including an empty week and browser Back.
+        // TOAST anchors its week to browser-local calendar fields, not a Berlin instant.
+        calendar.setDate(new Date(<?= json_encode($calendarRange['start']->format('Y-m-d') . 'T12:00:00') ?>));
         const events = <?= json_encode($events, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-        calendar.createEvents(events.map(event => ({
-            id: event.id,
-            calendarId: '1',
-            title: event.beschreibung ? event.beschreibung : 'Arbeit',
-            start: event.start,
-            end: event.end,
-            category: 'time',
-            isAllDay: false,
-            color: '#ffffff',
-            backgroundColor: '#4a5568',
-            borderColor: '#2d3748',
-            location: event.standort
-        })));
-
-        // Calendar navigation
-        document.getElementById('prevWeekBtn').addEventListener('click', function() {
-            calendar.prev();
-        });
-
-        document.getElementById('nextWeekBtn').addEventListener('click', function() {
-            calendar.next();
-        });
-
-        document.getElementById('todayBtn').addEventListener('click', function() {
-            calendar.today();
-        });
+        calendar.createEvents(events);
 
         function formatDate(date) {
             let day = ("0" + date.getDate()).slice(-2);
@@ -394,8 +383,9 @@ function calculateRemainingHours($workedHours, $expectedHours)
             let startDate = new Date(event.event.start);
             let endDate = new Date(event.event.end);
 
-            document.getElementById('startTime').textContent = formatDate(startDate) + " " + startDate.toLocaleTimeString();
-            document.getElementById('endTime').textContent = formatDate(endDate) + " " + endDate.toLocaleTimeString();
+            const isAbsence = event.event.isAllday;
+            document.getElementById('startTime').textContent = formatDate(startDate) + (isAbsence ? '' : " " + startDate.toLocaleTimeString());
+            document.getElementById('endTime').textContent = formatDate(endDate) + (isAbsence ? '' : " " + endDate.toLocaleTimeString());
             document.getElementById('eventDescription').textContent = event.event.title;
             document.getElementById('eventLocation').textContent = event.event.location || '-';
 

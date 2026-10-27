@@ -10,6 +10,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit();
 }
 
+// Native API errors opt in before configuration/security can refuse bootstrap.
+// This is server-owned policy, never selected by request headers or parameters.
+define('CHRONO_API_JSON_ERRORS', true);
+
 // Including configuration settings
 require_once 'config.php';
 header('Content-Type: application/json; charset=UTF-8');
@@ -23,6 +27,8 @@ $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
  */
 
 require_once __DIR__ . '/lib/api_tokens.php';
+require_once __DIR__ . '/lib/api_booking_day.php';
+require_once __DIR__ . '/lib/api_pagination.php';
 
 function generateJWT($header, $payload, $secret) {
     $headerEncoded = base64UrlEncode(json_encode($header));
@@ -199,16 +205,16 @@ function getUsers($conn, $user_id) {
  *     @OA\Parameter(
  *         name="limit",
  *         in="query",
- *         description="Maximum number of entries to return",
+ *         description="ASCII integer 0..1000; omitted defaults to 100, including offset-only queries. Zero returns an empty page.",
  *         required=false,
- *         @OA\Schema(type="integer")
+ *         @OA\Schema(type="integer", minimum=0, maximum=1000, default=100)
  *     ),
  *     @OA\Parameter(
  *         name="offset",
  *         in="query",
- *         description="Number of entries to skip",
+ *         description="ASCII integer 0..2147483647; omitted skips zero and meta.offset remains null.",
  *         required=false,
- *         @OA\Schema(type="integer")
+ *         @OA\Schema(type="integer", minimum=0, maximum=2147483647, default=0)
  *     ),
  *     @OA\Response(response=200, description="List of time entries"),
  *     @OA\Response(response=400, description="Invalid parameters"),
@@ -217,6 +223,13 @@ function getUsers($conn, $user_id) {
  * )
  */
 function getTimeEntries($conn, $user_id) {
+    try {
+        $pagination = api_pagination($_GET);
+    } catch (\InvalidArgumentException $exception) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $exception->getMessage()]);
+        return;
+    }
     try {
         $params = [];
         $whereConditions = ["user_id = :user_id"];
@@ -229,7 +242,7 @@ function getTimeEntries($conn, $user_id) {
                 echo json_encode(['success' => false, 'message' => 'Invalid start_date format. Use YYYY-MM-DD']);
                 return;
             }
-            $whereConditions[] = "date(startzeit) >= :start_date";
+            $whereConditions[] = "chrono_api_booking_day(startzeit) >= :start_date";
             $params[':start_date'] = $_GET['start_date'];
         }
 
@@ -239,8 +252,12 @@ function getTimeEntries($conn, $user_id) {
                 echo json_encode(['success' => false, 'message' => 'Invalid end_date format. Use YYYY-MM-DD']);
                 return;
             }
-            $whereConditions[] = "date(startzeit) <= :end_date";
+            $whereConditions[] = "chrono_api_booking_day(startzeit) <= :end_date";
             $params[':end_date'] = $_GET['end_date'];
+        }
+
+        if (isset($_GET['start_date']) || isset($_GET['end_date'])) {
+            api_register_booking_day($conn);
         }
 
         // Build the base query
@@ -249,15 +266,19 @@ function getTimeEntries($conn, $user_id) {
         // Add ORDER BY
         $query .= " ORDER BY startzeit DESC";
 
-        // Add LIMIT and OFFSET if provided
-        if (isset($_GET['limit']) && is_numeric($_GET['limit'])) {
-            $limit = (int)$_GET['limit'];
+        // Only validated integers reach SQL; omitted limit has a bounded default.
+        if ($pagination['limit'] !== null) {
+            $limit = $pagination['limit'];
             $query .= " LIMIT :limit";
             $params[':limit'] = $limit;
         }
 
-        if (isset($_GET['offset']) && is_numeric($_GET['offset'])) {
-            $offset = (int)$_GET['offset'];
+        if ($pagination['offset'] !== null) {
+            if (!array_key_exists(':limit', $params)) {
+                // SQLite requires LIMIT before OFFSET; -1 leaves the page unbounded.
+                $query .= " LIMIT -1";
+            }
+            $offset = $pagination['offset'];
             $query .= " OFFSET :offset";
             $params[':offset'] = $offset;
         }
@@ -286,8 +307,8 @@ function getTimeEntries($conn, $user_id) {
             'meta' => [
                 'total' => $totalCount,
                 'filtered' => count($entries),
-                'limit' => isset($_GET['limit']) ? (int)$_GET['limit'] : null,
-                'offset' => isset($_GET['offset']) ? (int)$_GET['offset'] : null
+                'limit' => $pagination['limit'],
+                'offset' => $pagination['offset']
             ]
         ]);
     } catch (\Exception $exception) {
@@ -349,6 +370,19 @@ if ($method === 'POST') {
     }
 } elseif ($method === 'GET') {
     switch ($uri) {
+        case $basePath . '/attendance':
+            $tokenData = validateToken();
+            attendance_json(function () use ($conn, $tokenData) {
+                $conn->beginTransaction();
+                try {
+                    $status = ['success' => true] + attendance_status($conn, (int)$tokenData['user_id']);
+                    $conn->commit();
+                    return $status;
+                } catch (Throwable $error) {
+                    if ($conn->inTransaction()) { $conn->rollBack(); }
+                    throw $error;
+                }
+            });
         case $basePath . '/users':
             $tokenData = validateToken();
             getUsers($conn, $tokenData['user_id']);

@@ -8,8 +8,6 @@ use App\View\ExistingUi\AttendancePage;
 use App\View\ExistingUi\Copy;
 use App\View\ExistingUi\Interactions;
 use App\View\ExistingUi\WorkModelsPage;
-use DateTimeImmutable;
-use DateTimeZone;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Auth\Factory;
@@ -66,12 +64,23 @@ final class LocalWebWorkModelsController extends Controller
         $language = is_string($language) && in_array($language, ['de', 'en'], true) ? $language : 'de';
         $request->session()->put('lang', $language);
 
-        // Existing own/admin history order and 200-row cap come from the shared reader.
-        $models = array_map(static fn (array $row): array => [
-            'username' => $row['username'], 'valid_from' => $row['valid_from'],
+        // Native query parsing only. The shared snapshot owns scope, paging,
+        // selected-owner lookup and effective-today precedence, not this view.
+        $query = $request->query->all();
+        $requestedPage = filter_var($query['model_page'] ?? 1, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 1;
+        $selectedId = null;
+        if (array_key_exists('model_id', $query)) {
+            $rawId = $query['model_id'];
+            $selectedId = is_string($rawId) && preg_match('/^[1-9][0-9]*$/D', $rawId)
+                ? (filter_var($rawId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0) : 0;
+        }
+        $projection = $this->reads->workModelsPage($requestedPage, $selectedId);
+        $display = static fn (array $row): array => [
+            'id' => (int) $row['id'], 'username' => $row['username'], 'valid_from' => $row['valid_from'],
             'minutes' => array_map(static fn ($value): int => (int) $value, json_decode($row['minutes_json'], true)),
-            'reason' => $row['reason'],
-        ], $this->reads->workModels());
+            'reason' => $row['reason'], 'effective_id' => isset($row['effective_id']) ? (int) $row['effective_id'] : null,
+        ];
+        $models = array_map($display, $projection['models']);
         // This parameterless API must independently enforce current-admin scope in its snapshot.
         $targets = $actor->role === 'admin' ? $this->reads->workModelTargets() : [];
 
@@ -83,9 +92,12 @@ final class LocalWebWorkModelsController extends Controller
             ),
             'workModels' => new WorkModelsPage(
                 $models, $targets,
-                // Native config.php sets Berlin; do not inherit Laravel's UTC display date.
-                (new DateTimeImmutable('now', new DateTimeZone('Europe/Berlin')))->format('Y-m-d'),
-                $error, $request->query->has('saved'), $this->interactions->workModels,
+                $projection['today'], $error, $request->query->has('saved'), $this->interactions->workModels,
+                total: $projection['total'], page: $projection['page'], pages: $projection['pages'],
+                pageSize: $projection['page_size'], selectedModelId: $projection['selected_model_id'],
+                selectedModel: $projection['selected_model'] === null ? null : $display($projection['selected_model']),
+                effectiveModel: $projection['effective_model'] === null ? null : $display($projection['effective_model']),
+                selectionError: $projection['selection_error'],
             ),
         ]);
     }

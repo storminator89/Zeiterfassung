@@ -65,10 +65,14 @@ check('admin CSRF blocked',admin.request('/admin.php',{'add_department':1,'depar
 status,body,_=admin.request('/admin.php',{'add_department':1,'department_name':'Audit department','csrf_token':admin.csrf});check('admin valid mutation',status==200 and query("SELECT name FROM departments WHERE name='Audit department'"))
 status,body,_=admin.request('/download.php');check('authorized consistent backup',status==200 and body.startswith(b'SQLite format 3'))
 check('invalid import blocked',admin.request('/import.php',{'csrf_token':admin.csrf})[0]==409)
-query('UPDATE zeiterfassung SET beschreibung=?,standort=?,pause=? WHERE id=?',('=1+1','<img src=x onerror=alert(1)>','" onfocus="alert(1)',new_id))
+# Formula/location fixtures keep a valid numeric pause; malformed accounting must fail closed.
+query('UPDATE zeiterfassung SET beschreibung=?,standort=?,pause=? WHERE id=?',('=1+1','<img src=x onerror=alert(1)>',0,new_id))
 status,body,_=user.request('/export_csv.php');check('CSV formula neutralized',status==200 and b"'=1+1" in body)
+query('UPDATE zeiterfassung SET pause=? WHERE id=?',('" onfocus="alert(1)',new_id))
 status,body,_=user.request('/get_time_records.php');check('pause HTML escaped',status==200 and b'&quot; onfocus=&quot;' in body and b'value="" onfocus=' not in body)
-status,body,_=admin.request('/supervisor.php');check('supervisor data encoded',status==200 and b'escapeHTML(zeit.standort)' in body and b'\\u003Cimg' in body)
+query('UPDATE zeiterfassung SET pause=0 WHERE id=?',(new_id,))
+# The single PHP table render path must escape stored location HTML, never emit the raw payload.
+status,body,_=admin.request('/supervisor.php');check('supervisor data encoded',status==200 and b'<td>&lt;img src=x onerror=alert(1)&gt;</td>' in body and b'<img src=x onerror=alert(1)>' not in body)
 # Password changes revoke tokens and sessions without waiting for expiry.
 old_hash=query('SELECT password FROM users WHERE id=2')[0][0]
 query("UPDATE users SET password='changed-test-hash' WHERE id=2")

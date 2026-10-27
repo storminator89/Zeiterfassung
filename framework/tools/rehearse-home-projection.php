@@ -89,12 +89,21 @@ try {
         && $fixed['holidays_this_week'] === [['date' => '2026-10-27', 'formatted_date' => '27.10.2026', 'name' => 'Synthetic <holiday>']]
         && $days['2026-10-26'] === 270 && planned_minutes($pdo, 1, '2026-10-26') === 360
         && ! isset($days['2026-10-28'], $days['2026-10-29']));
-    $ensure($reads->homeSummary() === home_summary($pdo, 1, $days, 7, new DateTimeImmutable('now', new DateTimeZone('Europe/Berlin'))));
+    $diagnosticDays = report_days($raw, $invalidRecords, $conflicts);
+    $expectedSummary = home_summary($pdo, 1, $diagnosticDays, 7, new DateTimeImmutable('now', new DateTimeZone('Europe/Berlin')));
+    $expectedSummary['invalid_records'] = $invalidRecords;
+    $expectedSummary['absence_conflicts'] = $conflicts;
+    $expectedSummary['report_finality'] = ['all' => false, 'week' => false, 'month' => false, 'year' => false];
+    $expectedSummary['total_overtime_hours'] = null;
+    $expectedSummary['total_overtime_formatted'] = 'Unvollständig';
+    $expectedSummary['positive_overtime'] = null;
+    $ensure($invalidRecords === [['id' => 5, 'error' => 'Endzeit liegt vor der Startzeit.']]
+        && $conflicts === [] && $reads->homeSummary() === $expectedSummary);
     $other = att_one($pdo, 'SELECT * FROM users WHERE id=2');
     $app->make('auth')->guard('web')->setUser((new LegacyUser)->newFromBuilder($other, 'chrono'));
     $ensure($reads->homeSummary()['total_overtime_formatted'] === '02:00'); // NULL carry-in remains zero.
 
-    $phase = 'ten raw rows first, page-local groups and native raw floor';
+    $phase = 'ten raw rows first, page-local groups and checked invalid totals';
     $first = report_time_record_groups(array_slice($raw, 0, 10));
     $second = report_time_record_groups(array_slice($raw, 10, 10));
     $ensure(count($first) === 1 && $first[0]['work_date'] === '2026-11-01'
@@ -103,8 +112,9 @@ try {
         && $second[0]['total_duration'] === '00:01'
         && array_column($first[0]['records'], 'id') === array_column(array_slice($raw, 0, 10), 'id'));
     $byDay = array_column($second, null, 'work_date');
-    $ensure($byDay['2026-10-29']['total_duration'] === '-1:-1'
-        && $byDay['2026-10-29']['records'][0]['duration_label'] === '-'
+    $ensure($byDay['2026-10-29']['total_duration'] === 'Ungültig'
+        && $byDay['2026-10-29']['total_pause'] === null && $byDay['2026-10-29']['invalid_count'] === 1
+        && $byDay['2026-10-29']['records'][0]['duration_label'] === 'Ungültig'
         && $byDay['2026-10-28']['entry_count'] === 1 && $byDay['2026-10-28']['total_duration'] === '00:00'
         && $byDay['2026-10-28']['records'][0]['end_label'] === 'Läuft'
         && $byDay['2026-10-26']['records'][0]['duration_label'] === '270 Sollminuten'

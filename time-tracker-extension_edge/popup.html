@@ -20,6 +20,7 @@
         </div>
         
         <div id="loginTab" class="col s12">
+            <p id="authNotice" role="status">Nur HTTPS-Ziele. Passwörter werden nicht gespeichert.</p>
             <div class="card-panel">
                 <div class="input-field">
                     <input id="apiUrl" type="text">
@@ -37,7 +38,7 @@
                     <label for="username">Benutzername</label>
                 </div>
                 <div class="input-field">
-                    <input id="password" type="password">
+                    <input id="password" type="password" autocomplete="off">
                     <label for="password">Passwort</label>
                 </div>
                 <button id="loginButton" class="btn waves-effect waves-light">
@@ -55,8 +56,10 @@
             <div class="card">
                 <div class="card-content">
                     <span class="card-title">Neue Zeitbuchung</span>
+                    <p id="attendanceStatus" role="status" aria-live="polite">Serverstatus wird geladen.</p>
+                    <p>Buchungen verwenden Serverzeit und tatsächliche Pausen. Standort und Beschreibung werden hier noch nicht übertragen.</p>
                     <div class="input-field">
-                        <select id="standort">
+                        <select id="standort" disabled>
                             <option value="" disabled selected>Wählen Sie einen Standort</option>
                             <option value="Büro">Büro</option>
                             <option value="Home Office">Home Office</option>
@@ -65,7 +68,7 @@
                         <label>Standort</label>
                     </div>
                     <div class="input-field">
-                        <input id="beschreibung" type="text">
+                        <input id="beschreibung" type="text" disabled>
                         <label for="beschreibung">Beschreibung</label>
                     </div>
                 </div>
@@ -75,10 +78,13 @@
                             Kommen
                             <i class="material-icons right">access_time</i>
                         </button>
+                        <button id="pauseButton" class="btn waves-effect waves-light">Pause beginnen</button>
                         <button id="gehenButton" class="btn waves-effect waves-light red">
                             Gehen
                             <i class="material-icons right">exit_to_app</i>
                         </button>
+                        <button id="retryButton" class="btn waves-effect waves-light" hidden>Denselben Vorgang erneut versuchen</button>
+                        <button id="refreshButton" class="btn-flat waves-effect">Status aktualisieren</button>
                     </div>
                 </div>
             </div>

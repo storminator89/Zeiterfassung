@@ -9,9 +9,9 @@ Shared-Budget-/Cutovergates gelten unverändert.
 
 ## Startalias `/workentry`
 
-- Rohes JSON muss wie bisher ein Array sein, sonst Text-400 `Invalid request.`.
+- Rohes JSON muss wie bisher ein Array sein, sonst HTTP 400 mit JSON-`{success:false,message}` und `Invalid request.`.
 - Die bisherigen PHP-`!empty(endzeit) || !empty(pause)`-Regeln bleiben exakt:
-  historische Eingaben werden mit Text-409
+  historische Eingaben werden mit HTTP 409 im selben JSON-Fehlerumschlag und
   `Use a correction request for historical entries.` verweigert. Keine neue
   Datum-/Bool-/Ganzzahlvalidierung ersetzt diese bestehenden Bedingungen.
 - `startzeit`, Standort, Beschreibung und andere Clientfelder werden **nicht**

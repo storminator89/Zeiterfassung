@@ -13,6 +13,7 @@ namespace App\View\ExistingUi;
 final readonly class AttendancePage
 {
     public string $state;
+    public bool $reportUnresolved;
 
     /** @param list<array{date: string, name: string}> $holidaysThisWeek Already formatted display dates. */
     public function __construct(
@@ -30,6 +31,8 @@ final readonly class AttendancePage
         public array $holidaysThisWeek = [],
         public Interactions $interactions = new Interactions,
         public string $activePage = 'index.php',
+        public int $reportInvalidCount = 0,
+        bool $reportUnresolved = false,
     ) {
         if ($userId < 1 || ! in_array($role, ['user', 'supervisor', 'admin'], true)
             || ! in_array($theme, ['light', 'dark'], true)
@@ -40,6 +43,18 @@ final readonly class AttendancePage
         }
 
         $this->state = $status['state'];
+        $this->reportUnresolved = $reportUnresolved || ($status['report_finality']['all'] ?? false) === true;
+    }
+
+    public function overtimeLabel(): string
+    {
+        // A newer status snapshot may discover a conflict after summary loading.
+        return $this->reportUnresolved ? 'Klärung offen' : ($this->reportInvalidCount > 0 ? 'Unvollständig' : ($this->totalOverHoursFormatted ?? '—'));
+    }
+
+    public function overtimePresentation(): string
+    {
+        return $this->reportUnresolved ? 'unresolved' : ($this->reportInvalidCount > 0 ? 'incomplete' : ($this->totalOverHoursFormatted === null ? 'unavailable' : 'current'));
     }
 
     public function statusLabel(): string

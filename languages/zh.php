@@ -207,6 +207,11 @@ define('TOKEN_GENERATED_ERROR', '生成令牌時出錯：');
 define('LDAP_SYNC_SUCCESS', 'LDAP 同步成功完成。');
 define('LDAP_BIND_FAILED', 'LDAP 綁定失敗。');
 define('LDAP_CONNECTION_FAILED', 'LDAP 連接失敗。');
+define('LDAP_EXTENSION_REQUIRED', '缺少 PHP LDAP 擴充功能。LDAP 設定未變更。');
+define('LDAP_SETTINGS_INVALID', '請輸入有效的 LDAP 連線資料，包括使用者、密碼及連接埠（1–65535）。LDAP 設定未變更。');
+define('LDAP_TLS_FAILED', '必要的 LDAP TLS 測試失敗。LDAP 設定未變更。');
+define('LDAP_SEARCH_FAILED', 'LDAP 搜尋測試未傳回完整有效的結果。LDAP 設定未變更。');
+define('LDAP_SYNC_FAILED', '無法儲存已驗證的 LDAP 設定，或無法完成匯入。請檢查已儲存的狀態。');
 define('DATABASE_CONNECTION_FAILED', '資料庫連接失敗：');
 define('DEPARTMENT_DELETED_SUCCESS', '部門刪除成功。');
 define('DEPARTMENT_DELETED_ERROR', '刪除部門時出錯：');
@@ -250,6 +255,14 @@ define('SETTINGS_IMPORT_DATABASE', '匯入資料庫');
 define('SETTINGS_DOWNLOAD_DATABASE', '下載資料庫');
 define('BUTTON_SAVE_REGULAR_WORKING_HOURS', '保存工時');
 define('SETTINGS_OVERTIME', '先前加班時數');
+define('SETTINGS_BACKUP_OPERATIONS_TITLE', '資料庫備份與還原');
+define('SETTINGS_BACKUP_RESTORE_TITLE', '離線還原');
+define('SETTINGS_BACKUP_IMPORT_DISABLED', '瀏覽器匯入功能已刻意停用：部分匯入可能損壞工時模型與變更歷史。');
+define('SETTINGS_BACKUP_RESTORE_INSTRUCTIONS', '必須先停止應用程式與裝置服務，再離線一併還原完整的私有資料目錄（資料庫、所有現有的 SQLite 附屬檔案及 .key 檔案）。資料庫結構與程式碼必須與備份版本相符。');
+define('SETTINGS_BACKUP_RESTORE_GUIDE', '此介面不提供自動完整還原。維運人員的離線操作步驟請參閱：');
+define('SETTINGS_BACKUP_SNAPSHOT_TITLE', '資料庫快照');
+define('SETTINGS_BACKUP_SNAPSHOT_DESCRIPTION', '整個 SQLite 資料庫的一致性快照。不包含外部 .key 檔案、應用程式碼及維運設定，因此此下載不是完整的系統備份。');
+define('SETTINGS_BACKUP_SNAPSHOT_DOWNLOAD', '下載資料庫快照');
 
 ?>
 

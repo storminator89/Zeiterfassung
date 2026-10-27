@@ -55,6 +55,53 @@
         function message(text) {
             document.querySelectorAll('#message, #attendance-message').forEach(element => { element.textContent = text; });
         }
+        // Presentation only. Never restore remembered amounts after a booking,
+        // failed refresh or manual correction: only a deliberate page navigation
+        // can obtain fresh numeric summaries without discarding unsaved forms.
+        const reportPeriods = ['all', 'week', 'month', 'year'];
+        let reportFinality = null;
+        let reportRefreshNeeded = false;
+        const reportValues = () => [...document.querySelectorAll('[data-report-period]')];
+        function reportNotice() {
+            const notice = document.getElementById('report-finality-notice');
+            const copy = document.querySelector('[data-report-finality-message]');
+            if (!notice || !copy) return;
+            const unresolved = reportFinality && reportPeriods.some(period => reportFinality[period]);
+            const stale = reportRefreshNeeded || reportValues().some(element => element.dataset.reportPresentation === 'refresh-needed');
+            if (unresolved) {
+                copy.textContent = 'Klärung offen: Arbeitszeit und ganztägige Abwesenheit überschneiden sich. Betroffene Summen sind bis zur manuellen Vier-Augen-Klärung nicht abschließend. Originalzeiten bleiben unverändert.';
+                notice.hidden = false;
+            } else if (stale) {
+                copy.textContent = 'Anzeigeaktualisierung nötig: Die markierten Summen sind nicht abschließend. Bitte ungespeicherte Eingaben zuerst sichern und die Seite bewusst neu laden. Eine frühere Buchungswarnung ist keine aktuelle Konfliktprüfung.';
+                notice.hidden = false;
+            } else if (reportFinality) { notice.hidden = true; }
+        }
+        function invalidateReportValues() {
+            reportFinality = null;
+            reportRefreshNeeded = true;
+            reportValues().forEach(element => {
+                element.dataset.reportPresentation = 'refresh-needed';
+                element.textContent = 'Aktualisierung nötig';
+                element.classList.remove('text-success', 'text-error');
+            });
+            reportNotice();
+        }
+        function applyReportFinality(value) {
+            if (!value || !reportPeriods.every(period => typeof value[period] === 'boolean')) { invalidateReportValues(); return; }
+            reportFinality = value;
+            reportValues().forEach(element => {
+                const period = element.dataset.reportPeriod;
+                if (value[period]) {
+                    element.dataset.reportPresentation = 'unresolved';
+                    element.textContent = 'Klärung offen';
+                    element.classList.remove('text-success', 'text-error');
+                } else if (element.dataset.reportPresentation === 'unresolved') {
+                    element.dataset.reportPresentation = 'refresh-needed';
+                    element.textContent = 'Aktualisierung nötig';
+                }
+            });
+            reportNotice();
+        }
         function render(nextState = state) {
             if (!Object.hasOwn(allowed, nextState)) throw new Error('Unbekannter Anwesenheitsstatus. Bitte Seite neu laden.');
             state = nextState;
@@ -103,7 +150,7 @@
                     if (!response.ok) throw new Error('Anzeige konnte nicht aktualisiert werden. Bitte Seite neu laden.');
                     const data = await readJson(response);
                     if (!data.success || !Object.hasOwn(allowed, data.state)) throw new Error('Anwesenheitsstatus konnte nicht geladen werden. Bitte neu anmelden.');
-                    if (startedAt === revision && !busy) { render(data.state); renderRecent(data.records); }
+                    if (startedAt === revision && !busy) { render(data.state); renderRecent(data.records); applyReportFinality(data.report_finality); }
                 })().finally(() => { refreshing = null; });
             }
             await refreshing;
@@ -113,7 +160,7 @@
             }
         }
         function refreshQuietly() {
-            if (!document.hidden && !busy) void refresh().catch(error => { message(error.message); });
+            if (!document.hidden && !busy) void refresh().catch(error => { invalidateReportValues(); message(error.message); });
         }
 
         document.addEventListener('click', async event => {
@@ -147,8 +194,16 @@
                 if (!data.success || !Object.hasOwn(allowed, data.state)) throw new Error('Keine gültige Buchungsbestätigung erhalten. Dieselbe Aktion erneut versuchen.');
                 pending = null; rememberPending(); confirmed = true;
                 render(data.state);
-                message([data.message, data.local_time].filter(Boolean).join(' '));
+                // This may be a historical cached warning. It proves neither a
+                // current conflict nor current numeric totals; the fresh read
+                // below owns current period flags. Invalidate before it can fail.
+                if (data.overlap_warning) invalidateReportValues();
+                message([data.overlap_warning ? 'Buchungsbestätigung (bei Wiederholung historisch); aktueller Konfliktstand wird getrennt geprüft.' : '', data.message, data.local_time].filter(Boolean).join(' '));
             } catch (error) {
+                // A lost/malformed end acknowledgement may already be committed.
+                // Keep its exact pending event, but never leave old numbers
+                // looking final while waiting for that same-event retry/read.
+                if (pending?.action === 'end') invalidateReportValues();
                 message(pending ? `${error.message || 'Keine Bestätigung erhalten.'} Dieselbe Aktion erneut versuchen.`
                     : error.message || 'Buchung wurde nicht bestätigt.');
             } finally {
@@ -185,7 +240,10 @@
         });
 
         render();
-        if (pending) message('Eine Buchung wurde noch nicht bestätigt. Dieselbe Aktion erneut versuchen.');
+        if (pending) {
+            if (pending.action === 'end') invalidateReportValues();
+            message('Eine Buchung wurde noch nicht bestätigt. Dieselbe Aktion erneut versuchen.');
+        }
         window.addEventListener('pageshow', refreshQuietly);
         window.addEventListener('focus', refreshQuietly);
         document.addEventListener('visibilitychange', refreshQuietly);

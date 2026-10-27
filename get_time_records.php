@@ -14,6 +14,7 @@ if (file_exists($langFile)) {
 }
 
 include 'functions.php';
+require_once __DIR__ . '/lib/report_ordering.php';
 $user_id = $_SESSION['user_id'];
 
 // Pagination
@@ -21,19 +22,38 @@ $itemsPerPage = 10;
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $offset = ($page - 1) * $itemsPerPage;
 
-// Modify the query to order by date and time
-$stmt = $conn->prepare("
+// Sort actual instants before pagination; equal instants use the stable row ID.
+report_register_start_order($conn);
+// Page rows and full conflict/day context must describe the same own-user
+// snapshot. Do not search only visible start-days: overnight counterparts can
+// belong to another day or page. functions.php has finished its native reads.
+$conn->beginTransaction();
+try {
+    $stmt = $conn->prepare("
     SELECT *,
            NULL AS weekNumber,
            substr(startzeit,1,10) as workDate
     FROM zeiterfassung
     WHERE user_id = ?
-    ORDER BY startzeit DESC
+    ORDER BY chrono_report_start_epoch(startzeit) DESC, id DESC
     LIMIT ? OFFSET ?
 ");
-$stmt->execute([$user_id, $itemsPerPage, $offset]);
-$records = $stmt->fetchAll(PDO::FETCH_ASSOC);
-$recordGroups = report_time_record_groups($records);
+    $stmt->execute([$user_id, $itemsPerPage, $offset]);
+    $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt->closeCursor();
+    $totalsStmt = $conn->prepare('SELECT * FROM zeiterfassung WHERE user_id = ?');
+    $totalsStmt->bindValue(1, (int)$user_id, PDO::PARAM_INT);
+    $totalsStmt->execute();
+    $completeDayRows = $totalsStmt->fetchAll(PDO::FETCH_ASSOC);
+    $totalsStmt->closeCursor();
+    $listConflicts = report_absence_conflicts($completeDayRows);
+    $totalRecords = count($completeDayRows);
+    $conn->commit();
+} catch (Throwable $error) {
+    if ($conn->inTransaction()) { $conn->rollBack(); }
+    throw $error;
+}
+$recordGroups = report_time_record_groups($records, $completeDayRows, $listConflicts);
 
 // Group records by date for summary calculation
 $currentDate = null;
@@ -72,13 +92,25 @@ $currentDate = null;
 $dailyRecords = [];
 $dailyTotals = [];
 
-// Group and summarize only the already-paginated raw rows, using shared preparation.
+// Details stay page-local; summary duration and pause cover the complete day.
 foreach ($recordGroups as $group) {
-    $workDate = $group['work_date'];
+    $workDate = $group['group_key'];
     $dayRecords = $group['records'];
     $formattedTotal = $group['total_duration'];
     $totalPause = $group['total_pause'];
+    $pauseLabel = $totalPause === null ? 'Ungültig' : $totalPause . ' min';
     $formattedDate = $group['formatted_date'];
+    $entryCountLabel = $group['is_partial'] ? count($dayRecords) . ' / ' . $group['day_entry_count'] : (string)count($dayRecords);
+    $entryCountTitle = $group['is_partial'] ? 'Sichtbare Einträge / alle Einträge des Tages' : 'Anzahl der Einträge';
+    $partialDayNotice = $group['is_partial']
+        ? '<p class="text-sm opacity-70 mb-3">Teilansicht: ' . $entryCountLabel . ' Einträge auf dieser Seite. Dauer und Pause berücksichtigen alle Einträge des Tages.</p>'
+        : '';
+    $invalidNotice = $group['invalid_count'] > 0
+        ? '<p class="text-sm text-warning mb-3" role="alert">Datenqualität: ' . $group['invalid_count'] . ' ungültige Einträge. Keine verlässliche Tagessumme; bitte „Korrektur / Storno“ verwenden.</p>'
+        : '';
+    $conflictNotice = $group['is_unresolved']
+        ? '<p class="text-sm text-warning mb-3" role="alert">Klärung offen: Arbeitszeit und ganztägige Abwesenheit überschneiden sich. Die Tagessumme ist nicht abschließend. Einzelwerte bleiben unverändert; bitte über „Korrektur / Storno“ mit Freigabe klären.</p>'
+        : '';
 
     // Update the summary row output with entry count
     echo '<tr class="summary-row hover:bg-base-200/50 cursor-pointer transition-colors" data-date="' . $workDate . '">
@@ -89,9 +121,11 @@ foreach ($recordGroups as $group) {
                     </div>
                     <div class="flex items-center gap-2">
                         <div class="font-medium">' . $formattedDate . '</div>
-                        <div class="badge badge-sm badge-ghost" title="Anzahl der Einträge">
-                            ' . count($dayRecords) . '
+                        <div class="badge badge-sm badge-ghost" title="' . $entryCountTitle . '">
+                            ' . $entryCountLabel . ($group['is_partial'] ? ' · Teilansicht' : '') . '
                         </div>
+                        ' . ($group['invalid_count'] > 0 ? '<span class="badge badge-warning badge-sm">Daten prüfen</span>' : '') . '
+                        ' . ($group['is_unresolved'] ? '<span class="badge badge-warning badge-sm">Klärung offen</span>' : '') . '
                     </div>
                 </div>
             </td>
@@ -104,7 +138,7 @@ foreach ($recordGroups as $group) {
             <td class="px-6 py-4 w-32">
                 <div class="flex items-center justify-center gap-2">
                     <i class="fas fa-pause text-primary/75"></i>
-                    <span class="font-medium">' . $totalPause . ' min</span>
+                    <span class="font-medium">' . $pauseLabel . '</span>
                 </div>
             </td>
             <td></td>
@@ -114,6 +148,9 @@ foreach ($recordGroups as $group) {
     echo '<tr class="details-row bg-base-100/50" data-date="' . $workDate . '" style="display: none;">
             <td colspan="4" class="p-0">
                 <div class="pl-14 pr-6 py-4 border-l-4 border-primary/10">
+                    ' . $partialDayNotice . '
+                    ' . $invalidNotice . '
+                    ' . $conflictNotice . '
                     <table class="table w-full">
                         <thead class="bg-base-200/50">
                             <tr>
@@ -142,10 +179,7 @@ foreach ($recordGroups as $group) {
 
 echo '</tbody></table></div>';
 
-// Fetch total number of records
-$stmt = $conn->prepare("SELECT COUNT(*) FROM zeiterfassung WHERE user_id = ?");
-$stmt->execute([$user_id]);
-$totalRecords = $stmt->fetchColumn();
+// Pagination count belongs to the same snapshot as the displayed page/context.
 $totalPages = ceil($totalRecords / $itemsPerPage);
 
 // Generate pagination HTML
@@ -196,5 +230,7 @@ function outputRecordRow($record) {
     $startLabel = $detail['start_label'];
     $endLabel = $detail['end_label'];
     $durationLabel = $detail['duration_label'];
-    echo '<tr><td>'.h($record['weekNumber']).'</td><td>'.h($startLabel).'</td><td>'.h($endLabel).'</td><td>'.h($durationLabel).'</td><td>'.h($record['pause']).'</td><td>'.h($record['standort']).'</td><td>'.h($record['beschreibung']).'</td><td><a class="link link-primary" href="adjustments.php?record_id='.(int)$record['id'].'">Korrektur / Storno</a></td></tr>';
+    $qualityLabel = $detail['is_invalid'] ? '<span class="block text-sm text-warning">'.h($detail['validation_error']).'</span>' : '';
+    $conflictLabel = $detail['is_unresolved'] ? '<span class="block text-sm text-warning">Klärung offen · Überschneidung mit Arbeitszeit / Abwesenheit. Einzelwert unverändert.</span>' : '';
+    echo '<tr><td>'.h($record['weekNumber']).'</td><td>'.h($startLabel).'</td><td>'.h($endLabel).'</td><td>'.h($durationLabel).$qualityLabel.$conflictLabel.'</td><td>'.h($record['pause']).'</td><td>'.h($record['standort']).'</td><td>'.h($record['beschreibung']).'</td><td><a class="link link-primary" href="adjustments.php?record_id='.(int)$record['id'].'">Korrektur / Storno</a></td></tr>';
 }

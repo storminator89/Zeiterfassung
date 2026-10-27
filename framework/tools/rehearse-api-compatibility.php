@@ -45,8 +45,8 @@ try {
         && $preflight->headers->get('Access-Control-Allow-Headers') === 'Content-Type, Authorization'
         && ! $preflight->headers->has('Set-Cookie') && $database->getConnections() === []);
     $missing = $request('GET', '/api.php/users');
-    $ensure($missing->getStatusCode() === 401 && $missing->getContent() === 'Invalid bearer token.'
-        && $missing->headers->get('Content-Type') === 'text/plain; charset=UTF-8'
+    $ensure($missing->getStatusCode() === 401 && $missing->getContent() === json_encode(['success' => false, 'message' => 'Invalid bearer token.'])
+        && $missing->headers->get('Content-Type') === 'application/json; charset=UTF-8'
         && $missing->headers->get('Access-Control-Allow-Origin') === '*' && $database->getConnections() === []);
     try {
         $app->make(LegacyApiIdentity::class)->authenticate(Request::create('/api.php/users', 'GET', [], [], [], ['HTTP_AUTHORIZATION' => 'Bearer a.b.c']));
@@ -94,15 +94,17 @@ try {
     $directoryAdmin = $token(2);
     $before = SourceSnapshot::capture($pdo, $mapping);
 
-    $phase = 'representative extension own identity and raw UTC paging';
+    $phase = 'representative extension own identity and Berlin start-day paging';
     $identity = $request('GET', '/api.php/users?user_id=2', $member);
     $expected = ['success' => true, 'data' => $pdo->query('SELECT id,username,email,role FROM users WHERE id=1')->fetchAll(PDO::FETCH_ASSOC)];
     $ensure($identity->getStatusCode() === 200 && $identity->getContent() === json_encode($expected)
         && ! $identity->headers->has('Set-Cookie'));
-    $entries = $request('GET', '/api.php/timeentries?start_date=2026-10-24&end_date=2026-10-24&limit=1&offset=0&user_id=2', $member);
-    $rows = $pdo->query("SELECT * FROM zeiterfassung WHERE user_id=1 AND date(startzeit)>='2026-10-24' AND date(startzeit)<='2026-10-24' ORDER BY startzeit DESC LIMIT 1 OFFSET 0")->fetchAll(PDO::FETCH_ASSOC);
+    $entries = $request('GET', '/api.php/timeentries?start_date=2026-10-25&end_date=2026-10-25&limit=1&offset=0&user_id=2', $member);
+    $rows = $pdo->query("SELECT * FROM zeiterfassung WHERE user_id=1 AND id=44")->fetchAll(PDO::FETCH_ASSOC);
     $ensure($entries->getStatusCode() === 200 && array_column($rows, 'id') === [44]
         && $entries->getContent() === json_encode(['success' => true, 'data' => $rows, 'meta' => ['total' => 1, 'filtered' => 1, 'limit' => 1, 'offset' => 0]]));
+    $previousDay = json_decode($request('GET', '/api.php/timeentries?start_date=2026-10-24&end_date=2026-10-24', $member)->getContent(), true, 512, JSON_THROW_ON_ERROR);
+    $ensure($previousDay['data'] === [] && $previousDay['meta']['total'] === 0);
     $adminRows = json_decode($request('GET', '/api.php/timeentries?user_id=1', $directoryAdmin)->getContent(), true, 512, JSON_THROW_ON_ERROR);
     $ensure(array_column($adminRows['data'], 'user_id') === [2]); // API accepts LDAP identity, never broad admin scope.
     $ensure(SourceSnapshot::capture($pdo, $mapping) === $before);
@@ -110,18 +112,20 @@ try {
     $phase = 'token rejection, current account revocation and no web fallback';
     foreach ([$member.'x', $token(1, ['exp' => time() - 1]), $token(1, ['aud' => 'other'])] as $invalid) {
         $response = $request('GET', '/api.php/users', $invalid);
-        $ensure($response->getStatusCode() === 401 && $response->getContent() === 'Invalid or expired token.');
+        $ensure($response->getStatusCode() === 401 && $response->getContent() === json_encode(['success' => false, 'message' => 'Invalid or expired token.']));
     }
     $ensure($request('GET', '/api.php/users')->getStatusCode() === 401); // No cached prior identity.
     $app->make(AuditContext::class)->run('fixture:api-rehearsal', 'Synthetic password revocation', fn () => $pdo->exec("UPDATE users SET password='synthetic-version-b' WHERE id=1"));
     $revoked = $request('GET', '/api.php/users', $member);
-    $ensure($revoked->getStatusCode() === 401 && $revoked->getContent() === 'Account deleted or credentials changed.');
+    $ensure($revoked->getStatusCode() === 401 && $revoked->getContent() === json_encode(['success' => false, 'message' => 'Account deleted or credentials changed.']));
     $before = SourceSnapshot::capture($pdo, $mapping);
 
     $phase = 'legacy errors, no historical CRUD and unchanged snapshot';
     $invalidDate = $request('GET', '/api.php/timeentries?start_date=', $directoryAdmin);
     $ensure($invalidDate->getStatusCode() === 400 && $invalidDate->getContent() === json_encode(['success' => false, 'message' => 'Invalid start_date format. Use YYYY-MM-DD']));
-    $ensure($request('GET', '/api.php/timeentries?offset=1', $directoryAdmin)->getStatusCode() === 500);
+    $offsetOnly = $request('GET', '/api.php/timeentries?offset=1', $directoryAdmin);
+    $ensure($offsetOnly->getStatusCode() === 200
+        && $offsetOnly->getContent() === json_encode(['success' => true, 'data' => [], 'meta' => ['total' => 1, 'filtered' => 0, 'limit' => 100, 'offset' => 1]]));
     $ensure($request('GET', '/api.php/unknown')->getStatusCode() === 400
         && $request('GET', '/api.php/users/')->getStatusCode() === 400
         && $request('GET', '/api.php/%75sers')->getStatusCode() === 400
@@ -129,7 +133,7 @@ try {
         && $request('PUT', '/api.php/users')->getStatusCode() === 405
         && $request('POST', '/api.php/users', null, ['HTTP_X_HTTP_METHOD_OVERRIDE' => 'GET'])->getStatusCode() === 400);
     $denied = $request('DELETE', '/api.php/timeentry/45', $directoryAdmin);
-    $ensure($denied->getStatusCode() === 409 && $denied->getContent() === 'Use an approved correction request to cancel a record.'
+    $ensure($denied->getStatusCode() === 409 && $denied->getContent() === json_encode(['success' => false, 'message' => 'Use an approved correction request to cancel a record.'])
         && $request('DELETE', '/api.php/timeentry/45/', $directoryAdmin)->getStatusCode() === 400);
     $ensure($request('POST', '/api.php/login')->getStatusCode() === 400
         && $request('POST', '/api.php/workentry')->getStatusCode() === 401); // Alias still requires current bearer identity.
@@ -139,7 +143,7 @@ try {
         && array_intersect_key($GLOBALS, array_flip(['audit_actor', 'audit_reason', '_SESSION'])) === $globals);
     echo json_encode([
         'passed' => true,
-        'groups' => ['inactive admissions and no-IO preflight', 'extension-style own reads and UTC paging', 'token and current account rejection', 'legacy wire errors and read-only snapshot'],
+        'groups' => ['inactive admissions and no-IO preflight', 'extension-style own reads and Berlin start-day paging', 'token and current account rejection', 'legacy wire errors and read-only snapshot'],
         'synthetic_memory_only' => true, 'laravel_http_kernel_requests' => true,
         'live_endpoint_switch' => false, 'login_writes_ui_real_distribution_acceptance' => false,
     ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR)."\n";

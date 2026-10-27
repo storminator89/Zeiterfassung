@@ -23,17 +23,43 @@ der vorhandenen authentifizierten DEFERRED-Lesetransaktion. Die gemeinsame
   dem zugelassenen Bestand. Kein Kalenderdownload, Holiday-INSERT oder heimliches
   Nachladen aus `functions.php`; fehlende Kalenderabdeckung bleibt ein Gate.
 - Genau wie nativ werden die Statistikkarten beim vollständigen Seitenaufruf
-  berechnet. Nach einer Buchung wird nur Status/Tabelle aktualisiert; Karten
-  werden nicht durch neue Browserberechnungen live nachgeführt.
+  berechnet. Nach einer Buchung werden Status/Tabelle aktualisiert; Karten
+  werden nicht im Browser neu berechnet. Die geerbte Einschränkung zur
+  Aktualitätsmarkierung ist unten ausdrücklich beschrieben.
 
-`LocalWebHomeController::records` verwendet die vorhandenen eigenen
-`reportRows()`. Native Seitenauswahl `max(1, intval(page))`, zehn **Rohzeilen**
-und `startzeit DESC` bleiben erhalten. Erst nach diesem Ausschnitt erzeugt
-`report_time_record_groups` die nativen Anzeigegruppen. Derselbe Tag kann
-mehrere Seiten belegen; eine Tagesgesamtzeit gilt nur für die aktuelle Seite.
-Keine zweite Dateipaginierung, SQL-Datumsumwandlung oder Behebung der bekannten
-Extremwert-/Datumsgrenzen. Die native rohe Summary-Rundung und die separate
-validierende Detailformatierung werden nicht still vereinheitlicht.
+`LocalWebHomeController::records` verwendet `reportRows(chronological: true)`.
+Der bisherige parameterlose Read bleibt für die nativen Korrekturoptionen
+lexikalisch sortiert; nur Home nutzt den vorhandenen `report_register_start_order`
+und `chrono_report_start_epoch(startzeit) DESC,id DESC` **vor** zehn Rohzeilen
+und Berliner Gruppierung. Sichtbare Details bleiben seitenlokal; der vollständige
+eigene Snapshot wird zusätzlich an `report_time_record_groups` übergeben.
+Dadurch umfassen Summen alle Tageszeilen, und off-page/übernachtige
+Arbeitszeit-Abwesenheitskonflikte gehen nicht verloren. Teilansichten zeigen
+sichtbare/alle Zeilen und den vorhandenen nativen Hinweis.
+
+Die aktuelle native Diagnose aus #16/#35 wird sichtbar übernommen: ungültige
+Startwerte erhalten eigene opaque DOM-Gruppenschlüssel, ungültige Zeilen zeigen
+den unveränderten Fehler und keine erfundene Nullsumme. Konflikte behalten
+Einzelwerte, kennzeichnen betroffene Tage aber als „Klärung offen“.
+`homeSummary()` optiert ausdrücklich in beide nativen Diagnoseausgaben ein.
+Bei ungültigen eigenen Zeilen oder Konflikten sind die kumulierten
+Überstundenfelder nicht numerisch (`null`/„Unvollständig“ beziehungsweise
+„Klärung offen“), ohne Erfolgs-/Fehlerfarbe. Datenqualitäts- und
+Vier-Augen-Korrekturhinweis stehen im bestehenden Layout.
+
+Der native Webstatus liefert `report_finality` (all/week/month/year) aus dem
+vollständigen eigenen Kontext im selben Snapshot wie der Status. Die erhaltene
+native `attendance.js` nutzt die vorhandenen `data-report-*`-Markierungen,
+invalidiert Werte bei `overlap_warning`, unbestätigtem Ende, ungültiger
+Finalitätsmetadaten oder fehlgeschlagenem leisem Refresh und stellt keine
+gemerkten Beträge wieder her. Erfolgreiche konfliktfreie Buchungen und
+Abwesenheiten invalidieren Karten im geerbten Client dagegen **nicht generell**;
+auch ein fehlgeschlagener unmittelbarer `refresh(true)` setzt nicht in jedem
+Pfad eine Aktualitätsmarkierung. Diese bestehende Einschränkung ist in diesem
+Migrationspaket nicht behoben; aktuelle Zahlen erfordern bewusstes Neuladen.
+Formularzustand wird nicht durch Auto-Reload verworfen. Ein neuerer
+Statuskonflikt unterdrückt schon beim ersten Rendern einen älteren Summenwert.
+Die rohe öffentliche API-Statusantwort bleibt davon getrennt und unverändert.
 
 Blade escaped alle dynamischen Gruppen-/Detailwerte. Offene Zeilen erhalten
 keine fiktive Endzeit. Gutschriften zeigen gespeicherte Sollminuten, Datum und
@@ -102,3 +128,26 @@ Read-only Vorher/Nachherbelege prüfen gespeicherte Sollminuten, eigenen Auditak
 keine Stempelereignisse/-intervalle und unveränderte Original-/Backuphashes.
 Keine Mikro-/Rollen-/DST-/Stresstestmatrix oder neue Vollsuite. Noch keine
 Funktions-, Browser- oder vollständige #79-Freigabe behauptet.
+
+
+## Aktuelle Main-Integration, weiterhin WIP-Draft
+
+Fortsetzung der existierenden PRs #110/#111 auf Main `165ce380`, keine zweite
+Oberfläche. Alle nativen Rootdateien/Assets, Authprovider, Defaultregistrierung,
+Konfiguration und privaten Daten bleiben unverändert. Die ebenfalls vorhandene
+Korrekturansicht behält vorerst ihre frühere 200-Options-/Antragslisten-Anbindung;
+neue native Korrekturauswahl-/Queuepakete sind damit nicht automatisch migriert.
+
+Für diesen Stand wurden nur notwendige Syntax/Composer/Plattformprüfungen und
+fünf synthetische vollständige Bladeansichten mit nativen reinen Arrayhelfern
+geprüft. Kein Guard/Login, keine Credential-/CSRF-Injektion, keine DBverbindung,
+HTTPanfrage, Fixturevorbereitung oder Browser-/Serveraktivierung. Die vorhandenen
+Memory-Rehearsal-Erwartungen wurden dem zusätzlichen Diagnosevertrag angepasst,
+aber die auth-/datenbankgestützten Rehearsals nicht ausgeführt.
+
+Die frühere echte Home-/Abwesenheitsabnahme bleibt **BLOCKIERT / unakzeptiert**:
+Secure-Credential-Eingabe wurde verweigert; die eine BrowserAuth-Anfrage endete nur
+mit „aborted by user“, ihr terminaler Managerstatus ist unbekannt. Kein Retry,
+Loginersatz, Sessioninjektion oder anderer Umweg ist Teil dieser Integration.
+Beide PRs bleiben Draft und nicht merge-ready, selbst bei grüner CI. Native
+Bestandsseiten beweisen keine Laravel-UI-Abnahme; keine Route-/Produktivumschaltung.

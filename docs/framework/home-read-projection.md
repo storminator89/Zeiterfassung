@@ -32,55 +32,61 @@ späteres Modell neu berechnet. Arbeitstage zählen das **ganze aktuelle Berline
 Monat**, jeweils nur bei positivem Soll; heute, Feiertage und Modellhistorie
 kommen aus den vorhandenen Helfern. Überstundenfarbe bleibt strikt `> 0`.
 
-Roh/unescaped: `current_month` (`m`), `current_date`, `working_days_this_month`,
+Roh/unescaped: `current_month`, `current_date`, `working_days_this_month`,
 `total_overtime_hours`, `total_overtime_formatted`, `positive_overtime`,
-`daily_hours_formatted`, `holidays_this_week` (`date,formatted_date,name`). Es
-werden ausschließlich gespeicherte Wochenfeiertage gelesen, nicht nachgeladen.
-Kalenderabdeckung und ihre bestehenden Grenzen bleiben offen.
+`daily_hours_formatted`, `holidays_this_week` (`date,formatted_date,name`). Nur
+hinterlegte Wochenfeiertage werden gelesen, nicht nachgeladen.
+
+## Aktueller Diagnosevertrag (#16 / #35)
+
+Auf Main165ce380 wird ausdrücklich `report_days($records, $invalid, $conflicts)`
+verwendet, nicht die nichtdiagnostische fail-closed-Variante ohne Ausgabebags.
+Die zusätzlichen Felder `invalid_records`, `absence_conflicts`,
+`report_finality` gehören ausschließlich zum eigenen Home-Anzeigevertrag.
+Ungültige Zeilen/ganztägige Überschneidungen werden durch die vorhandenen
+nativen Helfer erkannt. Bei einem solchen Befund sind kumulierte Überstunden
+`null` statt einer abschließenden Zahl, mit „Unvollständig“ beziehungsweise
+„Klärung offen“ und `positive_overtime=null`. Die opt-in Blade-Ansicht zeigt
+die Diagnose und den bestehenden Korrekturweg sichtbar an. Keine Datenreparatur,
+kein Löschen, keine neue Zeitkonto-/Konfliktprioritätsregel.
+
+Der native **Web**-Status erhält dieselben `report_finality`-Bools für
+all/week/month/year wie `attendance.php?format=status`; aktuelle eigene Zeilen,
+Konfliktkontext und Anwesenheitsstatus teilen einen Lesesnapshot. Die separat
+vorhandenen API-Status-/Zeiteintrags-/Periodenmethoden bleiben unverändert.
 
 ## Gemeinsame Tabellen-Datenaufbereitung
 
-`report_time_record_groups(array $pagedRows)` hat keine SQL-, HTML-, Session-
-oder Escapinglogik. **Zuerst zehn rohe Zeilen** in bestehender roher
-`startzeit DESC`-Reihenfolge paginieren, erst danach Berliner Starttage gruppieren.
-Der native `get_time_records.php` ruft den Helfer aktiv auf; SQL, Echo-Markup,
-Klassen, Links und `h()`-Grenzen bleiben erhalten. `outputRecordRow($record)`
-akzeptiert weiterhin native Rohzeilen und delegiert seine Anzeigelabels.
+Nur Home ruft `reportRows(chronological: true)` auf: vorhandene native
+`report_register_start_order`-UDF, Sortierung nach Zeitpunkt und danach ID,
+anschließend zehn Rohzeilen. Der parameterlose Standard behält die bisherige
+lexikalische Reihenfolge für Korrekturoptionen.
 
-Gruppenfelder: `work_date,formatted_date,total_duration,total_pause,entry_count,
-records`. Ein Eintrag behält native Rohschlüssel und ergänzt die Anzeigeprojektion
-`id,week_number,start_label,end_label,duration_label,pause,location,comment`.
-Blade verwendet nur diese Anzeigeprojektion und escaped selbst.
+`report_time_record_groups($pageRows, $completeOwnRows)` bekommt denselben
+vollständigen eigenen Snapshot zusätzlich zu den sichtbaren Details. Kein SQL,
+HTML, Session oder Escaping im Helfer. Summen umfassen alle Tageszeilen;
+`is_partial/day_entry_count` beschreibt sichtbare/alle Einträge. Vollständiger
+Kontext erfasst auch off-page- und Übernachtkonflikte vor Datum-/Seitenfilterung.
+Ungültige Starts bleiben als getrennte opaque `group_key`-Gruppen ohne erfundenes
+Datum sichtbar. Ungültige Tage zeigen `Ungültig` statt Null und `total_pause=null`;
+Konflikttage zeigen `Klärung offen`, während Originaleinzelwerte erhalten bleiben.
+`is_invalid/validation_error/is_unresolved` begleiten die Einzelansichten.
+Gutschriften zeigen weiter ihre gespeicherten Sollminuten und keine Stempelzeit.
+Die UI escaped die Anzeigeprojektion und übernimmt dieselben nativen Warntexte.
 
-Die Tageszusammenfassung verwendet weiterhin rohe Zeitdifferenzen mit **floor pro
-Zeile**, ganze gespeicherte Pausen und den nativen negativen Modulo-/Formatpfad.
-Sie wird nicht durch `report_days` oder `intdiv` ersetzt. Einzelne normale
-Detaildauern verwenden weiterhin `calculateDuration`/Berichtsvalidierung;
-Gutschriften zeigen die gespeicherten Sollminuten. Ein ungültiges negatives
-Intervall kann daher weiterhin einen negativen Tageswert und `-` im Detail zeigen.
-Explizites Berlin bei rohen DateTime-Konstruktoren erhält die native Zeitzone,
-ohne Laravels globale UTC-Zeitzone zu ändern; gespeicherte Offsets bleiben gültig.
-Geteilte Tage, seitenlokale Summen, Starttagzuordnung und bekannte Reporting- sowie
-Kalendergrenzen werden hier ausdrücklich nicht korrigiert.
+## Begrenzte Nachweise und offene Abnahme
 
-## Begrenzter Nachweis
+Die ursprünglichen gemeinsamen Projektionen wurden am 27.10.2026 mit einem
+groben synthetischen Memory-Nachweis geprüft. Das beschreibt den historischen
+Stand, nicht eine neue Abnahme der aktuellen Diagnose-/Versionsintegration.
+Die vorhandenen Tools `rehearse-home-projection.php` und
+`rehearse-domain-reads.php` haben notwendige genaue Erwartungsanpassungen für
+den zusätzlichen Vertrag; in dieser Integration wurden sie **nicht ausgeführt**.
 
-```sh
-cd framework
-php tools/rehearse-home-projection.php
-```
-
-Ein grober synthetischer Memory-Nachweis: Carry-in, Vorjahr, abgeschlossene/offene
-und negative Zeilen, historisches Modell, gespeicherte Gutschrift, Feiertag,
-rohe Zehnerpagination und Seitenlokalität. SourceSnapshot inklusive Journal und
-Sequenzen, native Audit-/Sessionglobals, PDO-Transaktionsende und Zeitzone bleiben unverändert.
-Kein HTTPserver, Port 18083/18090, realer Datenbestand, Credential oder CI-Lauf;
-keine Mikrotests, erschöpfende Matrix oder neue fachliche Fehlerkorrektur.
-
-Am 27.10.2026 unter PHP 8.5.12 / Laravel 13.38.0 bestanden: dieser grobe
-Memory-Nachweis, PHP-Syntax aller sieben betroffenen PHP-Dateien,
-Composer-Validierung/Plattformanforderungen und `git diff --check`.
-Mechanische Quellgegenprüfung erhält sämtliche nativen Echo-Markup-/SQL-/Link-
-und Escapingbereiche bytegenau außerhalb der bezeichneten Datenaufbereitung;
-`calculateDuration` wurde bytegenau einmal verschoben. Keine Web-/CSV-/Rollen-
-oder vollständige #79-Abnahme wird damit behauptet.
+Aktuell: notwendige Syntax/Composer/Plattform und fünf ganze Bladeansichten
+mit reinen synthetischen Arraydaten; dabei DBverbindungen0, keine Guard-/Auth- oder
+Credential-/CSRF-Injektion, HTTPanfrage, Fixture oder Server/Browser gestartet.
+Keine lokale Funktionsabnahme, neue CI, reale Daten-/Schlüsseländerung oder
+Native-Runtimeänderung. Der bestehende Home-Browserloginblock bleibt erhalten.
+Draft #110/#111 sind nicht merge-ready; native Seitendarstellung beweist keine
+Laravel-UI-Abnahme und ersetzt keine legitime Auth-/Funktionsabnahme.

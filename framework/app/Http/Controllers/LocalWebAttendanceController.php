@@ -50,6 +50,8 @@ final class LocalWebAttendanceController extends Controller
                 'date' => $holiday['formatted_date'], 'name' => $holiday['name'],
             ], $summary['holidays_this_week']),
             interactions: $this->interactions,
+            reportInvalidCount: count($summary['invalid_records'] ?? []),
+            reportUnresolved: $summary['report_finality']['all'] ?? false,
         )]);
     }
 

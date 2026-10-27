@@ -25,11 +25,12 @@ final class LocalWebHomeController extends Controller
         $language = $request->session()->get('lang', 'de');
         $language = is_string($language) && in_array($language, ['de', 'en'], true) ? $language : 'de';
         $page = max(1, intval($request->query('page', 1)));
-        $records = $this->reads->reportRows();
+        $records = $this->reads->reportRows(chronological: true);
 
-        // Native pagination is ten RAW rows before day grouping; never day pagination.
+        // Native ten-RAW-row pagination precedes grouping, but totals and
+        // conflict evidence use the complete own rows from that same snapshot.
         return view('chrono.time-records', ['records' => new TimeRecordsPage(
-            new Copy($language), \report_time_record_groups(array_slice($records, ($page - 1) * 10, 10)),
+            new Copy($language), \report_time_record_groups(array_slice($records, ($page - 1) * 10, 10), $records),
             $page, (int) ceil(count($records) / 10),
         )]);
     }

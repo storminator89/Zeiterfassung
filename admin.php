@@ -58,22 +58,31 @@ $pauseSettings = $stmt->fetchAll(PDO::FETCH_OBJ);
 
 // Pauseneinstellungen aktualisieren
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_pause_settings'])) {
-    $hoursThresholds = $_POST['hours_threshold'];
-    $minimumPauses = $_POST['minimum_pause'];
+    require_once __DIR__ . '/lib/pause_settings.php';
+    $pauseTransactionStarted = false;
 
     try {
+        $rules = validatePauseSettings($_POST['hours_threshold'] ?? null, $_POST['minimum_pause'] ?? null);
+        $conn->beginTransaction();
+        $pauseTransactionStarted = true;
         $stmt = $conn->prepare("DELETE FROM pause_settings");
         $stmt->execute();
 
-        foreach ($hoursThresholds as $index => $hoursThreshold) {
-            $stmt = $conn->prepare("INSERT INTO pause_settings (hours_threshold, minimum_pause) VALUES (?, ?)");
-            $stmt->execute([$hoursThreshold, $minimumPauses[$index]]);
+        $stmt = $conn->prepare("INSERT INTO pause_settings (hours_threshold, minimum_pause) VALUES (?, ?)");
+        foreach ($rules as $rule) {
+            $stmt->execute($rule);
         }
+        $conn->commit();
 
         $successMessage = "Pauseneinstellungen erfolgreich aktualisiert.";
         header("Location: " . $_SERVER['PHP_SELF']);
         exit();
-    } catch (PDOException $e) {
+    } catch (InvalidArgumentException $e) {
+        $error = $e->getMessage();
+    } catch (Throwable $e) {
+        if ($pauseTransactionStarted && $conn->inTransaction()) {
+            $conn->rollBack();
+        }
         $error = "Fehler beim Aktualisieren der Pauseneinstellungen: " . $e->getMessage();
     }
 }
@@ -125,57 +134,77 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['generate_token'])) {
     }
 }
 
-function getUidFromDn($dn)
-{
-    $parts = ldap_explode_dn($dn, 1);
-    foreach ($parts as $part) {
-        if (strpos($part, 'uid=') === 0) {
-            return substr($part, 4); // 'uid=' entfernen
-        }
-    }
-    return null;
-}
-
 // LDAP-Synchronisation
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
-    if (!function_exists('ldap_connect')) { abort_request(503, 'PHP LDAP extension is required.'); }
-    $ldapHost = $_POST['ldap_host'];
-    $ldapPort = $_POST['ldap_port'];
-    $ldapUser = $_POST['ldap_user'];
-    $ldapPass = $_POST['ldap_pass'];
-    $ldapBaseDN = $_POST['ldap_base_dn'];
+    $ldapHost = is_string($_POST['ldap_host'] ?? null) ? $_POST['ldap_host'] : '';
+    $ldapPort = is_string($_POST['ldap_port'] ?? null) ? $_POST['ldap_port'] : '';
+    $ldapUser = is_string($_POST['ldap_user'] ?? null) ? $_POST['ldap_user'] : '';
+    $ldapPass = is_string($_POST['ldap_pass'] ?? null) ? $_POST['ldap_pass'] : '';
+    $ldapBaseDN = is_string($_POST['ldap_base_dn'] ?? null) ? $_POST['ldap_base_dn'] : '';
+    $ldapConn = null;
+    $result = false;
+    $ldapFailureMessage = LDAP_SETTINGS_INVALID;
 
     try {
-        // Speichern der LDAP-Einstellungen in der Datenbank, bevor der LDAP-Bind ausgeführt wird
-        $encryptedLdapPass = encryptData($ldapPass, ENCRYPTION_KEY, ENCRYPTION_METHOD);
-
-        // Überprüfen, ob bereits ein Eintrag existiert
-        $stmt = $conn->prepare("SELECT COUNT(*) FROM ldap_settings");
-        $stmt->execute();
-        $count = $stmt->fetchColumn();
-
-        if ($count > 0) {
-            // Eintrag aktualisieren
-            $stmt = $conn->prepare("UPDATE ldap_settings SET ldap_host = ?, ldap_port = ?, ldap_user = ?, ldap_pass = ?, ldap_base_dn = ? WHERE id = (SELECT id FROM ldap_settings ORDER BY id DESC LIMIT 1)");
-            $stmt->execute([$ldapHost, $ldapPort, $ldapUser, $encryptedLdapPass, $ldapBaseDN]);
-        } else {
-            // Neuer Eintrag erstellen
-            $stmt = $conn->prepare("INSERT INTO ldap_settings (ldap_host, ldap_port, ldap_user, ldap_pass, ldap_base_dn) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$ldapHost, $ldapPort, $ldapUser, $encryptedLdapPass, $ldapBaseDN]);
+        // Leere Bind-Daten dürfen nicht versehentlich als anonymer Test gelten.
+        if (trim($ldapHost) === '' || trim($ldapUser) === '' || $ldapPass === '' || trim($ldapBaseDN) === ''
+            || !ctype_digit($ldapPort) || (int)$ldapPort < 1 || (int)$ldapPort > 65535) {
+            throw new RuntimeException();
         }
+        $ldapFailureMessage = LDAP_EXTENSION_REQUIRED;
+        if (!function_exists('ldap_connect')) { throw new RuntimeException(); }
 
-        // LDAP-Verbindung herstellen
-        $ldapConn = ldap_connect($ldapHost, $ldapPort);
+        // Erst vollständig prüfen; bis einschließlich Suchergebnis keine DB-Schreibzugriffe.
+        $ldapFailureMessage = LDAP_CONNECTION_FAILED;
+        $ldapConn = @ldap_connect($ldapHost, (int)$ldapPort);
         if ($ldapConn) {
-            ldap_set_option($ldapConn, LDAP_OPT_PROTOCOL_VERSION, 3);
-            ldap_set_option($ldapConn, LDAP_OPT_NETWORK_TIMEOUT, 5);
-            if (!str_starts_with(strtolower($ldapHost), 'ldaps://') && !ldap_start_tls($ldapConn)) { abort_request(503, 'LDAP TLS required.'); }
-            if (ldap_bind($ldapConn, $ldapUser, $ldapPass)) {
+            if (!@ldap_set_option($ldapConn, LDAP_OPT_PROTOCOL_VERSION, 3)
+                || !@ldap_set_option($ldapConn, LDAP_OPT_NETWORK_TIMEOUT, 5)) {
+                throw new RuntimeException();
+            }
+            $ldapFailureMessage = LDAP_TLS_FAILED;
+            if (!str_starts_with(strtolower($ldapHost), 'ldaps://') && !@ldap_start_tls($ldapConn)) {
+                throw new RuntimeException();
+            }
+            $ldapFailureMessage = LDAP_BIND_FAILED;
+            if (@ldap_bind($ldapConn, $ldapUser, $ldapPass)) {
                 $searchFilter = "(objectClass=inetOrgPerson)";
                 $attributes = ["uid", "cn", "sn", "mail", "ou", "manager"];
-                $result = ldap_search($ldapConn, $ldapBaseDN, $searchFilter, $attributes);
+                $ldapFailureMessage = LDAP_SEARCH_FAILED;
+                $result = @ldap_search($ldapConn, $ldapBaseDN, $searchFilter, $attributes);
                 if ($result) {
-                    $entries = ldap_get_entries($ldapConn, $result);
+                    // Auch ein partielles Ergebnis mit LDAP-Fehlercode ist kein bestandener Test.
+                    $ldapResultCode = -1;
+                    if (!@ldap_parse_result($ldapConn, $result, $ldapResultCode) || $ldapResultCode !== 0) {
+                        throw new RuntimeException();
+                    }
+                    $entries = @ldap_get_entries($ldapConn, $result);
+                    if (!is_array($entries) || !isset($entries['count']) || !is_int($entries['count']) || $entries['count'] < 0
+                        || count($entries) !== $entries['count'] + 1) {
+                        throw new RuntimeException();
+                    }
+                    for ($entryIndex = 0; $entryIndex < $entries['count']; $entryIndex++) {
+                        if (!isset($entries[$entryIndex]) || !is_array($entries[$entryIndex])) { throw new RuntimeException(); }
+                    }
+
+                    // Nur den erfolgreich geprüften Stand verschlüsselt übernehmen.
+                    $ldapFailureMessage = LDAP_SYNC_FAILED;
+                    $encryptedLdapPass = encryptData($ldapPass, ENCRYPTION_KEY, ENCRYPTION_METHOD);
+                    $stmt = $conn->prepare("SELECT COUNT(*) FROM ldap_settings");
+                    $stmt->execute();
+                    $count = $stmt->fetchColumn();
+
+                    if ($count > 0) {
+                        $stmt = $conn->prepare("UPDATE ldap_settings SET ldap_host = ?, ldap_port = ?, ldap_user = ?, ldap_pass = ?, ldap_base_dn = ? WHERE id = (SELECT id FROM ldap_settings ORDER BY id DESC LIMIT 1)");
+                        $stmt->execute([$ldapHost, $ldapPort, $ldapUser, $encryptedLdapPass, $ldapBaseDN]);
+                    } else {
+                        $stmt = $conn->prepare("INSERT INTO ldap_settings (ldap_host, ldap_port, ldap_user, ldap_pass, ldap_base_dn) VALUES (?, ?, ?, ?, ?)");
+                        $stmt->execute([$ldapHost, $ldapPort, $ldapUser, $encryptedLdapPass, $ldapBaseDN]);
+                    }
+
+                    require_once __DIR__ . '/lib/ldap_manager_mapping.php';
+                    $ldapIdentities = [];
+                    // Pass 1: Identitäten importieren, bestehende Beziehungen nicht anfassen.
                     foreach ($entries as $entry) {
                         if (isset($entry["uid"][0]) && isset($entry["mail"][0])) {
                             $username = $entry["uid"][0];
@@ -189,18 +218,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
                             $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username");
                             $stmt->bindParam(':username', $username);
                             $stmt->execute();
-                            $user = $stmt->fetch();
-
-                            // Vorgesetzten-ID aus der Datenbank abrufen
-                            $supervisorId = null;
-                            if ($managerDn) {
-                                $managerUsername = getUidFromDn($managerDn); // Extrahiere den Benutzernamen aus dem DN
-                                $stmt = $conn->prepare("SELECT id FROM users WHERE username = :username");
-                                $stmt->bindParam(':username', $managerUsername);
-                                $stmt->execute();
-                                $supervisor = $stmt->fetch(PDO::FETCH_OBJ);
-                                $supervisorId = $supervisor ? $supervisor->id : null;
-                            }
+                            $user = $stmt->fetch(PDO::FETCH_OBJ);
 
                             // Abteilungs-ID aus der Datenbank abrufen oder erstellen
                             $stmt = $conn->prepare("SELECT id FROM departments WHERE name = :name");
@@ -219,39 +237,84 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
 
                             if ($user) {
                                 // Benutzerinformationen aktualisieren
-                                $updateSql = "UPDATE users SET auth_source = 'ldap', email = :email, department_id = :department_id, supervisor_id = :supervisor_id WHERE username = :username";
+                                $updateSql = "UPDATE users SET auth_source = 'ldap', email = :email, department_id = :department_id WHERE username = :username";
                                 $stmt = $conn->prepare($updateSql);
                                 $stmt->bindParam(':email', $email);
                                 $stmt->bindParam(':department_id', $departmentId);
-                                $stmt->bindParam(':supervisor_id', $supervisorId);
                                 $stmt->bindParam(':username', $username);
                                 $stmt->execute();
+                                $ldapUserId = (int)$user->id;
                             } else {
                                 // Neuen Benutzer einfügen
-                                $insertSql = "INSERT INTO users (username, password, email, role, department_id, supervisor_id, auth_source) VALUES (:username, :password, :email, 'user', :department_id, :supervisor_id, 'ldap')";
+                                $insertSql = "INSERT INTO users (username, password, email, role, department_id, auth_source) VALUES (:username, :password, :email, 'user', :department_id, 'ldap')";
                                 $stmt = $conn->prepare($insertSql);
                                 $passwordHash = password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT);
                                 $stmt->bindParam(':username', $username);
                                 $stmt->bindParam(':password', $passwordHash);
                                 $stmt->bindParam(':email', $email);
                                 $stmt->bindParam(':department_id', $departmentId);
-                                $stmt->bindParam(':supervisor_id', $supervisorId);
                                 $stmt->execute();
+                                $ldapUserId = (int)$conn->lastInsertId();
                             }
+                            $ldapIdentities[] = ['id' => $ldapUserId, 'dn' => $entry['dn'] ?? '', 'manager_dn' => $managerDn];
                         }
                     }
 
-                    $successMessage = LDAP_SYNC_SUCCESS;
+                    // Pass 2: Alle importierten Identitäten sind jetzt vorhanden.
+                    $conn->beginTransaction();
+                    try {
+                        $currentSupervisors = [];
+                        foreach ($conn->query("SELECT id, supervisor_id FROM users")->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                            $currentSupervisors[(int)$row['id']] = $row['supervisor_id'] === null ? null : (int)$row['supervisor_id'];
+                        }
+                        $managerPlan = chrono_ldap_manager_plan($ldapIdentities, $currentSupervisors);
+                        $stmt = $conn->prepare("UPDATE users SET supervisor_id = ? WHERE id = ?");
+                        foreach ($managerPlan['assignments'] as $ldapUserId => $supervisorId) {
+                            if ($currentSupervisors[$ldapUserId] !== $supervisorId) {
+                                $stmt->execute([$supervisorId, $ldapUserId]);
+                            }
+                        }
+                        $conn->commit();
+                    } catch (Throwable $e) {
+                        if ($conn->inTransaction()) { $conn->rollBack(); }
+                        throw $e;
+                    }
+                    if ($managerPlan['conflicts']) {
+                        $reasons = [
+                            'ambiguous_identity' => 'mehrdeutige LDAP-Identität',
+                            'invalid_identity_dn' => 'ungültiger Identitäts-DN oder DN-Parser nicht verfügbar',
+                            'invalid_manager_dn' => 'ungültiger Manager-DN oder DN-Parser nicht verfügbar',
+                            'unknown_manager' => 'Manager nicht eindeutig im aktuellen Import vorhanden',
+                            'ambiguous_manager' => 'mehrdeutiger Manager',
+                            'self_manager' => 'Selbstzuordnung',
+                            'cyclic_manager' => 'zyklische Managerbeziehung',
+                        ];
+                        $details = [];
+                        foreach ($managerPlan['conflicts'] as $ldapUserId => $reason) {
+                            $details[] = 'Konto #' . $ldapUserId . ': ' . $reasons[$reason];
+                        }
+                        $error = 'LDAP-Identitäten synchronisiert. Managerkonflikte: Die bisherigen Beziehungen dieser Konten bleiben unverändert. ' . implode('; ', $details);
+                    } else {
+                        $successMessage = LDAP_SYNC_SUCCESS;
+                    }
+                } else {
+                    $error = LDAP_SEARCH_FAILED;
                 }
-                ldap_unbind($ldapConn);
             } else {
                 $error = LDAP_BIND_FAILED;
             }
         } else {
             $error = LDAP_CONNECTION_FAILED;
         }
-    } catch (\PDOException $e) {
-        $error = DATABASE_CONNECTION_FAILED . $e->getMessage();
+    } catch (Throwable $e) {
+        // Keine Serverdiagnosen oder eingereichten Zugangsdaten in die UI übernehmen.
+        $error = $ldapFailureMessage;
+    } finally {
+        // Ein Fehler beim Freigeben des Ergebnisses darf das Unbind nicht überspringen.
+        try { if ($result) { @ldap_free_result($result); } }
+        catch (Throwable $e) { $error = $error ?: LDAP_SYNC_FAILED; $successMessage = ''; }
+        try { if ($ldapConn) { @ldap_unbind($ldapConn); } }
+        catch (Throwable $e) { $error = $error ?: LDAP_SYNC_FAILED; $successMessage = ''; }
     }
 }
 
@@ -267,18 +330,17 @@ $departments = $stmt->fetchAll(PDO::FETCH_OBJ);
 
 // Abteilung löschen
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_department'])) {
-    $department_id = $_POST['department_id'];
-
     try {
-        // Statement vorbereiten und ausführen, um die Abteilung zu löschen
-        $stmt = $conn->prepare("DELETE FROM departments WHERE id = ?");
-        $stmt->execute([$department_id]);
+        require_once __DIR__ . '/lib/departments.php';
+        department_delete_if_unused($conn, $_POST['department_id'] ?? null);
 
         $successMessage = DEPARTMENT_DELETED_SUCCESS;
 
         // Seite nach erfolgreichem Löschen neu laden
         header("Location: " . $_SERVER['PHP_SELF']);
         exit();
+    } catch (InvalidArgumentException | DomainException $e) {
+        $error = $e->getMessage();
     } catch (PDOException $e) {
         $error = DEPARTMENT_DELETED_ERROR . $e->getMessage();
     }
@@ -328,6 +390,8 @@ function validateUserAssignment(PDO $conn, $role, $supervisor): ?int
     return $supervisorId;
 }
 
+require_once __DIR__ . '/lib/admin_users.php';
+
 // Benutzer hinzufügen
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
     $username = $_POST['username'];
@@ -361,15 +425,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
 
 // Benutzer löschen
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_user'])) {
-    if (att_one($conn, 'SELECT id FROM audit_log WHERE user_id=?', [(int)($_POST['user_id'] ?? 0)])) { abort_request(409, 'Konten mit Zeithistorie bleiben erhalten. Zugang über Passwortänderung und Terminal-Sperre entziehen.'); }
-    $user_id = $_POST['user_id'];
+    $user_id = $_POST['user_id'] ?? null;
 
     try {
-        // Statement vorbereiten und ausführen, um den Benutzer zu löschen
-        $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
-        $stmt->execute([$user_id]);
+        admin_mutate_existing_user($conn, $user_id, null, function (int $targetId) use ($conn): void {
+            if (att_one($conn, 'SELECT id FROM audit_log WHERE user_id=?', [$targetId])) { throw new AttendanceError('Konten mit Zeithistorie bleiben erhalten. Zugang über Passwortänderung und Terminal-Sperre entziehen.', 409); }
+            // Statement vorbereiten und ausführen, um den Benutzer zu löschen
+            $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
+            $stmt->execute([$targetId]);
+        });
 
         $successMessage = USER_DELETED_SUCCESS;
+    } catch (AttendanceError $e) {
+        abort_request($e->status, $e->getMessage());
+    } catch (InvalidArgumentException $e) {
+        $error = $e->getMessage();
     } catch (PDOException $e) {
         $error = USER_DELETED_ERROR . $e->getMessage();
     }
@@ -377,7 +447,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_user'])) {
 
 // Benutzer bearbeiten
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_user'])) {
-    $user_id = $_POST['user_id'];
+    $user_id = $_POST['user_id'] ?? null;
     $username = $_POST['username'];
     $email = $_POST['email'];
     $role = $_POST['role'] ?? null;
@@ -389,14 +459,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_user'])) {
 
     try {
         $supervisor = validateUserAssignment($conn, $role, $supervisor);
-        if (!empty($password)) {
-            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ?, password = ?, department_id = ?, supervisor_id = ?, regelarbeitszeit = ?, ueberstunden = ? WHERE id = ?");
-            $stmt->execute([$username, $email, $role, $hashedPassword, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden, $user_id]);
-        } else {
-            $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ?, department_id = ?, supervisor_id = ?, regelarbeitszeit = ?, ueberstunden = ? WHERE id = ?");
-            $stmt->execute([$username, $email, $role, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden, $user_id]);
-        }
+        admin_mutate_existing_user($conn, $user_id, $role, function (int $targetId) use ($conn, $username, $email, $role, $password, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden): void {
+            if (!empty($password)) {
+                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+                $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ?, password = ?, department_id = ?, supervisor_id = ?, regelarbeitszeit = ?, ueberstunden = ? WHERE id = ?");
+                $stmt->execute([$username, $email, $role, $hashedPassword, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden, $targetId]);
+            } else {
+                $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ?, department_id = ?, supervisor_id = ?, regelarbeitszeit = ?, ueberstunden = ? WHERE id = ?");
+                $stmt->execute([$username, $email, $role, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden, $targetId]);
+            }
+        });
 
         $successMessage = USER_UPDATED_SUCCESS;
     } catch (InvalidArgumentException $e) {
@@ -936,8 +1008,9 @@ include 'header.php';
             newRow.innerHTML = `
                 <td><input type="number" name="hours_threshold[]" class="input input-bordered w-full" required></td>
                 <td><input type="number" name="minimum_pause[]" class="input input-bordered w-full" required></td>
-                <td><button type="button" class="btn btn-ghost btn-sm remove-row" title="${BUTTON_DELETE}"><i class="fas fa-trash-alt"></i></button></td>
+                <td><button type="button" class="btn btn-ghost btn-sm remove-row"><i class="fas fa-trash-alt"></i></button></td>
             `;
+            newRow.querySelector('.remove-row').title = <?= json_encode(BUTTON_DELETE, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         });
 
         pauseSettingsTable.addEventListener('click', (e) => {

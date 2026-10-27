@@ -172,7 +172,7 @@ try {
     while ($limiter->attempts($bucket) < 15) { $limiter->hit($bucket, 600); }
     $limited = $request('POST', '/api.php/login', ['username' => $username, 'password' => $password]);
     $ensure($limited->getStatusCode() === 429 && $limited->headers->get('Retry-After') === '600'
-        && $limited->getContent() === 'Too many login attempts. Try again later.');
+        && $limited->getContent() === json_encode(['success' => false, 'message' => 'Too many login attempts. Try again later.']));
     $ensure(array_keys($database->getConnections()) === ['chrono'] && ! $observer->inTransaction()
         && $database->connection('chrono')->transactionLevel() === 0 && $app->make('auth')->getDefaultDriver() === 'web'
         && hash_file('sha256', $directory.'/original.sqlite') === $originalHash

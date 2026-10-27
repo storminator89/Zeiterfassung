@@ -207,6 +207,11 @@ define('TOKEN_GENERATED_ERROR', 'Error generating token: ');
 define('LDAP_SYNC_SUCCESS', 'LDAP synchronization completed successfully.');
 define('LDAP_BIND_FAILED', 'LDAP bind failed.');
 define('LDAP_CONNECTION_FAILED', 'LDAP connection failed.');
+define('LDAP_EXTENSION_REQUIRED', 'The PHP LDAP extension is missing. The LDAP configuration was not changed.');
+define('LDAP_SETTINGS_INVALID', 'Enter valid LDAP connection details including a user, password and port (1–65535). The LDAP configuration was not changed.');
+define('LDAP_TLS_FAILED', 'The required LDAP TLS test failed. The LDAP configuration was not changed.');
+define('LDAP_SEARCH_FAILED', 'The LDAP search test did not return a complete valid result. The LDAP configuration was not changed.');
+define('LDAP_SYNC_FAILED', 'The validated LDAP configuration could not be saved or the import could not be completed. Check the saved state.');
 define('DATABASE_CONNECTION_FAILED', 'Database connection failed: ');
 define('DEPARTMENT_DELETED_SUCCESS', 'Department deleted successfully.');
 define('DEPARTMENT_DELETED_ERROR', 'Error deleting department: ');
@@ -254,6 +259,14 @@ define('SETTINGS_IMPORT_DATABASE', 'Import Database');
 define('SETTINGS_DOWNLOAD_DATABASE', 'Download Database');
 define('BUTTON_SAVE_REGULAR_WORKING_HOURS', 'Save Hours');
 define('SETTINGS_OVERTIME', 'Previous Overtime');
+define('SETTINGS_BACKUP_OPERATIONS_TITLE', 'Backup and restore');
+define('SETTINGS_BACKUP_RESTORE_TITLE', 'Offline restoration');
+define('SETTINGS_BACKUP_IMPORT_DISABLED', 'Browser import is intentionally disabled: a partial import could damage work-time models and change history.');
+define('SETTINGS_BACKUP_RESTORE_INSTRUCTIONS', 'The entire private data directory (database, any SQLite sidecars and .key files) must be restored together offline with the app and device services stopped. The schema and code must match the backup.');
+define('SETTINGS_BACKUP_RESTORE_GUIDE', 'This interface does not provide automatic full restoration. Offline procedure for operators:');
+define('SETTINGS_BACKUP_SNAPSHOT_TITLE', 'Database snapshot');
+define('SETTINGS_BACKUP_SNAPSHOT_DESCRIPTION', 'Consistent snapshot of the entire SQLite database. External .key files, application code and operational configuration are not included. This download is therefore not a complete operational backup.');
+define('SETTINGS_BACKUP_SNAPSHOT_DOWNLOAD', 'Download DB snapshot');
 
 // ...existing code...
 define('TOUR_START', 'Start Tour');

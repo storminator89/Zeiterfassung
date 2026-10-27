@@ -32,15 +32,31 @@ final class LegacyChronoReads implements ChronoReads
             $records = $statement->fetchAll(PDO::FETCH_ASSOC);
             $statement->closeCursor();
 
-            return ['success' => true, 'records' => $records] + attendance_status($pdo, (int) $actor->getKey());
+            // Match native web status: full own context and state share this snapshot.
+            // Keep apiAttendanceStatus()'s independent raw API wire unchanged.
+            $context = $this->rows($pdo, 'SELECT * FROM zeiterfassung WHERE user_id=?', [$actor->getKey()]);
+            $today = new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin'));
+
+            return ['success' => true, 'records' => $records,
+                'report_finality' => $this->reportFinality(report_absence_conflicts($context), $today),
+            ] + attendance_status($pdo, (int) $actor->getKey());
         });
     }
 
-    public function reportRows(): array
+    public function reportRows(bool $chronological = false): array
     {
-        return $this->snapshot(fn (PDO $pdo, LegacyUser $actor): array =>
-            $this->rows($pdo, 'SELECT * FROM zeiterfassung WHERE user_id=? ORDER BY startzeit DESC', [$actor->getKey()])
-        );
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($chronological): array {
+            // Corrections retain their native lexical first-200 options. Only
+            // Home opts into the reviewed native instant/id ordering before paging.
+            $order = 'startzeit DESC';
+            if ($chronological) {
+                require_once dirname(__DIR__, 3).'/lib/report_ordering.php';
+                report_register_start_order($pdo);
+                $order = 'chrono_report_start_epoch(startzeit) DESC,id DESC';
+            }
+
+            return $this->rows($pdo, 'SELECT * FROM zeiterfassung WHERE user_id=? ORDER BY '.$order, [$actor->getKey()]);
+        });
     }
 
     public function homeSummary(): array
@@ -49,7 +65,22 @@ final class LegacyChronoReads implements ChronoReads
             $userData = $this->rows($pdo, 'SELECT regelarbeitszeit,ueberstunden FROM users WHERE id=?', [$actor->getKey()])[0];
             $records = $this->rows($pdo, 'SELECT * FROM zeiterfassung WHERE user_id=? ORDER BY startzeit DESC', [$actor->getKey()]);
 
-            return home_summary($pdo, (int) $actor->getKey(), report_days($records), (float) ($userData['ueberstunden'] ?? 0.0), new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')));
+            // Explicit diagnostic opt-in is paired with visible Home warnings.
+            // The shared helpers own all malformed-row/conflict rules; never
+            // suppress an exception and fabricate a zero or a final partial total.
+            $days = report_days($records, $invalidRecords, $conflicts);
+            $today = new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin'));
+            $summary = home_summary($pdo, (int) $actor->getKey(), $days, (float) ($userData['ueberstunden'] ?? 0.0), $today);
+            $summary['invalid_records'] = $invalidRecords;
+            $summary['absence_conflicts'] = $conflicts;
+            $summary['report_finality'] = $this->reportFinality($conflicts, $today);
+            if ($invalidRecords !== [] || $conflicts !== []) {
+                $summary['total_overtime_hours'] = null;
+                $summary['total_overtime_formatted'] = $conflicts !== [] ? 'Klärung offen' : 'Unvollständig';
+                $summary['positive_overtime'] = null;
+            }
+
+            return $summary;
         });
     }
 
@@ -61,6 +92,14 @@ final class LegacyChronoReads implements ChronoReads
         ], false);
     }
 
+    public function apiAttendanceStatus(): array
+    {
+        return $this->snapshot(
+            fn (PDO $pdo, LegacyUser $actor): array => ['success' => true] + attendance_status($pdo, (int) $actor->getKey()),
+            false,
+        );
+    }
+
     public function apiTimeEntries(ApiTimeEntriesQuery $query): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($query): array {
@@ -68,9 +107,13 @@ final class LegacyChronoReads implements ChronoReads
             $parameters = [':user_id' => $actor->getKey()];
             foreach (['start_date' => $query->startDate, 'end_date' => $query->endDate] as $field => $date) {
                 if ($date !== null) {
-                    $where[] = 'date(startzeit) '.($field === 'start_date' ? '>=' : '<=').' :'.$field;
+                    $where[] = 'chrono_api_booking_day(startzeit) '.($field === 'start_date' ? '>=' : '<=').' :'.$field;
                     $parameters[':'.$field] = $date;
                 }
+            }
+            if ($query->startDate !== null || $query->endDate !== null) {
+                require_once dirname(__DIR__, 3).'/lib/api_booking_day.php';
+                api_register_booking_day($pdo);
             }
             $predicate = implode(' AND ', $where);
             $statement = $pdo->prepare('SELECT COUNT(*) FROM zeiterfassung WHERE '.$predicate);
@@ -87,13 +130,17 @@ final class LegacyChronoReads implements ChronoReads
                 $parameters[':limit'] = $query->limit;
             }
             if ($query->offset !== null) {
+                if ($query->limit === null) {
+                    // SQLite requires LIMIT before OFFSET; -1 leaves the page unbounded.
+                    $sql .= ' LIMIT -1';
+                }
                 $sql .= ' OFFSET :offset';
                 $parameters[':offset'] = $query->offset;
             }
             $statement = $pdo->prepare($sql);
             foreach ($parameters as $name => $value) {
-                // Preserve PDO's original default binding type, numeric coercion,
-                // negative limits and the offset-without-limit failure (#9/#25).
+                // Keep the existing PDO binding and response shape. The HTTP
+                // adapter validates pagination before this read snapshot.
                 $statement->bindValue($name, $value);
             }
             $statement->execute();
@@ -118,7 +165,10 @@ final class LegacyChronoReads implements ChronoReads
                 ? $actor : $this->account($pdo, $subject);
             $this->gate->forUser($actor)->authorize('view', $target);
             $records = $this->rows($pdo, 'SELECT * FROM zeiterfassung WHERE user_id=? ORDER BY startzeit DESC', [$target->getKey()]);
-            $days = report_days($records);
+            // Full effective context catches a counterpart outside the period;
+            // unrelated historical conflicts must not invalidate this period.
+            // The shared helper retains the existing malformed-data fail-close.
+            $days = report_days_for_period($records, $start, $end);
             $minutes = report_period_minutes($days, $start, $end);
             $planned = planned_hours($pdo, (int) $target->getKey(), $start, $end);
 
@@ -150,6 +200,19 @@ final class LegacyChronoReads implements ChronoReads
         );
     }
 
+    public function historyQuery(HistoryQuery $query): array
+    {
+        if ($query->errors) {
+            return [];
+        }
+
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($query): array {
+            $statement = $query->statementFor((int) $actor->getKey(), $actor->role);
+
+            return $this->rows($pdo, $statement['sql'], $statement['params']);
+        });
+    }
+
     public function workModels(): array
     {
         return $this->snapshot(fn (PDO $pdo, LegacyUser $actor): array =>
@@ -157,6 +220,45 @@ final class LegacyChronoReads implements ChronoReads
                 $actor->getKey(), (int) ($actor->role === 'admin'),
             ])
         );
+    }
+
+    public function workModelsPage(int $page = 1, ?int $selectedModelId = null): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($page, $selectedModelId): array {
+            // Same queries and scope as native PR136; selection is read-only.
+            // No caller-supplied owner/role and no list cap determines today's model.
+            $today = (new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')))->format('Y-m-d');
+            $scope = '(m.user_id=? OR CAST(? AS INTEGER)=1)';
+            $parameters = [$actor->getKey(), (int) ($actor->role === 'admin')];
+            $total = (int) $this->rows($pdo, 'SELECT COUNT(*) AS total FROM work_models m JOIN users u ON u.id=m.user_id WHERE '.$scope, $parameters)[0]['total'];
+            $pageSize = 50;
+            $pages = max(1, (int) ceil($total / $pageSize));
+            $page = min(max(1, $page), $pages);
+            $offset = ($page - 1) * $pageSize;
+            $models = $this->rows($pdo, 'SELECT m.*,u.username,(SELECT e.id FROM work_models e WHERE e.user_id=m.user_id AND e.valid_from<=? ORDER BY e.valid_from DESC,e.id DESC LIMIT 1) AS effective_id FROM work_models m JOIN users u ON u.id=m.user_id WHERE '.$scope.' ORDER BY m.valid_from DESC,m.id DESC LIMIT '.$pageSize.' OFFSET '.$offset, array_merge([$today], $parameters));
+            $selected = null;
+            $selectionError = null;
+            if ($selectedModelId !== null) {
+                // Zero is the transport's explicit invalid-selection sentinel.
+                if ($selectedModelId > 0) {
+                    $selected = $this->rows($pdo, 'SELECT m.*,u.username FROM work_models m JOIN users u ON u.id=m.user_id WHERE '.$scope.' AND m.id=?', array_merge($parameters, [$selectedModelId]))[0] ?? null;
+                }
+                if ($selected === null) {
+                    $selectionError = 'Modellversion nicht verfügbar. Bitte aus den sichtbaren Modellen neu auswählen.';
+                }
+            }
+            $effective = null;
+            if ($selectionError === null) {
+                $owner = $selected === null ? $actor->getKey() : (int) $selected['user_id'];
+                $effective = $this->rows($pdo, 'SELECT m.*,u.username FROM work_models m JOIN users u ON u.id=m.user_id WHERE '.$scope.' AND m.user_id=? AND m.valid_from<=? ORDER BY m.valid_from DESC,m.id DESC LIMIT 1', array_merge($parameters, [$owner, $today]))[0] ?? null;
+            }
+
+            return [
+                'models' => $models, 'total' => $total, 'page' => $page, 'pages' => $pages, 'page_size' => $pageSize,
+                'today' => $today, 'selected_model_id' => $selected === null ? 0 : (int) $selected['id'],
+                'selected_model' => $selected, 'selection_error' => $selectionError, 'effective_model' => $effective,
+            ];
+        });
     }
 
     public function workModelTargets(): array
@@ -168,6 +270,19 @@ final class LegacyChronoReads implements ChronoReads
 
             return $this->rows($pdo, 'SELECT id,username FROM users ORDER BY username', []);
         });
+    }
+
+    /** Shared native conflict evidence in, native web presentation flags out. */
+    private function reportFinality(array $conflicts, \DateTimeImmutable $today): array
+    {
+        [$weekStart, $weekEnd] = report_week_bounds($today->format('Y-m-d'));
+
+        return [
+            'all' => $conflicts !== [],
+            'week' => report_conflicts_in_period($conflicts, $weekStart, $weekEnd),
+            'month' => report_conflicts_in_period($conflicts, $today->format('Y-m-01'), $today->format('Y-m-t')),
+            'year' => report_conflicts_in_period($conflicts, $today->format('Y-01-01'), $today->format('Y-12-31')),
+        ];
     }
 
     private function snapshot(Closure $read, bool $requireKnownRole = true): array
