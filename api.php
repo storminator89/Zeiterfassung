@@ -10,6 +10,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit();
 }
 
+// Native API errors opt in before configuration/security can refuse bootstrap.
+// This is server-owned policy, never selected by request headers or parameters.
+define('CHRONO_API_JSON_ERRORS', true);
+
 // Including configuration settings
 require_once 'config.php';
 header('Content-Type: application/json; charset=UTF-8');

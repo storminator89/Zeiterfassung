@@ -5,11 +5,7 @@ define('CHRONO_SECURITY_LOADED', true);
 umask(0077);
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
-function abort_request(int $status, string $message): never {
-    http_response_code($status);
-    header('Content-Type: text/plain; charset=UTF-8');
-    exit($message);
-}
+require_once __DIR__ . '/lib/http_error_response.php';
 function h($value): string {
     return htmlspecialchars((string)($value ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
