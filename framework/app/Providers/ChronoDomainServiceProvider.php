@@ -35,4 +35,13 @@ final class ChronoDomainServiceProvider extends ServiceProvider
             return new LegacyTerminalProtocol($writer, $keys);
         });
     }
+    public function boot(): void
+    {
+        // No route by default, no key/writer resolution or source binding here.
+        // Runtime gating in the adapter also closes an older compiled route.
+        if ($this->app->make('config')->get('chrono_terminal.http_enabled', false) === true) {
+            $this->loadRoutesFrom($this->app->basePath('routes/terminal.php'));
+        }
+    }
+
 }
