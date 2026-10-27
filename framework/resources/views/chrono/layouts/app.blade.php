@@ -264,7 +264,7 @@
     <div class="sidebar" id="sidebar">
         <div class="p-4">
             <nav class="space-y-2">
-                <a href="index.php" class="sidebar-link active">
+                <a href="index.php" class="sidebar-link {{ in_array($page->activePage, ['index.php', 'attendance.php'], true) ? 'active' : '' }}">
                     <i class="fas fa-home w-6"></i>
                     <span>{{ $page->copy->text('NAV_HOME') }}</span>
                 </a>
@@ -300,7 +300,7 @@
                     </button>
                 </form>
 
-                <a href="adjustments.php" class="sidebar-link "><i class="fas fa-pen-to-square w-6"></i><span>Korrekturanträge</span></a>
+                <a href="adjustments.php" class="sidebar-link {{ $page->activePage === 'adjustments.php' ? 'active' : '' }}"><i class="fas fa-pen-to-square w-6"></i><span>Korrekturanträge</span></a>
                 <a href="history.php" class="sidebar-link "><i class="fas fa-history w-6"></i><span>Änderungshistorie</span></a>
                 <a href="work_models.php" class="sidebar-link "><i class="fas fa-business-time w-6"></i><span>Arbeitszeitmodelle</span></a>
                 @if ($page->role === 'admin')<a href="terminals.php" class="sidebar-link "><i class="fas fa-desktop w-6"></i><span>Praxis-Terminals</span></a>@endif
@@ -360,6 +360,7 @@
         <aside class="alert alert-info mb-4" role="note">
             @if ($page->interactions->attendance)
             Laravel-Anwesenheit: Stempeln und Abmelden sind verbunden. Abwesenheiten und weitere Seiten sind in dieser Migrationswelle noch nicht verbunden.
+            @if ($page->interactions->corrections) Korrekturanträge sind ebenfalls verbunden. @endif
             @else
             Inaktive Laravel-Ansicht: Anmeldung, Buchungen, Abwesenheiten und Abmeldung sind noch nicht verbunden.
             Navigationslinks behalten die bestehenden PHP-Ziele; diese Seiten sind weiterhin Legacy.
