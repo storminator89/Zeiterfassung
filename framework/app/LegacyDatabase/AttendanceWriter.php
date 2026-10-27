@@ -5,6 +5,7 @@ namespace App\LegacyDatabase;
 use App\Terminal\AdmittedTerminalKeys;
 use App\Terminal\LegacyTerminalRequest;
 use Closure;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\SQLiteConnection;
 use LogicException;
 use PDO;
@@ -127,6 +128,34 @@ final class AttendanceWriter
             practice_work_model_apply_locked($this->pdo, $user, $role, $command,
                 fn (string $reason, Closure $operation): mixed => $this->context->run('web:'.$user, $reason, $operation),
             );
+        });
+    }
+
+    /** One fixed Admin operation; no caller-supplied role, PDO or SQL callback. */
+    public function pauseSettings(int $user, mixed $hoursThresholds, mixed $minimumPauses): void
+    {
+        require_once dirname(__DIR__, 3).'/lib/pause_settings.php';
+        // Exact native complete-list validation before any DELETE/INSERT or transaction.
+        $rules = \validatePauseSettings($hoursThresholds, $minimumPauses);
+
+        $this->executeLocked(function () use ($user, $rules): void {
+            // Re-authorize under the existing IMMEDIATE writer lock, not against
+            // a request role or an earlier rendered/refreshed guard snapshot.
+            $actor = att_one($this->pdo, 'SELECT role,auth_source FROM users WHERE id=?', [$user]);
+            if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local') {
+                throw new AuthorizationException('Nur die Verwaltung darf Pauseneinstellungen ändern.');
+            }
+
+            $statement = $this->pdo->prepare('DELETE FROM pause_settings');
+            $statement->execute();
+            $statement->closeCursor();
+            $statement = $this->pdo->prepare('INSERT INTO pause_settings (hours_threshold, minimum_pause) VALUES (?, ?)');
+            foreach ($rules as $rule) {
+                $statement->execute($rule);
+                $statement->closeCursor();
+            }
+            // The existing transaction shell commits the complete list once.
+            // This native table has no audit trigger; do not invent an audit claim.
         });
     }
 
