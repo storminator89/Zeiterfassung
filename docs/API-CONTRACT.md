@@ -22,11 +22,14 @@ Form nicht aus. Ohne das serverseitige, strikt boolesche Opt-in bleiben
 `abort_request`-Status, Text-Content-Type und Nachrichtbytes unverändert.
 
 Der unregistrierte [Framework-Kandidat](framework/api-read-compatibility.md)
-behält **absichtlich seinen bisherigen gemischten Text-/JSON-Drahtvertrag**:
-insbesondere Text-401 im Bearerguard sowie Text-409 für die Löschsperre und
-bestehende Login-/Alias-Textfehler. Guard, Kandidatenquellen und Registrierung
-bleiben unangetastet. Die neue native JSON-Form ist vor einem späteren Cutover
-als expliziter Kompatibilitätsunterschied zu prüfen, nicht dort bereits erfüllt.
+liefert über seinen zentralen Antwortformatter nun auch für bisherige
+Bearer-, Login-, Alias- und Löschsperren den nativen JSON-Fehlerumschlag
+`{success:false,message}` samt ursprünglichem Status und unverändertem
+`Retry-After`. Fehlernachrichten verwenden dieselbe UTF-8-Ersetzung; bestehende
+JSON-Erfolge, Metadaten und gespeicherte End-/Replaybelege bleiben unverändert.
+Guardentscheidungen und Registrierung bleiben unangetastet; der Kandidat ist
+weiterhin kein veröffentlichter Endpoint. Dies ersetzt keine spätere
+HTTP-/Client- oder vollständige Cutoverabnahme.
 Die alten `@OA`-Kommentare in `api.php` sind teilweise überholt; `apidoc.html`
 lädt `swagger.json`. Eine automatische Neugenerierung aus diesen Kommentaren
 würde die dokumentierten Korrekturen nicht zuverlässig bewahren.

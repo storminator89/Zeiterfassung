@@ -4,7 +4,7 @@ namespace App\Api;
 
 use Symfony\Component\HttpFoundation\Response;
 
-/** The existing mixed wire contract, not Laravel's default 422/redirect envelope. */
+/** Native API JSON wire contract, not Laravel's default 422/redirect envelope. */
 final class LegacyApiResponse
 {
     public static function json(array $body, int $status = 200): Response
@@ -13,8 +13,14 @@ final class LegacyApiResponse
         return new Response(json_encode($body), $status, ['Content-Type' => 'application/json; charset=UTF-8']);
     }
 
+    // Historical method name: existing controlled error callers now follow
+    // native abort_request's JSON envelope without changing their decisions.
     public static function text(string $message, int $status): Response
     {
-        return new Response($message, $status, ['Content-Type' => 'text/plain; charset=UTF-8']);
+        return new Response(
+            json_encode(['success' => false, 'message' => $message], JSON_INVALID_UTF8_SUBSTITUTE),
+            $status,
+            ['Content-Type' => 'application/json; charset=UTF-8'],
+        );
     }
 }

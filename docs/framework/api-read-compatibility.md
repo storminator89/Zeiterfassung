@@ -15,6 +15,17 @@ JSON-500 der Berichtsleser. Keine Defaultregistrierung oder Runtimeumschaltung.
 Dies ist nur die API-Abhängigkeit der Erweiterungsreparatur, keine vollständige
 Firefox-/Edge-, JWT-, Browser- oder Produktivabnahme.
 
+**Kontrollierte JSON-Fehler nach #25 / PR #140:** Der zentrale
+`LegacyApiResponse::text()` behält aus Kompatibilität seinen historischen
+Methodennamen, liefert aber nun wie der native `abort_request`
+`{success:false,message}` mit `application/json; charset=UTF-8` und dem
+unveränderten HTTP-Status. Dies umfasst die bisherigen Bearer-, Login-,
+Alias- und Löschsperren; `Retry-After: 600` bleibt erhalten. Nur diese
+Fehlernachrichten ersetzen ungültiges UTF-8 durch U+FFFD. Allgemeine
+JSONantworten, Lese-Metadaten sowie Erfolgs-/Replay-/Endwarnungsbelege werden
+nicht neu kodiert oder umgebaut. Ungefangene Fehler werden nicht global
+normalisiert. Guardentscheidungen und Routenaktivierung ändern sich nicht.
+
 **Begrenztes Vorbereitungspaket, kein API-Cutover und kein Abschluss von #77.**
 Die bestehende UI, `api.php`-Routen, Datenbank-/Hostkonfiguration und Clients
 bleiben aktiv; nur der unten dokumentierte CH-18-Paginationvertrag ändert sich
@@ -57,9 +68,9 @@ Zugangsdatenwechsel. Ungebundene/formatfalsche Schlüssel werden verweigert.
 Der Header bleibt exakt `Bearer ` plus bestehende Tokenzeichen, ohne Querytoken,
 Cookie-/Sessionfallback oder case-insensitive neue Akzeptanz. Nach JWT-Prüfung
 wird das aktuelle Konto über die benannte `chrono`-Verbindung geladen und
-`sha256(password)` gegen `ver` geprüft. Die bestehenden drei Text-401-Meldungen
-bleiben unterscheidbar. Anders als der lokale Weblogin prüft diese bestehende
-Bearer-API **weder `auth_source=local` noch eine bekannte Rolle**: auch ein
+`sha256(password)` gegen `ver` geprüft. Die bestehenden drei 401-Meldungen
+bleiben im JSON-Fehlerumschlag unterscheidbar. Anders als der lokale Weblogin
+prüft diese bestehende Bearer-API **weder `auth_source=local` noch eine bekannte Rolle**: auch ein
 bestehender gültiger LDAP-/Admin-Token liest nur seine eigene Person. Es wird
 kein LDAP-Login oder neues Token ausgestellt.
 
@@ -79,7 +90,7 @@ nicht als öffentliche Controller ohne diese Middleware gebunden werden.
 | `POST /api.php/workentry`, `/api.php/setendzeit` | [Inaktive bestehende Aliase](candidate-api-aliases.md) auf demselben APIwriter, keine neue Antwortform oder historischen Clientzeiten. |
 | `GET /api.php/users` | `{success:true,data:[{id,username,email,role}]}`, ausschließlich die aktuelle eigene Person, auch als Admin. |
 | `GET /api.php/timeentries` | Eigene rohe Projektionszeilen nach `startzeit DESC`, `{success,data,meta:{total,filtered,limit,offset}}`. Ein Query-`user_id` wird nie als Subjekt verwendet. |
-| `DELETE /api.php/timeentry/{numericId}` | Authentifizierte Sperre: 409 Text, Korrekturantrag statt historischer Löschung. Kein Writer. |
+| `DELETE /api.php/timeentry/{numericId}` | Authentifizierte Sperre: 409 JSON, Korrekturantrag statt historischer Löschung. Kein Writer. |
 | `OPTIONS /api.php` oder Unterpfad | 200 leer, vor Auth/DB/Schlüssel/Session; bestehende drei CORS-Header unverändert, keine Cookie-Credentials. |
 | Unbekannter Pfad / andere Methode | Bestehende 400-`Invalid endpoint`- beziehungsweise 405-`Method Not Allowed`-JSONform, kein Laravel-404/422-/Loginredirect für die erfassten HTTP-Methoden. |
 
@@ -96,7 +107,8 @@ Fehler bewusst in bestehende JSON-400 statt 422 um. Die rohe PHP-Query wird
 vor Laravels Trim-/Nullnormalisierung rekonstruiert. URL-Rawpfad und tatsächliche
 HTTP-Methode werden geprüft: kein neu akzeptierter Slash-/Percentalias,
 implizites HEAD oder `_method`-/Headeroverride. JSON verwendet wie im Bestand
-`json_encode` ohne neue HEX-Optionen; Textfehler bleiben Text.
+`json_encode` ohne neue HEX-Optionen; kontrollierte bisherige Textfehler
+verwenden nun den oben beschriebenen nativen JSON-Fehlerumschlag.
 
 **CH-04 / #9:** Native API und inaktiver Lesekandidat filtern nun über den
 gemeinsamen `chrono_api_booking_day`-Adapter nach demselben Berliner Starttag
@@ -139,7 +151,7 @@ vor einer späteren Gesamtaktivierung eine separate 405-/CORS-Gesamtkante.
 
 Noch offen: zugelassenes persistentes gemeinsames Loginbudget; produktive
 JWT-Migration/Profilentscheidung; vollständige Erweiterungsabnahme;
-reale vollständige Start/Pause/Ende/Retry-/`expectedRecord`-Abnahme; allgemeine Fehlernormalisierung #25;
+reale vollständige Start/Pause/Ende/Retry-/`expectedRecord`-Abnahme; Normalisierung ungefangener Fehler;
 repräsentative vollständige Firefox-/Edge-Abläufe und deren reale Verteilung.
 Kein Swaggerendpoint wird aus dem inaktiven Kandidaten als verfügbar behauptet.
 Web-/Terminalschreiber werden nicht umgangen. Keine neue UI, kein realer
