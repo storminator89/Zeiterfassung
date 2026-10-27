@@ -12,6 +12,16 @@ final class LegacyApiWire
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // Native api.php ignores Laravel/Symfony method overrides entirely.
+        // Candidate paths match all framework verbs; only the raw method below
+        // decides dispatch, and response preparation must not treat a POST as
+        // HEAD because of an override header/query/body parameter.
+        $rawMethod = (string) $request->server('REQUEST_METHOD', 'GET');
+        $request->headers->remove('X-HTTP-METHOD-OVERRIDE');
+        $request->request->remove('_method');
+        $request->query->remove('_method');
+        $request->setMethod($rawMethod);
+
         // Must precede guard/session/DB/key resolution, including unknown paths.
         if ($request->server('REQUEST_METHOD') === 'OPTIONS') {
             $response = new Response('', 200);

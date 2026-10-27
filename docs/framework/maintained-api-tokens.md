@@ -83,8 +83,9 @@ Vor einer produktiven Migration sind solche Unterschiede ausdrücklich zu
 entscheiden; keine neue Parser-/Signaturengine soll diese Paketschranken
 heimlich wieder umgehen.
 
-Unverändert offen sind kompatible Login-/Schreibcontroller, Writeranbindung,
-vollständige Erweiterungsabläufe, Swagger und eine separat freigegebene
+Der [inaktive Login-/direkte Stempelkandidat](candidate-api-actions.md)
+verwendet dieses Paket inzwischen auch zur Ausgabe. Offen bleiben persistente
+geteilte Loginbudgets, Aliase, vollständige Erweiterungsabläufe, Swagger und eine separat freigegebene
 Routenaktivierung. Kein neuer Account, Schlüssel, Pfad, Cookie oder persistent
 konfigurierter Secretprovider; `/up` bleibt die einzige ausgelieferte Route.
 

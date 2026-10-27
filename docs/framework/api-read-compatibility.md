@@ -3,7 +3,7 @@
 **Begrenztes Vorbereitungspaket, kein API-Cutover und kein Abschluss von #77.**
 Die bestehende UI, `api.php`-Routen, Datenbank-/Hostkonfiguration und Clients
 bleiben aktiv unverändert. Die ausgelieferte Laravel-Routenliste enthält weiterhin
-nur `GET|HEAD /up`. Weder `LegacyApiRoutes::registerReadCandidate()` noch ein
+nur `GET|HEAD /up`. Weder `LegacyApiRoutes::registerCandidate()` noch ein
 API-Routenfile wird vom Bootstrap aufgerufen. Der neue Guard ist nicht der
 Defaultguard; `chrono`, ein API-Schlüssel und eine öffentliche API bleiben
 ungebunden beziehungsweise unkonfiguriert.
@@ -58,6 +58,8 @@ nicht als öffentliche Controller ohne diese Middleware gebunden werden.
 
 | Kandidat | Bewahrter Vertrag |
 |---|---|
+| `POST /api.php/login` | Inaktiver [Folgekandidat](candidate-api-actions.md): lokale Credentialprüfung/Tokenausgabe, ausschließlich mit explizit zugelassenem Loginbudget und Schlüssel. |
+| `POST /api.php/attendance` | Derselbe Folgekandidat auf dem einzigen #75-Writer, `api:{id}`, keine Aliase oder Aktivierung. |
 | `GET /api.php/users` | `{success:true,data:[{id,username,email,role}]}`, ausschließlich die aktuelle eigene Person, auch als Admin. |
 | `GET /api.php/timeentries` | Eigene rohe Projektionszeilen nach `startzeit DESC`, `{success,data,meta:{total,filtered,limit,offset}}`. Ein Query-`user_id` wird nie als Subjekt verwendet. |
 | `DELETE /api.php/timeentry/{numericId}` | Authentifizierte Sperre: 409 Text, Korrekturantrag statt historischer Löschung. Kein Writer. |
@@ -92,18 +94,18 @@ ungültige Form 400 verweigert; der Legacy-Pfad kann stattdessen einen PHP-TypeE
 
 ## Offene Gates, keine erfundene vollständige API
 
-Der **unregistrierte** Kandidat verweigert die bekannten POST-Pfade `/login`,
-`/attendance`, `/workentry`, `/setendzeit` ausdrücklich mit 503 JSON
+Der **unregistrierte** Kandidat besitzt inzwischen den begrenzten
+[Login-/direkten Stempelfolgeschritt](candidate-api-actions.md). Die Alias-POST-
+Pfade `/workentry`, `/setendzeit` verweigert er weiterhin ausdrücklich mit 503 JSON
 `API endpoint not admitted.` statt einen implementierten Login/Writer zu
 behaupten. Das ist kein freigegebener neuer öffentlicher Vertrag. Ein
 vollständiger Routenschalter ist vor deren Umsetzung/Review ausdrücklich
 verboten. Auch exotische, von Laravels `any` nicht erfasste HTTP-Methoden benötigen
 vor einer späteren Gesamtaktivierung eine separate 405-/CORS-Gesamtkante.
 
-Noch offen: kompatible lokale APIanmeldung und Loginlimit ohne
-Schlüssel-/Accountnebenwirkungen; produktive JWT-Migration/Profilentscheidung; APIvariante desselben
-synchronen #75/#78-Writers mit `source=api:{id}`, Idempotenz und Legacyaliasen;
-Start/Pause/Ende/Retry-/`expectedRecord`-Abnahme; Swaggerkorrekturen #24/#25;
+Noch offen: zugelassenes persistentes gemeinsames Loginbudget; produktive
+JWT-Migration/Profilentscheidung; API-Legacyaliase auf demselben Writer;
+reale vollständige Start/Pause/Ende/Retry-/`expectedRecord`-Abnahme; Swaggerkorrekturen #24/#25;
 repräsentative vollständige Firefox-/Edge-Abläufe und deren reale Verteilung.
 Kein Swaggerendpoint wird aus dem inaktiven Kandidaten als verfügbar behauptet.
 Web-/Terminalschreiber werden nicht umgangen. Keine neue UI, kein realer
