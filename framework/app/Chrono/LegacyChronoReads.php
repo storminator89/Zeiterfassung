@@ -76,9 +76,13 @@ final class LegacyChronoReads implements ChronoReads
             $parameters = [':user_id' => $actor->getKey()];
             foreach (['start_date' => $query->startDate, 'end_date' => $query->endDate] as $field => $date) {
                 if ($date !== null) {
-                    $where[] = 'date(startzeit) '.($field === 'start_date' ? '>=' : '<=').' :'.$field;
+                    $where[] = 'chrono_api_booking_day(startzeit) '.($field === 'start_date' ? '>=' : '<=').' :'.$field;
                     $parameters[':'.$field] = $date;
                 }
+            }
+            if ($query->startDate !== null || $query->endDate !== null) {
+                require_once dirname(__DIR__, 3).'/lib/api_booking_day.php';
+                api_register_booking_day($pdo);
             }
             $predicate = implode(' AND ', $where);
             $statement = $pdo->prepare('SELECT COUNT(*) FROM zeiterfassung WHERE '.$predicate);

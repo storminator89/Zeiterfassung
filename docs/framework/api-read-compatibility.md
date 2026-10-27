@@ -97,8 +97,11 @@ HTTP-Methode werden geprüft: kein neu akzeptierter Slash-/Percentalias,
 implizites HEAD oder `_method`-/Headeroverride. JSON verwendet wie im Bestand
 `json_encode` ohne neue HEX-Optionen; Textfehler bleiben Text.
 
-**Bewusst nicht repariert:** SQLite-`date(startzeit)` filtert UTC statt
-Berlin-Kalendertagen; Formprüfung ist keine Kalenderprüfung. Numerische
+**CH-04 / #9:** Native API und inaktiver Lesekandidat filtern nun über den
+gemeinsamen `chrono_api_booking_day`-Adapter nach demselben Berliner Starttag
+wie Berichte, nicht nach SQLite-UTC. Grenzen, Datenfehler und grober Nachweis:
+[API-Buchungstag](../CH04-API-BUCHUNGSTAG.md). Formprüfung bleibt keine
+Kalenderprüfung. Numerische
 Pagination bleibt die bisherige PHP-Koerzierung, einschließlich negativer Werte
 und separater Metadaten. Der native Pfad und der inaktive Lesekandidat ergänzen
 bei numerischem Offset ohne wirksames Limit jetzt SQLite-`LIMIT -1`: alle eigenen
@@ -107,7 +110,7 @@ unverändert. Dies behebt nur den SQLfehler aus
 [#24 / CH-18](https://github.com/storminator89/Zeiterfassung/issues/24), nicht die
 dort ebenfalls offenen Integergrenzen, Standard- und Maximalwerte. SQLite
 dokumentiert [negative Limits als unbeschränkt und OFFSET nach LIMIT](https://www.sqlite.org/lang_select.html#limitoffset).
-Die übrigen Änderungen aus [#9](https://github.com/storminator89/Zeiterfassung/issues/9) und
+Die übrigen Änderungen aus
 [#25](https://github.com/storminator89/Zeiterfassung/issues/25) müssen separat
 abgestimmt werden, nicht als Carbon-/Paginatornebenwirkung entstehen.
 Strukturell nichtskalare Datumsquerys werden im Kandidaten ebenfalls als
@@ -142,7 +145,7 @@ Ein parameterloser Ablauf durch echte Laravel-`HttpKernel`-Requestobjekte mit
 anonymer SQLite-Memoryfixture und Wegwerfschlüssel nur im Prozess. Kein
 HTTPserver, Netzwerk, Dateikey, lokaler UItest oder reale Daten. Vier Gruppen:
 inaktiver Boot/Admissions/Preflight ohne IO; erweiterungsartige eigene
-Identity-/UTC-/Paginationleser mit exakten JSONbytes; manipulierter/abgelaufener/
+Identity-/Berlin-Starttag-/Paginationleser mit exakten JSONbytes; manipulierter/abgelaufener/
 falsche-Audience-/passwortwiderrufener Token ohne gecachte Webidentität;
 Wirefehler/CRUD-Sperre und unveränderter Snapshot. Dies ist keine Vollsuite,
 kein produktiver End-to-End- oder Browserstore-/Verteilungsnachweis. Die grobe

@@ -94,15 +94,17 @@ try {
     $directoryAdmin = $token(2);
     $before = SourceSnapshot::capture($pdo, $mapping);
 
-    $phase = 'representative extension own identity and raw UTC paging';
+    $phase = 'representative extension own identity and Berlin start-day paging';
     $identity = $request('GET', '/api.php/users?user_id=2', $member);
     $expected = ['success' => true, 'data' => $pdo->query('SELECT id,username,email,role FROM users WHERE id=1')->fetchAll(PDO::FETCH_ASSOC)];
     $ensure($identity->getStatusCode() === 200 && $identity->getContent() === json_encode($expected)
         && ! $identity->headers->has('Set-Cookie'));
-    $entries = $request('GET', '/api.php/timeentries?start_date=2026-10-24&end_date=2026-10-24&limit=1&offset=0&user_id=2', $member);
-    $rows = $pdo->query("SELECT * FROM zeiterfassung WHERE user_id=1 AND date(startzeit)>='2026-10-24' AND date(startzeit)<='2026-10-24' ORDER BY startzeit DESC LIMIT 1 OFFSET 0")->fetchAll(PDO::FETCH_ASSOC);
+    $entries = $request('GET', '/api.php/timeentries?start_date=2026-10-25&end_date=2026-10-25&limit=1&offset=0&user_id=2', $member);
+    $rows = $pdo->query("SELECT * FROM zeiterfassung WHERE user_id=1 AND id=44")->fetchAll(PDO::FETCH_ASSOC);
     $ensure($entries->getStatusCode() === 200 && array_column($rows, 'id') === [44]
         && $entries->getContent() === json_encode(['success' => true, 'data' => $rows, 'meta' => ['total' => 1, 'filtered' => 1, 'limit' => 1, 'offset' => 0]]));
+    $previousDay = json_decode($request('GET', '/api.php/timeentries?start_date=2026-10-24&end_date=2026-10-24', $member)->getContent(), true, 512, JSON_THROW_ON_ERROR);
+    $ensure($previousDay['data'] === [] && $previousDay['meta']['total'] === 0);
     $adminRows = json_decode($request('GET', '/api.php/timeentries?user_id=1', $directoryAdmin)->getContent(), true, 512, JSON_THROW_ON_ERROR);
     $ensure(array_column($adminRows['data'], 'user_id') === [2]); // API accepts LDAP identity, never broad admin scope.
     $ensure(SourceSnapshot::capture($pdo, $mapping) === $before);
@@ -141,7 +143,7 @@ try {
         && array_intersect_key($GLOBALS, array_flip(['audit_actor', 'audit_reason', '_SESSION'])) === $globals);
     echo json_encode([
         'passed' => true,
-        'groups' => ['inactive admissions and no-IO preflight', 'extension-style own reads and UTC paging', 'token and current account rejection', 'legacy wire errors and read-only snapshot'],
+        'groups' => ['inactive admissions and no-IO preflight', 'extension-style own reads and Berlin start-day paging', 'token and current account rejection', 'legacy wire errors and read-only snapshot'],
         'synthetic_memory_only' => true, 'laravel_http_kernel_requests' => true,
         'live_endpoint_switch' => false, 'login_writes_ui_real_distribution_acceptance' => false,
     ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR)."\n";
