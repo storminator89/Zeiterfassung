@@ -98,6 +98,12 @@ Zugangsdatenargumente, native Sessionkopie, `.env`- oder Host-/Proxyänderung.
 Secure/HttpOnly/SameSite-Defaults werden nicht abgeschwächt; tatsächliche
 Secure-Cookie-Annahme über Loopback muss der unterstützte Browser nachweisen.
 Eine lokale HTTP-Abnahme ist kein Nachweis produktiver HTTPS-/Proxyfreigabe.
+Die Fixture aktiviert zusätzlich Laravels Standard-Sessionblocking für den
+gesamten opt-in Webstack: eigener persistenter File-Lockstore, **60 Sekunden
+Lock-TTL / 10 Sekunden Wartezeit**. Der Registrar verweigert fehlende oder
+prozesslokale Sperrkonfiguration vor Routenregistrierung. Die
+[Betriebs-/Aktivierungsgrenzen](local-auth-foundation.md#lock-betriebsgrenze-vor-aktivierung)
+gelten unverändert; der einzelne CLI-Serverworker ist kein Konkurrenznachweis.
 
 Auth/Reads benutzen denselben ausdrücklich zugelassenen Bestand/Benutzer-IDs,
 mit eigener read-only `chrono`-Verbindung und DEFERRED-Snapshots. Jede Mutation
@@ -185,3 +191,25 @@ Beide temporären 18090-Läufe wurden beendet, ihre eigenen Browser-/Terminaltab
 geschlossen und der fehlende Listener nativ bestätigt. Testanmeldungen wurden
 durch Logout beziehungsweise Passwortwiderruf beendet; keine hostweiten Cookies
 oder bestehende 18083-Sitzung wurden zur Bereinigung angefasst.
+
+### Ein grober isolierter Session-Konkurrenznachweis
+
+Eine separate private CLI-Probe unter PHP 8.5.12 / Laravel 13.38.0 verwendete
+unveränderte installierte `StartSession`, `SessionManager`/`EncryptedStore`,
+File-Sessions und persistente Standard-Filecachelocks in zwei Prozessen. Kein
+Anwendungsboot, Browser, HTTP-Listener, Authproviderquery oder Datenbankzugriff.
+Kontrollierte Reihenfolge ohne Blocking: Statusrequest liest den synthetischen
+Authsnapshot → Logout entfernt den alten Sessionbestand nachweislich → späterer
+Statusabschluss erzeugt die alte Datei samt Auth-/Passwortmarkern erneut.
+`StartSession` liefert dabei den alten Session-Cookiewert, Logout einen neuen.
+
+Dieselbe grobe Probe mit Standardblocking hielt den gemeinsamen Lock während
+des Statusrequests; unabhängige Lockversuche konnten ihn nicht erwerben. Der
+Logouthandler trat erst nach dessen Abschluss ein und entfernte anschließend
+die alte Datei; Auth-/Passwortmarker blieben weg. Secure/HttpOnly/Lax blieben in
+beiden Varianten erhalten. Die Probe zeigt den Server-Sessionsnapshotfehler und
+seine Serialisierung, **keine beobachtete Browser-Cookierücknahme**, keine echte
+Anmeldung und keine vollständige Kontowechsel-/Pendingparität. SQLite-#75-Proofs
+ersetzen diesen Sessionnachweis nicht. Standardboot/aktive Legacyanwendung und
+die vorhandenen 18083-/18090-Läufe wurden nicht berührt; die Lücke betrifft die
+ausdrückliche Mehrrequest-Aktivierung, nicht einen behaupteten produktiven Vorfall.
