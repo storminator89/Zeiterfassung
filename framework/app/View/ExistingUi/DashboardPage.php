@@ -38,4 +38,9 @@ final readonly class DashboardPage
     {
         return 'dashboard.php?calendar_date='.rawurlencode($day).'#calendar';
     }
+
+    public function calendarEvents(): array
+    {
+        return CalendarEvents::fromNative($this->events);
+    }
 }
