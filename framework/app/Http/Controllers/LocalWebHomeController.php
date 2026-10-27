@@ -24,7 +24,7 @@ final class LocalWebHomeController extends Controller
         // Pure shared native presentation definitions, not functions.php/config.php.
         require_once dirname(__DIR__, 4).'/lib/home_projection.php';
         $language = $request->session()->get('lang', 'de');
-        $language = is_string($language) && in_array($language, ['de', 'en'], true) ? $language : 'de';
+        $language = is_string($language) && in_array($language, ['de', 'en', 'zh'], true) ? $language : 'de';
         $page = max(1, intval($request->query('page', 1)));
         $records = $this->reads->reportRows(chronological: true);
 

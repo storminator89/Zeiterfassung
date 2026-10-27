@@ -92,4 +92,20 @@ return [
     'TUESDAY' => 'Dienstag',
     'WEDNESDAY' => 'Mittwoch',
     'WORK' => 'Arbeit',
+
+    // Exact existing native Settings copy; no administration/write capability.
+    'SETTINGS_TITLE' => 'Einstellungen',
+    'SETTINGS_LANGUAGE' => 'Spracheinstellungen',
+    'SETTINGS_REGULAR_WORKING_HOURS' => 'Regelarbeitszeit',
+    'SETTINGS_OVERTIME' => 'Frühere Überstunden',
+    'NAV_DARK_MODE' => 'Dark Mode',
+    'BUTTON_SAVE_CHANGES' => 'Änderungen speichern',
+    'SETTINGS_BACKUP_OPERATIONS_TITLE' => 'Sicherung und Restore',
+    'SETTINGS_BACKUP_RESTORE_TITLE' => 'Offline-Restore',
+    'SETTINGS_BACKUP_IMPORT_DISABLED' => 'Der Browser-Import ist absichtlich gesperrt: Ein Teilimport könnte Arbeitszeitmodelle und Änderungshistorie beschädigen.',
+    'SETTINGS_BACKUP_RESTORE_INSTRUCTIONS' => 'Die vollständige private Datenablage (Datenbank, vorhandene SQLite-Sidecars und .key-Dateien) muss gemeinsam offline bei gestoppter App und gestoppten Gerätediensten wiederhergestellt werden. Schema und Code müssen zum Sicherungsstand passen.',
+    'SETTINGS_BACKUP_RESTORE_GUIDE' => 'Diese Oberfläche bietet keinen automatischen Vollrestore. Offline-Vorgehen für den Betrieb:',
+    'SETTINGS_BACKUP_SNAPSHOT_TITLE' => 'Datenbank-Snapshot',
+    'SETTINGS_BACKUP_SNAPSHOT_DESCRIPTION' => 'Konsistenter Snapshot der gesamten SQLite-Datenbank. Externe .key-Dateien, Anwendungscode und Betriebskonfiguration sind nicht enthalten. Der Download ist daher keine vollständige Betriebssicherung.',
+    'SETTINGS_BACKUP_SNAPSHOT_DOWNLOAD' => 'DB-Snapshot herunterladen',
 ];

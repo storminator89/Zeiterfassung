@@ -33,7 +33,7 @@ final class LocalWebAttendanceController extends Controller
         // Registrar already ran RefreshLocalAccount -> auth:web -> auth.session.
         $actor = $this->auth->guard('web')->user();
         $language = $request->query('lang', $request->session()->get('lang', 'de'));
-        $language = is_string($language) && in_array($language, ['de', 'en'], true) ? $language : 'de';
+        $language = is_string($language) && in_array($language, ['de', 'en', 'zh'], true) ? $language : 'de';
         $request->session()->put('lang', $language);
         $copy = new Copy($language);
         $summary = $this->interactions->home ? $this->reads->homeSummary() : null;

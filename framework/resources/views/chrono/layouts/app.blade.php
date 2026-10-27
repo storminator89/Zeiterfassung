@@ -274,7 +274,7 @@
                     <i class="fas fa-tachometer-alt w-6"></i>
                     <span>{{ $page->copy->text('NAV_DASHBOARD') }}</span>
                 </a>
-                <a href="settings.php" class="sidebar-link ">
+                <a href="settings.php" class="sidebar-link {{ $page->activePage === 'settings.php' ? 'active' : '' }}">
                     <i class="fas fa-cog w-6"></i>
                     <span>{{ $page->copy->text('NAV_SETTINGS') }}</span>
                 </a>
@@ -404,18 +404,24 @@
 
         // Function to set the theme
         function setTheme(theme) {
-            html.setAttribute('data-theme', theme);
-            localStorage.setItem('theme', theme);
+            // Keep the existing browser preference key/precedence, but do not
+            // confuse the raw System choice with a renderable DaisyUI theme.
+            const preference = ['light', 'dark', 'system'].includes(theme) ? theme : 'light';
+            const resolved = preference === 'system'
+                ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+                : preference;
+            html.setAttribute('data-theme', resolved);
+            localStorage.setItem('theme', preference);
+            themeToggle.checked = resolved === 'dark';
         }
 
         // Check for saved theme preference or use the system preference
         const savedTheme = localStorage.getItem('theme');
-        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        const theme = savedTheme || systemTheme;
+        const theme = savedTheme || 'system';
 
         // Set initial theme
         setTheme(theme);
-        themeToggle.checked = theme === 'dark';
+        themeToggle.checked = html.getAttribute('data-theme') === 'dark';
 
         // Toggle theme when the checkbox is clicked
         themeToggle.addEventListener('change', () => {
@@ -425,9 +431,9 @@
 
         // Listen for system theme changes
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-            if (!localStorage.getItem('theme')) {
-                const newTheme = e.matches ? 'dark' : 'light';
-                setTheme(newTheme);
+            const preference = localStorage.getItem('theme');
+            if (!preference || preference === 'system') {
+                setTheme('system');
                 themeToggle.checked = e.matches;
             }
         });

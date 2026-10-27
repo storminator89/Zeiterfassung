@@ -61,7 +61,7 @@ final class LocalWebWorkModelsController extends Controller
         // The opt-in registrar must already have refreshed the local web account.
         $actor = $this->auth->guard('web')->user();
         $language = $request->query('lang', $request->session()->get('lang', 'de'));
-        $language = is_string($language) && in_array($language, ['de', 'en'], true) ? $language : 'de';
+        $language = is_string($language) && in_array($language, ['de', 'en', 'zh'], true) ? $language : 'de';
         $request->session()->put('lang', $language);
 
         // Native query parsing only. The shared snapshot owns scope, paging,

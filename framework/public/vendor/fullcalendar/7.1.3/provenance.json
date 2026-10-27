@@ -116,6 +116,12 @@
       "source": "official fullcalendar tarball"
     },
     {
+      "path": "locales/zh-tw/global.js",
+      "bytes": 593,
+      "sha256": "eed62343d77e5e072ac26ab84713eeebdd376b4c711c3d18c5e131acc11f07fd",
+      "source": "official fullcalendar tarball"
+    },
+    {
       "path": "skeleton.css",
       "bytes": 8864,
       "sha256": "08b1350f84d3ba970d1533a22f6f58c877d3175a68c9617d470f2421ece4a112",
