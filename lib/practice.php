@@ -2,8 +2,8 @@
 // Database triggers capture every projection change in the same transaction.
 // The application never updates or deletes journal rows. DB/server operators remain trusted.
 function practice_connection(PDO $db): void {
-    $db->sqliteCreateFunction('audit_actor', fn() => $GLOBALS['audit_actor'] ?? ('web:'.($_SESSION['user_id'] ?? 'system')), 0);
-    $db->sqliteCreateFunction('audit_reason', fn() => $GLOBALS['audit_reason'] ?? basename($_SERVER['SCRIPT_NAME'] ?? 'migration'), 0);
+    $db->createFunction('audit_actor', fn() => $GLOBALS['audit_actor'] ?? ('web:'.($_SESSION['user_id'] ?? 'system')), 0);
+    $db->createFunction('audit_reason', fn() => $GLOBALS['audit_reason'] ?? basename($_SERVER['SCRIPT_NAME'] ?? 'migration'), 0);
 }
 function practice_migrate(PDO $db): void {
     practice_connection($db);

@@ -28,7 +28,7 @@ try {
         'Beschreibung',
         'Art',
         'Gutschrift (Min)'
-    ], ';');
+    ], ';', '"', '\\');
 
     // Fetch records
     $stmt = $conn->prepare('
@@ -58,7 +58,7 @@ try {
             csv_safe($record['beschreibung']),
             csv_safe($record['absence_kind'] ?? 'Arbeitszeit'),
             $record['planned_minutes'] ?? ''
-        ], ';');
+        ], ';', '"', '\\');
     }
 
     // Output the file with UTF-8 encoding
