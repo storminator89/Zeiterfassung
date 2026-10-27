@@ -4,6 +4,11 @@ namespace App\Providers;
 
 use App\Chrono\ChronoReads;
 use App\Chrono\LegacyChronoReads;
+use App\LegacyDatabase\AttendanceWriter;
+use App\Terminal\AdmittedTerminalKeys;
+use App\Terminal\LegacyTerminalProtocol;
+use App\Terminal\TerminalProtocol;
+use LogicException;
 use Illuminate\Support\ServiceProvider;
 
 final class ChronoDomainServiceProvider extends ServiceProvider
@@ -12,5 +17,22 @@ final class ChronoDomainServiceProvider extends ServiceProvider
     {
         // Lazy/scoped: registration and resolution open no DB or auth session.
         $this->app->scoped(ChronoReads::class, LegacyChronoReads::class);
+        // Real backend, but no route, root-key binding or fallback is installed.
+        // Check explicit key admission before resolving any writer/connection.
+        $this->app->scoped(TerminalProtocol::class, function ($app): TerminalProtocol {
+            if (! $app->bound(AdmittedTerminalKeys::class) || ! $app->bound(AttendanceWriter::class)) {
+                throw new LogicException('Explicit terminal key sources and an admitted operation writer are required.');
+            }
+            $keys = $app->make(AdmittedTerminalKeys::class);
+            if (! $keys instanceof AdmittedTerminalKeys) {
+                throw new LogicException('Explicit existing terminal key sources are required.');
+            }
+            $writer = $app->make(AttendanceWriter::class);
+            if (! $writer instanceof AttendanceWriter) {
+                throw new LogicException('An admitted operation-scoped terminal writer is required.');
+            }
+
+            return new LegacyTerminalProtocol($writer, $keys);
+        });
     }
 }
