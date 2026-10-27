@@ -1,11 +1,11 @@
 <?php
 
 return [
-    // No stock Laravel User model, user table, password broker or login route.
-    // Auth (#76) must implement the reviewed legacy authentication contracts first.
+    // Inactive backend only: `chrono` is deliberately NOT a configured connection.
+    // No login routes, native-PHP session bridge, password broker or new user table.
     'defaults' => ['guard' => 'web', 'passwords' => 'users'],
-    'guards' => [],
-    'providers' => [],
+    'guards' => ['web' => ['driver' => 'session', 'provider' => 'chrono_users']],
+    'providers' => ['chrono_users' => ['driver' => 'eloquent', 'model' => App\Auth\LegacyUser::class]],
     'passwords' => [],
     'password_timeout' => 10800,
 ];
