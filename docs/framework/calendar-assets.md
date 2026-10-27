@@ -49,3 +49,61 @@ One coarse synthetic mapper/Blade-compilation/build-integrity proof covers canon
 Still required separately: reviewed protected route/chrome integration, normal authenticated published-site acceptance, appearance in light/dark and narrow layouts, empty weeks, repeated modal open/close, server navigation/Back and DST/non-Berlin-browser behavior. Source proof does not satisfy these gates.
 
 Primary sources: [Standard license](https://fullcalendar.io/license), [v7.1.3 release](https://github.com/fullcalendar/fullcalendar/releases/tag/v7.1.3), [official browser recipe](https://fullcalendar.io/docs/vanilla-js), [week/day grid](https://fullcalendar.io/docs/timegrid-view), [IANA zones](https://fullcalendar.io/docs/timeZone), [internal Temporal](https://fullcalendar.io/docs/temporal-polyfill), [exclusive event end](https://fullcalendar.io/docs/event-parsing), [safe content API](https://fullcalendar.io/docs/content-injection), [event hooks](https://fullcalendar.io/docs/event-render-hooks).
+
+## Default-off route/chrome source integration
+
+Basis of this additive step: combined Calendar/Supervisor Main
+`c168e64bc4d2038ea42041cf4133bb918da0263f`, tree
+`7c55335cefbe30d9ee39628483ec0bcb8b2b0d08`. Exactly seven existing files change:
+`LocalWebRoutes`, `AttendancePage`, `Interactions`, the standard layout, the
+explicit `LocalWebFixture`, its fixed router and this document. The reviewed
+FullCalendar assets/renderer, Dashboard controller/DTO/Blade, own-only reader,
+reporting formulas and all native files remain byte-identical.
+
+The appended `LocalWebRoutes::register(..., bool $includeDashboard = false)`
+preserves the existing History/Supervisor argument order and defaults. Only an
+explicit opt-in adds `GET|HEAD dashboard.php` at the existing controller, inside
+the unchanged web/session/CSRF stack and
+`RefreshLocalAccount` → `auth:web` → `auth.session` group. Persistent session
+blocking remains required. The full-page auth failure redirects to `login.php`,
+including requests with query parameters; no new status/form transport,
+credential/session bridge, role policy, writer or POST endpoint is added.
+The reader still reloads its own guard identity and scopes all data to it.
+
+Before **any** route registration, the Dashboard opt-in checks fourteen fixed
+reviewed files: all six FullCalendar executable/style assets, the preserved
+licenses/provenance and the renderer. Literal source path/SHA256 pairs, not a
+mutable manifest, request path, environment value or configuration option,
+select the bytes. Missing, unreadable, directly symlinked or replaced files
+fail closed. The existing Supervisor asset gate and session gate are unchanged.
+Without the Dashboard opt-in, its asset check is not run and no Dashboard route
+is registered. The check establishes the reviewed local bytes, **not** actual
+server mapping, absence of later filesystem changes or browser execution.
+
+`AttendancePage` now admits the already-existing `dashboard.php` active state;
+the existing sidebar link gains that one active condition without new markup,
+controls, asset loaders or visibility policy. `Interactions::dashboard` is an
+appended default-false presentation note, never authorization. The only caller
+setting it and `includeDashboard:true` is the already-explicit synthetic fixture
+composition; this source change does not start or authenticate that fixture.
+
+Its fixed router adds `/dashboard.php` and the seven exact same-origin loader
+URLs already present in the reviewed Blade. The six pinned JS/CSS assets and
+`assets/js/chrono-calendar.js` map only to their existing
+`framework/public/` files with explicit JavaScript/CSS MIME types and existing
+GET/HEAD behavior. No wildcard, arbitrary filesystem path, external fallback,
+repository Webroot or new asset contents are admitted. Static public asset
+mapping is not a private-data or authentication route.
+
+`routes/web.php` and bootstrap stay unchanged: the Foundation still enables
+only `/up` by default. The native UI/CDN fallback, host/Webroot/security
+settings, application activation and public deployment are not changed. No
+new protected browser acceptance is implied by source-level opt-in wiring.
+
+Only coarse preservation/hash/source/Blade-compilation checks and PHP/JS syntax
+belong to this step; no new microtests, controller dispatch, app bootstrap,
+DB/session/auth execution, HTTP/server, CI or browser run. The prior standalone
+`file:` preview was denied by browser security policy; it was not retried or
+replaced by a server, data URL, injection or other workaround. Actual renderer
+initialization, asset serving, normal protected login/navigation/Back, modal,
+light/dark/narrow layouts and DST/non-Berlin-browser acceptance remain open.

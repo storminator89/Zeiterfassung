@@ -4,6 +4,7 @@ namespace App\Http;
 
 use App\Http\Controllers\LocalWebAttendanceController;
 use App\Http\Controllers\LocalWebCorrectionsController;
+use App\Http\Controllers\LocalWebDashboardController;
 use App\Http\Controllers\LocalWebHomeController;
 use App\Http\Controllers\LocalWebHistoryController;
 use App\Http\Controllers\LocalWebSessionController;
@@ -35,11 +36,14 @@ use Symfony\Component\HttpFoundation\Response;
 /** Explicit opt-in registrar. Never called by bootstrap/providers/default routes. */
 final class LocalWebRoutes
 {
-    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false): void
+    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false): void
     {
         // No opt-in page may be registered against missing or replaced chart bytes.
         if ($includeSupervisor) {
             self::requireSupervisorChartAssets();
+        }
+        if ($includeDashboard) {
+            self::requireDashboardCalendarAssets();
         }
         self::requireSessionBlocking($app);
         $router = $app->make(Router::class);
@@ -54,10 +58,11 @@ final class LocalWebRoutes
         TrimStrings::skipWhen($nativeFormPath);
         ConvertEmptyStringsToNull::skipWhen($nativeFormPath);
 
-        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor) {
+        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor, $includeDashboard) {
             // These opt-in reports are full pages, never status/form transports.
             if (($includeHistory && $request->path() === 'history.php')
-                || ($includeSupervisor && $request->path() === 'supervisor.php')) {
+                || ($includeSupervisor && $request->path() === 'supervisor.php')
+                || ($includeDashboard && $request->path() === 'dashboard.php')) {
                 return new RedirectResponse('login.php');
             }
 
@@ -75,10 +80,10 @@ final class LocalWebRoutes
         $router->group(['middleware' => [
             EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class,
             ShareErrorsFromSession::class, LegacyFormCsrf::class, SubstituteBindings::class,
-        ]], function () use ($router, $includeHistory, $includeSupervisor): void {
+        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard): void {
             $router->get('login.php', [LocalWebSessionController::class, 'create'])->name('login');
             $router->post('login.php', [LocalWebSessionController::class, 'store'])->middleware('throttle:chrono-web-login');
-            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor): void {
+            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard): void {
                 foreach (['/', 'index.php', 'attendance.php'] as $path) {
                     $router->get($path, [LocalWebAttendanceController::class, 'page']);
                     $router->post($path, [LocalWebAttendanceController::class, 'transition']);
@@ -94,6 +99,9 @@ final class LocalWebRoutes
                 }
                 if ($includeSupervisor) {
                     $router->get('supervisor.php', [LocalWebSupervisorController::class, 'index']);
+                }
+                if ($includeDashboard) {
+                    $router->get('dashboard.php', [LocalWebDashboardController::class, 'index']);
                 }
                 $router->post('logout.php', [LocalWebSessionController::class, 'destroy']);
             });
@@ -120,6 +128,35 @@ final class LocalWebRoutes
             if (is_link($path) || ! is_file($path) || ! is_readable($path)
                 || ! hash_equals($hash, hash_file('sha256', $path) ?: '')) {
                 throw new LogicException('Pinned local Supervisor chart assets are not admitted.');
+            }
+        }
+    }
+
+    /** Exact reviewed Calendar bytes only; no mutable manifest/path/config selection. */
+    private static function requireDashboardCalendarAssets(): void
+    {
+        $directory = dirname(__DIR__, 2).'/public/';
+        $assets = [
+            'vendor/fullcalendar/7.1.3/LICENSE.md' => '000882c713ee4c9729c7eeafbebb04a98a633517c2e95f1258fc488853124df3',
+            'vendor/fullcalendar/7.1.3/all/global.js' => '14564575f16e82de18da6ccf6d21da12fdd0d0f5d50100f22daad59f2cdeb9bd',
+            'vendor/fullcalendar/7.1.3/licenses/Apache-2.0.txt' => 'cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30',
+            'vendor/fullcalendar/7.1.3/licenses/preact-LICENSE' => '1fe6958409c8c257a70c587a18b6f7f412b179b456630790d30b2ec9a8e4b7d4',
+            'vendor/fullcalendar/7.1.3/licenses/temporal-polyfill-LICENSE' => 'c29814b29591d08896b63870ffdd652785f5b2e3f902860645f00871b596068d',
+            'vendor/fullcalendar/7.1.3/licenses/temporal-spec-LICENSE' => 'fea66f1be8df22727cd9750a85865270949107151b6414986c23ebe1929f66b3',
+            'vendor/fullcalendar/7.1.3/licenses/temporal-utils-LICENSE' => 'c29814b29591d08896b63870ffdd652785f5b2e3f902860645f00871b596068d',
+            'vendor/fullcalendar/7.1.3/locales/de/global.js' => '28e51fb439c94d51ae92d27162842a7666a03c96e5d74133b5e75b566bbbbe22',
+            'vendor/fullcalendar/7.1.3/provenance.json' => '817d4fbfc4f67cc79e09e2e20c59f7811e8bd82cfa2496ad998c011f6571228c',
+            'vendor/fullcalendar/7.1.3/skeleton.css' => '08b1350f84d3ba970d1533a22f6f58c877d3175a68c9617d470f2421ece4a112',
+            'vendor/fullcalendar/7.1.3/themes/classic/global.js' => 'a66eb65fc730f3b662f9c1ef30f8f741c42dcfe381d089f78dac322bf4dfbd5d',
+            'vendor/fullcalendar/7.1.3/themes/classic/palette.css' => '5fa284fcef81b68bca7780f72fd110929284d0bf993b9ce5a8bffed54e3d38ee',
+            'vendor/fullcalendar/7.1.3/themes/classic/theme.css' => 'e284a8b53bc52d362d172d37fdc59fe3ae821bc11d6a85d6fab7e20bdf45f043',
+            'assets/js/chrono-calendar.js' => '28e08f3d98272460b703adf080c31148fb3480f8df9ea32ef44021b72145c9ec',
+        ];
+        foreach ($assets as $name => $hash) {
+            $path = $directory.$name;
+            if (is_link($path) || ! is_file($path) || ! is_readable($path)
+                || ! hash_equals($hash, hash_file('sha256', $path) ?: '')) {
+                throw new LogicException('Pinned local Dashboard calendar assets are not admitted.');
             }
         }
     }

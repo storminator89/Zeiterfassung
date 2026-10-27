@@ -270,7 +270,7 @@
                     <i class="fas fa-home w-6"></i>
                     <span>{{ $page->copy->text('NAV_HOME') }}</span>
                 </a>
-                <a href="dashboard.php" class="sidebar-link ">
+                <a href="dashboard.php" class="sidebar-link {{ $page->activePage === 'dashboard.php' ? 'active' : '' }}">
                     <i class="fas fa-tachometer-alt w-6"></i>
                     <span>{{ $page->copy->text('NAV_DASHBOARD') }}</span>
                 </a>
