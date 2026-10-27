@@ -1,5 +1,6 @@
 <?php
 
+use App\Terminal\LegacyTerminalHttpIngress;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 
@@ -16,5 +17,10 @@ require __DIR__.'/../vendor/autoload.php';
 // Bootstrap Laravel and handle the request...
 /** @var Application $app */
 $app = require_once __DIR__.'/../bootstrap/app.php';
+
+if (LegacyTerminalHttpIngress::matchesRawPath($_SERVER)) {
+    $app->handleRequest(LegacyTerminalHttpIngress::capture($_SERVER));
+    return;
+}
 
 $app->handleRequest(Request::capture());
