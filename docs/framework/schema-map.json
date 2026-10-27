@@ -1,0 +1,1652 @@
+{
+  "format_version": 1,
+  "purpose": "Static source-derived contract; not executable migration, not a database dump or production fingerprint.",
+  "source_commit": "6c5f635506949168b6afb0a568c71fe46ae915f7",
+  "assessment_commit": "33c53edf53024ef91c6887fc642b92d608940c7b",
+  "source_files": {
+    "config.php": {
+      "sha256": "bc36af6999cd759103d387c17cd80d609559aacecef28b014bdd16d105d56292"
+    },
+    "security.php": {
+      "sha256": "aef25545c84294649944c39a84ae57127aa6a37a9906a69d25e317ada3cb3684"
+    },
+    "lib/attendance.php": {
+      "sha256": "b6fc6cbb3967ff732a9cfb009217e3a03e74dfa7ee64dc485ce38211065acfcd"
+    },
+    "lib/practice.php": {
+      "sha256": "f22e48a5fb30fe619d1410206f019938ab8a37d71473d0759a3f37f7536f7ce9"
+    }
+  },
+  "application_versions": [
+    1,
+    2
+  ],
+  "tables": [
+    {
+      "name": "zeiterfassung",
+      "source": "config.php",
+      "source_line": 18,
+      "create_sql": "CREATE TABLE IF NOT EXISTS zeiterfassung ( id INTEGER PRIMARY KEY AUTOINCREMENT, startzeit TEXT NOT NULL, endzeit TEXT, pause INTEGER, beschreibung TEXT DEFAULT '' NULL, standort TEXT DEFAULT '' NULL, user_id INTEGER NOT NULL, FOREIGN KEY (user_id) REFERENCES users(id) );",
+      "columns": [
+        {
+          "name": "id",
+          "declaration": "INTEGER      PRIMARY KEY AUTOINCREMENT"
+        },
+        {
+          "name": "startzeit",
+          "declaration": "TEXT         NOT NULL"
+        },
+        {
+          "name": "endzeit",
+          "declaration": "TEXT"
+        },
+        {
+          "name": "pause",
+          "declaration": "INTEGER"
+        },
+        {
+          "name": "beschreibung",
+          "declaration": "TEXT        DEFAULT '' NULL"
+        },
+        {
+          "name": "standort",
+          "declaration": "TEXT         DEFAULT '' NULL"
+        },
+        {
+          "name": "user_id",
+          "declaration": "INTEGER      NOT NULL"
+        }
+      ],
+      "table_constraints": [
+        "FOREIGN KEY (user_id) REFERENCES users(id)"
+      ],
+      "later_columns": [
+        {
+          "name": "absence_kind",
+          "declaration": "TEXT",
+          "source": "lib/practice.php",
+          "source_line": 17
+        },
+        {
+          "name": "planned_minutes",
+          "declaration": "INTEGER",
+          "source": "lib/practice.php",
+          "source_line": 18
+        }
+      ],
+      "timestamps": false,
+      "primary_key": [
+        "id"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "zeiterfassung",
+        "primary_key": [
+          "id"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "Feiertage",
+      "source": "config.php",
+      "source_line": 32,
+      "create_sql": "CREATE TABLE IF NOT EXISTS Feiertage ( id INTEGER PRIMARY KEY AUTOINCREMENT, datum TEXT UNIQUE NOT NULL, name TEXT NOT NULL );",
+      "columns": [
+        {
+          "name": "id",
+          "declaration": "INTEGER  PRIMARY KEY AUTOINCREMENT"
+        },
+        {
+          "name": "datum",
+          "declaration": "TEXT UNIQUE NOT NULL"
+        },
+        {
+          "name": "name",
+          "declaration": "TEXT NOT NULL"
+        }
+      ],
+      "table_constraints": [],
+      "later_columns": [],
+      "timestamps": false,
+      "primary_key": [
+        "id"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "Feiertage",
+        "primary_key": [
+          "id"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "users",
+      "source": "config.php",
+      "source_line": 41,
+      "create_sql": "CREATE TABLE IF NOT EXISTS users ( id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, password TEXT NOT NULL, email TEXT NOT NULL UNIQUE, role TEXT NOT NULL DEFAULT 'user', token TEXT, department_id INTEGER, supervisor_id INTEGER, regelarbeitszeit REAL DEFAULT 8.0, ueberstunden REAL DEFAULT 0.0, FOREIGN KEY (department_id) REFERENCES departments(id), FOREIGN KEY (supervisor_id) REFERENCES users(id) );",
+      "columns": [
+        {
+          "name": "id",
+          "declaration": "INTEGER PRIMARY KEY AUTOINCREMENT"
+        },
+        {
+          "name": "username",
+          "declaration": "TEXT NOT NULL UNIQUE"
+        },
+        {
+          "name": "password",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "email",
+          "declaration": "TEXT NOT NULL UNIQUE"
+        },
+        {
+          "name": "role",
+          "declaration": "TEXT NOT NULL DEFAULT 'user'"
+        },
+        {
+          "name": "token",
+          "declaration": "TEXT"
+        },
+        {
+          "name": "department_id",
+          "declaration": "INTEGER"
+        },
+        {
+          "name": "supervisor_id",
+          "declaration": "INTEGER"
+        },
+        {
+          "name": "regelarbeitszeit",
+          "declaration": "REAL DEFAULT 8.0"
+        },
+        {
+          "name": "ueberstunden",
+          "declaration": "REAL DEFAULT 0.0"
+        }
+      ],
+      "table_constraints": [
+        "FOREIGN KEY (department_id) REFERENCES departments(id)",
+        "FOREIGN KEY (supervisor_id) REFERENCES users(id)"
+      ],
+      "later_columns": [
+        {
+          "name": "auth_source",
+          "declaration": "TEXT NOT NULL DEFAULT 'local'",
+          "source": "config.php",
+          "source_line": 103
+        }
+      ],
+      "timestamps": false,
+      "primary_key": [
+        "id"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "users",
+        "primary_key": [
+          "id"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "departments",
+      "source": "config.php",
+      "source_line": 59,
+      "create_sql": "CREATE TABLE IF NOT EXISTS departments ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE );",
+      "columns": [
+        {
+          "name": "id",
+          "declaration": "INTEGER PRIMARY KEY AUTOINCREMENT"
+        },
+        {
+          "name": "name",
+          "declaration": "TEXT NOT NULL UNIQUE"
+        }
+      ],
+      "table_constraints": [],
+      "later_columns": [],
+      "timestamps": false,
+      "primary_key": [
+        "id"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "departments",
+        "primary_key": [
+          "id"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "ldap_settings",
+      "source": "config.php",
+      "source_line": 67,
+      "create_sql": "CREATE TABLE IF NOT EXISTS ldap_settings ( id INTEGER PRIMARY KEY AUTOINCREMENT, ldap_host TEXT NOT NULL, ldap_port INTEGER NOT NULL, ldap_user TEXT NOT NULL, ldap_pass TEXT NOT NULL, ldap_base_dn TEXT NOT NULL );",
+      "columns": [
+        {
+          "name": "id",
+          "declaration": "INTEGER PRIMARY KEY AUTOINCREMENT"
+        },
+        {
+          "name": "ldap_host",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "ldap_port",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "ldap_user",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "ldap_pass",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "ldap_base_dn",
+          "declaration": "TEXT NOT NULL"
+        }
+      ],
+      "table_constraints": [],
+      "later_columns": [],
+      "timestamps": false,
+      "primary_key": [
+        "id"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "ldap_settings",
+        "primary_key": [
+          "id"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "pause_settings",
+      "source": "config.php",
+      "source_line": 79,
+      "create_sql": "CREATE TABLE IF NOT EXISTS pause_settings ( id INTEGER PRIMARY KEY AUTOINCREMENT, hours_threshold INTEGER NOT NULL, minimum_pause INTEGER NOT NULL );",
+      "columns": [
+        {
+          "name": "id",
+          "declaration": "INTEGER PRIMARY KEY AUTOINCREMENT"
+        },
+        {
+          "name": "hours_threshold",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "minimum_pause",
+          "declaration": "INTEGER NOT NULL"
+        }
+      ],
+      "table_constraints": [],
+      "later_columns": [],
+      "timestamps": false,
+      "primary_key": [
+        "id"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "pause_settings",
+        "primary_key": [
+          "id"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "login_attempts",
+      "source": "security.php",
+      "source_line": 87,
+      "create_sql": "CREATE TABLE IF NOT EXISTS login_attempts (bucket TEXT PRIMARY KEY, starts INTEGER NOT NULL, attempts INTEGER NOT NULL);",
+      "columns": [
+        {
+          "name": "bucket",
+          "declaration": "TEXT PRIMARY KEY"
+        },
+        {
+          "name": "starts",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "attempts",
+          "declaration": "INTEGER NOT NULL"
+        }
+      ],
+      "table_constraints": [],
+      "later_columns": [],
+      "timestamps": false,
+      "primary_key": [
+        "bucket"
+      ],
+      "presence": "optional-until-first-login",
+      "laravel_mapping": {
+        "table": "login_attempts",
+        "primary_key": [
+          "bucket"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "app_migrations",
+      "source": "lib/attendance.php",
+      "source_line": 13,
+      "create_sql": "CREATE TABLE IF NOT EXISTS app_migrations (version INTEGER PRIMARY KEY);",
+      "columns": [
+        {
+          "name": "version",
+          "declaration": "INTEGER PRIMARY KEY"
+        }
+      ],
+      "table_constraints": [],
+      "later_columns": [],
+      "timestamps": false,
+      "primary_key": [
+        "version"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "app_migrations",
+        "primary_key": [
+          "version"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "terminal_settings",
+      "source": "lib/attendance.php",
+      "source_line": 18,
+      "create_sql": "CREATE TABLE IF NOT EXISTS terminal_settings (id INTEGER PRIMARY KEY CHECK(id=1), enabled INTEGER NOT NULL DEFAULT 0);",
+      "columns": [
+        {
+          "name": "id",
+          "declaration": "INTEGER PRIMARY KEY CHECK(id=1)"
+        },
+        {
+          "name": "enabled",
+          "declaration": "INTEGER NOT NULL DEFAULT 0"
+        }
+      ],
+      "table_constraints": [],
+      "later_columns": [],
+      "timestamps": false,
+      "primary_key": [
+        "id"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "terminal_settings",
+        "primary_key": [
+          "id"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "terminal_sites",
+      "source": "lib/attendance.php",
+      "source_line": 20,
+      "create_sql": "CREATE TABLE IF NOT EXISTS terminal_sites (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE);",
+      "columns": [
+        {
+          "name": "id",
+          "declaration": "INTEGER PRIMARY KEY"
+        },
+        {
+          "name": "name",
+          "declaration": "TEXT NOT NULL UNIQUE"
+        }
+      ],
+      "table_constraints": [],
+      "later_columns": [],
+      "timestamps": false,
+      "primary_key": [
+        "id"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "terminal_sites",
+        "primary_key": [
+          "id"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "terminals",
+      "source": "lib/attendance.php",
+      "source_line": 22,
+      "create_sql": "CREATE TABLE IF NOT EXISTS terminals (id INTEGER PRIMARY KEY, site_id INTEGER NOT NULL, name TEXT NOT NULL, generation TEXT NOT NULL, pairing_hash TEXT, pairing_expires INTEGER, enabled INTEGER NOT NULL DEFAULT 0, last_seen INTEGER);",
+      "columns": [
+        {
+          "name": "id",
+          "declaration": "INTEGER PRIMARY KEY"
+        },
+        {
+          "name": "site_id",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "name",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "generation",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "pairing_hash",
+          "declaration": "TEXT"
+        },
+        {
+          "name": "pairing_expires",
+          "declaration": "INTEGER"
+        },
+        {
+          "name": "enabled",
+          "declaration": "INTEGER NOT NULL DEFAULT 0"
+        },
+        {
+          "name": "last_seen",
+          "declaration": "INTEGER"
+        }
+      ],
+      "table_constraints": [],
+      "later_columns": [],
+      "timestamps": false,
+      "primary_key": [
+        "id"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "terminals",
+        "primary_key": [
+          "id"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "employee_credentials",
+      "source": "lib/attendance.php",
+      "source_line": 23,
+      "create_sql": "CREATE TABLE IF NOT EXISTS employee_credentials (user_id INTEGER PRIMARY KEY, site_id INTEGER NOT NULL, employee_code TEXT NOT NULL UNIQUE, pin_hash TEXT NOT NULL, card_hash TEXT UNIQUE, enabled INTEGER NOT NULL DEFAULT 1);",
+      "columns": [
+        {
+          "name": "user_id",
+          "declaration": "INTEGER PRIMARY KEY"
+        },
+        {
+          "name": "site_id",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "employee_code",
+          "declaration": "TEXT NOT NULL UNIQUE"
+        },
+        {
+          "name": "pin_hash",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "card_hash",
+          "declaration": "TEXT UNIQUE"
+        },
+        {
+          "name": "enabled",
+          "declaration": "INTEGER NOT NULL DEFAULT 1"
+        }
+      ],
+      "table_constraints": [],
+      "later_columns": [],
+      "timestamps": false,
+      "primary_key": [
+        "user_id"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "employee_credentials",
+        "primary_key": [
+          "user_id"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "terminal_nonces",
+      "source": "lib/attendance.php",
+      "source_line": 24,
+      "create_sql": "CREATE TABLE IF NOT EXISTS terminal_nonces (terminal_id INTEGER NOT NULL, nonce TEXT NOT NULL, expires INTEGER NOT NULL, PRIMARY KEY(terminal_id,nonce));",
+      "columns": [
+        {
+          "name": "terminal_id",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "nonce",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "expires",
+          "declaration": "INTEGER NOT NULL"
+        }
+      ],
+      "table_constraints": [
+        "PRIMARY KEY(terminal_id,nonce)"
+      ],
+      "later_columns": [],
+      "timestamps": false,
+      "primary_key": [
+        "terminal_id",
+        "nonce"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "terminal_nonces",
+        "primary_key": [
+          "terminal_id",
+          "nonce"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "terminal_limits",
+      "source": "lib/attendance.php",
+      "source_line": 25,
+      "create_sql": "CREATE TABLE IF NOT EXISTS terminal_limits (bucket TEXT PRIMARY KEY, starts INTEGER NOT NULL, attempts INTEGER NOT NULL);",
+      "columns": [
+        {
+          "name": "bucket",
+          "declaration": "TEXT PRIMARY KEY"
+        },
+        {
+          "name": "starts",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "attempts",
+          "declaration": "INTEGER NOT NULL"
+        }
+      ],
+      "table_constraints": [],
+      "later_columns": [],
+      "timestamps": false,
+      "primary_key": [
+        "bucket"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "terminal_limits",
+        "primary_key": [
+          "bucket"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "terminal_grants",
+      "source": "lib/attendance.php",
+      "source_line": 26,
+      "create_sql": "CREATE TABLE IF NOT EXISTS terminal_grants (token_hash TEXT PRIMARY KEY, terminal_id INTEGER NOT NULL, user_id INTEGER NOT NULL, credential_version TEXT NOT NULL, expires INTEGER NOT NULL, used_event TEXT);",
+      "columns": [
+        {
+          "name": "token_hash",
+          "declaration": "TEXT PRIMARY KEY"
+        },
+        {
+          "name": "terminal_id",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "user_id",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "credential_version",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "expires",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "used_event",
+          "declaration": "TEXT"
+        }
+      ],
+      "table_constraints": [],
+      "later_columns": [],
+      "timestamps": false,
+      "primary_key": [
+        "token_hash"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "terminal_grants",
+        "primary_key": [
+          "token_hash"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "work_sessions",
+      "source": "lib/attendance.php",
+      "source_line": 27,
+      "create_sql": "CREATE TABLE IF NOT EXISTS work_sessions (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, record_id INTEGER NOT NULL UNIQUE, started_at INTEGER NOT NULL, ended_at INTEGER);",
+      "columns": [
+        {
+          "name": "id",
+          "declaration": "INTEGER PRIMARY KEY"
+        },
+        {
+          "name": "user_id",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "record_id",
+          "declaration": "INTEGER NOT NULL UNIQUE"
+        },
+        {
+          "name": "started_at",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "ended_at",
+          "declaration": "INTEGER"
+        }
+      ],
+      "table_constraints": [],
+      "later_columns": [],
+      "timestamps": false,
+      "primary_key": [
+        "id"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "work_sessions",
+        "primary_key": [
+          "id"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "break_intervals",
+      "source": "lib/attendance.php",
+      "source_line": 29,
+      "create_sql": "CREATE TABLE IF NOT EXISTS break_intervals (id INTEGER PRIMARY KEY, session_id INTEGER NOT NULL, started_at INTEGER NOT NULL, ended_at INTEGER);",
+      "columns": [
+        {
+          "name": "id",
+          "declaration": "INTEGER PRIMARY KEY"
+        },
+        {
+          "name": "session_id",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "started_at",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "ended_at",
+          "declaration": "INTEGER"
+        }
+      ],
+      "table_constraints": [],
+      "later_columns": [],
+      "timestamps": false,
+      "primary_key": [
+        "id"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "break_intervals",
+        "primary_key": [
+          "id"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "attendance_events",
+      "source": "lib/attendance.php",
+      "source_line": 31,
+      "create_sql": "CREATE TABLE IF NOT EXISTS attendance_events (id INTEGER PRIMARY KEY, source TEXT NOT NULL, event_id TEXT NOT NULL, user_id INTEGER NOT NULL, session_id INTEGER NOT NULL, kind TEXT NOT NULL, received_at INTEGER NOT NULL, payload_hash TEXT NOT NULL, response TEXT NOT NULL, UNIQUE(source,event_id));",
+      "columns": [
+        {
+          "name": "id",
+          "declaration": "INTEGER PRIMARY KEY"
+        },
+        {
+          "name": "source",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "event_id",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "user_id",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "session_id",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "kind",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "received_at",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "payload_hash",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "response",
+          "declaration": "TEXT NOT NULL"
+        }
+      ],
+      "table_constraints": [
+        "UNIQUE(source,event_id)"
+      ],
+      "later_columns": [],
+      "timestamps": false,
+      "primary_key": [
+        "id"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "attendance_events",
+        "primary_key": [
+          "id"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "time_adjustments",
+      "source": "lib/attendance.php",
+      "source_line": 32,
+      "create_sql": "CREATE TABLE IF NOT EXISTS time_adjustments (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, record_id INTEGER, proposed_start INTEGER NOT NULL, proposed_end INTEGER NOT NULL, proposed_pause INTEGER NOT NULL, reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', reviewer_id INTEGER, reviewed_at INTEGER, review_reason TEXT, original_json TEXT, created_at INTEGER NOT NULL);",
+      "columns": [
+        {
+          "name": "id",
+          "declaration": "INTEGER PRIMARY KEY"
+        },
+        {
+          "name": "user_id",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "record_id",
+          "declaration": "INTEGER"
+        },
+        {
+          "name": "proposed_start",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "proposed_end",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "proposed_pause",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "reason",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "status",
+          "declaration": "TEXT NOT NULL DEFAULT 'pending'"
+        },
+        {
+          "name": "reviewer_id",
+          "declaration": "INTEGER"
+        },
+        {
+          "name": "reviewed_at",
+          "declaration": "INTEGER"
+        },
+        {
+          "name": "review_reason",
+          "declaration": "TEXT"
+        },
+        {
+          "name": "original_json",
+          "declaration": "TEXT"
+        },
+        {
+          "name": "created_at",
+          "declaration": "INTEGER NOT NULL"
+        }
+      ],
+      "table_constraints": [],
+      "later_columns": [
+        {
+          "name": "cancel",
+          "declaration": "INTEGER NOT NULL DEFAULT 0",
+          "source": "lib/practice.php",
+          "source_line": 19
+        }
+      ],
+      "timestamps": false,
+      "primary_key": [
+        "id"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "time_adjustments",
+        "primary_key": [
+          "id"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "audit_log",
+      "source": "lib/practice.php",
+      "source_line": 14,
+      "create_sql": "CREATE TABLE audit_log(id INTEGER PRIMARY KEY AUTOINCREMENT, occurred_at INTEGER NOT NULL, actor TEXT NOT NULL, reason TEXT NOT NULL, entity TEXT NOT NULL, record_id INTEGER NOT NULL, user_id INTEGER NOT NULL, operation TEXT NOT NULL, before_json TEXT, after_json TEXT);",
+      "columns": [
+        {
+          "name": "id",
+          "declaration": "INTEGER PRIMARY KEY AUTOINCREMENT"
+        },
+        {
+          "name": "occurred_at",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "actor",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "reason",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "entity",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "record_id",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "user_id",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "operation",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "before_json",
+          "declaration": "TEXT"
+        },
+        {
+          "name": "after_json",
+          "declaration": "TEXT"
+        }
+      ],
+      "table_constraints": [],
+      "later_columns": [],
+      "timestamps": false,
+      "primary_key": [
+        "id"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "audit_log",
+        "primary_key": [
+          "id"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    },
+    {
+      "name": "work_models",
+      "source": "lib/practice.php",
+      "source_line": 15,
+      "create_sql": "CREATE TABLE work_models(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, valid_from TEXT NOT NULL, minutes_json TEXT NOT NULL, reason TEXT NOT NULL, created_by INTEGER NOT NULL, created_at INTEGER NOT NULL);",
+      "columns": [
+        {
+          "name": "id",
+          "declaration": "INTEGER PRIMARY KEY AUTOINCREMENT"
+        },
+        {
+          "name": "user_id",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "valid_from",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "minutes_json",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "reason",
+          "declaration": "TEXT NOT NULL"
+        },
+        {
+          "name": "created_by",
+          "declaration": "INTEGER NOT NULL"
+        },
+        {
+          "name": "created_at",
+          "declaration": "INTEGER NOT NULL"
+        }
+      ],
+      "table_constraints": [],
+      "later_columns": [],
+      "timestamps": false,
+      "primary_key": [
+        "id"
+      ],
+      "presence": "required-at-app-version-2",
+      "laravel_mapping": {
+        "table": "work_models",
+        "primary_key": [
+          "id"
+        ],
+        "timestamps": false,
+        "automatic_casts": false,
+        "automatic_seeding": false
+      }
+    }
+  ],
+  "explicit_indexes": [
+    {
+      "name": "one_open_session",
+      "table": "work_sessions",
+      "columns": [
+        "user_id"
+      ],
+      "unique": true,
+      "predicate": "WHERE ended_at IS NULL",
+      "sql": "CREATE UNIQUE INDEX IF NOT EXISTS one_open_session ON work_sessions(user_id) WHERE ended_at IS NULL;",
+      "source": "lib/attendance.php"
+    },
+    {
+      "name": "one_open_break",
+      "table": "break_intervals",
+      "columns": [
+        "session_id"
+      ],
+      "unique": true,
+      "predicate": "WHERE ended_at IS NULL",
+      "sql": "CREATE UNIQUE INDEX IF NOT EXISTS one_open_break ON break_intervals(session_id) WHERE ended_at IS NULL;",
+      "source": "lib/attendance.php"
+    },
+    {
+      "name": "work_models_effective",
+      "table": "work_models",
+      "columns": [
+        "user_id",
+        "valid_from",
+        "id"
+      ],
+      "unique": false,
+      "predicate": null,
+      "sql": "CREATE INDEX work_models_effective ON work_models(user_id,valid_from,id);",
+      "source": "lib/practice.php"
+    }
+  ],
+  "triggers": [
+    {
+      "name": "audit_users_INSERT",
+      "table": "users",
+      "timing": "AFTER",
+      "event": "INSERT",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "username",
+        "regelarbeitszeit",
+        "ueberstunden"
+      ],
+      "owner_expression": "NEW.id",
+      "sql": "CREATE TRIGGER audit_users_INSERT AFTER INSERT ON users BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'users',NEW.id,NEW.id,'INSERT',NULL,json_object('id',NEW.id,'username',NEW.username,'regelarbeitszeit',NEW.regelarbeitszeit,'ueberstunden',NEW.ueberstunden)); END"
+    },
+    {
+      "name": "audit_users_UPDATE",
+      "table": "users",
+      "timing": "AFTER",
+      "event": "UPDATE",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "username",
+        "regelarbeitszeit",
+        "ueberstunden"
+      ],
+      "owner_expression": "NEW.id",
+      "sql": "CREATE TRIGGER audit_users_UPDATE AFTER UPDATE ON users BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'users',NEW.id,NEW.id,'UPDATE',json_object('id',OLD.id,'username',OLD.username,'regelarbeitszeit',OLD.regelarbeitszeit,'ueberstunden',OLD.ueberstunden),json_object('id',NEW.id,'username',NEW.username,'regelarbeitszeit',NEW.regelarbeitszeit,'ueberstunden',NEW.ueberstunden)); END"
+    },
+    {
+      "name": "audit_users_DELETE",
+      "table": "users",
+      "timing": "AFTER",
+      "event": "DELETE",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "username",
+        "regelarbeitszeit",
+        "ueberstunden"
+      ],
+      "owner_expression": "OLD.id",
+      "sql": "CREATE TRIGGER audit_users_DELETE AFTER DELETE ON users BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'users',OLD.id,OLD.id,'DELETE',json_object('id',OLD.id,'username',OLD.username,'regelarbeitszeit',OLD.regelarbeitszeit,'ueberstunden',OLD.ueberstunden),NULL); END"
+    },
+    {
+      "name": "audit_Feiertage_INSERT",
+      "table": "Feiertage",
+      "timing": "AFTER",
+      "event": "INSERT",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "datum",
+        "name"
+      ],
+      "owner_expression": "0",
+      "sql": "CREATE TRIGGER audit_Feiertage_INSERT AFTER INSERT ON Feiertage BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'Feiertage',NEW.id,0,'INSERT',NULL,json_object('id',NEW.id,'datum',NEW.datum,'name',NEW.name)); END"
+    },
+    {
+      "name": "audit_Feiertage_UPDATE",
+      "table": "Feiertage",
+      "timing": "AFTER",
+      "event": "UPDATE",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "datum",
+        "name"
+      ],
+      "owner_expression": "0",
+      "sql": "CREATE TRIGGER audit_Feiertage_UPDATE AFTER UPDATE ON Feiertage BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'Feiertage',NEW.id,0,'UPDATE',json_object('id',OLD.id,'datum',OLD.datum,'name',OLD.name),json_object('id',NEW.id,'datum',NEW.datum,'name',NEW.name)); END"
+    },
+    {
+      "name": "audit_Feiertage_DELETE",
+      "table": "Feiertage",
+      "timing": "AFTER",
+      "event": "DELETE",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "datum",
+        "name"
+      ],
+      "owner_expression": "0",
+      "sql": "CREATE TRIGGER audit_Feiertage_DELETE AFTER DELETE ON Feiertage BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'Feiertage',OLD.id,0,'DELETE',json_object('id',OLD.id,'datum',OLD.datum,'name',OLD.name),NULL); END"
+    },
+    {
+      "name": "audit_work_sessions_INSERT",
+      "table": "work_sessions",
+      "timing": "AFTER",
+      "event": "INSERT",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "user_id",
+        "record_id",
+        "started_at",
+        "ended_at"
+      ],
+      "owner_expression": "NEW.user_id",
+      "sql": "CREATE TRIGGER audit_work_sessions_INSERT AFTER INSERT ON work_sessions BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'work_sessions',NEW.id,NEW.user_id,'INSERT',NULL,json_object('id',NEW.id,'user_id',NEW.user_id,'record_id',NEW.record_id,'started_at',NEW.started_at,'ended_at',NEW.ended_at)); END"
+    },
+    {
+      "name": "audit_work_sessions_UPDATE",
+      "table": "work_sessions",
+      "timing": "AFTER",
+      "event": "UPDATE",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "user_id",
+        "record_id",
+        "started_at",
+        "ended_at"
+      ],
+      "owner_expression": "NEW.user_id",
+      "sql": "CREATE TRIGGER audit_work_sessions_UPDATE AFTER UPDATE ON work_sessions BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'work_sessions',NEW.id,NEW.user_id,'UPDATE',json_object('id',OLD.id,'user_id',OLD.user_id,'record_id',OLD.record_id,'started_at',OLD.started_at,'ended_at',OLD.ended_at),json_object('id',NEW.id,'user_id',NEW.user_id,'record_id',NEW.record_id,'started_at',NEW.started_at,'ended_at',NEW.ended_at)); END"
+    },
+    {
+      "name": "audit_work_sessions_DELETE",
+      "table": "work_sessions",
+      "timing": "AFTER",
+      "event": "DELETE",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "user_id",
+        "record_id",
+        "started_at",
+        "ended_at"
+      ],
+      "owner_expression": "OLD.user_id",
+      "sql": "CREATE TRIGGER audit_work_sessions_DELETE AFTER DELETE ON work_sessions BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'work_sessions',OLD.id,OLD.user_id,'DELETE',json_object('id',OLD.id,'user_id',OLD.user_id,'record_id',OLD.record_id,'started_at',OLD.started_at,'ended_at',OLD.ended_at),NULL); END"
+    },
+    {
+      "name": "audit_break_intervals_INSERT",
+      "table": "break_intervals",
+      "timing": "AFTER",
+      "event": "INSERT",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "session_id",
+        "started_at",
+        "ended_at"
+      ],
+      "owner_expression": "(SELECT user_id FROM work_sessions WHERE id=NEW.session_id)",
+      "sql": "CREATE TRIGGER audit_break_intervals_INSERT AFTER INSERT ON break_intervals BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'break_intervals',NEW.id,(SELECT user_id FROM work_sessions WHERE id=NEW.session_id),'INSERT',NULL,json_object('id',NEW.id,'session_id',NEW.session_id,'started_at',NEW.started_at,'ended_at',NEW.ended_at)); END"
+    },
+    {
+      "name": "audit_break_intervals_UPDATE",
+      "table": "break_intervals",
+      "timing": "AFTER",
+      "event": "UPDATE",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "session_id",
+        "started_at",
+        "ended_at"
+      ],
+      "owner_expression": "(SELECT user_id FROM work_sessions WHERE id=NEW.session_id)",
+      "sql": "CREATE TRIGGER audit_break_intervals_UPDATE AFTER UPDATE ON break_intervals BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'break_intervals',NEW.id,(SELECT user_id FROM work_sessions WHERE id=NEW.session_id),'UPDATE',json_object('id',OLD.id,'session_id',OLD.session_id,'started_at',OLD.started_at,'ended_at',OLD.ended_at),json_object('id',NEW.id,'session_id',NEW.session_id,'started_at',NEW.started_at,'ended_at',NEW.ended_at)); END"
+    },
+    {
+      "name": "audit_break_intervals_DELETE",
+      "table": "break_intervals",
+      "timing": "AFTER",
+      "event": "DELETE",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "session_id",
+        "started_at",
+        "ended_at"
+      ],
+      "owner_expression": "(SELECT user_id FROM work_sessions WHERE id=OLD.session_id)",
+      "sql": "CREATE TRIGGER audit_break_intervals_DELETE AFTER DELETE ON break_intervals BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'break_intervals',OLD.id,(SELECT user_id FROM work_sessions WHERE id=OLD.session_id),'DELETE',json_object('id',OLD.id,'session_id',OLD.session_id,'started_at',OLD.started_at,'ended_at',OLD.ended_at),NULL); END"
+    },
+    {
+      "name": "audit_zeiterfassung_INSERT",
+      "table": "zeiterfassung",
+      "timing": "AFTER",
+      "event": "INSERT",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "startzeit",
+        "endzeit",
+        "pause",
+        "beschreibung",
+        "standort",
+        "user_id",
+        "absence_kind",
+        "planned_minutes"
+      ],
+      "owner_expression": "NEW.user_id",
+      "sql": "CREATE TRIGGER audit_zeiterfassung_INSERT AFTER INSERT ON zeiterfassung BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'zeiterfassung',NEW.id,NEW.user_id,'INSERT',NULL,json_object('id',NEW.id,'startzeit',NEW.startzeit,'endzeit',NEW.endzeit,'pause',NEW.pause,'beschreibung',NEW.beschreibung,'standort',NEW.standort,'user_id',NEW.user_id,'absence_kind',NEW.absence_kind,'planned_minutes',NEW.planned_minutes)); END"
+    },
+    {
+      "name": "audit_zeiterfassung_UPDATE",
+      "table": "zeiterfassung",
+      "timing": "AFTER",
+      "event": "UPDATE",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "startzeit",
+        "endzeit",
+        "pause",
+        "beschreibung",
+        "standort",
+        "user_id",
+        "absence_kind",
+        "planned_minutes"
+      ],
+      "owner_expression": "NEW.user_id",
+      "sql": "CREATE TRIGGER audit_zeiterfassung_UPDATE AFTER UPDATE ON zeiterfassung BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'zeiterfassung',NEW.id,NEW.user_id,'UPDATE',json_object('id',OLD.id,'startzeit',OLD.startzeit,'endzeit',OLD.endzeit,'pause',OLD.pause,'beschreibung',OLD.beschreibung,'standort',OLD.standort,'user_id',OLD.user_id,'absence_kind',OLD.absence_kind,'planned_minutes',OLD.planned_minutes),json_object('id',NEW.id,'startzeit',NEW.startzeit,'endzeit',NEW.endzeit,'pause',NEW.pause,'beschreibung',NEW.beschreibung,'standort',NEW.standort,'user_id',NEW.user_id,'absence_kind',NEW.absence_kind,'planned_minutes',NEW.planned_minutes)); END"
+    },
+    {
+      "name": "audit_zeiterfassung_DELETE",
+      "table": "zeiterfassung",
+      "timing": "AFTER",
+      "event": "DELETE",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "startzeit",
+        "endzeit",
+        "pause",
+        "beschreibung",
+        "standort",
+        "user_id",
+        "absence_kind",
+        "planned_minutes"
+      ],
+      "owner_expression": "OLD.user_id",
+      "sql": "CREATE TRIGGER audit_zeiterfassung_DELETE AFTER DELETE ON zeiterfassung BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'zeiterfassung',OLD.id,OLD.user_id,'DELETE',json_object('id',OLD.id,'startzeit',OLD.startzeit,'endzeit',OLD.endzeit,'pause',OLD.pause,'beschreibung',OLD.beschreibung,'standort',OLD.standort,'user_id',OLD.user_id,'absence_kind',OLD.absence_kind,'planned_minutes',OLD.planned_minutes),NULL); END"
+    },
+    {
+      "name": "audit_time_adjustments_INSERT",
+      "table": "time_adjustments",
+      "timing": "AFTER",
+      "event": "INSERT",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "user_id",
+        "record_id",
+        "proposed_start",
+        "proposed_end",
+        "proposed_pause",
+        "reason",
+        "status",
+        "reviewer_id",
+        "reviewed_at",
+        "review_reason",
+        "original_json",
+        "created_at",
+        "cancel"
+      ],
+      "owner_expression": "NEW.user_id",
+      "sql": "CREATE TRIGGER audit_time_adjustments_INSERT AFTER INSERT ON time_adjustments BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'time_adjustments',NEW.id,NEW.user_id,'INSERT',NULL,json_object('id',NEW.id,'user_id',NEW.user_id,'record_id',NEW.record_id,'proposed_start',NEW.proposed_start,'proposed_end',NEW.proposed_end,'proposed_pause',NEW.proposed_pause,'reason',NEW.reason,'status',NEW.status,'reviewer_id',NEW.reviewer_id,'reviewed_at',NEW.reviewed_at,'review_reason',NEW.review_reason,'original_json',NEW.original_json,'created_at',NEW.created_at,'cancel',NEW.cancel)); END"
+    },
+    {
+      "name": "audit_time_adjustments_UPDATE",
+      "table": "time_adjustments",
+      "timing": "AFTER",
+      "event": "UPDATE",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "user_id",
+        "record_id",
+        "proposed_start",
+        "proposed_end",
+        "proposed_pause",
+        "reason",
+        "status",
+        "reviewer_id",
+        "reviewed_at",
+        "review_reason",
+        "original_json",
+        "created_at",
+        "cancel"
+      ],
+      "owner_expression": "NEW.user_id",
+      "sql": "CREATE TRIGGER audit_time_adjustments_UPDATE AFTER UPDATE ON time_adjustments BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'time_adjustments',NEW.id,NEW.user_id,'UPDATE',json_object('id',OLD.id,'user_id',OLD.user_id,'record_id',OLD.record_id,'proposed_start',OLD.proposed_start,'proposed_end',OLD.proposed_end,'proposed_pause',OLD.proposed_pause,'reason',OLD.reason,'status',OLD.status,'reviewer_id',OLD.reviewer_id,'reviewed_at',OLD.reviewed_at,'review_reason',OLD.review_reason,'original_json',OLD.original_json,'created_at',OLD.created_at,'cancel',OLD.cancel),json_object('id',NEW.id,'user_id',NEW.user_id,'record_id',NEW.record_id,'proposed_start',NEW.proposed_start,'proposed_end',NEW.proposed_end,'proposed_pause',NEW.proposed_pause,'reason',NEW.reason,'status',NEW.status,'reviewer_id',NEW.reviewer_id,'reviewed_at',NEW.reviewed_at,'review_reason',NEW.review_reason,'original_json',NEW.original_json,'created_at',NEW.created_at,'cancel',NEW.cancel)); END"
+    },
+    {
+      "name": "audit_time_adjustments_DELETE",
+      "table": "time_adjustments",
+      "timing": "AFTER",
+      "event": "DELETE",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "user_id",
+        "record_id",
+        "proposed_start",
+        "proposed_end",
+        "proposed_pause",
+        "reason",
+        "status",
+        "reviewer_id",
+        "reviewed_at",
+        "review_reason",
+        "original_json",
+        "created_at",
+        "cancel"
+      ],
+      "owner_expression": "OLD.user_id",
+      "sql": "CREATE TRIGGER audit_time_adjustments_DELETE AFTER DELETE ON time_adjustments BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'time_adjustments',OLD.id,OLD.user_id,'DELETE',json_object('id',OLD.id,'user_id',OLD.user_id,'record_id',OLD.record_id,'proposed_start',OLD.proposed_start,'proposed_end',OLD.proposed_end,'proposed_pause',OLD.proposed_pause,'reason',OLD.reason,'status',OLD.status,'reviewer_id',OLD.reviewer_id,'reviewed_at',OLD.reviewed_at,'review_reason',OLD.review_reason,'original_json',OLD.original_json,'created_at',OLD.created_at,'cancel',OLD.cancel),NULL); END"
+    },
+    {
+      "name": "audit_work_models_INSERT",
+      "table": "work_models",
+      "timing": "AFTER",
+      "event": "INSERT",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "user_id",
+        "valid_from",
+        "minutes_json",
+        "reason",
+        "created_by",
+        "created_at"
+      ],
+      "owner_expression": "NEW.user_id",
+      "sql": "CREATE TRIGGER audit_work_models_INSERT AFTER INSERT ON work_models BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'work_models',NEW.id,NEW.user_id,'INSERT',NULL,json_object('id',NEW.id,'user_id',NEW.user_id,'valid_from',NEW.valid_from,'minutes_json',NEW.minutes_json,'reason',NEW.reason,'created_by',NEW.created_by,'created_at',NEW.created_at)); END"
+    },
+    {
+      "name": "audit_work_models_UPDATE",
+      "table": "work_models",
+      "timing": "AFTER",
+      "event": "UPDATE",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "user_id",
+        "valid_from",
+        "minutes_json",
+        "reason",
+        "created_by",
+        "created_at"
+      ],
+      "owner_expression": "NEW.user_id",
+      "sql": "CREATE TRIGGER audit_work_models_UPDATE AFTER UPDATE ON work_models BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'work_models',NEW.id,NEW.user_id,'UPDATE',json_object('id',OLD.id,'user_id',OLD.user_id,'valid_from',OLD.valid_from,'minutes_json',OLD.minutes_json,'reason',OLD.reason,'created_by',OLD.created_by,'created_at',OLD.created_at),json_object('id',NEW.id,'user_id',NEW.user_id,'valid_from',NEW.valid_from,'minutes_json',NEW.minutes_json,'reason',NEW.reason,'created_by',NEW.created_by,'created_at',NEW.created_at)); END"
+    },
+    {
+      "name": "audit_work_models_DELETE",
+      "table": "work_models",
+      "timing": "AFTER",
+      "event": "DELETE",
+      "kind": "audit",
+      "columns": [
+        "id",
+        "user_id",
+        "valid_from",
+        "minutes_json",
+        "reason",
+        "created_by",
+        "created_at"
+      ],
+      "owner_expression": "OLD.user_id",
+      "sql": "CREATE TRIGGER audit_work_models_DELETE AFTER DELETE ON work_models BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'work_models',OLD.id,OLD.user_id,'DELETE',json_object('id',OLD.id,'user_id',OLD.user_id,'valid_from',OLD.valid_from,'minutes_json',OLD.minutes_json,'reason',OLD.reason,'created_by',OLD.created_by,'created_at',OLD.created_at),NULL); END"
+    },
+    {
+      "name": "immutable_audit_log_UPDATE",
+      "table": "audit_log",
+      "kind": "append-only",
+      "sql": "CREATE TRIGGER immutable_audit_log_UPDATE BEFORE UPDATE ON audit_log BEGIN SELECT RAISE(ABORT,'Append-only history'); END"
+    },
+    {
+      "name": "immutable_audit_log_DELETE",
+      "table": "audit_log",
+      "kind": "append-only",
+      "sql": "CREATE TRIGGER immutable_audit_log_DELETE BEFORE DELETE ON audit_log BEGIN SELECT RAISE(ABORT,'Append-only history'); END"
+    },
+    {
+      "name": "immutable_attendance_events_UPDATE",
+      "table": "attendance_events",
+      "kind": "append-only",
+      "sql": "CREATE TRIGGER immutable_attendance_events_UPDATE BEFORE UPDATE ON attendance_events BEGIN SELECT RAISE(ABORT,'Append-only history'); END"
+    },
+    {
+      "name": "immutable_attendance_events_DELETE",
+      "table": "attendance_events",
+      "kind": "append-only",
+      "sql": "CREATE TRIGGER immutable_attendance_events_DELETE BEFORE DELETE ON attendance_events BEGIN SELECT RAISE(ABORT,'Append-only history'); END"
+    },
+    {
+      "name": "immutable_work_models_UPDATE",
+      "table": "work_models",
+      "kind": "append-only",
+      "sql": "CREATE TRIGGER immutable_work_models_UPDATE BEFORE UPDATE ON work_models BEGIN SELECT RAISE(ABORT,'Append-only history'); END"
+    },
+    {
+      "name": "immutable_work_models_DELETE",
+      "table": "work_models",
+      "kind": "append-only",
+      "sql": "CREATE TRIGGER immutable_work_models_DELETE BEFORE DELETE ON work_models BEGIN SELECT RAISE(ABORT,'Append-only history'); END"
+    },
+    {
+      "name": "immutable_closed_work_sessions",
+      "table": "work_sessions",
+      "kind": "closed-original",
+      "sql": "CREATE TRIGGER immutable_closed_work_sessions BEFORE UPDATE ON work_sessions WHEN OLD.ended_at IS NOT NULL BEGIN SELECT RAISE(ABORT,'Closed original interval'); END"
+    },
+    {
+      "name": "immutable_delete_work_sessions",
+      "table": "work_sessions",
+      "kind": "retain-original",
+      "sql": "CREATE TRIGGER immutable_delete_work_sessions BEFORE DELETE ON work_sessions BEGIN SELECT RAISE(ABORT,'Retain original interval'); END"
+    },
+    {
+      "name": "immutable_closed_break_intervals",
+      "table": "break_intervals",
+      "kind": "closed-original",
+      "sql": "CREATE TRIGGER immutable_closed_break_intervals BEFORE UPDATE ON break_intervals WHEN OLD.ended_at IS NOT NULL BEGIN SELECT RAISE(ABORT,'Closed original interval'); END"
+    },
+    {
+      "name": "immutable_delete_break_intervals",
+      "table": "break_intervals",
+      "kind": "retain-original",
+      "sql": "CREATE TRIGGER immutable_delete_break_intervals BEFORE DELETE ON break_intervals BEGIN SELECT RAISE(ABORT,'Retain original interval'); END"
+    },
+    {
+      "name": "adjustment_no_delete",
+      "table": "time_adjustments",
+      "kind": "retain-correction",
+      "sql": "CREATE TRIGGER adjustment_no_delete BEFORE DELETE ON time_adjustments BEGIN SELECT RAISE(ABORT,'Retain correction history'); END"
+    },
+    {
+      "name": "adjustment_closed",
+      "table": "time_adjustments",
+      "kind": "final-decision",
+      "sql": "CREATE TRIGGER adjustment_closed BEFORE UPDATE ON time_adjustments WHEN OLD.status <> 'pending' BEGIN SELECT RAISE(ABORT,'Decision is final'); END"
+    },
+    {
+      "name": "initial_work_model",
+      "table": "users",
+      "kind": "initial-model",
+      "sql": "CREATE TRIGGER initial_work_model AFTER INSERT ON users BEGIN INSERT INTO work_models(user_id,valid_from,minutes_json,reason,created_by,created_at) VALUES(NEW.id,'0001-01-01',json_array(max(0,min(1440,round(NEW.regelarbeitszeit*60))),max(0,min(1440,round(NEW.regelarbeitszeit*60))),max(0,min(1440,round(NEW.regelarbeitszeit*60))),max(0,min(1440,round(NEW.regelarbeitszeit*60))),max(0,min(1440,round(NEW.regelarbeitszeit*60))),0,0),'Startmodell aus Tages-Soll',0,unixepoch()); END"
+    }
+  ],
+  "logical_relationships": [
+    {
+      "from_table": "work_sessions",
+      "from_column": "user_id",
+      "to_table": "users",
+      "to_column": "id",
+      "declared_foreign_key": false
+    },
+    {
+      "from_table": "work_sessions",
+      "from_column": "record_id",
+      "to_table": "zeiterfassung",
+      "to_column": "id",
+      "declared_foreign_key": false
+    },
+    {
+      "from_table": "break_intervals",
+      "from_column": "session_id",
+      "to_table": "work_sessions",
+      "to_column": "id",
+      "declared_foreign_key": false
+    },
+    {
+      "from_table": "attendance_events",
+      "from_column": "user_id",
+      "to_table": "users",
+      "to_column": "id",
+      "declared_foreign_key": false
+    },
+    {
+      "from_table": "attendance_events",
+      "from_column": "session_id",
+      "to_table": "work_sessions",
+      "to_column": "id",
+      "declared_foreign_key": false
+    },
+    {
+      "from_table": "work_models",
+      "from_column": "user_id",
+      "to_table": "users",
+      "to_column": "id",
+      "declared_foreign_key": false
+    },
+    {
+      "from_table": "work_models",
+      "from_column": "created_by",
+      "to_table": "users",
+      "to_column": "id",
+      "declared_foreign_key": false
+    },
+    {
+      "from_table": "time_adjustments",
+      "from_column": "user_id",
+      "to_table": "users",
+      "to_column": "id",
+      "declared_foreign_key": false
+    },
+    {
+      "from_table": "time_adjustments",
+      "from_column": "record_id",
+      "to_table": "zeiterfassung",
+      "to_column": "id",
+      "declared_foreign_key": false
+    },
+    {
+      "from_table": "time_adjustments",
+      "from_column": "reviewer_id",
+      "to_table": "users",
+      "to_column": "id",
+      "declared_foreign_key": false
+    },
+    {
+      "from_table": "terminals",
+      "from_column": "site_id",
+      "to_table": "terminal_sites",
+      "to_column": "id",
+      "declared_foreign_key": false
+    },
+    {
+      "from_table": "employee_credentials",
+      "from_column": "user_id",
+      "to_table": "users",
+      "to_column": "id",
+      "declared_foreign_key": false
+    },
+    {
+      "from_table": "employee_credentials",
+      "from_column": "site_id",
+      "to_table": "terminal_sites",
+      "to_column": "id",
+      "declared_foreign_key": false
+    },
+    {
+      "from_table": "terminal_nonces",
+      "from_column": "terminal_id",
+      "to_table": "terminals",
+      "to_column": "id",
+      "declared_foreign_key": false
+    },
+    {
+      "from_table": "terminal_grants",
+      "from_column": "terminal_id",
+      "to_table": "terminals",
+      "to_column": "id",
+      "declared_foreign_key": false
+    },
+    {
+      "from_table": "terminal_grants",
+      "from_column": "user_id",
+      "to_table": "users",
+      "to_column": "id",
+      "declared_foreign_key": false
+    }
+  ],
+  "relationship_exceptions": [
+    "work_models.created_by=0 is the documented system actor; audit_log user_id=0 can denote shared Feiertage.",
+    "Approved cancellation retains original work_sessions/time_adjustments record_id after zeiterfassung deletion; require matching approved cancel and audit evidence rather than recreate projection.",
+    "audit_log.entity/record_id is polymorphic historical identity, never a live foreign-key assertion."
+  ],
+  "connection_contract": {
+    "driver": "sqlite",
+    "writer_pdo": "one connection per synchronous operation",
+    "busy_timeout_ms": 5000,
+    "foreign_keys": "legacy does not configure; inspect effective value, do not silently adopt Laravel default",
+    "journal_mode": "not configured in source; inspect/preserve",
+    "audit_udfs": [
+      "audit_actor",
+      "audit_reason"
+    ],
+    "udf_registration": "Pdo\\Sqlite::createFunction on PHP8.5 before migration/write; reconnect registration mandatory"
+  },
+  "private_files": [
+    "APP_DATA_DIR/timetracking.sqlite",
+    "APP_DATA_DIR/jwt.key",
+    "APP_DATA_DIR/encryption.key",
+    "APP_DATA_DIR/terminal-devices.key",
+    "APP_DATA_DIR/terminal-cards.key"
+  ],
+  "never_do": [
+    "migrate:fresh",
+    "reseed existing rows",
+    "rehash existing credentials",
+    "regenerate IDs or keys",
+    "rewrite original timestamps",
+    "drop audit/event/interval/model history"
+  ]
+}
