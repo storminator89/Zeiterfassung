@@ -1,0 +1,114 @@
+<?php
+
+namespace App\LegacyDatabase;
+
+use Illuminate\Database\SQLiteConnection;
+use LogicException;
+use PDO;
+use Pdo\Sqlite;
+use RuntimeException;
+use Throwable;
+
+/** Opt-in domain bridge, not a path opener, route, or production connection. */
+final class AttendanceWriter
+{
+    private readonly SQLiteConnection $connection;
+    private bool $unusable = false;
+
+    // The caller must first admit/preflight/adopt the known-v2 private file.
+    // Own a bare stock connection: no shared manager, listeners, read replica,
+    // transaction callbacks, or reconnect hooks can replace this writer's PDO.
+    public function __construct(
+        private readonly PDO $pdo,
+        array $configuration,
+        private readonly AuditContext $context,
+        AuditFunctions $functions,
+    ) {
+        if (! $pdo instanceof Sqlite || $pdo->inTransaction()
+            || ($configuration['driver'] ?? null) !== 'sqlite'
+            || ($configuration['transaction_mode'] ?? null) !== 'IMMEDIATE'
+            || ($configuration['busy_timeout'] ?? null) !== 5000
+            || $pdo->getAttribute(PDO::ATTR_ERRMODE) !== PDO::ERRMODE_EXCEPTION) {
+            throw new LogicException('A dedicated admitted PHP 8.5 SQLite writer with IMMEDIATE/5000 is required.');
+        }
+        $databases = $pdo->query('PRAGMA database_list')->fetchAll(PDO::FETCH_ASSOC);
+        if (count($databases) !== 1 || $databases[0]['name'] !== 'main'
+            || $databases[0]['file'] !== ($configuration['database'] ?? null)
+            || ! in_array($pdo->query('PRAGMA journal_mode')->fetchColumn(), ['delete', 'truncate', 'persist'], true)
+            || (int) $pdo->query('PRAGMA busy_timeout')->fetchColumn() !== 5000
+            || (int) $pdo->query('PRAGMA query_only')->fetchColumn() !== 0) {
+            throw new LogicException('Only the admitted rollback-journal file and its existing settings are supported.');
+        }
+
+        $functions->register($pdo);
+        $this->connection = new SQLiteConnection($pdo, $configuration['database'], '', $configuration);
+        $this->connection->setReconnector(static fn () => throw new RuntimeException('A writer must never reconnect; admit a fresh operation scope instead.'));
+        require_once dirname(__DIR__, 3).'/lib/attendance.php';
+    }
+
+    public function transition(int $user, string $source, string $eventId, string $action, bool $confirm = false, ?int $expectedRecord = null): array
+    {
+        $this->assertIdle();
+        // The legacy operation still sets globals. Framework UDFs use scoped
+        // context instead; nevertheless restore even pre-existing null values.
+        $globals = array_intersect_key($GLOBALS, array_flip(['audit_actor', 'audit_reason']));
+
+        try {
+            return $this->context->run($source.':user:'.$user, 'Stempelereignis '.$action.' / '.$eventId, function () use ($user, $source, $eventId, $action, $confirm, $expectedRecord): array {
+                // Exactly one attempt. Laravel owns BEGIN/COMMIT/ROLLBACK and
+                // transactionLevel; the domain's raw-BEGIN wrapper is NOT used.
+                $this->connection->beginTransaction();
+                $this->assertActive();
+                $response = attendance_transition_locked($this->pdo, $user, $source, $eventId, $action, $confirm, $expectedRecord);
+                $this->assertActive();
+                $this->connection->commit();
+                $this->assertIdle();
+
+                return $response;
+            });
+        } catch (Throwable $error) {
+            try {
+                // Explicit begin/commit (not transaction()) leaves Laravel's
+                // level intact on COMMIT failure. Rollback also releases a BUSY
+                // commit's still-live SQLite transaction; never retry the body.
+                if ($this->connection->getRawPdo() !== $this->pdo) {
+                    $this->unusable = true;
+                    // Never roll back/commit a replacement handle. The captured
+                    // PDO is the only handle that may own our domain mutation.
+                    if ($this->pdo->inTransaction()) {
+                        $this->pdo->rollBack();
+                    }
+                } else {
+                    $this->connection->rollBack(0);
+                }
+                $this->assertIdle();
+            } catch (Throwable) {
+                $this->unusable = true;
+                // Preserve the primary failure. The caller must discard this
+                // adapter/PDO, not continue or guess a successful commit.
+            }
+            throw $error;
+        } finally {
+            unset($GLOBALS['audit_actor'], $GLOBALS['audit_reason']);
+            foreach ($globals as $key => $value) {
+                $GLOBALS[$key] = $value;
+            }
+        }
+    }
+
+    private function assertIdle(): void
+    {
+        if ($this->unusable || $this->connection->getRawPdo() !== $this->pdo
+            || $this->connection->transactionLevel() !== 0 || $this->pdo->inTransaction()) {
+            throw new LogicException('The writer is not idle; nesting, savepoints and connection replacement are forbidden.');
+        }
+    }
+
+    private function assertActive(): void
+    {
+        if ($this->connection->getRawPdo() !== $this->pdo
+            || $this->connection->transactionLevel() !== 1 || ! $this->pdo->inTransaction()) {
+            throw new LogicException('The single writer transaction was replaced or interrupted.');
+        }
+    }
+}

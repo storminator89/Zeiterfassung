@@ -8,6 +8,7 @@ Stand: 27.10.2026. Dieses Paket bearbeitet [FW-01/#71](https://github.com/stormi
 - [Deklaratives Schema-Mapping](schema-map.json): sämtliche 21 im Quellcode angelegten Anwendungstabellen, Spaltendeklarationen und spätere Ergänzungen, 3 explizite Indizes, 34 Trigger sowie Schlüsselpfade. Kein DB-Dump, keine ausführbare Migration.
 - [Erster ausführbarer FW-03-Schritt](adoption-rehearsal.md): strikt speicherinterne Quellfixture, echte Laravel-PDO/UDF-Lebenszyklen und kontrollierte V2-Vorprüfung/Trackingregistrierung. Keine private Datei-/Produktivübernahme.
 - [Expliziter bekannter V2-Offlinepfad](offline-v2-adoption.md): read-only Datei-Vorprüfung, verifiziertes separates Backup, additive Laraveladoption und ausschließlich eigene Ledger-Rücknahme. Ausführung hier nur auf synthetischen gestoppten Kopien; keine Runtimeumschaltung.
+- [FW-04 SQLite-/Audit-/Idempotenz-PoC](sqlite-write-proof.md): opt-in Ein-PDO-Domänenadapter mit Standard-Laravel-IMMEDIATE-Transaktion und grobem persistiertem synthetischem Konkurrenz-/Rollbackbeweis; keine Route oder produktive Aktivierung.
 - [Inaktiver FW-05-Authkern](local-auth-foundation.md): Laravel-Sessionguard/Provider, aktuelle Rechte, CSRF-/Drosseladapter und eine grobe speicherinterne Abnahme. Keine Route, produktive Verbindung oder UI-/Loginumschaltung; #76 bleibt offen.
 
 ## Geprüfte Quellen, nicht verwechseln
