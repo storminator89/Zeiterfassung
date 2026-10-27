@@ -936,8 +936,9 @@ include 'header.php';
             newRow.innerHTML = `
                 <td><input type="number" name="hours_threshold[]" class="input input-bordered w-full" required></td>
                 <td><input type="number" name="minimum_pause[]" class="input input-bordered w-full" required></td>
-                <td><button type="button" class="btn btn-ghost btn-sm remove-row" title="${BUTTON_DELETE}"><i class="fas fa-trash-alt"></i></button></td>
+                <td><button type="button" class="btn btn-ghost btn-sm remove-row"><i class="fas fa-trash-alt"></i></button></td>
             `;
+            newRow.querySelector('.remove-row').title = <?= json_encode(BUTTON_DELETE, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         });
 
         pauseSettingsTable.addEventListener('click', (e) => {
