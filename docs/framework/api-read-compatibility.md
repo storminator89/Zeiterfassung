@@ -1,8 +1,35 @@
 # FW-06 / #77 – inaktiver Bearer- und API-Lesekern
 
+**Additiver CH-16/#22-Statusvertrag:** Der aktive native Pfad und der weiterhin
+unregistrierte Kandidat kennen nun `GET /api.php/attendance`. Hinter der
+unveränderten Bearerprüfung liefert ein eigener Lesesnapshot exakt
+`{success:true,state,record_id}` aus `attendance_status`: `absent`, `working`
+oder `paused`, mit ganzzahliger aktiver `record_id`, sonst `null`. Keine
+Berichtszeilen, fremde Personenauswahl, neue Rollenfilterung oder Schreibaktion.
+Der Kandidat nutzt `apiAttendanceStatus()` auf derselben Snapshotgrenze;
+GET wird nach dem bestehenden POST-Kandidaten registriert, dessen Parsing,
+Guard und Writer unverändert bleiben. Rohe HEAD-/Override-/Pfadregeln gelten
+weiter. Der nativen `attendance_json`-Fehlerform entsprechend bleiben
+`AttendanceError`-Status erhalten und unerwartete Fehler JSON-503, nicht der
+JSON-500 der Berichtsleser. Keine Defaultregistrierung oder Runtimeumschaltung.
+Dies ist nur die API-Abhängigkeit der Erweiterungsreparatur, keine vollständige
+Firefox-/Edge-, JWT-, Browser- oder Produktivabnahme.
+
+**Kontrollierte JSON-Fehler nach #25 / PR #140:** Der zentrale
+`LegacyApiResponse::text()` behält aus Kompatibilität seinen historischen
+Methodennamen, liefert aber nun wie der native `abort_request`
+`{success:false,message}` mit `application/json; charset=UTF-8` und dem
+unveränderten HTTP-Status. Dies umfasst die bisherigen Bearer-, Login-,
+Alias- und Löschsperren; `Retry-After: 600` bleibt erhalten. Nur diese
+Fehlernachrichten ersetzen ungültiges UTF-8 durch U+FFFD. Allgemeine
+JSONantworten, Lese-Metadaten sowie Erfolgs-/Replay-/Endwarnungsbelege werden
+nicht neu kodiert oder umgebaut. Ungefangene Fehler werden nicht global
+normalisiert. Guardentscheidungen und Routenaktivierung ändern sich nicht.
+
 **Begrenztes Vorbereitungspaket, kein API-Cutover und kein Abschluss von #77.**
 Die bestehende UI, `api.php`-Routen, Datenbank-/Hostkonfiguration und Clients
-bleiben aktiv unverändert. Die ausgelieferte Laravel-Routenliste enthält weiterhin
+bleiben aktiv; nur der unten dokumentierte CH-18-Paginationvertrag ändert sich
+bewusst in beiden Lesepfaden. Die ausgelieferte Laravel-Routenliste enthält weiterhin
 nur `GET|HEAD /up`. Weder `LegacyApiRoutes::registerCandidate()` noch ein
 API-Routenfile wird vom Bootstrap aufgerufen. Der neue Guard ist nicht der
 Defaultguard; `chrono`, ein API-Schlüssel und eine öffentliche API bleiben
@@ -41,9 +68,9 @@ Zugangsdatenwechsel. Ungebundene/formatfalsche Schlüssel werden verweigert.
 Der Header bleibt exakt `Bearer ` plus bestehende Tokenzeichen, ohne Querytoken,
 Cookie-/Sessionfallback oder case-insensitive neue Akzeptanz. Nach JWT-Prüfung
 wird das aktuelle Konto über die benannte `chrono`-Verbindung geladen und
-`sha256(password)` gegen `ver` geprüft. Die bestehenden drei Text-401-Meldungen
-bleiben unterscheidbar. Anders als der lokale Weblogin prüft diese bestehende
-Bearer-API **weder `auth_source=local` noch eine bekannte Rolle**: auch ein
+`sha256(password)` gegen `ver` geprüft. Die bestehenden drei 401-Meldungen
+bleiben im JSON-Fehlerumschlag unterscheidbar. Anders als der lokale Weblogin
+prüft diese bestehende Bearer-API **weder `auth_source=local` noch eine bekannte Rolle**: auch ein
 bestehender gültiger LDAP-/Admin-Token liest nur seine eigene Person. Es wird
 kein LDAP-Login oder neues Token ausgestellt.
 
@@ -63,7 +90,7 @@ nicht als öffentliche Controller ohne diese Middleware gebunden werden.
 | `POST /api.php/workentry`, `/api.php/setendzeit` | [Inaktive bestehende Aliase](candidate-api-aliases.md) auf demselben APIwriter, keine neue Antwortform oder historischen Clientzeiten. |
 | `GET /api.php/users` | `{success:true,data:[{id,username,email,role}]}`, ausschließlich die aktuelle eigene Person, auch als Admin. |
 | `GET /api.php/timeentries` | Eigene rohe Projektionszeilen nach `startzeit DESC`, `{success,data,meta:{total,filtered,limit,offset}}`. Ein Query-`user_id` wird nie als Subjekt verwendet. |
-| `DELETE /api.php/timeentry/{numericId}` | Authentifizierte Sperre: 409 Text, Korrekturantrag statt historischer Löschung. Kein Writer. |
+| `DELETE /api.php/timeentry/{numericId}` | Authentifizierte Sperre: 409 JSON, Korrekturantrag statt historischer Löschung. Kein Writer. |
 | `OPTIONS /api.php` oder Unterpfad | 200 leer, vor Auth/DB/Schlüssel/Session; bestehende drei CORS-Header unverändert, keine Cookie-Credentials. |
 | Unbekannter Pfad / andere Methode | Bestehende 400-`Invalid endpoint`- beziehungsweise 405-`Method Not Allowed`-JSONform, kein Laravel-404/422-/Loginredirect für die erfassten HTTP-Methoden. |
 
@@ -80,13 +107,33 @@ Fehler bewusst in bestehende JSON-400 statt 422 um. Die rohe PHP-Query wird
 vor Laravels Trim-/Nullnormalisierung rekonstruiert. URL-Rawpfad und tatsächliche
 HTTP-Methode werden geprüft: kein neu akzeptierter Slash-/Percentalias,
 implizites HEAD oder `_method`-/Headeroverride. JSON verwendet wie im Bestand
-`json_encode` ohne neue HEX-Optionen; Textfehler bleiben Text.
+`json_encode` ohne neue HEX-Optionen; kontrollierte bisherige Textfehler
+verwenden nun den oben beschriebenen nativen JSON-Fehlerumschlag.
 
-**Bewusst nicht repariert:** SQLite-`date(startzeit)` filtert UTC statt
-Berlin-Kalendertagen; Formprüfung ist keine Kalenderprüfung. Numerische
-Pagination bleibt die bisherige PHP-Koerzierung, einschließlich negativer Werte,
-separater Metadaten und des Offset-ohne-Limit-SQLfehlers als JSON-500. Die
-Änderungen aus [#9](https://github.com/storminator89/Zeiterfassung/issues/9) und
+**CH-04 / #9:** Native API und inaktiver Lesekandidat filtern nun über den
+gemeinsamen `chrono_api_booking_day`-Adapter nach demselben Berliner Starttag
+wie Berichte, nicht nach SQLite-UTC. Grenzen, Datenfehler und grober Nachweis:
+[API-Buchungstag](../CH04-API-BUCHUNGSTAG.md). Formprüfung bleibt keine
+Kalenderprüfung.
+
+**CH-18 / #24:** Beide HTTP-Adapter verwenden jetzt denselben definitions-only
+Parser für strenge nichtnegative Integer. `limit`: Standard **100**, Maximum
+**1000**, **0** ergibt leere Seite; `offset`: effektiv **0**, Maximum
+**2147483647**, bei Auslassung `meta.offset:null`. `meta.limit` meldet immer das
+wirksame Limit. Invalidtypen/-syntax/-bereich liefern JSON-400 **vor** dem
+Lesesnapshot, keine PHP-Koerzierung, SQL-500 oder Laravel-422. Die rohe PHP-Query
+bleibt maßgeblich, keine Trim-/Nullnormalisierung der Pagination.
+
+Dies ändert den bisherigen Vertrag **bewusst**: fehlendes Limit und Offset
+allein liefern nun höchstens **100**, nicht alle übrigen Treffer. Die
+bestehenden Popup-Clients mit explizitem `limit=1` bleiben kompatibel. Externe
+Vollabruf-Clients müssen Seiten iterieren. Der bereits gemergte SQLite-
+`LIMIT -1`-Fallback bleibt defensiv erhalten, ist für normal validierte
+HTTP-Querys aber nicht mehr erreichbar. Genaue Eingaben, Defaults/Maxima,
+Migrationshinweise und begrenzte Nachweise: [API-Paginierung](../CH18-API-PAGINATION.md).
+Keine Aktivierung des Kandidaten, Auth-/Writeränderung oder neue
+Cross-Request-Snapshotgarantie.
+Die übrigen Änderungen aus
 [#25](https://github.com/storminator89/Zeiterfassung/issues/25) müssen separat
 abgestimmt werden, nicht als Carbon-/Paginatornebenwirkung entstehen.
 Strukturell nichtskalare Datumsquerys werden im Kandidaten ebenfalls als
@@ -104,7 +151,7 @@ vor einer späteren Gesamtaktivierung eine separate 405-/CORS-Gesamtkante.
 
 Noch offen: zugelassenes persistentes gemeinsames Loginbudget; produktive
 JWT-Migration/Profilentscheidung; vollständige Erweiterungsabnahme;
-reale vollständige Start/Pause/Ende/Retry-/`expectedRecord`-Abnahme; Swaggerkorrekturen #24/#25;
+reale vollständige Start/Pause/Ende/Retry-/`expectedRecord`-Abnahme; Normalisierung ungefangener Fehler;
 repräsentative vollständige Firefox-/Edge-Abläufe und deren reale Verteilung.
 Kein Swaggerendpoint wird aus dem inaktiven Kandidaten als verfügbar behauptet.
 Web-/Terminalschreiber werden nicht umgangen. Keine neue UI, kein realer
@@ -121,7 +168,7 @@ Ein parameterloser Ablauf durch echte Laravel-`HttpKernel`-Requestobjekte mit
 anonymer SQLite-Memoryfixture und Wegwerfschlüssel nur im Prozess. Kein
 HTTPserver, Netzwerk, Dateikey, lokaler UItest oder reale Daten. Vier Gruppen:
 inaktiver Boot/Admissions/Preflight ohne IO; erweiterungsartige eigene
-Identity-/UTC-/Paginationleser mit exakten JSONbytes; manipulierter/abgelaufener/
+Identity-/Berlin-Starttag-/Paginationleser mit exakten JSONbytes; manipulierter/abgelaufener/
 falsche-Audience-/passwortwiderrufener Token ohne gecachte Webidentität;
 Wirefehler/CRUD-Sperre und unveränderter Snapshot. Dies ist keine Vollsuite,
 kein produktiver End-to-End- oder Browserstore-/Verteilungsnachweis. Die grobe

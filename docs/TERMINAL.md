@@ -12,6 +12,10 @@ Implementiert: gemeinsame Ereignisbuchung für Web/API/Terminal, tatsächliche P
 
 Unabhängig vom Gerätemodul führt die Startseite zu `attendance.php`. Kommen und Gehen der bisherigen Web/API-Clients werden ebenfalls durch denselben Buchungsdienst geleitet. Erfasste Zeiten lassen sich auch nach Deaktivierung nicht über alte Schreib-/Löschendpunkte ändern. Historische, vollständige API-Nachbuchungen werden immer mit einem Hinweis auf Korrekturanträge abgewiesen. Der neue API-Endpunkt `POST /api.php/attendance` akzeptiert `action`, `event_id` und optional `confirm_end_pause` unter der bestehenden Benutzer-JWT-Authentifizierung.
 
+## Gerätefreigabe und Kontaktstatus
+
+Die bestehende Geräteübersicht trennt **Freigabe**, **Kontaktstatus** und **Letzter Kontakt**. „Freigegeben“ beschreibt nur die Geräteberechtigung, nicht die Verbindung. Der Agent wartet zwischen Heartbeats 30 Sekunden; eine Anfrage hat bis zu acht Sekunden Zeit. Der letzte serverseitig gespeicherte Kontakt (Kopplung, Heartbeat oder bestätigte Buchung) gilt bis einschließlich 90 Sekunden als aktuell, danach als veraltet. Fehlende oder ungültige/zukünftige Kontaktzeiten gelten nicht als aktueller Kontakt. Die Anzeige ist eine Momentaufnahme beim Laden und garantiert auch bei aktuellem Kontakt weder laufenden Kiosk noch Leser-/Netzfunktion. Nach Neuladen wird sie neu bewertet; automatische Überwachung/Alarmierung und die reale Hardwareabnahme bleiben offen. Freigaben, Gerätesperren und Buchungsprüfungen werden durch diese Anzeige nicht verändert.
+
 ## Gerätedienst auf Linux installieren
 
 Voraussetzungen: verwalteter Linux-PC/Touch-Terminal, Python 3.10 oder neuer, Chromium/Firefox im Kiosk-Modus und HTTPS-Verbindung zur App. Für einen USB-HID-Leser muss das Gerät eine Kennung gefolgt von Enter als Tastatureingabe liefern. Browser-Web-NFC ist nicht erforderlich. Die Anwendung unterstützt keine beliebigen proprietären Leser-SDKs automatisch.
@@ -60,7 +64,9 @@ PIN-Fehlversuche sind pro Gerät und Person beschränkt. Kopplungsversuche sind 
 
 ## Sicherung, Deaktivierung und Rollback
 
-Der alte partielle Browser-Datenbankimport ist immer gesperrt, damit Arbeitszeitmodelle und Änderungshistorie erhalten bleiben. Ein Browser-Download sichert die gesamte SQLite-Datenbank, aber keine `.key`-Dateien. Für eine Wiederherstellung:
+Der alte partielle Browser-Datenbankimport ist immer gesperrt, damit Arbeitszeitmodelle und Änderungshistorie erhalten bleiben. Die Einstellungen bieten deshalb keinen Upload an, sondern verweisen auf das manuelle Offline-Vorgehen. Ein Browser-Download ist ein konsistenter Snapshot der gesamten SQLite-Datenbank, aber keine vollständige Betriebssicherung: Externe `.key`-Dateien, Anwendungscode und Betriebskonfiguration sind nicht enthalten.
+
+Die vollständige private Datenablage gemeinsam sichern und den dazu passenden Code-, Schema- und Konfigurationsstand bereithalten. Ein automatischer Vollrestore wird nicht angeboten; ein vollständiger Wiederanlauf muss separat geprüft werden. Für eine Wiederherstellung:
 
 1. App und Gerätedienste stoppen, damit keine Buchungen während der Wiederherstellung eintreffen.
 2. Gesamte private Ablage einschließlich Datenbank, SQLite-Sidecars (falls vorhanden) und Schlüssel aus demselben konsistenten Backup wiederherstellen. Zugriffsrechte prüfen.

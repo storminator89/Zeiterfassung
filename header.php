@@ -401,6 +401,21 @@ $attendanceLabels = ['absent' => 'Nicht angemeldet', 'working' => 'Arbeitszeit l
 
     <!-- Main content wrapper -->
     <div id="main-content" class="main-content">
+        <div id="report-finality-notice" class="alert alert-warning mb-4" role="alert" <?= empty($reportAbsenceConflicts) ? 'hidden' : '' ?>>
+            <span data-report-finality-message><strong>Klärung offen: Arbeitszeit überschneidet sich mit ganztägiger Abwesenheit.</strong>
+            Betroffene Tages- und Zeitraumssummen sind bis zur manuellen Klärung nicht abschließend und nicht zur Abrechnung geeignet.
+            Tatsächliche Arbeits- und Pausenzeiten sowie Gutschriften bleiben unverändert sichtbar; nichts wurde automatisch gelöscht oder gekürzt.
+            Bitte über einen Korrekturantrag mit Freigabe durch eine andere berechtigte Person klären.</span>
+            <a class="link" href="adjustments.php">Korrekturanträge</a>
+        </div>
+        <?php if (!empty($reportInvalidRecords)): ?>
+        <div class="alert alert-warning mb-4" role="alert">
+            <span><strong>Datenqualität: <?= count($reportInvalidRecords) ?> ungültige eigene Zeiteinträge.</strong>
+            Arbeitszeit-, Überstunden- und Berichtssummen sind unvollständig und nicht zur Abrechnung geeignet; auch die Kalenderdarstellung kann unvollständig sein.
+            Bitte die betroffenen Einträge in der Arbeitszeitliste über „Korrektur / Storno“ prüfen. Es wurden keine Bestandsdaten geändert.
+            <a class="link" href="adjustments.php">Korrekturanträge</a></span>
+        </div>
+        <?php endif; ?>
         <!-- Your existing content goes here -->
 
     <script>

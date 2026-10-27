@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Api\LegacyApiResponse;
 use App\Chrono\ApiTimeEntriesQuery;
 use App\Chrono\ChronoReads;
+use AttendanceError;
 use Illuminate\Contracts\Validation\Factory;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,12 +24,33 @@ final class LegacyApiReadController
         }
     }
 
+    public function attendance(): Response
+    {
+        try {
+            return LegacyApiResponse::json($this->reads->apiAttendanceStatus());
+        } catch (AttendanceError $error) {
+            return LegacyApiResponse::json(['success' => false, 'message' => $error->getMessage()], $error->status);
+        } catch (Throwable) {
+            // Match attendance_json rather than the reporting reader's 500.
+            return LegacyApiResponse::json([
+                'success' => false,
+                'message' => 'Buchung nicht bestätigt. Verbindung prüfen und denselben Vorgang erneut versuchen.',
+            ], 503);
+        }
+    }
+
     public function entries(Request $request): Response
     {
         // Laravel's global trimming/null normalization must not silently turn
         // an invalid legacy date into an absent filter. PHP parses this same raw
         // query into $_GET in api.php. No user_id selector is ever forwarded.
         parse_str($request->server('QUERY_STRING', ''), $query);
+        require_once dirname(__DIR__, 5).'/lib/api_pagination.php';
+        try {
+            $pagination = api_pagination($query);
+        } catch (\InvalidArgumentException $error) {
+            return LegacyApiResponse::json(['success' => false, 'message' => $error->getMessage()], 400);
+        }
         foreach (['start_date', 'end_date'] as $field) {
             // Shape only, as before: not date/calendar/timezone normalization.
             if (isset($query[$field]) && $this->validation->make([$field => $query[$field]], [
@@ -39,16 +61,13 @@ final class LegacyApiReadController
         }
         $input = new ApiTimeEntriesQuery(
             $query['start_date'] ?? null, $query['end_date'] ?? null,
-            isset($query['limit']) && is_numeric($query['limit']) ? (int) $query['limit'] : null,
-            isset($query['offset']) && is_numeric($query['offset']) ? (int) $query['offset'] : null,
-            isset($query['limit']) ? (int) $query['limit'] : null,
-            isset($query['offset']) ? (int) $query['offset'] : null,
+            $pagination['limit'], $pagination['offset'],
+            $pagination['limit'], $pagination['offset'],
         );
         try {
             return LegacyApiResponse::json($this->reads->apiTimeEntries($input));
         } catch (Throwable) {
-            // Preserve the known offset-without-limit SQL failure as JSON 500;
-            // do not silently fix #9/#25 or replace this with a paginator/422.
+            // Unexpected read failures retain JSON 500, never a paginator/422.
             return LegacyApiResponse::json(['success' => false, 'message' => 'Internal server error'], 500);
         }
     }

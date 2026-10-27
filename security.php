@@ -5,17 +5,11 @@ define('CHRONO_SECURITY_LOADED', true);
 umask(0077);
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
-function abort_request(int $status, string $message): never {
-    http_response_code($status);
-    header('Content-Type: text/plain; charset=UTF-8');
-    exit($message);
-}
+require_once __DIR__ . '/lib/http_error_response.php';
 function h($value): string {
     return htmlspecialchars((string)($value ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
-function valid_language($value): string {
-    return is_string($value) && in_array($value, ['de', 'en', 'zh'], true) ? $value : 'de';
-}
+require_once __DIR__ . '/lib/language.php';
 $dataDir = getenv('APP_DATA_DIR') ?: dirname(__DIR__) . '/zeiterfassung-data';
 if (!is_dir($dataDir) && !mkdir($dataDir, 0700, true) && !is_dir($dataDir)) {
     abort_request(503, 'Private data directory unavailable.');
@@ -59,7 +53,7 @@ if (PHP_SAPI !== 'cli') {
     ini_set('session.use_only_cookies', '1');
     session_set_cookie_params(['httponly' => true, 'secure' => $secure, 'samesite' => 'Lax', 'path' => '/']);
     if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
-    $_SESSION['lang'] = valid_language($_SESSION['lang'] ?? 'de');
+    $_SESSION['lang'] = initial_language($_SESSION['lang'] ?? null, $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null);
     $_SESSION['csrf_token'] ??= bin2hex(random_bytes(32));
     $endpoint = basename($_SERVER['SCRIPT_NAME'] ?? '');
     if ($endpoint !== 'api.php' && !in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD', 'OPTIONS'], true)) {

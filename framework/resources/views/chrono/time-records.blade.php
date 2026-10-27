@@ -25,7 +25,7 @@
                 </thead>
                 <tbody class="divide-y divide-base-200">
                 @foreach ($records->groups as $group)
-                    <tr class="summary-row hover:bg-base-200/50 cursor-pointer transition-colors" data-date="{{ $group['work_date'] }}">
+                    <tr class="summary-row hover:bg-base-200/50 cursor-pointer transition-colors" data-date="{{ $group['group_key'] }}">
                         <td class="px-6 py-4 w-48">
                             <div class="flex items-center gap-3">
                                 <div class="w-6 flex justify-center transition-transform duration-200">
@@ -33,7 +33,8 @@
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <div class="font-medium">{{ $group['formatted_date'] }}</div>
-                                    <div class="badge badge-sm badge-ghost" title="Anzahl der Einträge">{{ $group['entry_count'] }}</div>
+                                    <div class="badge badge-sm badge-ghost" title="{{ $group['is_partial'] ? 'Sichtbare Einträge / alle Einträge des Tages' : 'Anzahl der Einträge' }}">{{ $group['is_partial'] ? $group['entry_count'] . ' / ' . $group['day_entry_count'] : $group['entry_count'] }}</div>
+                                    @if ($group['is_unresolved'])<span class="badge badge-warning badge-sm">Klärung offen</span>@endif
                                 </div>
                             </div>
                         </td>
@@ -46,14 +47,17 @@
                         <td class="px-6 py-4 w-32">
                             <div class="flex items-center justify-center gap-2">
                                 <i class="fas fa-pause text-primary/75"></i>
-                                <span class="font-medium">{{ $group['total_pause'] }} min</span>
+                                <span class="font-medium">{{ $group['total_pause'] === null ? 'Ungültig' : $group['total_pause'] . ' min' }}</span>
                             </div>
                         </td>
                         <td></td>
                     </tr>
-                    <tr class="details-row bg-base-100/50" data-date="{{ $group['work_date'] }}" style="display: none;">
+                    <tr class="details-row bg-base-100/50" data-date="{{ $group['group_key'] }}" style="display: none;">
                         <td colspan="4" class="p-0">
                             <div class="pl-14 pr-6 py-4 border-l-4 border-primary/10">
+                                @if ($group['is_partial'])<p class="text-sm opacity-70 mb-3">Teilansicht: {{ $group['entry_count'] }} / {{ $group['day_entry_count'] }} Einträge auf dieser Seite. Dauer und Pause berücksichtigen alle Einträge des Tages.</p>@endif
+                                @if ($group['invalid_count'] > 0)<p class="text-sm text-warning mb-3" role="alert">Datenqualität: {{ $group['invalid_count'] }} ungültige Einträge. Keine verlässliche Tagessumme; bitte „Korrektur / Storno“ verwenden.</p>@endif
+                                @if ($group['is_unresolved'])<p class="text-sm text-warning mb-3" role="alert">Klärung offen: Arbeitszeit und ganztägige Abwesenheit überschneiden sich. Die Tagessumme ist nicht abschließend. Einzelwerte bleiben unverändert; bitte über „Korrektur / Storno“ mit Freigabe klären.</p>@endif
                                 <table class="table w-full">
                                     <thead class="bg-base-200/50">
                                         <tr>
@@ -69,7 +73,7 @@
                                     </thead>
                                     <tbody class="divide-y divide-base-200/50">
                                     @foreach ($group['records'] as $row)
-                                        <tr><td>{{ $row['week_number'] }}</td><td>{{ $row['start_label'] }}</td><td>{{ $row['end_label'] }}</td><td>{{ $row['duration_label'] }}</td><td>{{ $row['pause'] }}</td><td>{{ $row['location'] }}</td><td>{{ $row['comment'] }}</td><td><a class="link link-primary" href="adjustments.php?record_id={{ $row['id'] }}">Korrektur / Storno</a></td></tr>
+                                        <tr><td>{{ $row['week_number'] }}</td><td>{{ $row['start_label'] }}</td><td>{{ $row['end_label'] }}</td><td>{{ $row['duration_label'] }}@if ($row['is_invalid'])<span class="block text-sm text-warning">{{ $row['validation_error'] }}</span>@endif @if ($row['is_unresolved'])<span class="block text-sm text-warning">Klärung offen · Überschneidung mit Arbeitszeit / Abwesenheit. Einzelwert unverändert.</span>@endif</td><td>{{ $row['pause'] }}</td><td>{{ $row['location'] }}</td><td>{{ $row['comment'] }}</td><td><a class="link link-primary" href="adjustments.php?record_id={{ $row['id'] }}">Korrektur / Storno</a></td></tr>
                                     @endforeach
                                     </tbody>
                                 </table>

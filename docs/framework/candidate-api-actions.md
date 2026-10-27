@@ -14,7 +14,8 @@ Die vorhandenen Aliasrouten werden inzwischen vom getrennten
 ein Array und Zeichenkettenfelder `username,password` verlangt. Keine neue
 `required`-/Trim-/Nullnormalisierung: auch leere Strings gehen unverändert in
 den bisherigen Login-/Versuchsvertrag, fremde Felder werden ignoriert. Ungültige
-Form bleibt Text-400 `Username and password required.`.
+Form bleibt HTTP 400 mit JSON-`{success:false,message}` und der Meldung
+`Username and password required.` wie im aktuellen nativen APIvertrag.
 
 `LegacyApiLogin` nutzt den vorhandenen Laravel-`chrono_users`-Eloquentprovider
 und dessen stock Passwortprüfung. Abgerufen wird der **exakte**, ungetrimmte
@@ -48,7 +49,7 @@ verweigert ohne ausdrücklich zugelassenen Budgetdienst und benannte
   Trimmen des Usernamens.
 - Erfolgreiche und fehlgeschlagene Versuche verbrauchen Budget; kein Reset bei
   Login. Erst IP-, dann Nutzerprüfung wie im bestehenden Ablauf.
-- Überschreitung bleibt Text-429 mit `Retry-After: 600`; keine neuen
+- Überschreitung bleibt HTTP 429, nun mit nativem JSON-Fehlerumschlag und `Retry-After: 600`; keine neuen
   X-RateLimit-Erfolgsheader oder veränderte Credential-Fehlerform.
 
 **Aktivierungsblocker:** Der aktuelle produktive Altcode zählt weiterhin in

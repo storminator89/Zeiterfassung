@@ -57,7 +57,10 @@ try {
     $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
     $stmt->execute();
     $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($records as &$entry) { $entry['weekNumber']=substr(report_week($entry),5); } unset($entry);
+    foreach ($records as &$entry) {
+        $calculation=report_record_calculation($entry);
+        $entry['weekNumber']=$calculation['week']===null ? '-' : substr($calculation['week'],5);
+    } unset($entry);
 } catch (PDOException $e) {
     // Handle query error
     die("Datenbankfehler: " . $e->getMessage());
@@ -87,11 +90,17 @@ $currentMonthName = $months[$currentMonth];
 // Load the holiday calendar before calculating any target in this response.
 fetchFeiertageDB($currentYear);
 [$firstDayOfWeek,$lastDayOfWeek]=report_week_bounds(date('Y-m-d'));
-$reportDays=report_days($records);
+$reportInvalidRecords=[];
+$reportAbsenceConflicts=[];
+$reportDays=report_days($records,$reportInvalidRecords,$reportAbsenceConflicts);
+$reportTotalUnresolved=$reportAbsenceConflicts!==[];
+$reportWeekUnresolved=report_conflicts_in_period($reportAbsenceConflicts,$firstDayOfWeek,$lastDayOfWeek);
 $totalMinutesThisWeek=report_period_minutes($reportDays,$firstDayOfWeek,$lastDayOfWeek);
 $totalHoursThisWeek=$totalMinutesThisWeek/60;
 $currentMonthStart="{$currentYear}-{$currentMonth}-01";
 $currentMonthEnd=date('Y-m-t');
+$reportMonthUnresolved=report_conflicts_in_period($reportAbsenceConflicts,$currentMonthStart,$currentMonthEnd);
+$reportYearUnresolved=report_conflicts_in_period($reportAbsenceConflicts,"$currentYear-01-01","$currentYear-12-31");
 $workingHoursThisMonth=getWorkingHours($currentMonthStart,$currentMonthEnd,$userRegularWorkingHours);
 $currentDate=date('Y-m-d');
 $workHoursPerDay=[];$days=[];$hours=[];
@@ -205,7 +214,7 @@ $workHoursByDate=[];$totalOverHours=home_total_overtime($conn,(int)$user_id,$rep
 foreach ($reportDays as $day=>$minutes) {
     $workHoursByDate[$day]=$minutes/60;
 }
-$totalOverHoursFormatted=report_format_hours($totalOverHours);
+$totalOverHoursFormatted=$reportTotalUnresolved ? 'Klärung offen' : report_format_hours($totalOverHours);
 $totalMinutesThisMonthFromRecords=report_period_minutes($reportDays,$currentMonthStart,$currentMonthEnd);
 $totalHoursThisMonthFromRecords=$totalMinutesThisMonthFromRecords/60;
 $overHoursThisMonth=$totalHoursThisMonthFromRecords-$workingHoursThisMonth;
@@ -266,15 +275,22 @@ function getEntryById($conn, $id)
 }
 
 $weeks=[];
-foreach($records as $record) { if(report_minutes($record)!==null) { $weeks[report_week($record)]=true; } }
+foreach($records as $record) {
+    $calculation=report_record_calculation($record);
+    if ($calculation['status']==='completed') { $weeks[$calculation['week']]=true; }
+}
 $weeksCount=count($weeks);$isFirstWeek=$weeksCount===1;
 
 $events = [];
 
 // Looping through the records to create events
 foreach ($records as $record) {
-    $startDateTime = new DateTime($record['startzeit']);
-    $endDateTime = $record['endzeit'] ? new DateTime($record['endzeit']) : null;
+    $calculation=report_record_calculation($record);
+    // No invented calendar date for corrupt source times; the header warns that
+    // reports/calendar may be incomplete and retains the correction entrypoint.
+    if ($calculation['status']==='invalid') { continue; }
+    $startDateTime = booking_local_date($calculation['start']);
+    $endDateTime = $calculation['end']===null ? null : booking_local_date($calculation['end']);
 
     // Überprüfen, ob das 'beschreibung'-Feld leer ist und entsprechend den Titel setzen
     $title = empty($record['beschreibung']) ? 'Arbeit' : $record['beschreibung'];

@@ -55,12 +55,27 @@ body.dark-mode {
 .btn-container {
     display: flex;
     justify-content: space-between;
+    flex-wrap: wrap;
+    row-gap: 10px;
     margin-top: 20px;
 }
 
 .btn-container .btn {
-    flex: 1;
+    flex: 1 1 130px;
     margin: 0 5px;
+}
+
+.btn-container [hidden] {
+    display: none;
+}
+
+#retryButton {
+    flex-basis: 100%;
+    height: auto;
+    min-height: 36px;
+    line-height: 1.4;
+    padding-top: 8px;
+    padding-bottom: 8px;
 }
 
 .card-panel, .card {

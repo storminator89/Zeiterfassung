@@ -41,7 +41,9 @@ Keyrotation, Tokenissuer oder Fallback auf den alten Verifier. Bestehende
 Secret-Admission und aktueller Passwortwiderruf liegen unverändert in
 `LegacyApiIdentity`: `sha256(current users.password)` gegen Token-`ver`;
 keine `auth_source=local`-/Rollenbeschränkung für einen bestehenden Bearertoken.
-Die bisherigen Text-401-/Wireantworten bleiben unverändert.
+Die bisherigen 401-Status und Meldungen bleiben unverändert; der zentrale
+Antwortformatter liefert dafür nun wie die native API den JSON-Fehlerumschlag
+`{success:false,message}`. Die Tokenakzeptanz wird dadurch nicht geändert.
 
 Die Anwendung prüft bewusst ihr konkretes bestehendes Issuerprofil, nicht
 sämtliche von einem allgemeinen JWT-Paket erlaubten Claims:

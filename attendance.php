@@ -7,7 +7,17 @@ if ($_SERVER['REQUEST_METHOD']==='GET' && ($_GET['format']??'')==='status') {
         $conn->beginTransaction();
         try {
             $s=$conn->prepare('SELECT id,startzeit,endzeit,pause,absence_kind,planned_minutes FROM zeiterfassung WHERE user_id=? ORDER BY id DESC LIMIT 30');$s->execute([$user]);$records=$s->fetchAll(PDO::FETCH_ASSOC);$s->closeCursor();
-            $snapshot=['success'=>true,'records'=>$records]+attendance_status($conn,$user);
+            // Native presentation metadata only: raw recent rows and public
+            // API/extension contracts stay unchanged. Full effective context
+            // and state share this read snapshot, including off-page conflicts.
+            $s=$conn->prepare('SELECT * FROM zeiterfassung WHERE user_id=?');$s->execute([$user]);$context=$s->fetchAll(PDO::FETCH_ASSOC);$s->closeCursor();
+            $conflicts=report_absence_conflicts($context);
+            $today=booking_local_date(time());[$weekStart,$weekEnd]=report_week_bounds($today->format('Y-m-d'));
+            $finality=['all'=>$conflicts!==[],
+                'week'=>report_conflicts_in_period($conflicts,$weekStart,$weekEnd),
+                'month'=>report_conflicts_in_period($conflicts,$today->format('Y-m-01'),$today->format('Y-m-t')),
+                'year'=>report_conflicts_in_period($conflicts,$today->format('Y-01-01'),$today->format('Y-12-31'))];
+            $snapshot=['success'=>true,'records'=>$records,'report_finality'=>$finality]+attendance_status($conn,$user);
             $conn->commit();return $snapshot;
         } catch(Throwable $e) { if($conn->inTransaction()) { $conn->rollBack(); } throw $e; }
     });
@@ -78,7 +88,7 @@ $state = $attendanceState;
                     <h2 class="card-title text-2xl mb-4"><i class="fas fa-chart-bar mr-2"></i><?= STATISTICS_WORKING_TIMES ?></h2>
                     <div class="stats stats-vertical shadow w-full">
                         <div class="stat"><div class="stat-figure text-primary"><i class="fas fa-calendar-day fa-2x"></i></div><div class="stat-title"><?= TABLE_HEADER_WORKING_DAYS ?></div><div class="stat-value"><?= (int)$workingDaysThisMonth ?></div><div class="stat-desc"><?= h($currentMonthName) ?></div></div>
-                        <div class="stat"><div class="stat-figure text-primary"><i class="fas fa-clock fa-2x"></i></div><div class="stat-title"><?= TABLE_HEADER_TOTAL_OVERTIME ?></div><div class="stat-value <?= $totalOverHours > 0 ? 'text-success' : 'text-error' ?>"><?= h($totalOverHoursFormatted) ?></div></div>
+                        <div class="stat"><div class="stat-figure text-primary"><i class="fas fa-clock fa-2x"></i></div><div class="stat-title"><?= TABLE_HEADER_TOTAL_OVERTIME ?></div><div data-report-period="all" data-report-presentation="<?= $reportTotalUnresolved ? 'unresolved' : 'current' ?>" class="stat-value <?= $reportTotalUnresolved ? '' : ($totalOverHours > 0 ? 'text-success' : 'text-error') ?>"><?= h($totalOverHoursFormatted) ?></div></div>
                         <div class="stat"><div class="stat-figure text-primary"><i class="fas fa-business-time fa-2x"></i></div><div class="stat-title"><?= TABLE_HEADER_REGULAR_WORKING_HOURS ?></div><div class="stat-value"><?= h(home_daily_hours($conn, (int)$user, date('Y-m-d'))) ?></div><div class="stat-desc"><?= LABEL_HOURS_PER_DAY ?></div></div>
                     </div>
                     <?php if (!empty($feiertageDieseWoche)): ?><div class="alert alert-info mt-4"><div><h3 class="font-bold"><?= HOLIDAYS_THIS_WEEK ?></h3><?php foreach($feiertageDieseWoche as $holiday): ?><p class="text-sm"><?= h(date('d.m.Y', strtotime($holiday['datum']))) ?> · <?= h($holiday['name']) ?></p><?php endforeach; ?></div></div><?php endif; ?>
