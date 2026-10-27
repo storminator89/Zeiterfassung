@@ -586,3 +586,64 @@ h1, h2, h3, h4, h5, h6 {
         transform: translateX(-50%);
     }
 }
+
+/* Keep the original layout usable when new attendance controls share the header. */
+[hidden] { display: none !important; }
+.sidebar { overflow-y: auto; }
+.navbar-start { width: auto; flex: none; }
+.navbar-center { min-width: 0; }
+.navbar-end { width: auto; flex: none; }
+.navbar .btn { flex-shrink: 0; }
+.main-content { min-width: 0; }
+.chrono-page { min-width: 0; }
+.chrono-page > p { margin-bottom: 1.5rem; }
+.chrono-page .card { min-width: 0; }
+.chrono-page .card > p { margin-bottom: 1rem; }
+.chrono-page .stat { min-width: 0; }
+.chrono-page .stat-title { white-space: normal; }
+.chrono-page .stat-figure { margin-left: .5rem; }
+.chrono-page .stat-value { font-size: clamp(1.5rem, 2.5vw, 2rem); }
+.chrono-page .table-responsive { max-width: 100%; }
+.chrono-page a:not(.btn):not(.sidebar-link) { text-underline-offset: .2em; }
+.chrono-page details { overflow-wrap: anywhere; }
+.attendance-feedback { position: relative; margin: 4.5rem 1rem -3.5rem 266px; overflow-wrap: anywhere; }
+.attendance-feedback:empty { display: none; }
+body:has(.main-content.expanded) .attendance-feedback { margin-left: 1rem; }
+@media (max-width: 1023px) {
+    .navbar-center .text-xl { font-size: 1rem; white-space: normal; line-height: 1.1; }
+    .navbar-center .flex { min-width: 0; }
+}
+@media (max-width: 768px) {
+    .navbar-start .btn, .navbar-end .btn { width: auto; margin-bottom: 0; }
+    .navbar-center { position: static; transform: none; padding: 0 .5rem; }
+    .navbar-center img { width: 1.5rem; height: 1.5rem; }
+    .navbar-end .swap { margin-right: .25rem; }
+    .navbar { padding: 0 .5rem; }
+    .attendance-feedback { margin-left: 1rem; }
+    .chrono-page .card { padding: 0; }
+    .chrono-page > .card, .chrono-page > .grid > .card { padding: 1rem; }
+}
+.chrono-page .stats .stat { grid-template-columns: minmax(0, 1fr) auto; }
+.chrono-page .stats .stat-title { grid-column: 1 / -1; }
+.chrono-page .stats .stat-figure { grid-row: 2 / 4; }
+/* Existing dashboard cards must shrink inside their original grid, not the page. */
+.main-content .stats { min-width: 0; max-width: 100%; }
+.main-content .stat { min-width: 0; grid-template-columns: minmax(0, 1fr) auto; }
+.main-content .stat-title { white-space: normal; grid-column: 1 / -1; }
+.main-content .stat-figure { grid-row: 2 / 4; }
+@media (max-width: 768px) {
+    #timeRecordsContainer > .flex > .btn { width: auto; flex: none; }
+    #timeRecordsContainer > .flex { gap: .75rem; }
+}
+/* Hidden legacy info panels must not widen the dashboard beyond its cards. */
+.main-content .info-tooltip .tooltiptext {
+    width: min(350px, calc(100vw - 2rem));
+    left: auto;
+    right: 0;
+    margin-left: 0;
+}
+.main-content .info-tooltip .tooltiptext::after {
+    left: auto;
+    right: .25rem;
+    margin-left: 0;
+}

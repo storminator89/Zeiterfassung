@@ -1,121 +1,86 @@
 class TimeTour {
-    constructor() {
-        this.tour = new Shepherd.Tour({
-            useModalOverlay: true,
-            defaultStepOptions: {
-                cancelIcon: {
-                    enabled: true
-                },
-                classes: 'class-1 class-2',
-                scrollTo: { behavior: 'smooth', block: 'center' }
-            }
-        });
-
-        this.initTourSteps();
-        this.addEventListeners();
-        
-        // Nur automatisch starten, wenn die Tour noch nie gesehen wurde
+    constructor(button) {
+        this.button = button;
+        this.tour = null;
+        this.button.addEventListener('click', () => this.start());
         this.checkAndStartTour();
     }
 
+    visibleTarget(selector) {
+        return [...document.querySelectorAll(selector)].find(element => {
+            const style = window.getComputedStyle(element);
+            return !element.hidden && style.display !== 'none' && style.visibility !== 'hidden'
+                && element.getClientRects().length > 0;
+        });
+    }
+
+    start() {
+        if (!window.Shepherd?.Tour || window.Shepherd.activeTour) return;
+        this.tour = new window.Shepherd.Tour({
+            useModalOverlay: true,
+            defaultStepOptions: {
+                cancelIcon: {enabled: true},
+                classes: 'class-1 class-2',
+                scrollTo: {behavior: 'smooth', block: 'center'}
+            }
+        });
+        this.initTourSteps();
+        const remember = () => {
+            try { localStorage.setItem('tourCompleted', 'true'); }
+            catch (ignored) { /* The tour also works when storage is disabled. */ }
+        };
+        this.tour.on('complete', remember);
+        this.tour.on('cancel', remember);
+        this.tour.start();
+    }
+
     initTourSteps() {
-        this.tour.addStep({
-            id: 'welcome',
-            text: 'Willkommen bei der Zeiterfassung! Lassen Sie uns eine kurze Tour machen.',
-            buttons: this.getButtons('first')
-        });
-
-        this.tour.addStep({
+        const steps = [{id: 'welcome', text: 'Willkommen bei der Zeiterfassung! Lassen Sie uns eine kurze Tour machen.'}];
+        const actions = this.visibleTarget('#startButton') || this.visibleTarget('#actions')
+            || this.visibleTarget('[data-attendance-action]');
+        const status = this.visibleTarget('#timer') || this.visibleTarget('#status');
+        const statistics = this.visibleTarget('.stats');
+        const records = this.visibleTarget('#timeRecordsContainer');
+        if (actions) steps.push({
             id: 'time-buttons',
-            text: 'Hier können Sie Ihre Arbeitszeit starten und beenden.',
-            attachTo: {
-                element: '#startButton',
-                on: 'bottom'
-            },
-            buttons: this.getButtons()
+            text: 'Hier können Sie Ihre Arbeitszeit und tatsächliche Pausen starten oder beenden. Jede Buchung wird mit Serverzeit bestätigt.',
+            attachTo: {element: actions, on: 'bottom'}
         });
-
-        this.tour.addStep({
+        if (status) steps.push({
             id: 'timer',
-            text: 'Hier sehen Sie die aktuelle Arbeitszeit.',
-            attachTo: {
-                element: '#timer',
-                on: 'bottom'
-            },
-            buttons: this.getButtons()
+            text: 'Hier sehen Sie Ihren bestätigten Anwesenheitsstatus: nicht angemeldet, Arbeitszeit läuft oder Pause läuft.',
+            attachTo: {element: status, on: 'bottom'}
         });
-
-        this.tour.addStep({
-            id: 'statistics',
-            text: 'Diese Karte zeigt Ihre aktuellen Statistiken.',
-            attachTo: {
-                element: '.stats',
-                on: 'left'
-            },
-            buttons: this.getButtons()
+        if (statistics) steps.push({
+            id: 'statistics', text: 'Diese Karte zeigt Ihre aktuellen Statistiken.',
+            attachTo: {element: statistics, on: 'left'}
         });
-
-        this.tour.addStep({
+        if (records) steps.push({
             id: 'time-records',
-            text: 'Hier finden Sie eine Übersicht Ihrer Zeiterfassung.',
-            attachTo: {
-                element: '#timeRecordsContainer',
-                on: 'top'
-            },
-            buttons: this.getButtons('last')
+            text: 'Hier finden Sie Ihre erfassten Arbeitszeiten. Nachträgliche Änderungen und Stornierungen erfolgen über einen begründeten Korrekturantrag.',
+            attachTo: {element: records, on: 'top'}
         });
-    }
-
-    getButtons(position = 'middle') {
-        const buttons = [];
-        
-        if (position !== 'first') {
-            buttons.push({
-                text: 'Zurück',
-                action: this.tour.back
-            });
-        }
-
-        buttons.push({
-            text: position === 'last' ? 'Fertig' : 'Weiter',
-            action: position === 'last' ? this.tour.complete : this.tour.next
-        });
-
-        return buttons;
-    }
-
-    addEventListeners() {
-        // Tour-Button im Header - startet die Tour manuell
-        document.getElementById('tourButton').addEventListener('click', () => {
-            this.tour.start();
-        });
-
-        // Tour als abgeschlossen markieren wenn sie beendet wird
-        this.tour.on('complete', () => {
-            localStorage.setItem('tourCompleted', 'true');
-        });
-
-        // Auch als abgeschlossen markieren, wenn sie abgebrochen wird
-        this.tour.on('cancel', () => {
-            localStorage.setItem('tourCompleted', 'true');
+        steps.forEach((step, index) => {
+            const buttons = [];
+            if (index > 0) buttons.push({text: 'Zurück', action: () => this.tour.back()});
+            const last = index === steps.length - 1;
+            buttons.push({text: last ? 'Fertig' : 'Weiter', action: () => last ? this.tour.complete() : this.tour.next()});
+            this.tour.addStep({...step, buttons});
         });
     }
 
     checkAndStartTour() {
-        // Prüfe ob die Tour bereits abgeschlossen wurde
-        const tourCompleted = localStorage.getItem('tourCompleted');
-        
-        // Starte die Tour nur, wenn sie noch nie abgeschlossen wurde
-        if (!tourCompleted) {
-            // Kurze Verzögerung um sicherzustellen, dass die Seite geladen ist
-            setTimeout(() => {
-                this.tour.start();
-            }, 500);
-        }
+        let completed = false;
+        try { completed = Boolean(localStorage.getItem('tourCompleted')); }
+        catch (ignored) { /* An unavailable preference must not break the page. */ }
+        if (!completed) window.setTimeout(() => this.start(), 500);
     }
 }
 
-// Tour initialisieren
-document.addEventListener('DOMContentLoaded', () => {
-    window.timeTour = new TimeTour();
-});
+const initializeTimeTour = () => {
+    const button = document.getElementById('tourButton');
+    if (!button || !window.Shepherd?.Tour || window.timeTour) return;
+    window.timeTour = new TimeTour(button);
+};
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeTimeTour, {once: true});
+else initializeTimeTour();
