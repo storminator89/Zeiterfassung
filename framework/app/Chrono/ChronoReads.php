@@ -53,6 +53,9 @@ interface ChronoReads
     /** Complete native department list, only after a fresh current local-Admin check. */
     public function adminDepartments(): array;
 
+    /** Read-only native device/site/contact display; fresh local Admin, no credential fields. */
+    public function adminTerminalDevices(): array;
+
     /** Native work-model target options, only after a fresh current-admin check. */
     public function workModelTargets(): array;
 }
