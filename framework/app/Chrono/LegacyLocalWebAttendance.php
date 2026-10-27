@@ -36,6 +36,6 @@ final class LegacyLocalWebAttendance implements LocalWebAttendance
 
         // EXACT existing web namespace. Do not rotate it across migration,
         // recompute payloads/responses, catch errors or replay automatically.
-        return $writer->transition($identifier, 'web:'.$identifier, $eventId, $action, $confirm, $expectedRecord);
+        return $writer->transition($identifier, 'web:'.$identifier, $eventId, $action, $confirm, $expectedRecord, true);
     }
 }

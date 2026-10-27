@@ -24,7 +24,8 @@ $user_role = $_SESSION['role'];
 // Keep the configured connection with audit context.
 
 $kolibri_icon = 'assets/kolibri_icon.png';
-$attendanceState = attendance_status($conn, (int)$user_id)['state'];
+$attendanceSnapshot = attendance_status($conn, (int)$user_id);
+$attendanceState = $attendanceSnapshot['state'];
 $attendanceLabels = ['absent' => 'Nicht angemeldet', 'working' => 'Arbeitszeit läuft', 'paused' => 'Pause läuft'];
 ?>
 
@@ -301,7 +302,7 @@ $attendanceLabels = ['absent' => 'Nicht angemeldet', 'working' => 'Arbeitszeit l
     </style>
 </head>
 
-<body class="<?= $strictAppUi ? 'chrono-local-ui' : '' ?>" data-attendance-state="<?= h($attendanceState) ?>" data-attendance-user="<?= (int)$user_id ?>">
+<body class="<?= $strictAppUi ? 'chrono-local-ui' : '' ?>" data-attendance-state="<?= h($attendanceState) ?>" data-attendance-user="<?= (int)$user_id ?>" data-attendance-record="<?= $attendanceSnapshot['record_id'] === null ? '' : (int)$attendanceSnapshot['record_id'] ?>">
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="p-4">

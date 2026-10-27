@@ -50,10 +50,10 @@ final class AttendanceWriter
         require_once dirname(__DIR__, 3).'/lib/attendance.php';
     }
 
-    public function transition(int $user, string $source, string $eventId, string $action, bool $confirm = false, ?int $expectedRecord = null): array
+    public function transition(int $user, string $source, string $eventId, string $action, bool $confirm = false, ?int $expectedRecord = null, bool $requireExpectedRecord = false): array
     {
         return $this->executeLocked(
-            fn (): array => attendance_transition_locked($this->pdo, $user, $source, $eventId, $action, $confirm, $expectedRecord),
+            fn (): array => attendance_transition_locked($this->pdo, $user, $source, $eventId, $action, $confirm, $expectedRecord, null, $requireExpectedRecord),
             fn (Closure $transaction): mixed => $this->context->run($source.':user:'.$user, 'Stempelereignis '.$action.' / '.$eventId, $transaction),
         );
     }

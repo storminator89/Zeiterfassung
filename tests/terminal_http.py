@@ -70,7 +70,7 @@ check('web duplicate start denied',user.post('/save.php',{'action':'start','star
 check('legacy record edit blocked',user.post('/save.php',{'id':record,'update':'true','column':'pause','data':999})[0]==409)
 check('bulk delete blocked',user.req('/delete.php',json.dumps({'ids':[record]}).encode(),{'X-CSRF-Token':user.csrf})[0]==409)
 check('active session prevents deactivation',admin.post('/terminals.php',{'action':'toggle'})[0]==200 and query('SELECT enabled FROM terminal_settings')[0][0]==1)
-check('pause starts from web',user.post('/attendance.php',{'event_id':secrets.token_hex(16),'action':'pause_start'})[0]==200)
+check('pause starts from web',user.post('/attendance.php',{'event_id':secrets.token_hex(16),'action':'pause_start','expected_record':str(record)})[0]==200)
 g=identify(device);check('terminal sees web pause',g['state']=='paused')
 check('end during pause requires confirmation',event(device,g['grant'],'end')[0]==409)
 check('pause can end via same identity after confirmation prompt',event(device,g['grant'],'end',confirm=True)[0]==200)

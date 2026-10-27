@@ -57,12 +57,16 @@ final class LocalWebAttendanceController extends Controller
 
     public function transition(Request $request): JsonResponse
     {
-        // Match attendance.php's form-only fields and exact string comparison.
-        // Its direct endpoint does NOT pass expectedRecord (unlike other aliases).
-        return $this->json(fn () => $this->attendance->transition(
-            $request->post('event_id', ''), $request->post('action', ''),
-            $request->post('confirm_end_pause') === '1', null,
-        ));
+        return $this->json(function () use ($request): array {
+            require_once dirname(__DIR__, 4).'/lib/attendance.php';
+
+            // Same raw form parser and fixed Web-only requirement as attendance.php.
+            return $this->attendance->transition(
+                $request->post('event_id', ''), $request->post('action', ''),
+                $request->post('confirm_end_pause') === '1',
+                \attendance_expected_record($request->request->all()),
+            );
+        });
     }
 
     private function json(Closure $operation): JsonResponse

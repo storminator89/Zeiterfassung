@@ -107,11 +107,11 @@ try {
         && SourceSnapshot::capture($observer, $mapping) === $before);
 
     $phase = 'pause/resume/end and lost-response replay';
-    $ensure($service->transition('synthetic-web-pause-0001', 'pause_start')['state'] === 'paused');
+    $ensure($service->transition('synthetic-web-pause-0001', 'pause_start', false, $start['record_id'])['state'] === 'paused');
     $before = SourceSnapshot::capture($observer, $mapping);
-    $unconfirmed = $refuses(fn () => $service->transition('synthetic-web-unconfirmed-0001', 'end'), AttendanceError::class);
+    $unconfirmed = $refuses(fn () => $service->transition('synthetic-web-unconfirmed-0001', 'end', false, $start['record_id']), AttendanceError::class);
     $ensure($unconfirmed->status === 409 && SourceSnapshot::capture($observer, $mapping) === $before);
-    $ensure($service->transition('synthetic-web-resume-0001', 'pause_end')['state'] === 'working');
+    $ensure($service->transition('synthetic-web-resume-0001', 'pause_end', false, $start['record_id'])['state'] === 'working');
     $end = $service->transition('synthetic-web-end-000001', 'end', false, $start['record_id']);
     $ensure($end['state'] === 'absent');
     $before = SourceSnapshot::capture($observer, $mapping);
