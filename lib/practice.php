@@ -94,12 +94,26 @@ function planned_minutes(PDO $db,int $user,string $day): int {
 function planned_hours(PDO $db,int $user,string $start,string $end): float {
     $sum=0;for($d=practice_date($start);$d<=practice_date($end);$d=$d->modify('+1 day')) { $sum+=planned_minutes($db,$user,$d->format('Y-m-d')); }return $sum/60;
 }
-function practice_absence(PDO $db,int $user,string $start,string $end,string $kind): array {
+/** One deterministic date/type parser shared by both absence entry points. */
+function practice_absence_range(string $start,string $end,string $kind): array {
     $a=practice_date($start);$b=practice_date($end);
     if ($b<$a||$a->diff($b)->days>366||!in_array($kind,['Urlaub','Krankheit'],true)) { throw new AttendanceError('Zeitraum und Abwesenheitsart prüfen.',400); }
-    $db->exec('BEGIN IMMEDIATE');
-    try {
-        $GLOBALS['audit_reason']='Abwesenheit: '.$kind;$count=0;
+    return [$a,$b];
+}
+/**
+ * Internal absence core; caller owns one active IMMEDIATE transaction and its
+ * audit functions on this PDO. The runner is trusted composition, never input.
+ * Native fallback leaves the same audit_reason set and does not change actor.
+ */
+function practice_absence_apply_locked(PDO $db,int $user,string $start,string $end,string $kind,?Closure $auditRunner=null): array {
+    if (!$db->inTransaction()) { throw new LogicException('Absence caller must own an active IMMEDIATE transaction on this PDO.'); }
+    [$a,$b]=practice_absence_range($start,$end,$kind);
+    $auditRunner ??= static function (string $reason,Closure $operation): array {
+        $GLOBALS['audit_reason']=$reason;
+        return $operation();
+    };
+    return $auditRunner('Abwesenheit: '.$kind,static function () use ($db,$user,$a,$b,$kind): array {
+        $count=0;
         foreach(new DatePeriod($a,new DateInterval('P1D'),$b->modify('+1 day')) as $date) {
             $day=$date->format('Y-m-d');$minutes=planned_minutes($db,$user,$day);if (!$minutes) { continue; }
             // One credit per day. Overlaps, including overnight work, need explicit correction.
@@ -108,6 +122,16 @@ function practice_absence(PDO $db,int $user,string $start,string $end,string $ki
             // Compatibility projection: an explicitly labelled credit interval, never a punch.
             att_exec($db,'INSERT INTO zeiterfassung(startzeit,endzeit,pause,beschreibung,standort,user_id,absence_kind,planned_minutes) VALUES(?,?,0,?,?,?,?,?)',[attendance_local($from),attendance_local($from+$minutes*60),$kind,'',$user,$kind,$minutes]);$count++;
         }
-        $db->exec('COMMIT');return ['success'=>true,'message'=>"$count Abwesenheitstage nach Arbeitszeitmodell erfasst."];
+        return ['success'=>true,'message'=>"$count Abwesenheitstage nach Arbeitszeitmodell erfasst."];
+    });
+}
+function practice_absence(PDO $db,int $user,string $start,string $end,string $kind): array {
+    // Preserve native validation before BEGIN; the locked core independently
+    // repeats this same deterministic parser, not a second set of rules.
+    practice_absence_range($start,$end,$kind);
+    $db->exec('BEGIN IMMEDIATE');
+    try {
+        $response=practice_absence_apply_locked($db,$user,$start,$end,$kind);
+        $db->exec('COMMIT');return $response;
     } catch (Throwable $e) { $db->exec('ROLLBACK');throw $e; }
 }

@@ -79,6 +79,21 @@ final class AttendanceWriter
         });
     }
 
+    /** Trusted own-user identity only; no caller-supplied audit actor/reason. */
+    public function absence(int $user, string $start, string $end, string $kind): array
+    {
+        require_once dirname(__DIR__, 3).'/lib/practice.php';
+
+        // Match native date/type refusal before BEGIN. The core also validates
+        // under lock through this same parser; no caller can bypass the rules.
+        practice_absence_range($start, $end, $kind);
+
+        return $this->executeLocked(fn (): array => practice_absence_apply_locked(
+            $this->pdo, $user, $start, $end, $kind,
+            fn (string $reason, Closure $operation): mixed => $this->context->run('web:'.$user, $reason, $operation),
+        ));
+    }
+
     // The single existing #75 transaction/guard/failure lifecycle, shared only
     // internally. No public arbitrary-write API or second transaction manager.
     private function executeLocked(Closure $body, ?Closure $auditScope = null): mixed
