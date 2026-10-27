@@ -5,8 +5,11 @@ und kein Cutover.** `lib/corrections.php` kapselt den bisherigen Schreibblock au
 `adjustments.php` als `correction_apply_locked(PDO, user, role, command): void`.
 Die native Seite verwendet genau diesen Kern; ein späterer Laraveladapter kann
 ihn im vorhandenen [#75-Writer](sqlite-write-proof.md) wiederverwenden, statt
-Freigaberegeln oder SQL erneut zu implementieren. Heute gibt es dafür bewusst
-keine Containerbindung, Route, Controller-, Guard- oder Writeraktivierung.
+Freigaberegeln oder SQL erneut zu implementieren. Die Extraktion selbst liefert dafür
+keine Containerbindung oder Aktivierung. Der getrennte
+[inaktive lokale Web-Korrekturdienst](local-web-corrections-service.md) ergänzt
+nun Guard-/Auditadaption; weiterhin keine Route, Controller- oder
+produktive Writeraktivierung.
 
 ## Erhaltener Bestand
 
@@ -49,13 +52,13 @@ Auth-/Rollenauffrischung unter Lock** behauptet oder zusätzlich eingeführt.
 Die tatsächliche direkte Teamzuordnung und der Antrag werden wie bisher im
 selben Writer-Lock gelesen.
 
-Die vorhandenen Audit-UDFs und `$GLOBALS['audit_reason']` bleiben bewusst
-unverändert: `Korrekturantrag: {Grund}` bzw. `Korrektur #{id}: {Entscheidungsgrund}`.
-Der Akteur wird nicht aus dem Command übernommen. Ein späterer Laravelaufruf
-muss zuerst den zugelassenen frischen #74/#75-Writer, #76-Guard/Middleware und
-passenden scoped `AuditContext` bereitstellen; die Framework-UDFs lesen nicht
-automatisch diese nativen Globals. Dieser Schritt implementiert oder umgeht
-diese notwendige spätere Adapterarbeit nicht. Keine produktive PDO-Factory,
+Die native Fallbackspur der vorhandenen Audit-UDFs und
+`$GLOBALS['audit_reason']` bleibt bewusst unverändert: `Korrekturantrag: {Grund}` bzw. `Korrektur #{id}: {Entscheidungsgrund}`.
+Der Akteur wird nicht aus dem Command übernommen. Der getrennte inaktive
+Laraveladapter verbindet jetzt einen optionalen vertrauenswürdigen Runner mit
+dem scoped `AuditContext`; die Framework-UDFs lesen nicht automatisch native
+Globals. Ein späterer Runtimeaufruf muss weiterhin den zugelassenen frischen
+#74/#75-Writer und #76-Guard/Middleware bereitstellen. Keine produktive PDO-Factory,
 Schema-/Host-/Schlüsseländerung oder neue Berechtigung.
 
 ## Grobe Abnahme
@@ -80,4 +83,4 @@ Der statische Quellenvergleich bestätigte die mechanische Äquivalenz und das
 bytegleiche native Listen-/UIende; die Laravel-Routenliste bleibt nur `/up`.
 Dies ist **keine** reale Browser-/Middleware-/Laravelwriter-/API-/Terminalabnahme
 und kein Abschluss von #78. Abwesenheits-/Modellschreibdienste sowie die echte
-Korrekturanwendungsgrenze und deren spätere Cutoverfreigabe bleiben offen.
+Korrektur-Runtimeanbindung und deren spätere Cutoverfreigabe bleiben offen.
