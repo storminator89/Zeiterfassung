@@ -136,28 +136,21 @@ include 'header.php';
             </form>
 
             <?php if ($user_role === 'admin') : ?>
-                <div class="divider my-8">Datenbankoperationen</div>
+                <div class="divider my-8"><?= SETTINGS_BACKUP_OPERATIONS_TITLE ?></div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="card bg-base-200 shadow-md">
                         <div class="card-body">
-                            <h3 class="card-title"><i class="fas fa-upload mr-2"></i><?= SETTINGS_IMPORT_DATABASE ?></h3>
-                            <form method="post" enctype="multipart/form-data" action="import.php" class="space-y-4">
-<?= csrf_field() ?>
-                                <div class="form-control">
-                                    <label class="label" for="dbFile">
-                                        <span class="label-text"><?= SETTINGS_IMPORT_DATABASE ?></span>
-                                    </label>
-                                    <input type="file" id="dbFile" name="dbFile" class="file-input file-input-bordered w-full" accept=".sqlite">
-                                </div>
-                                <button type="submit" class="btn btn-primary w-full"><i class="fas fa-upload mr-2"></i><?= BUTTON_IMPORT ?></button>
-                            </form>
+                            <h3 class="card-title"><i class="fas fa-history mr-2"></i><?= SETTINGS_BACKUP_RESTORE_TITLE ?></h3>
+                            <p><?= SETTINGS_BACKUP_IMPORT_DISABLED ?></p>
+                            <p><?= SETTINGS_BACKUP_RESTORE_INSTRUCTIONS ?></p>
+                            <p><?= SETTINGS_BACKUP_RESTORE_GUIDE ?> <code>docs/TERMINAL.md</code></p>
                         </div>
                     </div>
                     <div class="card bg-base-200 shadow-md">
                         <div class="card-body">
-                            <h3 class="card-title"><i class="fas fa-download mr-2"></i><?= SETTINGS_DOWNLOAD_DATABASE ?></h3>
-                            <p class="mb-4">Laden Sie eine Kopie der aktuellen Datenbank herunter.</p>
-                            <a href="download.php" class="btn btn-primary w-full"><i class="fas fa-download mr-2"></i><?= DOWNLOAD_DATABASE ?></a>
+                            <h3 class="card-title"><i class="fas fa-download mr-2"></i><?= SETTINGS_BACKUP_SNAPSHOT_TITLE ?></h3>
+                            <p class="mb-4"><?= SETTINGS_BACKUP_SNAPSHOT_DESCRIPTION ?></p>
+                            <a href="download.php" class="btn btn-primary w-full"><i class="fas fa-download mr-2"></i><?= SETTINGS_BACKUP_SNAPSHOT_DOWNLOAD ?></a>
                         </div>
                     </div>
                 </div>

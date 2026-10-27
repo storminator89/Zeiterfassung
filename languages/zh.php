@@ -250,6 +250,14 @@ define('SETTINGS_IMPORT_DATABASE', '匯入資料庫');
 define('SETTINGS_DOWNLOAD_DATABASE', '下載資料庫');
 define('BUTTON_SAVE_REGULAR_WORKING_HOURS', '保存工時');
 define('SETTINGS_OVERTIME', '先前加班時數');
+define('SETTINGS_BACKUP_OPERATIONS_TITLE', '資料庫備份與還原');
+define('SETTINGS_BACKUP_RESTORE_TITLE', '離線還原');
+define('SETTINGS_BACKUP_IMPORT_DISABLED', '瀏覽器匯入功能已刻意停用：部分匯入可能損壞工時模型與變更歷史。');
+define('SETTINGS_BACKUP_RESTORE_INSTRUCTIONS', '必須先停止應用程式與裝置服務，再離線一併還原完整的私有資料目錄（資料庫、所有現有的 SQLite 附屬檔案及 .key 檔案）。資料庫結構與程式碼必須與備份版本相符。');
+define('SETTINGS_BACKUP_RESTORE_GUIDE', '此介面不提供自動完整還原。維運人員的離線操作步驟請參閱：');
+define('SETTINGS_BACKUP_SNAPSHOT_TITLE', '資料庫快照');
+define('SETTINGS_BACKUP_SNAPSHOT_DESCRIPTION', '整個 SQLite 資料庫的一致性快照。不包含外部 .key 檔案、應用程式碼及維運設定，因此此下載不是完整的系統備份。');
+define('SETTINGS_BACKUP_SNAPSHOT_DOWNLOAD', '下載資料庫快照');
 
 ?>
 
