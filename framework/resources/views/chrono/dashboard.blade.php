@@ -1,9 +1,10 @@
 @extends('chrono.layouts.app')
 
 @section('content')
-{{-- Existing TOAST CSS only. Executable Calendar asset admission remains separate;
-     this inactive view deliberately adds no external JavaScript/CDN compiler. --}}
-<link rel="stylesheet" href="https://uicdn.toast.com/calendar/latest/toastui-calendar.min.css" />
+{{-- Pinned official FullCalendar Standard assets, local to the public webroot. --}}
+<link rel="stylesheet" href="vendor/fullcalendar/7.1.3/skeleton.css" />
+<link rel="stylesheet" href="vendor/fullcalendar/7.1.3/themes/classic/theme.css" />
+<link rel="stylesheet" href="vendor/fullcalendar/7.1.3/themes/classic/palette.css" />
     <style>
         .chrono-dashboard .stat-value {
             font-size: 2rem;
@@ -15,9 +16,13 @@
             border-radius: 1rem;
         }
 
-        .toastui-calendar-milestone,
-        .toastui-calendar-task {
-            display: none !important;
+        .chrono-dashboard .chrono-calendar-event .event-time {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+
+        .chrono-dashboard .chrono-calendar-event .event-title {
+            font-style: italic;
         }
 
         .chrono-dashboard .stat,
@@ -233,116 +238,22 @@
                 <strong>{{ $page->copy->text('FORM_LOCATION') }}:</strong> <span id="eventLocation"></span>
             </p>
             <div class="modal-action">
-                <button class="btn" onclick="closeModal()">{{ $page->copy->text('BUTTON_CLOSE') }}</button>
+                <button class="btn" data-calendar-close>{{ $page->copy->text('BUTTON_CLOSE') }}</button>
             </div>
         </div>
     </div>
 
+    <script src="vendor/fullcalendar/7.1.3/all/global.js"></script>
+    <script src="vendor/fullcalendar/7.1.3/themes/classic/global.js"></script>
+    <script src="vendor/fullcalendar/7.1.3/locales/de/global.js"></script>
+    <script src="assets/js/chrono-calendar.js"></script>
     <script>
-        // Calendar initialization
-        const Calendar = tui.Calendar;
-        const calendar = new Calendar('#calendar', {
-            defaultView: 'week',
-            useCreationPopup: false,
-            useDetailPopup: false,
-            isReadOnly: true,
-            week: {
-                dayNames: {!! \Illuminate\Support\Js::from(array_map(fn ($key) => $page->copy->text($key), ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'])) !!},
-                startDayOfWeek: 1,
-                workweek: false,
-                hourStart: 6,
-                hourEnd: 22,
-                taskView: false,
-                eventView: ['allday', 'time']
-            },
-            month: {
-                visibleWeeksCount: 0 // Hide the month view completely
-            },
-            template: {
-                allday: function(event) {
-                    // Template strings are HTML; cached holiday names are text.
-                    const label = document.createElement('span');
-                    label.textContent = event.title;
-                    return label.outerHTML;
-                },
-                time: function(event) {
-                    const start = new Date(event.start);
-                    const end = new Date(event.end);
-                    const startTime = start.toLocaleTimeString('de-DE', {timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit'});
-                    const endTime = end.toLocaleTimeString('de-DE', {timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit'});
-                    const label = document.createElement('span');
-                    const time = document.createElement('span');
-                    time.className = 'event-time';
-                    time.textContent = startTime + ' - ' + endTime;
-                    const title = document.createElement('span');
-                    title.className = 'event-title';
-                    title.textContent = event.title;
-                    label.append(time, document.createTextNode(' '), title);
-                    return label.outerHTML;
-                }
-            },
-            taskView: false,
-            milestone: {
-                visible: false
-            },
-            timezone: {
-                zones: [{
-                    timezoneName: 'Europe/Berlin',
-                    displayLabel: 'Berlin',
-                    tooltip: 'Europe/Berlin'
-                }]
-            },
-            disableClick: true,
-            disableDblClick: true,
+        window.ChronoCalendar.mount(document.getElementById('calendar'), {
+            weekStart: {!! \Illuminate\Support\Js::from($dashboard->range['start']->format('Y-m-d')) !!},
+            language: {!! \Illuminate\Support\Js::from($page->copy->language) !!},
+            theme: {!! \Illuminate\Support\Js::from($page->theme) !!},
+            events: {!! \Illuminate\Support\Js::from($dashboard->calendarEvents()) !!},
         });
-
-        // Server-rendered navigation reloads both bookings and cached holidays
-        // for the same selected week, including an empty week and browser Back.
-        // TOAST anchors its week to browser-local calendar fields, not a Berlin instant.
-        calendar.setDate(new Date({!! \Illuminate\Support\Js::from($dashboard->range['start']->format('Y-m-d').'T12:00:00') !!}));
-        const events = {!! \Illuminate\Support\Js::from($dashboard->events) !!};
-        calendar.createEvents(events);
-
-        function formatDate(date) {
-            return date.toLocaleDateString('de-DE', {timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', year: 'numeric'});
-        }
-
-        function showModal() {
-            document.getElementById('scheduleModal').classList.add('modal-open');
-        }
-
-        function closeModal() {
-            document.getElementById('scheduleModal').classList.remove('modal-open');
-        }
-
-        calendar.on('clickEvent', function(event) {
-            let startDate = new Date(event.event.start);
-            let endDate = new Date(event.event.end);
-
-            const isAbsence = event.event.isAllday;
-            document.getElementById('startTime').textContent = formatDate(startDate) + (isAbsence ? '' : " " + startDate.toLocaleTimeString(undefined, {timeZone: 'Europe/Berlin'}));
-            document.getElementById('endTime').textContent = formatDate(endDate) + (isAbsence ? '' : " " + endDate.toLocaleTimeString(undefined, {timeZone: 'Europe/Berlin'}));
-            document.getElementById('eventDescription').textContent = event.event.title;
-            document.getElementById('eventLocation').textContent = event.event.location || '-';
-
-            showModal();
-        });
-
-        // Additional styles for calendar events
-        const style = document.createElement('style');
-        style.textContent = `
-        .toastui-calendar-event-time {
-            color: #ffffff !important;
-        }
-        .event-time {
-            font-weight: bold;
-            margin-right: 5px;
-        }
-        .event-title {
-            font-style: italic;
-        }
-    `;
-        document.head.appendChild(style);
     </script>
 
 @endsection
