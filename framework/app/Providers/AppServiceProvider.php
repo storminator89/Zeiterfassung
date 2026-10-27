@@ -3,9 +3,11 @@
 namespace App\Providers;
 
 use App\Chrono\LegacyLocalWebAttendance;
+use App\Chrono\LegacyLocalWebAbsences;
 use App\Chrono\LegacyLocalWebCorrections;
 use App\Chrono\LegacyLocalWebWorkModels;
 use App\Chrono\LocalWebAttendance;
+use App\Chrono\LocalWebAbsences;
 use App\Chrono\LocalWebCorrections;
 use App\Chrono\LocalWebWorkModels;
 use App\LegacyDatabase\AttendanceWriter;
@@ -42,6 +44,16 @@ class AppServiceProvider extends ServiceProvider
             },
         ));
         $this->app->scoped(LocalWebWorkModels::class, fn ($app) => new LegacyLocalWebWorkModels(
+            $app->make('auth'),
+            function () use ($app): AttendanceWriter {
+                if (! $app->bound(AttendanceWriter::class)) {
+                    throw new LogicException('No admitted operation-scoped attendance writer is configured.');
+                }
+
+                return $app->make(AttendanceWriter::class);
+            },
+        ));
+        $this->app->scoped(LocalWebAbsences::class, fn ($app) => new LegacyLocalWebAbsences(
             $app->make('auth'),
             function () use ($app): AttendanceWriter {
                 if (! $app->bound(AttendanceWriter::class)) {
