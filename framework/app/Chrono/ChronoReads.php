@@ -14,6 +14,9 @@ interface ChronoReads
     /** Native own Home statistics plus invalid/conflict diagnostics; unresolved totals are not numeric. */
     public function homeSummary(): array;
 
+    /** Own native dashboard metrics/diagnostics and cached selected-week inputs, in one snapshot. */
+    public function calendarWeek(mixed $calendarDate = null): array;
+
     /** Existing API own-only identity, including the current wire field types. */
     public function apiIdentity(): array;
 
