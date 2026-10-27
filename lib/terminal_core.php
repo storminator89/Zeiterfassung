@@ -60,7 +60,8 @@ function terminal_identify_core(PDO $db, array $device, array $input, Closure $c
     $token=bin2hex(random_bytes(32));
     att_exec($db,'DELETE FROM terminal_grants WHERE expires<?',[time()-86400]);
     att_exec($db,'INSERT INTO terminal_grants(token_hash,terminal_id,user_id,credential_version,expires) VALUES(?,?,?,?,?)',[hash('sha256',$token),$device['id'],$user['id'],terminal_version($c),time()+10]);
-    return ['success'=>true,'grant'=>$token,'expires_in'=>10,'name'=>$user['username']] + attendance_status($db,(int)$user['id']);
+    $status=attendance_status($db,(int)$user['id']);
+    return attendance_record_id_string(['success'=>true,'grant'=>$token,'expires_in'=>10,'name'=>$user['username']] + $status);
 }
 
 /**
@@ -84,7 +85,7 @@ function terminal_dispatch_locked(PDO $db, array $device, array $input, ?Closure
         if (!$g || ($g['used_event']===null && $g['expires']<time()) || ($g['used_event']!==null && $g['used_event']!==$id)) { throw new AttendanceError('Bitte erneut anmelden.',401); }
         $c=att_one($db,'SELECT * FROM employee_credentials WHERE user_id=?',[$g['user_id']]);
         if (!$c || !$c['enabled'] || (int)$c['site_id']!==(int)$current['site_id'] || !hash_equals($g['credential_version'],terminal_version($c))) { throw new AttendanceError('Berechtigung wurde geändert.',403); }
-        $r=attendance_transition_locked($db,(int)$g['user_id'],'terminal:'.$device['id'],$id,$input['action'],($input['confirm_end_pause']??false)===true,null,$auditRunner);
+        $r=attendance_transition_locked($db,(int)$g['user_id'],'terminal:'.$device['id'],$id,$input['action'],($input['confirm_end_pause']??false)===true,attendance_expected_record($input),$auditRunner);
         att_exec($db,'UPDATE terminal_grants SET used_event=? WHERE token_hash=?',[$id,$g['token_hash']]);
         att_exec($db,'UPDATE terminals SET last_seen=? WHERE id=?',[time(),$device['id']]);
     } else { throw new AttendanceError('Unbekannte Aktion.',400); }
