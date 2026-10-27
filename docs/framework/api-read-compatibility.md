@@ -60,6 +60,7 @@ nicht als öffentliche Controller ohne diese Middleware gebunden werden.
 |---|---|
 | `POST /api.php/login` | Inaktiver [Folgekandidat](candidate-api-actions.md): lokale Credentialprüfung/Tokenausgabe, ausschließlich mit explizit zugelassenem Loginbudget und Schlüssel. |
 | `POST /api.php/attendance` | Derselbe Folgekandidat auf dem einzigen #75-Writer, `api:{id}`, keine Aliase oder Aktivierung. |
+| `POST /api.php/workentry`, `/api.php/setendzeit` | [Inaktive bestehende Aliase](candidate-api-aliases.md) auf demselben APIwriter, keine neue Antwortform oder historischen Clientzeiten. |
 | `GET /api.php/users` | `{success:true,data:[{id,username,email,role}]}`, ausschließlich die aktuelle eigene Person, auch als Admin. |
 | `GET /api.php/timeentries` | Eigene rohe Projektionszeilen nach `startzeit DESC`, `{success,data,meta:{total,filtered,limit,offset}}`. Ein Query-`user_id` wird nie als Subjekt verwendet. |
 | `DELETE /api.php/timeentry/{numericId}` | Authentifizierte Sperre: 409 Text, Korrekturantrag statt historischer Löschung. Kein Writer. |
@@ -95,16 +96,14 @@ ungültige Form 400 verweigert; der Legacy-Pfad kann stattdessen einen PHP-TypeE
 ## Offene Gates, keine erfundene vollständige API
 
 Der **unregistrierte** Kandidat besitzt inzwischen den begrenzten
-[Login-/direkten Stempelfolgeschritt](candidate-api-actions.md). Die Alias-POST-
-Pfade `/workentry`, `/setendzeit` verweigert er weiterhin ausdrücklich mit 503 JSON
-`API endpoint not admitted.` statt einen implementierten Login/Writer zu
-behaupten. Das ist kein freigegebener neuer öffentlicher Vertrag. Ein
-vollständiger Routenschalter ist vor deren Umsetzung/Review ausdrücklich
+[Login-/direkten Stempelfolgeschritt](candidate-api-actions.md) und die
+[bestehenden Aliase](candidate-api-aliases.md). Ein vollständiger Routenschalter
+bleibt vor persistentem Shared-Budget-, Profil- und Gesamtvertragsreview
 verboten. Auch exotische, von Laravels `any` nicht erfasste HTTP-Methoden benötigen
 vor einer späteren Gesamtaktivierung eine separate 405-/CORS-Gesamtkante.
 
 Noch offen: zugelassenes persistentes gemeinsames Loginbudget; produktive
-JWT-Migration/Profilentscheidung; API-Legacyaliase auf demselben Writer;
+JWT-Migration/Profilentscheidung; vollständige Erweiterungsabnahme;
 reale vollständige Start/Pause/Ende/Retry-/`expectedRecord`-Abnahme; Swaggerkorrekturen #24/#25;
 repräsentative vollständige Firefox-/Edge-Abläufe und deren reale Verteilung.
 Kein Swaggerendpoint wird aus dem inaktiven Kandidaten als verfügbar behauptet.

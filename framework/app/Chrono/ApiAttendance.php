@@ -2,8 +2,8 @@
 
 namespace App\Chrono;
 
-/** Direct legacy /api.php/attendance only; no API aliases or transport parsing. */
+/** Existing bearer API channel; aliases share this boundary, not transport parsing. */
 interface ApiAttendance
 {
-    public function transition(string $eventId, string $action, bool $confirm = false): array;
+    public function transition(string $eventId, string $action, bool $confirm = false, ?int $expectedRecord = null): array;
 }

@@ -16,6 +16,7 @@ Stand: 27.10.2026. Dieses Paket bearbeitet [FW-01/#71](https://github.com/stormi
 - [Gepflegtes JWT-Paket im inaktiven API-Guard](maintained-api-tokens.md): offizielles Composerpaket, festes HS256-/Issuerprofil und aktueller Passwortwiderruf; Altissuer/-verifier, Schlüssel und produktive Routen bleiben unverändert.
 - [Erste inaktive FW-08-Bestandsansichten](existing-ui-views.md): vorhandenes Login-/Header-/Anwesenheitsmarkup als Blade mit expliziten Anzeigedaten; keine neue Oberfläche, Route oder Schreibaktivierung. Synthetischer Ganzseitenvergleich bestanden, aktive Abläufe weiterhin offen; #79 bleibt offen.
 - [Inaktiver API-Login-/Stempelkandidat](candidate-api-actions.md): stock Credentialprüfung, gepflegte Tokenausgabe und direkter APIpfad auf dem einzigen Writer; persistentes gemeinsames Loginbudget und Gesamtcutover bleiben gesperrt.
+- [Inaktive bestehende APIaliase](candidate-api-aliases.md): Start-/Endalias auf demselben APIwriter, aktuelle eigene record_id und unveränderte Fehler/Koerzierungen; keine optimistischen Clientzeiten oder neue Antwortform.
 
 ## Geprüfte Quellen, nicht verwechseln
 

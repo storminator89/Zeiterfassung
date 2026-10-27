@@ -16,12 +16,42 @@ final class LegacyApiAttendanceController
     public function __invoke(Request $request): Response
     {
         $input = json_decode($request->getContent(), true);
+        // Direct endpoint deliberately still omits expectedRecord (#36).
+        return $this->respond(fn () => $this->attendance->transition(
+            $input['event_id'] ?? '', $input['action'] ?? '', ($input['confirm_end_pause'] ?? false) === true,
+        ));
+    }
+
+    public function start(Request $request): Response
+    {
+        $input = json_decode($request->getContent(), true);
+        if (! is_array($input)) {
+            return LegacyApiResponse::text('Invalid request.', 400);
+        }
+        if (! empty($input['endzeit']) || ! empty($input['pause'])) {
+            return LegacyApiResponse::text('Use a correction request for historical entries.', 409);
+        }
+        // Ignore client times/location/description. Generated IDs keep the old
+        // retry weakness; only a supplied stable event ID is safely replayable.
+        return $this->respond(fn () => $this->attendance->transition(
+            $input['event_id'] ?? bin2hex(random_bytes(16)), 'start',
+        ));
+    }
+
+    public function end(Request $request): Response
+    {
+        $input = json_decode($request->getContent(), true);
+        // Preserve the alias's PHP int coercion/missing-id=0 and no array guard.
+        return $this->respond(fn () => $this->attendance->transition(
+            $input['event_id'] ?? bin2hex(random_bytes(16)), 'end',
+            ($input['confirm_end_pause'] ?? false) === true, (int) ($input['id'] ?? 0),
+        ));
+    }
+
+    private function respond(callable $operation): Response
+    {
         try {
-            // Keep the direct endpoint's PHP coercion and strict JSON true, not
-            // Laravel Boolean/422 normalization. Domain validation is only #75.
-            return LegacyApiResponse::json($this->attendance->transition(
-                $input['event_id'] ?? '', $input['action'] ?? '', ($input['confirm_end_pause'] ?? false) === true,
-            ));
+            return LegacyApiResponse::json($operation());
         } catch (AttendanceError $error) {
             return LegacyApiResponse::json(['success' => false, 'message' => $error->getMessage()], $error->status);
         } catch (Throwable) {
