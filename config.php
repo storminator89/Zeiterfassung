@@ -8,7 +8,8 @@ if (file_exists(__DIR__ . '/assets/db/timetracking.sqlite')) {
 
 
 try {
-    $conn = new PDO("sqlite:{$database}", null, null, [
+    // The driver subclass exposes non-deprecated SQLite audit-function registration on PHP 8.5.
+    $conn = PDO::connect("sqlite:{$database}", null, null, [
         \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_OBJ,
         \PDO::ATTR_ERRMODE           => \PDO::ERRMODE_EXCEPTION
     ]);
