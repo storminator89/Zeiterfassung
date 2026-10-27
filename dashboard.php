@@ -1,6 +1,6 @@
 <?php
 include 'header.php';
-require_once __DIR__ . '/lib/calendar_events.php';
+require_once __DIR__ . '/lib/calendar_range.php';
 
 // Fetch user's regular working hours and previous overtime
 $stmt = $conn->prepare('SELECT regelarbeitszeit, ueberstunden FROM users WHERE id = :user_id');
@@ -25,11 +25,14 @@ $overHoursThisWeek = $totalHoursThisWeek - $expectedHoursThisWeek;
 $overHoursThisMonth = $overHoursThisMonth ?? 0;
 $overHoursThisYear = $overHoursThisYear ?? 0;
 
-// Fetch events for the calendar
-$stmt = $conn->prepare("SELECT id, startzeit, endzeit, beschreibung, standort, absence_kind FROM zeiterfassung WHERE user_id = ? AND startzeit >= ? ORDER BY startzeit");
-$stmt->execute([$user_id, date('Y-m-d', strtotime('-1 month'))]);
+// Use the visible week, not a fixed cutoff relative to today. The reporting
+// records from header.php are already restricted to this signed-in user.
+$calendarRange = calendar_visible_week($_GET['calendar_date'] ?? null, new DateTimeImmutable('now', new DateTimeZone('Europe/Berlin')));
+$stmt = $conn->prepare('SELECT datum, name FROM Feiertage WHERE datum >= ? AND datum < ? ORDER BY datum');
+$stmt->execute([$calendarRange['start']->format('Y-m-d'), $calendarRange['end']->format('Y-m-d')]);
 $eventLabels = ['Arbeit' => WORK, 'Urlaub' => EVENT_VACATION, 'Krankheit' => EVENT_SICK, 'Feiertag' => EVENT_HOLIDAY];
-$events = array_map(fn($record) => calendar_record_event($record, $eventLabels), $stmt->fetchAll(PDO::FETCH_ASSOC));
+$events = calendar_range_events($records, $stmt->fetchAll(PDO::FETCH_ASSOC), $calendarRange, $eventLabels);
+$calendarLink = static fn(string $day): string => 'dashboard.php?calendar_date=' . rawurlencode($day) . '#calendar';
 
 // Completed booking days only, using local dates rather than SQLite UTC DATE().
 $monthDays=array_filter($reportDays,fn($day)=>$day>=$currentMonthStart&&$day<=$currentMonthEnd,ARRAY_FILTER_USE_KEY);
@@ -279,9 +282,9 @@ function calculateRemainingHours($workedHours, $expectedHours)
             <div class="card-body">
                 <h3 class="card-title text-2xl mb-6"><?= DASHBOARD_CALENDAR ?></h3>
                 <div class="flex justify-between mb-6">
-                    <button id="prevWeekBtn" class="btn btn-primary btn-sm"><i class="fas fa-arrow-left mr-2"></i><?= BUTTON_PREV_WEEK ?></button>
-                    <button id="todayBtn" class="btn btn-secondary btn-sm"><i class="fas fa-calendar-day mr-2"></i><?= BUTTON_TODAY ?></button>
-                    <button id="nextWeekBtn" class="btn btn-primary btn-sm"><?= BUTTON_NEXT_WEEK ?><i class="fas fa-arrow-right ml-2"></i></button>
+                    <a id="prevWeekBtn" href="<?= h($calendarLink($calendarRange['previous'])) ?>" class="btn btn-primary btn-sm"><i class="fas fa-arrow-left mr-2"></i><?= BUTTON_PREV_WEEK ?></a>
+                    <a id="todayBtn" href="<?= h($calendarLink($calendarRange['today'])) ?>" class="btn btn-secondary btn-sm"><i class="fas fa-calendar-day mr-2"></i><?= BUTTON_TODAY ?></a>
+                    <a id="nextWeekBtn" href="<?= h($calendarLink($calendarRange['next'])) ?>" class="btn btn-primary btn-sm"><?= BUTTON_NEXT_WEEK ?><i class="fas fa-arrow-right ml-2"></i></a>
                 </div>
                 <div id="calendar" class="calendar-container"></div>
             </div>
@@ -325,6 +328,12 @@ function calculateRemainingHours($workedHours, $expectedHours)
                 visibleWeeksCount: 0 // Hide the month view completely
             },
             template: {
+                allday: function(event) {
+                    // Template strings are HTML; cached holiday names are text.
+                    const label = document.createElement('span');
+                    label.textContent = event.title;
+                    return label.outerHTML;
+                },
                 time: function(event) {
                     const start = new Date(event.start);
                     const end = new Date(event.end);
@@ -337,31 +346,23 @@ function calculateRemainingHours($workedHours, $expectedHours)
             milestone: {
                 visible: false
             },
-            timezones: [{
-                timezoneOffset: 0,
-                displayLabel: 'GMT',
-                tooltip: 'GMT'
-            }],
+            timezone: {
+                zones: [{
+                    timezoneName: 'Europe/Berlin',
+                    displayLabel: 'Berlin',
+                    tooltip: 'Europe/Berlin'
+                }]
+            },
             disableClick: true,
             disableDblClick: true,
         });
 
-        // Populate calendar with events
+        // Server-rendered navigation reloads both bookings and cached holidays
+        // for the same selected week, including an empty week and browser Back.
+        // TOAST anchors its week to browser-local calendar fields, not a Berlin instant.
+        calendar.setDate(new Date(<?= json_encode($calendarRange['start']->format('Y-m-d') . 'T12:00:00') ?>));
         const events = <?= json_encode($events, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         calendar.createEvents(events);
-
-        // Calendar navigation
-        document.getElementById('prevWeekBtn').addEventListener('click', function() {
-            calendar.prev();
-        });
-
-        document.getElementById('nextWeekBtn').addEventListener('click', function() {
-            calendar.next();
-        });
-
-        document.getElementById('todayBtn').addEventListener('click', function() {
-            calendar.today();
-        });
 
         function formatDate(date) {
             let day = ("0" + date.getDate()).slice(-2);
