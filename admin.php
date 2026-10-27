@@ -58,22 +58,31 @@ $pauseSettings = $stmt->fetchAll(PDO::FETCH_OBJ);
 
 // Pauseneinstellungen aktualisieren
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_pause_settings'])) {
-    $hoursThresholds = $_POST['hours_threshold'];
-    $minimumPauses = $_POST['minimum_pause'];
+    require_once __DIR__ . '/lib/pause_settings.php';
+    $pauseTransactionStarted = false;
 
     try {
+        $rules = validatePauseSettings($_POST['hours_threshold'] ?? null, $_POST['minimum_pause'] ?? null);
+        $conn->beginTransaction();
+        $pauseTransactionStarted = true;
         $stmt = $conn->prepare("DELETE FROM pause_settings");
         $stmt->execute();
 
-        foreach ($hoursThresholds as $index => $hoursThreshold) {
-            $stmt = $conn->prepare("INSERT INTO pause_settings (hours_threshold, minimum_pause) VALUES (?, ?)");
-            $stmt->execute([$hoursThreshold, $minimumPauses[$index]]);
+        $stmt = $conn->prepare("INSERT INTO pause_settings (hours_threshold, minimum_pause) VALUES (?, ?)");
+        foreach ($rules as $rule) {
+            $stmt->execute($rule);
         }
+        $conn->commit();
 
         $successMessage = "Pauseneinstellungen erfolgreich aktualisiert.";
         header("Location: " . $_SERVER['PHP_SELF']);
         exit();
-    } catch (PDOException $e) {
+    } catch (InvalidArgumentException $e) {
+        $error = $e->getMessage();
+    } catch (Throwable $e) {
+        if ($pauseTransactionStarted && $conn->inTransaction()) {
+            $conn->rollBack();
+        }
         $error = "Fehler beim Aktualisieren der Pauseneinstellungen: " . $e->getMessage();
     }
 }
