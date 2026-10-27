@@ -30,6 +30,7 @@ try {
         '/vendor/fullcalendar/7.1.3/all/global.js' => [$root.'/framework/public/vendor/fullcalendar/7.1.3/all/global.js', 'text/javascript; charset=UTF-8'],
         '/vendor/fullcalendar/7.1.3/themes/classic/global.js' => [$root.'/framework/public/vendor/fullcalendar/7.1.3/themes/classic/global.js', 'text/javascript; charset=UTF-8'],
         '/vendor/fullcalendar/7.1.3/locales/de/global.js' => [$root.'/framework/public/vendor/fullcalendar/7.1.3/locales/de/global.js', 'text/javascript; charset=UTF-8'],
+        '/vendor/fullcalendar/7.1.3/locales/zh-tw/global.js' => [$root.'/framework/public/vendor/fullcalendar/7.1.3/locales/zh-tw/global.js', 'text/javascript; charset=UTF-8'],
         '/vendor/fullcalendar/7.1.3/skeleton.css' => [$root.'/framework/public/vendor/fullcalendar/7.1.3/skeleton.css', 'text/css; charset=UTF-8'],
         '/vendor/fullcalendar/7.1.3/themes/classic/theme.css' => [$root.'/framework/public/vendor/fullcalendar/7.1.3/themes/classic/theme.css', 'text/css; charset=UTF-8'],
         '/vendor/fullcalendar/7.1.3/themes/classic/palette.css' => [$root.'/framework/public/vendor/fullcalendar/7.1.3/themes/classic/palette.css', 'text/css; charset=UTF-8'],
@@ -48,7 +49,7 @@ try {
         }
         exit;
     }
-    if (! in_array($path, ['/', '/index.php', '/attendance.php', '/adjustments.php', '/get_time_records.php', '/save.php', '/work_models.php', '/history.php', '/supervisor.php', '/dashboard.php', '/export_csv.php', '/login.php', '/logout.php'], true)) {
+    if (! in_array($path, ['/', '/index.php', '/attendance.php', '/adjustments.php', '/get_time_records.php', '/save.php', '/work_models.php', '/history.php', '/supervisor.php', '/dashboard.php', '/export_csv.php', '/settings.php', '/login.php', '/logout.php'], true)) {
         http_response_code(410);
         header('Content-Type: text/plain; charset=UTF-8');
         echo 'Not available in the synthetic local preview.';

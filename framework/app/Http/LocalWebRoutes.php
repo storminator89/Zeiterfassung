@@ -9,6 +9,7 @@ use App\Http\Controllers\LocalWebDashboardController;
 use App\Http\Controllers\LocalWebHomeController;
 use App\Http\Controllers\LocalWebHistoryController;
 use App\Http\Controllers\LocalWebSessionController;
+use App\Http\Controllers\LocalWebSettingsController;
 use App\Http\Controllers\LocalWebSupervisorController;
 use App\Http\Controllers\LocalWebWorkModelsController;
 use App\Http\Middleware\LegacyFormCsrf;
@@ -37,7 +38,7 @@ use Symfony\Component\HttpFoundation\Response;
 /** Explicit opt-in registrar. Never called by bootstrap/providers/default routes. */
 final class LocalWebRoutes
 {
-    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false): void
+    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false): void
     {
         // No opt-in page may be registered against missing or replaced chart bytes.
         if ($includeSupervisor) {
@@ -55,11 +56,18 @@ final class LocalWebRoutes
 
         // Native attendance/correction/model fields were never globally trimmed/coerced.
         // " 1 " must not become either a confirmation or a cancellation flag.
-        $nativeFormPath = fn (Request $request): bool => in_array($request->path(), ['/', 'index.php', 'attendance.php', 'adjustments.php', 'get_time_records.php', 'save.php', 'work_models.php'], true);
+        $nativeFormPath = fn (Request $request): bool => in_array($request->path(), ['/', 'index.php', 'attendance.php', 'adjustments.php', 'get_time_records.php', 'save.php', 'work_models.php'], true)
+            || ($includeSettings && $request->path() === 'settings.php');
         TrimStrings::skipWhen($nativeFormPath);
         ConvertEmptyStringsToNull::skipWhen($nativeFormPath);
 
-        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor, $includeDashboard, $includeCsv) {
+        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings) {
+            if ($includeSettings && $request->path() === 'settings.php') {
+                return $request->isMethod('POST')
+                    ? new Response('Please sign in again.', 401, ['Content-Type' => 'text/plain; charset=UTF-8'])
+                    : new RedirectResponse('login.php');
+            }
+
             // These opt-in reports are full pages, never status/form transports.
             if (($includeHistory && $request->path() === 'history.php')
                 || ($includeSupervisor && $request->path() === 'supervisor.php')
@@ -82,10 +90,10 @@ final class LocalWebRoutes
         $router->group(['middleware' => [
             EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class,
             ShareErrorsFromSession::class, LegacyFormCsrf::class, SubstituteBindings::class,
-        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv): void {
+        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings): void {
             $router->get('login.php', [LocalWebSessionController::class, 'create'])->name('login');
             $router->post('login.php', [LocalWebSessionController::class, 'store'])->middleware('throttle:chrono-web-login');
-            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv): void {
+            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings): void {
                 foreach (['/', 'index.php', 'attendance.php'] as $path) {
                     $router->get($path, [LocalWebAttendanceController::class, 'page']);
                     $router->post($path, [LocalWebAttendanceController::class, 'transition']);
@@ -107,6 +115,10 @@ final class LocalWebRoutes
                 }
                 if ($includeCsv) {
                     $router->get('export_csv.php', [LocalWebCsvExportController::class, 'index'])->name('chrono.export-csv');
+                }
+                if ($includeSettings) {
+                    $router->get('settings.php', [LocalWebSettingsController::class, 'index']);
+                    $router->post('settings.php', [LocalWebSettingsController::class, 'store']);
                 }
                 $router->post('logout.php', [LocalWebSessionController::class, 'destroy']);
             });
@@ -150,7 +162,8 @@ final class LocalWebRoutes
             'vendor/fullcalendar/7.1.3/licenses/temporal-spec-LICENSE' => 'fea66f1be8df22727cd9750a85865270949107151b6414986c23ebe1929f66b3',
             'vendor/fullcalendar/7.1.3/licenses/temporal-utils-LICENSE' => 'c29814b29591d08896b63870ffdd652785f5b2e3f902860645f00871b596068d',
             'vendor/fullcalendar/7.1.3/locales/de/global.js' => '28e51fb439c94d51ae92d27162842a7666a03c96e5d74133b5e75b566bbbbe22',
-            'vendor/fullcalendar/7.1.3/provenance.json' => '817d4fbfc4f67cc79e09e2e20c59f7811e8bd82cfa2496ad998c011f6571228c',
+            'vendor/fullcalendar/7.1.3/locales/zh-tw/global.js' => 'eed62343d77e5e072ac26ab84713eeebdd376b4c711c3d18c5e131acc11f07fd',
+            'vendor/fullcalendar/7.1.3/provenance.json' => '3eb6b91f243a86b4be2ab7891d8b6be8ed7b5791a2307934dca7bf735b7ed36a',
             'vendor/fullcalendar/7.1.3/skeleton.css' => '08b1350f84d3ba970d1533a22f6f58c877d3175a68c9617d470f2421ece4a112',
             'vendor/fullcalendar/7.1.3/themes/classic/global.js' => 'a66eb65fc730f3b662f9c1ef30f8f741c42dcfe381d089f78dac322bf4dfbd5d',
             'vendor/fullcalendar/7.1.3/themes/classic/palette.css' => '5fa284fcef81b68bca7780f72fd110929284d0bf993b9ce5a8bffed54e3d38ee',

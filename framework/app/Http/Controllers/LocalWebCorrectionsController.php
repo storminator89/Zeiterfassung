@@ -57,7 +57,7 @@ final class LocalWebCorrectionsController extends Controller
         require_once dirname(__DIR__, 4).'/lib/attendance.php';
         $actor = $this->auth->guard('web')->user();
         $language = $request->query('lang', $request->session()->get('lang', 'de'));
-        $language = is_string($language) && in_array($language, ['de', 'en'], true) ? $language : 'de';
+        $language = is_string($language) && in_array($language, ['de', 'en', 'zh'], true) ? $language : 'de';
         $request->session()->put('lang', $language);
 
         // Existing own projection order, native 200-option display cap; no new query.

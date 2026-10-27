@@ -10,7 +10,7 @@ final readonly class SupervisorPage
     /** @param array $report Complete supervisor_report_projection() output, unescaped. */
     public function __construct(public array $report, public string $search, public string $language = 'de')
     {
-        if (! in_array($language, ['de', 'en'], true)) {
+        if (! in_array($language, ['de', 'en', 'zh'], true)) {
             throw new \InvalidArgumentException('Unsupported existing UI language.');
         }
         $this->labels = require dirname(__DIR__, 3).'/lang/'.$language.'/supervisor.php';

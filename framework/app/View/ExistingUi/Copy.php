@@ -9,7 +9,7 @@ final readonly class Copy
 
     public function __construct(public string $language = 'de')
     {
-        if (! in_array($language, ['de', 'en'], true)) {
+        if (! in_array($language, ['de', 'en', 'zh'], true)) {
             throw new \InvalidArgumentException('Unsupported existing UI language.');
         }
 

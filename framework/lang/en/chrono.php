@@ -92,4 +92,20 @@ return [
     'TUESDAY' => 'Tuesday',
     'WEDNESDAY' => 'Wednesday',
     'WORK' => 'Work',
+
+    // Exact existing native Settings copy; no administration/write capability.
+    'SETTINGS_TITLE' => 'Settings',
+    'SETTINGS_LANGUAGE' => 'Language Settings',
+    'SETTINGS_REGULAR_WORKING_HOURS' => 'Regular Working Hours',
+    'SETTINGS_OVERTIME' => 'Previous Overtime',
+    'NAV_DARK_MODE' => 'Dark Mode',
+    'BUTTON_SAVE_CHANGES' => 'Save Changes',
+    'SETTINGS_BACKUP_OPERATIONS_TITLE' => 'Backup and restore',
+    'SETTINGS_BACKUP_RESTORE_TITLE' => 'Offline restoration',
+    'SETTINGS_BACKUP_IMPORT_DISABLED' => 'Browser import is intentionally disabled: a partial import could damage work-time models and change history.',
+    'SETTINGS_BACKUP_RESTORE_INSTRUCTIONS' => 'The entire private data directory (database, any SQLite sidecars and .key files) must be restored together offline with the app and device services stopped. The schema and code must match the backup.',
+    'SETTINGS_BACKUP_RESTORE_GUIDE' => 'This interface does not provide automatic full restoration. Offline procedure for operators:',
+    'SETTINGS_BACKUP_SNAPSHOT_TITLE' => 'Database snapshot',
+    'SETTINGS_BACKUP_SNAPSHOT_DESCRIPTION' => 'Consistent snapshot of the entire SQLite database. External .key files, application code and operational configuration are not included. This download is therefore not a complete operational backup.',
+    'SETTINGS_BACKUP_SNAPSHOT_DOWNLOAD' => 'Download DB snapshot',
 ];

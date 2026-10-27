@@ -51,8 +51,12 @@ final class LocalWebSessionController extends Controller
 
     private function copy(Request $request): Copy
     {
-        $language = $request->query('lang', $request->session()->get('lang', substr($request->header('Accept-Language', 'de'), 0, 2)));
-        $language = is_string($language) && in_array($language, ['de', 'en'], true) ? $language : 'de';
+        // Definitions only. Keep explicit/stored Chinese, but preserve native
+        // de/en-only initial browser detection and its stored-choice precedence.
+        require_once dirname(__DIR__, 4).'/lib/language.php';
+        $language = \valid_language($request->query('lang', \initial_language(
+            $request->session()->get('lang'), $request->header('Accept-Language', 'de'),
+        )));
         $request->session()->put('lang', $language);
 
         return new Copy($language);

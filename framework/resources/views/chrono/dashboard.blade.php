@@ -246,11 +246,12 @@
     <script src="vendor/fullcalendar/7.1.3/all/global.js"></script>
     <script src="vendor/fullcalendar/7.1.3/themes/classic/global.js"></script>
     <script src="vendor/fullcalendar/7.1.3/locales/de/global.js"></script>
+    <script src="vendor/fullcalendar/7.1.3/locales/zh-tw/global.js"></script>
     <script src="assets/js/chrono-calendar.js"></script>
     <script>
         window.ChronoCalendar.mount(document.getElementById('calendar'), {
             weekStart: {!! \Illuminate\Support\Js::from($dashboard->range['start']->format('Y-m-d')) !!},
-            language: {!! \Illuminate\Support\Js::from($page->copy->language) !!},
+            language: {!! \Illuminate\Support\Js::from($page->copy->language === 'zh' ? 'zh-tw' : $page->copy->language) !!},
             theme: {!! \Illuminate\Support\Js::from($page->theme) !!},
             events: {!! \Illuminate\Support\Js::from($dashboard->calendarEvents()) !!},
         });
