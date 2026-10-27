@@ -134,17 +134,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['generate_token'])) {
     }
 }
 
-function getUidFromDn($dn)
-{
-    $parts = ldap_explode_dn($dn, 1);
-    foreach ($parts as $part) {
-        if (strpos($part, 'uid=') === 0) {
-            return substr($part, 4); // 'uid=' entfernen
-        }
-    }
-    return null;
-}
-
 // LDAP-Synchronisation
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
     if (!function_exists('ldap_connect')) { abort_request(503, 'PHP LDAP extension is required.'); }
@@ -184,7 +173,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
                 $attributes = ["uid", "cn", "sn", "mail", "ou", "manager"];
                 $result = ldap_search($ldapConn, $ldapBaseDN, $searchFilter, $attributes);
                 if ($result) {
+                    require_once __DIR__ . '/lib/ldap_manager_mapping.php';
                     $entries = ldap_get_entries($ldapConn, $result);
+                    $ldapIdentities = [];
+                    // Pass 1: Identitäten importieren, bestehende Beziehungen nicht anfassen.
                     foreach ($entries as $entry) {
                         if (isset($entry["uid"][0]) && isset($entry["mail"][0])) {
                             $username = $entry["uid"][0];
@@ -198,18 +190,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
                             $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username");
                             $stmt->bindParam(':username', $username);
                             $stmt->execute();
-                            $user = $stmt->fetch();
-
-                            // Vorgesetzten-ID aus der Datenbank abrufen
-                            $supervisorId = null;
-                            if ($managerDn) {
-                                $managerUsername = getUidFromDn($managerDn); // Extrahiere den Benutzernamen aus dem DN
-                                $stmt = $conn->prepare("SELECT id FROM users WHERE username = :username");
-                                $stmt->bindParam(':username', $managerUsername);
-                                $stmt->execute();
-                                $supervisor = $stmt->fetch(PDO::FETCH_OBJ);
-                                $supervisorId = $supervisor ? $supervisor->id : null;
-                            }
+                            $user = $stmt->fetch(PDO::FETCH_OBJ);
 
                             // Abteilungs-ID aus der Datenbank abrufen oder erstellen
                             $stmt = $conn->prepare("SELECT id FROM departments WHERE name = :name");
@@ -228,29 +209,66 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
 
                             if ($user) {
                                 // Benutzerinformationen aktualisieren
-                                $updateSql = "UPDATE users SET auth_source = 'ldap', email = :email, department_id = :department_id, supervisor_id = :supervisor_id WHERE username = :username";
+                                $updateSql = "UPDATE users SET auth_source = 'ldap', email = :email, department_id = :department_id WHERE username = :username";
                                 $stmt = $conn->prepare($updateSql);
                                 $stmt->bindParam(':email', $email);
                                 $stmt->bindParam(':department_id', $departmentId);
-                                $stmt->bindParam(':supervisor_id', $supervisorId);
                                 $stmt->bindParam(':username', $username);
                                 $stmt->execute();
+                                $ldapUserId = (int)$user->id;
                             } else {
                                 // Neuen Benutzer einfügen
-                                $insertSql = "INSERT INTO users (username, password, email, role, department_id, supervisor_id, auth_source) VALUES (:username, :password, :email, 'user', :department_id, :supervisor_id, 'ldap')";
+                                $insertSql = "INSERT INTO users (username, password, email, role, department_id, auth_source) VALUES (:username, :password, :email, 'user', :department_id, 'ldap')";
                                 $stmt = $conn->prepare($insertSql);
                                 $passwordHash = password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT);
                                 $stmt->bindParam(':username', $username);
                                 $stmt->bindParam(':password', $passwordHash);
                                 $stmt->bindParam(':email', $email);
                                 $stmt->bindParam(':department_id', $departmentId);
-                                $stmt->bindParam(':supervisor_id', $supervisorId);
                                 $stmt->execute();
+                                $ldapUserId = (int)$conn->lastInsertId();
                             }
+                            $ldapIdentities[] = ['id' => $ldapUserId, 'dn' => $entry['dn'] ?? '', 'manager_dn' => $managerDn];
                         }
                     }
 
-                    $successMessage = LDAP_SYNC_SUCCESS;
+                    // Pass 2: Alle importierten Identitäten sind jetzt vorhanden.
+                    $conn->beginTransaction();
+                    try {
+                        $currentSupervisors = [];
+                        foreach ($conn->query("SELECT id, supervisor_id FROM users")->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                            $currentSupervisors[(int)$row['id']] = $row['supervisor_id'] === null ? null : (int)$row['supervisor_id'];
+                        }
+                        $managerPlan = chrono_ldap_manager_plan($ldapIdentities, $currentSupervisors);
+                        $stmt = $conn->prepare("UPDATE users SET supervisor_id = ? WHERE id = ?");
+                        foreach ($managerPlan['assignments'] as $ldapUserId => $supervisorId) {
+                            if ($currentSupervisors[$ldapUserId] !== $supervisorId) {
+                                $stmt->execute([$supervisorId, $ldapUserId]);
+                            }
+                        }
+                        $conn->commit();
+                    } catch (Throwable $e) {
+                        if ($conn->inTransaction()) { $conn->rollBack(); }
+                        throw $e;
+                    }
+                    if ($managerPlan['conflicts']) {
+                        $reasons = [
+                            'ambiguous_identity' => 'mehrdeutige LDAP-Identität',
+                            'invalid_identity_dn' => 'ungültiger Identitäts-DN oder DN-Parser nicht verfügbar',
+                            'invalid_manager_dn' => 'ungültiger Manager-DN oder DN-Parser nicht verfügbar',
+                            'unknown_manager' => 'Manager nicht eindeutig im aktuellen Import vorhanden',
+                            'ambiguous_manager' => 'mehrdeutiger Manager',
+                            'self_manager' => 'Selbstzuordnung',
+                            'cyclic_manager' => 'zyklische Managerbeziehung',
+                        ];
+                        $details = [];
+                        foreach ($managerPlan['conflicts'] as $ldapUserId => $reason) {
+                            $details[] = 'Konto #' . $ldapUserId . ': ' . $reasons[$reason];
+                        }
+                        $error = 'LDAP-Identitäten synchronisiert. Managerkonflikte: Die bisherigen Beziehungen dieser Konten bleiben unverändert. ' . implode('; ', $details);
+                    } else {
+                        $successMessage = LDAP_SYNC_SUCCESS;
+                    }
                 }
                 ldap_unbind($ldapConn);
             } else {
