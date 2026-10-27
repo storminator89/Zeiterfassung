@@ -56,6 +56,12 @@ interface ChronoReads
     /** Read-only native device/site/contact display; fresh local Admin, no credential fields. */
     public function adminTerminalDevices(): array;
 
+    /** Native search/order/ten-row paging, current local Admin, UI columns only. */
+    public function adminUsersPage(string $search = '', int $page = 1): array;
+
+    /** Fresh original user-modal fields only; no credentials/tokens/source projection. */
+    public function adminUserDetail(mixed $identifier): array;
+
     /** Native work-model target options, only after a fresh current-admin check. */
     public function workModelTargets(): array;
 }

@@ -15,11 +15,12 @@ use Illuminate\Contracts\Auth\Factory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Http\JsonResponse;
 use InvalidArgumentException;
 use DomainException;
 use Throwable;
 
-/** Original Admin pause/department cards; never include or dispatch native admin.php. */
+/** Original Admin cards and read-only users; never include/dispatch native admin.php. */
 final class LocalWebAdminPauseSettingsController extends Controller
 {
     public function __construct(
@@ -33,6 +34,33 @@ final class LocalWebAdminPauseSettingsController extends Controller
     public function index(Request $request): Response
     {
         return $this->page($request);
+    }
+
+    /** Existing get_user.php GET, reduced to fields actually used by the original UI. */
+    public function user(Request $request): JsonResponse|Response
+    {
+        $headers = ['Cache-Control' => 'no-store', 'X-Content-Type-Options' => 'nosniff'];
+        try {
+            $query = $request->query->all();
+            $user = $this->reads->adminUserDetail($query['id'] ?? null);
+            if ($user === []) {
+                return new Response('Benutzer nicht gefunden', 404,
+                    ['Content-Type' => 'text/plain; charset=UTF-8', ...$headers]);
+            }
+
+            return new JsonResponse($user, 200, $headers);
+        } catch (AuthenticationException $error) {
+            throw $error;
+        } catch (AuthorizationException) {
+            return new Response('Nicht autorisiert', 403,
+                ['Content-Type' => 'text/plain; charset=UTF-8', ...$headers]);
+        } catch (InvalidArgumentException $error) {
+            return new Response($error->getMessage(), 400,
+                ['Content-Type' => 'text/plain; charset=UTF-8', ...$headers]);
+        } catch (Throwable) {
+            return new Response('Datenbankfehler: Benutzerdetails nicht verfügbar.', 500,
+                ['Content-Type' => 'text/plain; charset=UTF-8', ...$headers]);
+        }
     }
 
     // Only the separately registered POST route can reach this mutation.
@@ -101,6 +129,15 @@ final class LocalWebAdminPauseSettingsController extends Controller
         // before returning even a read-only configuration row.
         $rules = $this->reads->adminPauseSettings();
         $departments = $this->reads->adminDepartments();
+        $query = $request->query->all();
+        $search = $query['search'] ?? '';
+        $requestedPage = $query['page'] ?? 1;
+        if (! is_string($search) || ! is_scalar($requestedPage)) {
+            return new Response('Ungültige Benutzersuche oder Seite.', 400,
+                ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
+        }
+        // Native scalar cast, including zero/negative/out-of-range pages; no new clamping.
+        $users = $this->reads->adminUsersPage($search, (int) $requestedPage);
         $actor = $this->auth->guard('web')->user();
         require_once dirname(__DIR__, 4).'/lib/language.php';
         $language = \valid_language($request->query('lang', $request->session()->get('lang', 'de')));
@@ -115,8 +152,8 @@ final class LocalWebAdminPauseSettingsController extends Controller
             ),
             'adminPauseSettings' => new AdminPauseSettingsPage(
                 $rules, $errorKey === null ? $error : $copy->text($errorKey),
-                $this->interactions->adminPauseSettings, $departments,
+                $this->interactions->adminPauseSettings, $departments, $users,
             ),
-        ]);
+        ], 200, ['Cache-Control' => 'no-store']);
     }
 }
