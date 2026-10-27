@@ -42,6 +42,16 @@ final class LegacyChronoReads implements ChronoReads
         );
     }
 
+    public function homeSummary(): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
+            $userData = $this->rows($pdo, 'SELECT regelarbeitszeit,ueberstunden FROM users WHERE id=?', [$actor->getKey()])[0];
+            $records = $this->rows($pdo, 'SELECT * FROM zeiterfassung WHERE user_id=? ORDER BY startzeit DESC', [$actor->getKey()]);
+
+            return home_summary($pdo, (int) $actor->getKey(), report_days($records), (float) ($userData['ueberstunden'] ?? 0.0), new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')));
+        });
+    }
+
     public function apiIdentity(): array
     {
         return $this->snapshot(fn (PDO $pdo, LegacyUser $actor): array => [
@@ -179,6 +189,7 @@ final class LegacyChronoReads implements ChronoReads
         require_once dirname(__DIR__, 3).'/lib/attendance.php';
         require_once dirname(__DIR__, 3).'/lib/practice.php';
         require_once dirname(__DIR__, 3).'/lib/reporting.php';
+        require_once dirname(__DIR__, 3).'/lib/home_projection.php';
 
         return $connection->transaction(function () use ($connection, $pdo, $authenticated, $read, $requireKnownRole): array {
             if ($connection->getRawPdo() !== $pdo) {

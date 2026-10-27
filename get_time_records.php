@@ -33,7 +33,7 @@ $stmt = $conn->prepare("
 ");
 $stmt->execute([$user_id, $itemsPerPage, $offset]);
 $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
-foreach ($records as &$entry) { $entry['weekNumber']=substr(report_week($entry),5);$entry['workDate']=report_day($entry); } unset($entry);
+$recordGroups = report_time_record_groups($records);
 
 // Group records by date for summary calculation
 $currentDate = null;
@@ -72,58 +72,13 @@ $currentDate = null;
 $dailyRecords = [];
 $dailyTotals = [];
 
-// Group records by date first
-foreach ($records as $record) {
-    $workDate = $record['workDate'];
-    if (!isset($dailyRecords[$workDate])) {
-        $dailyRecords[$workDate] = [];
-        $dailyTotals[$workDate] = [
-            'totalMinutes' => 0,
-            'totalPause' => 0,
-            'entries' => 0
-        ];
-    }
-
-    $dailyRecords[$workDate][] = $record;
-
-    if ($record['endzeit']) {
-        $start = new DateTime($record['startzeit']);
-        $end = new DateTime($record['endzeit']);
-        $interval = $start->diff($end);
-        $minutes = (($end->getTimestamp() - $start->getTimestamp()) / 60);
-        $dailyTotals[$workDate]['totalMinutes'] += $minutes;
-        $dailyTotals[$workDate]['totalPause'] += intval($record['pause']);
-        $dailyTotals[$workDate]['entries']++;
-    }
-}
-
-// Update the summary row calculation
-foreach ($dailyRecords as $workDate => $dayRecords) {
-    $totals = $dailyTotals[$workDate];
-    $totalMinutes = 0;
-    $totalPause = 0;
-
-    // Calculate total working time for the day
-    foreach ($dayRecords as $record) {
-        if ($record['endzeit']) {
-            $start = new DateTime($record['startzeit']);
-            $end = new DateTime($record['endzeit']);
-            $diff = $end->getTimestamp() - $start->getTimestamp();
-            $totalMinutes += floor($diff / 60);
-            $totalPause += intval($record['pause']);
-        }
-    }
-
-    // Subtract total pause from total minutes
-    $totalMinutes -= $totalPause;
-
-    // Format total time
-    $totalHours = floor($totalMinutes / 60);
-    $remainingMinutes = $totalMinutes % 60;
-    $formattedTotal = sprintf("%02d:%02d", $totalHours, $remainingMinutes);
-
-    $dateObj = new DateTime($workDate);
-    $formattedDate = $dateObj->format('d.m.Y');
+// Group and summarize only the already-paginated raw rows, using shared preparation.
+foreach ($recordGroups as $group) {
+    $workDate = $group['work_date'];
+    $dayRecords = $group['records'];
+    $formattedTotal = $group['total_duration'];
+    $totalPause = $group['total_pause'];
+    $formattedDate = $group['formatted_date'];
 
     // Update the summary row output with entry count
     echo '<tr class="summary-row hover:bg-base-200/50 cursor-pointer transition-colors" data-date="' . $workDate . '">
@@ -237,10 +192,9 @@ function outputTableHeaders() {
 }
 
 function outputRecordRow($record) {
-    // Absence credits are planned minutes, not a fabricated clock-in/out interval.
-    $credit = !empty($record['absence_kind']);
-    $startLabel = $credit ? substr($record['startzeit'], 0, 10) . ' · Gutschrift' : $record['startzeit'];
-    $endLabel = $credit ? 'Keine Stempelzeit' : ($record['endzeit'] ?? 'Läuft');
-    $durationLabel = $credit ? (int)$record['planned_minutes'] . ' Sollminuten' : calculateDuration($record['startzeit'], $record['endzeit'], $record['pause']);
+    $detail = report_time_record_detail($record);
+    $startLabel = $detail['start_label'];
+    $endLabel = $detail['end_label'];
+    $durationLabel = $detail['duration_label'];
     echo '<tr><td>'.h($record['weekNumber']).'</td><td>'.h($startLabel).'</td><td>'.h($endLabel).'</td><td>'.h($durationLabel).'</td><td>'.h($record['pause']).'</td><td>'.h($record['standort']).'</td><td>'.h($record['beschreibung']).'</td><td><a class="link link-primary" href="adjustments.php?record_id='.(int)$record['id'].'">Korrektur / Storno</a></td></tr>';
 }
