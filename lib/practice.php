@@ -61,6 +61,28 @@ function practice_date(string $value): DateTimeImmutable {
     if (!$date || $date->format('Y-m-d')!==$value) { throw new AttendanceError('Ungültiges Datum.',400); }
     return $date;
 }
+/**
+ * Internal append-only model core; trusted server identity/role only. The caller
+ * owns one active IMMEDIATE transaction on this PDO and its audit functions.
+ * No HTTP/session/connection/transaction lifecycle or client audit identity.
+ * The optional runner is trusted composition, never a command field. Native
+ * fallback leaves audit_reason set at the original point, exactly as before.
+ */
+function practice_work_model_apply_locked(PDO $db,int $user,string $role,array $command,?Closure $auditRunner=null): void {
+    if (!$db->inTransaction()) { throw new LogicException('Work-model caller must own an active IMMEDIATE transaction on this PDO.'); }
+    if ($role!=='admin') { throw new AttendanceError('Nur die Verwaltung darf Arbeitszeitmodelle festlegen.',403); }
+    $target=(int)($command['user_id']??0);$day=(string)($command['valid_from']??'');practice_date($day);
+    $reason=trim((string)($command['reason']??''));$minutes=[];
+    foreach(range(1,7) as $n) { $v=filter_var($command['day'.$n]??'',FILTER_VALIDATE_INT);if($v===false||$v<0||$v>1440) { throw new AttendanceError('Sollminuten müssen zwischen 0 und 1440 liegen.',400); }$minutes[]=$v; }
+    if (!att_one($db,'SELECT id FROM users WHERE id=?',[$target])||strlen($reason)<5||strlen($reason)>1000) { throw new AttendanceError('Person und Begründung prüfen.',400); }
+    $auditRunner ??= static function (string $reason,Closure $operation): void {
+        $GLOBALS['audit_reason']=$reason;
+        $operation();
+    };
+    $auditRunner('Arbeitszeitmodell: '.$reason,static function () use ($db,$target,$day,$minutes,$reason,$user): void {
+        att_exec($db,'INSERT INTO work_models(user_id,valid_from,minutes_json,reason,created_by,created_at) VALUES(?,?,?,?,?,?)',[$target,$day,json_encode($minutes),$reason,$user,time()]);
+    });
+}
 function planned_minutes(PDO $db,int $user,string $day): int {
     $date=practice_date($day);
     if (att_one($db,'SELECT id FROM Feiertage WHERE datum=?',[$day])) { return 0; }

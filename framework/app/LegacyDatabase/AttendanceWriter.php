@@ -67,6 +67,18 @@ final class AttendanceWriter
         });
     }
 
+    /** Trusted admin identity/role only; command user_id is the model target. */
+    public function workModel(int $user, string $role, array $command): void
+    {
+        require_once dirname(__DIR__, 3).'/lib/practice.php';
+
+        $this->executeLocked(function () use ($user, $role, $command): void {
+            practice_work_model_apply_locked($this->pdo, $user, $role, $command,
+                fn (string $reason, Closure $operation): mixed => $this->context->run('web:'.$user, $reason, $operation),
+            );
+        });
+    }
+
     // The single existing #75 transaction/guard/failure lifecycle, shared only
     // internally. No public arbitrary-write API or second transaction manager.
     private function executeLocked(Closure $body, ?Closure $auditScope = null): mixed
