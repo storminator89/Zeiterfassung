@@ -1,5 +1,6 @@
 <?php
 include 'header.php';
+require_once __DIR__ . '/lib/calendar_events.php';
 
 // Fetch user's regular working hours and previous overtime
 $stmt = $conn->prepare('SELECT regelarbeitszeit, ueberstunden FROM users WHERE id = :user_id');
@@ -25,9 +26,10 @@ $overHoursThisMonth = $overHoursThisMonth ?? 0;
 $overHoursThisYear = $overHoursThisYear ?? 0;
 
 // Fetch events for the calendar
-$stmt = $conn->prepare("SELECT id, startzeit as start, endzeit as end, beschreibung, standort FROM zeiterfassung WHERE user_id = ? AND startzeit >= ? ORDER BY startzeit");
+$stmt = $conn->prepare("SELECT id, startzeit, endzeit, beschreibung, standort, absence_kind FROM zeiterfassung WHERE user_id = ? AND startzeit >= ? ORDER BY startzeit");
 $stmt->execute([$user_id, date('Y-m-d', strtotime('-1 month'))]);
-$events = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$eventLabels = ['Arbeit' => WORK, 'Urlaub' => EVENT_VACATION, 'Krankheit' => EVENT_SICK, 'Feiertag' => EVENT_HOLIDAY];
+$events = array_map(fn($record) => calendar_record_event($record, $eventLabels), $stmt->fetchAll(PDO::FETCH_ASSOC));
 
 // Completed booking days only, using local dates rather than SQLite UTC DATE().
 $monthDays=array_filter($reportDays,fn($day)=>$day>=$currentMonthStart&&$day<=$currentMonthEnd,ARRAY_FILTER_USE_KEY);
@@ -97,7 +99,6 @@ function calculateRemainingHours($workedHours, $expectedHours)
         }
 
         .toastui-calendar-milestone,
-        .toastui-calendar-allday,
         .toastui-calendar-task {
             display: none !important;
         }
@@ -314,11 +315,11 @@ function calculateRemainingHours($workedHours, $expectedHours)
             week: {
                 dayNames: ['<?= SUNDAY ?>', '<?= MONDAY ?>', '<?= TUESDAY ?>', '<?= WEDNESDAY ?>', '<?= THURSDAY ?>', '<?= FRIDAY ?>', '<?= SATURDAY ?>'],
                 startDayOfWeek: 1,
-                workweek: true,
+                workweek: false,
                 hourStart: 6,
                 hourEnd: 22,
                 taskView: false,
-                eventView: ['time']
+                eventView: ['allday', 'time']
             },
             month: {
                 visibleWeeksCount: 0 // Hide the month view completely
@@ -333,7 +334,6 @@ function calculateRemainingHours($workedHours, $expectedHours)
                 }
             },
             taskView: false,
-            scheduleView: ['time'],
             milestone: {
                 visible: false
             },
@@ -348,19 +348,7 @@ function calculateRemainingHours($workedHours, $expectedHours)
 
         // Populate calendar with events
         const events = <?= json_encode($events, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-        calendar.createEvents(events.map(event => ({
-            id: event.id,
-            calendarId: '1',
-            title: event.beschreibung ? event.beschreibung : 'Arbeit',
-            start: event.start,
-            end: event.end,
-            category: 'time',
-            isAllDay: false,
-            color: '#ffffff',
-            backgroundColor: '#4a5568',
-            borderColor: '#2d3748',
-            location: event.standort
-        })));
+        calendar.createEvents(events);
 
         // Calendar navigation
         document.getElementById('prevWeekBtn').addEventListener('click', function() {
@@ -394,8 +382,9 @@ function calculateRemainingHours($workedHours, $expectedHours)
             let startDate = new Date(event.event.start);
             let endDate = new Date(event.event.end);
 
-            document.getElementById('startTime').textContent = formatDate(startDate) + " " + startDate.toLocaleTimeString();
-            document.getElementById('endTime').textContent = formatDate(endDate) + " " + endDate.toLocaleTimeString();
+            const isAbsence = event.event.isAllday;
+            document.getElementById('startTime').textContent = formatDate(startDate) + (isAbsence ? '' : " " + startDate.toLocaleTimeString());
+            document.getElementById('endTime').textContent = formatDate(endDate) + (isAbsence ? '' : " " + endDate.toLocaleTimeString());
             document.getElementById('eventDescription').textContent = event.event.title;
             document.getElementById('eventLocation').textContent = event.event.location || '-';
 
