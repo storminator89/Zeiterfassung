@@ -10,6 +10,7 @@ Stand: 27.10.2026. Dieses Paket bearbeitet [FW-01/#71](https://github.com/stormi
 - [Expliziter bekannter V2-Offlinepfad](offline-v2-adoption.md): read-only Datei-Vorprüfung, verifiziertes separates Backup, additive Laraveladoption und ausschließlich eigene Ledger-Rücknahme. Ausführung hier nur auf synthetischen gestoppten Kopien; keine Runtimeumschaltung.
 - [FW-04 SQLite-/Audit-/Idempotenz-PoC](sqlite-write-proof.md): opt-in Ein-PDO-Domänenadapter mit Standard-Laravel-IMMEDIATE-Transaktion und grobem persistiertem synthetischem Konkurrenz-/Rollbackbeweis; keine Route oder produktive Aktivierung.
 - [Inaktiver FW-05-Authkern](local-auth-foundation.md): Laravel-Sessionguard/Provider, aktuelle Rechte, CSRF-/Drosseladapter und eine grobe speicherinterne Abnahme. Keine Route, produktive Verbindung oder UI-/Loginumschaltung; #76 bleibt offen.
+- [Inaktive FW-07-Lesedienste](domain-read-adapters.md): ein Containervertrag für eigene Anwesenheit, Berichtsprojektion, Korrektur-/Auditlisten und historische Modelle; bestehende Fachfunktionen/Rechte unverändert. Keine Schreibmigration oder Route; #78 bleibt offen.
 
 ## Geprüfte Quellen, nicht verwechseln
 
