@@ -2,6 +2,7 @@
 include 'config.php';
 include 'functions.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/lib/work_location.php';
 
 if (!isset($_SESSION['user_id'])) {
     die("Nicht angemeldet");
@@ -38,23 +39,7 @@ if ($latestRecord):
             </div>
             <div>
                 <p class="font-semibold"><?= TABLE_HEADER_LOCATION ?>:</p>
-                <p>
-                <?php
-                switch ($latestRecord['standort']) {
-                    case LOCATION_OFFICE_VALUE:
-                        echo LOCATION_OFFICE;
-                        break;
-                    case LOCATION_HOME_OFFICE_VALUE:
-                        echo LOCATION_HOME_OFFICE;
-                        break;
-                    case LOCATION_BUSINESS_TRIP_VALUE:
-                        echo LOCATION_BUSINESS_TRIP;
-                        break;
-                    default:
-                        echo 'Unbekannt';
-                }
-                ?>
-                </p>
+                <p><?= h(work_location_label($latestRecord['standort'])) ?></p>
             </div>
             <div class="col-span-2">
                 <p class="font-semibold"><?= TABLE_HEADER_COMMENT ?>:</p>
