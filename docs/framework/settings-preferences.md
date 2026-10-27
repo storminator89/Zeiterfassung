@@ -8,9 +8,16 @@ Keine neue Oberfläche, Datenbankspalte, Paketinstallation oder generische
 Preferences-/Auth-/Writer-Infrastruktur. **Keine Startseitenpräferenz existiert
 im Bestand; eine solche wird nicht erfunden.**
 
+Aktuelle eng begrenzte Erweiterung: Der eigene Admin-Überstunden-Übertrag ist
+jetzt über einen festen, auditierten Writer angeschlossen. Der bisherige
+Vortrags-Hold wird nur dafür ersetzt; der vollständige Vertrag einschließlich
+Laravel-Validierung und nativer Sprach-zuerst-Fehlergrenze steht in
+[`settings-carry-in.md`](settings-carry-in.md). Keine allgemeine Kontenverwaltung.
+
 ## Tatsächliche Bestandsgrenze
 
-`settings.php:31–55` speichert lediglich `lang` und `theme_mode` in der Session.
+Die gewöhnlichen Präferenzen in `settings.php:31–55` sind `lang` und `theme_mode`
+in der Session; der eigene Admin-Übertrag ist eine separate Datenbankschreibwirkung.
 `valid_language()` aus `lib/language.php` akzeptiert exakt `de`, `en`, `zh` und
 fällt andernfalls auf `de` zurück. Der Themevalidator akzeptiert strikt
 `light`, `dark`, `system`, sonst `light`. Fehlende/null Felder werden gemäß
@@ -20,7 +27,8 @@ Laravel-Trimming in eine gültige Auswahl verwandelt.
 Das Formular enthält zusätzlich ein bereits deaktiviertes Regelstundenfeld,
 ein eigenes Admin-Vortragsfeld mit einer **anderen Kontoschreibwirkung** sowie
 Admin-Snapshot-/Offline-Restorekarten. Diese sind keine gewöhnlichen
-Präferenzen und werden hier nicht als angebunden ausgegeben.
+Präferenzen. Nur der eigene Admin-Übertrag ist inzwischen separat angebunden;
+Snapshots/Restoreaktionen bleiben ausdrücklich deaktiviert.
 
 ## Lesen, Speichern und ehrliche Verwaltungs-Holds
 
@@ -32,24 +40,30 @@ kein vollständiges Modell/Passwort/Token gelangt in die Ansicht. Es gibt keinen
 neuen Personenwähler, Readvertrag, Query oder Modelspeicheraufruf. Der vorhandene
 eigene `attendanceStatus()` versorgt ausschließlich das Standard-Chrome.
 
-- POST schreibt nur die zwei gewöhnlichen Werte in die bestehende Laravel-
-  Session, mit den vorhandenen Validatoren. Kein Account-/DB-/Writer-/Audit-
-  oder Schlüsselzugriff, keine Session-ID-/CSRF-Regeneration und kein Logout.
+- Ein POST ohne Übertragsfeld schreibt nur die zwei gewöhnlichen Werte in die
+  bestehende Session, mit den vorhandenen Validatoren. Der eng begrenzte eigene
+  Admin-Übertrag verwendet dagegen den festen Writer samt bestehendem Audittrigger.
+  Keine Credentials/Rollen/anderen Personen, Session-ID-/CSRF-Regeneration oder Logout.
 - Wie der native Header wird ein ausdrücklich vorhandenes Query-`lang` nach
   der Formbearbeitung angewendet. Sonst bleibt die gespeicherte Auswahl erhalten.
 - Das native Same-page-POST samt Erfolgstext/-dialog bleibt bestehen, kein neuer
   Redirect-/Flashworkflow. Reload darf dieselben idempotenten Sessionwerte erneut
   speichern; es ist keine Stempelbuchung und benötigt keine neue Event-ID.
-- Das Admin-Vortragsfeld bleibt an derselben Stelle mit derselben Beschriftung
-  und Klassen sichtbar, aber `disabled readonly`, mit erklärendem Text. **Jeder
-  eingereichte `ueberstunden`-Schlüssel** wird vor sämtlichen Form- **und Query-**
-  Präferenzschreibungen mit sichtbarer 409-Fehlermeldung verweigert. Kein
-  Teilspeichern und kein falsches Erfolgssignal für die Kontofunktion.
+- Das eigene Admin-Vortragsfeld bleibt an derselben Stelle mit derselben
+  Beschriftung und Klassen. Laravel akzeptiert gültige endliche vorzeichenbehaftete
+  Zahlen ohne fachliche Rundung, verweigert ungültige/nicht darstellbare Werte mit
+  sichtbarem Fehler und zeigt keine falsche Erfolgsmodal. Nativ bleibt `floatval`
+  unverändert; nur die feste SQL-Vorbereitung ist gemeinsam. Die originale
+  Sprach-zuerst-Reihenfolge bleibt: Sprache kann bei einem Übertragsfehler bereits
+  gesetzt sein, Design und Erfolgsmodal folgen erst nach bestätigtem Commit.
+  Es wird keine Atomarität zwischen Session und SQLite behauptet. Nichtadmins
+  dürfen das finanzielle Feld nicht einsetzen; normale Präferenzen bleiben verfügbar.
 - Die vorhandenen Restorehinweise bleiben statisch. Der Snapshotknopf behält
   Position/Icon/Beschriftung/Klassen, ist aber deaktiviert und erklärt den
   fehlenden Anschluss. Kein funktionsloser Downloadlink, Restoreformular oder
-  versteckter nativer Fallback. Native Settings-/Snapshot-/Importquellen bleiben
-  unverändert; deren spätere Migration ist gesonderte Arbeit.
+  versteckter nativer Fallback. Native Snapshot-/Importquellen bleiben unverändert;
+  Settings delegiert ausschließlich seine unverändert schwach validierende feste
+  SQL-Vorbereitung, nicht an den strengeren Laravel-Parser.
 
 Die vorhandenen Formular-/Karten-/Select-/Dialogstrukturen, Kolibri, DE/EN/ZH-
 Optionen sowie `Hell/Dunkel/System` bleiben erhalten. Native harte deutsche
@@ -143,8 +157,9 @@ synthetische Composition und ihr fester Router bekommen Settings/den einen
 zusätzlichen Kalender-Assetpfad; sie werden für diese Arbeit nicht gestartet.
 
 Defaultbootstrap und `/up`, Runtimeadmission, andere Locale-/Export-/Web-/API-/
-Terminalrouten, Sicherheits-/Host-/Session-/Schlüsselkonfiguration, native Dateien
-und Datenschreibpfade bleiben erhalten. Kein Auth-/Browserworkaround, neue
+Terminalrouten und Sicherheits-/Host-/Session-/Schlüsselkonfiguration bleiben
+erhalten. Die aktuelle eigene Übertragsschreibwirkung ist ausschließlich die
+oben verlinkte feste Ausnahme. Kein Auth-/Browserworkaround, neue
 Produktionsaktivierung oder Veröffentlichung.
 
 ## Begrenzter grober Nachweis

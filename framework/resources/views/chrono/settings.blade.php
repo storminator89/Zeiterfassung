@@ -53,8 +53,8 @@
                             <label class="label" for="ueberstunden">
                                 <span class="label-text"><i class="fas fa-hourglass mr-2"></i>{{ $page->copy->text('SETTINGS_OVERTIME') }}</span>
                             </label>
-                            <input type="number" step="0.1" id="ueberstunden" name="ueberstunden" value="{{ $settings->carryInHours }}" min="0" class="input input-bordered w-full" disabled readonly aria-describedby="carry-in-hold">
-                            <p id="carry-in-hold" class="text-sm opacity-70 mt-2">Frühere Überstunden sind hier nur zur Ansicht vorhanden. Änderungen an Kontodaten sind in dieser Laravel-Ansicht noch nicht angebunden.</p>
+                            <input type="number" step="any" id="ueberstunden" name="ueberstunden" value="{{ $settings->carryInHours }}" class="input input-bordered w-full" aria-describedby="carry-in-contract">
+                            <p id="carry-in-contract" class="text-sm opacity-70 mt-2">Nur Ihr eigener früherer Überstunden-Übertrag. Positive und negative endliche Zahlen mit Dezimalpunkt und optionalem Exponent sind zulässig; keine Leerzeichen oder Dezimalkommas. Ungültige, zu kleine oder nicht darstellbare Werte werden abgelehnt, nicht gerundet. Das vorhandene REAL-Datenformat bleibt eine binäre Näherung; die bestehende Historie ist kein verlustfreies Dezimaljournal. Bei einem Fehler kann die zuvor gewählte Sprache bereits übernommen sein.</p>
                         </div>
                     @endif
 
