@@ -19,6 +19,7 @@ Die Routenliste bleibt ausschließlich `GET|HEAD /up`.
 | `corrections()` | Antragshistorie in `adjustments.php` | Derselbe Join, Scope, `id DESC LIMIT 100`, Originalsnapshot und finale Entscheidung wie im Bestand. Keine Antrag-/Freigabe-/Stornofunktion. |
 | `history(before)` | `history.php` | Derselbe Cursor `max(1,before)`, `id DESC LIMIT 100`, eigene/direkte Team-/Adminsicht; Admin sieht auch Benutzer-0-Kalenderjournal und Historie gelöschter Konten. Keine Audit-CRUD-API. |
 | `workModels()` | `work_models.php` | Derselbe Join, `valid_from DESC,id DESC LIMIT 200`; nur eigene Modelle oder alle für aktuelle Admins. Supervisorrechte werden **nicht** auf fremde Modelle ausgeweitet. |
+| `workModelsPage(int $page = 1, ?int $selectedModelId = null)` | Opt-in Home/Modell-UI nach PR136 | Ein autorisierter Snapshot: 50er-Versionenliste, Anzahl/Seite, scoped Auswahl und heute maßgebliches Modell desselben Eigentümers. `null` ohne Auswahl; `0` ungültige explizite Auswahl. Alter `workModels()`-Vertrag bleibt erhalten. |
 
 Die weiteren Listen verwenden bewusst die aufgenommenen SQL-Projektionen:
 deren Logik liegt noch in den Seiten, nicht in aufrufbaren Fachfunktionen.

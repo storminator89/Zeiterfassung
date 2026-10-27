@@ -40,7 +40,7 @@ try {
         }
         exit;
     }
-    if (! in_array($path, ['/', '/index.php', '/attendance.php', '/adjustments.php', '/get_time_records.php', '/save.php', '/login.php', '/logout.php'], true)) {
+    if (! in_array($path, ['/', '/index.php', '/attendance.php', '/adjustments.php', '/get_time_records.php', '/save.php', '/work_models.php', '/login.php', '/logout.php'], true)) {
         http_response_code(410);
         header('Content-Type: text/plain; charset=UTF-8');
         echo 'Not available in the synthetic local preview.';

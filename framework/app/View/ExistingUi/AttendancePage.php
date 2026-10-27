@@ -36,7 +36,7 @@ final readonly class AttendancePage
     ) {
         if ($userId < 1 || ! in_array($role, ['user', 'supervisor', 'admin'], true)
             || ! in_array($theme, ['light', 'dark'], true)
-            || ! in_array($activePage, ['index.php', 'attendance.php', 'adjustments.php'], true)
+            || ! in_array($activePage, ['index.php', 'attendance.php', 'adjustments.php', 'work_models.php'], true)
             || ($status['success'] ?? null) !== true
             || ! in_array($status['state'] ?? null, ['absent', 'working', 'paused'], true)) {
             throw new \InvalidArgumentException('Invalid existing attendance display data.');

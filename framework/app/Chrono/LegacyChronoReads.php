@@ -222,6 +222,45 @@ final class LegacyChronoReads implements ChronoReads
         );
     }
 
+    public function workModelsPage(int $page = 1, ?int $selectedModelId = null): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($page, $selectedModelId): array {
+            // Same queries and scope as native PR136; selection is read-only.
+            // No caller-supplied owner/role and no list cap determines today's model.
+            $today = (new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')))->format('Y-m-d');
+            $scope = '(m.user_id=? OR CAST(? AS INTEGER)=1)';
+            $parameters = [$actor->getKey(), (int) ($actor->role === 'admin')];
+            $total = (int) $this->rows($pdo, 'SELECT COUNT(*) AS total FROM work_models m JOIN users u ON u.id=m.user_id WHERE '.$scope, $parameters)[0]['total'];
+            $pageSize = 50;
+            $pages = max(1, (int) ceil($total / $pageSize));
+            $page = min(max(1, $page), $pages);
+            $offset = ($page - 1) * $pageSize;
+            $models = $this->rows($pdo, 'SELECT m.*,u.username,(SELECT e.id FROM work_models e WHERE e.user_id=m.user_id AND e.valid_from<=? ORDER BY e.valid_from DESC,e.id DESC LIMIT 1) AS effective_id FROM work_models m JOIN users u ON u.id=m.user_id WHERE '.$scope.' ORDER BY m.valid_from DESC,m.id DESC LIMIT '.$pageSize.' OFFSET '.$offset, array_merge([$today], $parameters));
+            $selected = null;
+            $selectionError = null;
+            if ($selectedModelId !== null) {
+                // Zero is the transport's explicit invalid-selection sentinel.
+                if ($selectedModelId > 0) {
+                    $selected = $this->rows($pdo, 'SELECT m.*,u.username FROM work_models m JOIN users u ON u.id=m.user_id WHERE '.$scope.' AND m.id=?', array_merge($parameters, [$selectedModelId]))[0] ?? null;
+                }
+                if ($selected === null) {
+                    $selectionError = 'Modellversion nicht verfügbar. Bitte aus den sichtbaren Modellen neu auswählen.';
+                }
+            }
+            $effective = null;
+            if ($selectionError === null) {
+                $owner = $selected === null ? $actor->getKey() : (int) $selected['user_id'];
+                $effective = $this->rows($pdo, 'SELECT m.*,u.username FROM work_models m JOIN users u ON u.id=m.user_id WHERE '.$scope.' AND m.user_id=? AND m.valid_from<=? ORDER BY m.valid_from DESC,m.id DESC LIMIT 1', array_merge($parameters, [$owner, $today]))[0] ?? null;
+            }
+
+            return [
+                'models' => $models, 'total' => $total, 'page' => $page, 'pages' => $pages, 'page_size' => $pageSize,
+                'today' => $today, 'selected_model_id' => $selected === null ? 0 : (int) $selected['id'],
+                'selected_model' => $selected, 'selection_error' => $selectionError, 'effective_model' => $effective,
+            ];
+        });
+    }
+
     public function workModelTargets(): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {

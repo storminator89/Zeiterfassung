@@ -38,6 +38,9 @@ interface ChronoReads
     /** Existing work_models.php list: own models, or all for current admins. */
     public function workModels(): array;
 
+    /** Native paged versions, scoped selection and today's model for the same owner, in one snapshot. */
+    public function workModelsPage(int $page = 1, ?int $selectedModelId = null): array;
+
     /** Native work-model target options, only after a fresh current-admin check. */
     public function workModelTargets(): array;
 }

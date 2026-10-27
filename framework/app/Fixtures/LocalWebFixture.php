@@ -219,7 +219,7 @@ final class LocalWebFixture
         $app->instance(RateLimiter::class, $limiter);
         $app->instance(Interactions::class, new Interactions(
             login: true, attendance: true, logout: true, corrections: true,
-            home: true, absences: true,
+            home: true, absences: true, workModels: true,
         ));
         LocalWebRoutes::register($app);
     }
