@@ -17,6 +17,9 @@ interface ChronoReads
     /** Own native dashboard metrics/diagnostics and cached selected-week inputs, in one snapshot. */
     public function calendarWeek(mixed $calendarDate = null): array;
 
+    /** Complete native admin/direct-team report; search/page never narrow diagnostic scope. */
+    public function teamReport(string $userSearch = '', mixed $page = null): array;
+
     /** Existing API own-only identity, including the current wire field types. */
     public function apiIdentity(): array;
 

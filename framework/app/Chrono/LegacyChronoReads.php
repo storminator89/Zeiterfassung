@@ -174,6 +174,26 @@ final class LegacyChronoReads implements ChronoReads
         });
     }
 
+    public function teamReport(string $userSearch = '', mixed $page = null): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($userSearch, $page): array {
+            // The snapshot freshly reloads role/team. A user's own-row policy
+            // must NOT accidentally widen this native supervisor-only report.
+            if (! in_array($actor->role, ['admin', 'supervisor'], true)) {
+                throw new AuthorizationException('This report requires a current supervisor or administrator.');
+            }
+            require_once dirname(__DIR__, 3).'/lib/supervisor_projection.php';
+            // Exact native scope/order: no subject selector or implicit own rows.
+            $records = $this->rows($pdo, "SELECT z.*, u.username, u.id as user_id, u.regelarbeitszeit, u.ueberstunden as vorherige_ueberstunden, substr(z.startzeit,1,10) AS day, NULL AS weekNumber
+                            FROM zeiterfassung z
+                            JOIN users u ON z.user_id = u.id
+                            WHERE u.supervisor_id = ? OR ?='admin'
+                            ORDER BY z.startzeit DESC", [$actor->getKey(), $actor->role]);
+
+            return \supervisor_report_projection($pdo, $records, $userSearch, $page);
+        });
+    }
+
     public function apiIdentity(): array
     {
         return $this->snapshot(fn (PDO $pdo, LegacyUser $actor): array => [
