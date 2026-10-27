@@ -6,12 +6,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     if (!$admin) { abort_request(403,'Nur die Verwaltung darf Arbeitszeitmodelle festlegen.'); }
     $conn->exec('BEGIN IMMEDIATE');
     try {
-        $target=(int)($_POST['user_id']??0);$day=(string)($_POST['valid_from']??'');practice_date($day);
-        $reason=trim((string)($_POST['reason']??''));$minutes=[];
-        foreach(range(1,7) as $n) { $v=filter_var($_POST['day'.$n]??'',FILTER_VALIDATE_INT);if($v===false||$v<0||$v>1440) { throw new AttendanceError('Sollminuten müssen zwischen 0 und 1440 liegen.',400); }$minutes[]=$v; }
-        if (!att_one($conn,'SELECT id FROM users WHERE id=?',[$target])||strlen($reason)<5||strlen($reason)>1000) { throw new AttendanceError('Person und Begründung prüfen.',400); }
-        $GLOBALS['audit_reason']='Arbeitszeitmodell: '.$reason;
-        att_exec($conn,'INSERT INTO work_models(user_id,valid_from,minutes_json,reason,created_by,created_at) VALUES(?,?,?,?,?,?)',[$target,$day,json_encode($minutes),$reason,$user,time()]);
+        practice_work_model_apply_locked($conn,$user,$_SESSION['role'],$_POST);
         $conn->exec('COMMIT');header('Location: work_models.php?saved=1');exit;
     } catch(Throwable $e) { $conn->exec('ROLLBACK');$error=$e instanceof AttendanceError?$e->getMessage():'Modell konnte nicht gespeichert werden.'; }
 }
