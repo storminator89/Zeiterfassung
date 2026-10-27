@@ -37,9 +37,12 @@ final class LegacyChronoReads implements ChronoReads
             $context = $this->rows($pdo, 'SELECT * FROM zeiterfassung WHERE user_id=?', [$actor->getKey()]);
             $today = new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin'));
 
+            $status = attendance_status($pdo, (int) $actor->getKey());
+
             return ['success' => true, 'records' => $records,
                 'report_finality' => $this->reportFinality(report_absence_conflicts($context), $today),
-            ] + attendance_status($pdo, (int) $actor->getKey());
+                'expected_record' => $status['record_id'] === null ? null : (string) $status['record_id'],
+            ] + $status;
         });
     }
 

@@ -39,10 +39,12 @@ einzelne Pending-Löschbedingung für 401/403 in `assets/js/attendance.js`.
   keine neue Formel oder direkte Query im Controller.
 - `POST attendance.php` und seine vorhandenen Root-/Index-Includealiase lesen
   **nur den POST-Form-Bag**: `event_id`, `action`,
-  `confirm_end_pause === '1'`. Der verifizierte direkte Bestandsendpoint
-  übergibt **kein** `expectedRecord`; deshalb bleibt dieser Parameter hier
-  `null`, selbst wenn ein Client einen fremden zusätzlichen Wert sendet.
-  Andere Aliase mit erwarteter Projektion sind nicht Teil dieses Registrars.
+  `confirm_end_pause === '1'` und die neue kanonische positive Stringbindung
+  `expected_record`. Der feste Webdienst verlangt für neue Nicht-Start-Aktionen
+  eine Bindung; bereits gespeicherte alte Null-Payloads werden zuerst unverändert
+  wiederholt. Fehlende neue Bindung und abweichende aktuelle Sitzung ergeben409
+  ohne neue Buchung, nicht automatisch eine Aktion auf der neuen Sitzung.
+  [Exakter #36-Vertrag und bewusste Kompatibilitätsgrenze](../CH30-EXPECTED-RECORD.md).
   Für genau diese Anwesenheitspfade werden die normalen Laravel-Stringtrimmer/
   Leerstring-Konverter übersprungen: `' 1 '` darf nicht unbemerkt zu `'1'`
   werden, leere Event-/Aktionsfelder bleiben leere Strings statt `null`.
@@ -73,6 +75,15 @@ Die ausdrücklich genehmigte einzelne Änderung am bestehenden Client nimmt
 Auth-/CSRF-Verweigerung darf ein bereits unbestätigtes Ereignis nicht löschen.
 Alle anderen Status-, Retry-, ID-, Buchungs- und UI-Regeln bleiben unverändert;
 keine künstliche 503 oder neue ID als Ausweichweg.
+
+Der #36-Folgeschritt ergänzt ausschließlich die unveränderliche Recordbindung
+neuer Pendingevents und validiert sie, wenn sie vorhanden ist. Alte Pendingevents
+ohne Feld bleiben unverändert für die serverseitige Replay-zuerst-Entscheidung
+erhalten; keine nachträgliche Bindung an die aktuelle Sitzung. Webstatus liefert
+zusätzlich den exakten eigenen Record als String, ohne die numerische `record_id`
+oder den APIstatus umzudeuten. Nicht-Start-Aktionen bleiben ohne aktuelle Bindung
+gesperrt; eine historische Buchungsbestätigung hebt diese Sperre nicht auf.
+Erst ein neuer gültiger Statussnapshot liefert wieder eine aktuelle Bindung.
 
 **Offene #57-Grenze:** Erhalt des Pendingevents plus Startup-Gate ist noch keine
 vollständige konto-/sitzungsübergreifende Klärung oder Antwortverlustbehandlung

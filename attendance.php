@@ -17,13 +17,15 @@ if ($_SERVER['REQUEST_METHOD']==='GET' && ($_GET['format']??'')==='status') {
                 'week'=>report_conflicts_in_period($conflicts,$weekStart,$weekEnd),
                 'month'=>report_conflicts_in_period($conflicts,$today->format('Y-m-01'),$today->format('Y-m-t')),
                 'year'=>report_conflicts_in_period($conflicts,$today->format('Y-01-01'),$today->format('Y-12-31'))];
-            $snapshot=['success'=>true,'records'=>$records,'report_finality'=>$finality]+attendance_status($conn,$user);
+            $status=attendance_status($conn,$user);
+            $snapshot=['success'=>true,'records'=>$records,'report_finality'=>$finality,
+                'expected_record'=>$status['record_id']===null?null:(string)$status['record_id']]+$status;
             $conn->commit();return $snapshot;
         } catch(Throwable $e) { if($conn->inTransaction()) { $conn->rollBack(); } throw $e; }
     });
 }
 if ($_SERVER['REQUEST_METHOD']==='POST') {
-    attendance_json(fn() => attendance_transition($conn,$user,'web:'.$user,$_POST['event_id']??'',$_POST['action']??'',($_POST['confirm_end_pause']??'')==='1'));
+    attendance_json(fn() => attendance_transition($conn,$user,'web:'.$user,$_POST['event_id']??'',$_POST['action']??'',($_POST['confirm_end_pause']??'')==='1',attendance_expected_record($_POST),true));
 }
 $strictAppUi = true;
 require __DIR__ . '/header.php';

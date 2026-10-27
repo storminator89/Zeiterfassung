@@ -261,7 +261,7 @@
     </style>
 </head>
 
-<body class="chrono-local-ui" data-attendance-state="{{ $page->state }}" data-attendance-user="{{ $page->userId }}">
+<body class="chrono-local-ui" data-attendance-state="{{ $page->state }}" data-attendance-user="{{ $page->userId }}" data-attendance-record="{{ $page->expectedRecord ?? '' }}">
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="p-4">

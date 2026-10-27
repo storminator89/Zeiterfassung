@@ -12,7 +12,10 @@
                 || typeof pending?.event?.event_id !== 'string'
                 || !/^[A-Za-z0-9_-]{16,80}$/.test(pending?.event?.event_id)
                 || !['start', 'pause_start', 'pause_end', 'end'].includes(pending?.event?.action)
-                || !['0', '1'].includes(pending?.event?.confirm_end_pause);
+                || !['0', '1'].includes(pending?.event?.confirm_end_pause)
+                || (Object.hasOwn(pending.event, 'expected_record')
+                    && (typeof pending.event.expected_record !== 'string' || !/^[1-9][0-9]*$/.test(pending.event.expected_record)));
+            // Omitted legacy binding is preserved for the server's replay-first decision.
         }
     } catch (ignored) {
         blocked = true; // Malformed/inaccessible storage is not permission to lose an uncertain event.

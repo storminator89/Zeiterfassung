@@ -18,8 +18,11 @@
         const allowed = {absent: ['start'], working: ['pause_start', 'end'], paused: ['pause_end', 'end']};
         const buttonSelector = '[data-attendance-action], #actions [data-action]';
         const pendingKey = 'chrono-attendance-pending';
+        const recordString = value => typeof value === 'string' && /^[1-9][0-9]*$/.test(value);
         let state = initial.dataset.attendanceState || initial.dataset.state;
         if (!Object.hasOwn(allowed, state)) state = 'absent';
+        let expectedRecord = state !== 'absent' && recordString(document.body.dataset.attendanceRecord)
+            ? document.body.dataset.attendanceRecord : null;
         let busy = false, refreshing = null, revision = 0, pending = null;
         const actionOf = button => button.dataset.attendanceAction || button.dataset.action;
         const buttons = () => [...document.querySelectorAll(buttonSelector)];
@@ -31,7 +34,14 @@
             const stored = JSON.parse(sessionStorage.getItem(pendingKey) || 'null');
             if (stored?.userId === userId && stored.session === token && /^[A-Za-z0-9_-]{16,80}$/.test(stored.event?.event_id)
                 && ['start', 'pause_start', 'pause_end', 'end'].includes(stored.event?.action)
-                && ['0', '1'].includes(stored.event?.confirm_end_pause)) pending = stored.event;
+                && ['0', '1'].includes(stored.event?.confirm_end_pause)) {
+                if (Object.hasOwn(stored.event, 'expected_record') && !recordString(stored.event.expected_record)) {
+                    buttons().forEach(button => { button.disabled = true; });
+                    message('Unbestätigte Buchung mit nicht prüfbarer Sitzungsbindung unverändert gespeichert. Bitte ursprüngliche Buchung zuerst klären.');
+                    return;
+                }
+                pending = stored.event; // Legacy omission must replay unchanged, never bind to a new record.
+            }
             else sessionStorage.removeItem(pendingKey);
         } catch (ignored) { /* Private browsing may disable storage; in-page retries still work. */ }
         function rememberPending() {
@@ -102,9 +112,10 @@
             });
             reportNotice();
         }
-        function render(nextState = state) {
+        function render(nextState = state, nextRecord = expectedRecord) {
             if (!Object.hasOwn(allowed, nextState)) throw new Error('Unbekannter Anwesenheitsstatus. Bitte Seite neu laden.');
             state = nextState;
+            expectedRecord = state !== 'absent' && recordString(nextRecord) ? nextRecord : null;
             document.querySelectorAll('[data-attendance-state]').forEach(element => { element.dataset.attendanceState = state; });
             const actions = document.getElementById('actions');
             if (actions) actions.dataset.state = state;
@@ -114,7 +125,7 @@
                 // An uncertain event must be acknowledged with the same ID,
                 // even if a later status snapshot already reflects its effect.
                 button.hidden = pending ? action !== pending.action : !allowed[state].includes(action);
-                button.disabled = busy;
+                button.disabled = busy || (!pending && action !== 'start' && expectedRecord === null);
                 button.classList.toggle('loading', busy && action === pending?.action);
             });
         }
@@ -149,8 +160,11 @@
                     const response = await request('attendance.php?format=status', {cache: 'no-store', redirect: 'error'});
                     if (!response.ok) throw new Error('Anzeige konnte nicht aktualisiert werden. Bitte Seite neu laden.');
                     const data = await readJson(response);
-                    if (!data.success || !Object.hasOwn(allowed, data.state)) throw new Error('Anwesenheitsstatus konnte nicht geladen werden. Bitte neu anmelden.');
-                    if (startedAt === revision && !busy) { render(data.state); renderRecent(data.records); applyReportFinality(data.report_finality); }
+                    if (!data.success || !Object.hasOwn(allowed, data.state)
+                        || (data.state === 'absent' ? data.expected_record !== null : !recordString(data.expected_record))) {
+                        throw new Error('Anwesenheitsstatus und Sitzungsbindung konnten nicht geladen werden. Bitte neu laden.');
+                    }
+                    if (startedAt === revision && !busy) { render(data.state, data.expected_record); renderRecent(data.records); applyReportFinality(data.report_finality); }
                 })().finally(() => { refreshing = null; });
             }
             await refreshing;
@@ -165,7 +179,7 @@
 
         document.addEventListener('click', async event => {
             const button = event.target.closest(buttonSelector);
-            if (!button || button.hidden || busy) return;
+            if (!button || button.hidden || button.disabled || busy) return;
             event.preventDefault();
             const action = actionOf(button);
             if (pending && pending.action !== action) {
@@ -173,6 +187,10 @@
                 return;
             }
             if (!pending && !allowed[state].includes(action)) return;
+            if (!pending && action !== 'start' && expectedRecord === null) {
+                message('Sitzungsbindung noch nicht bestätigt. Bitte Status neu laden.');
+                return;
+            }
             const endPause = action === 'end' && state === 'paused';
             if (endPause && !pending && !window.confirm('Pause und Arbeitszeit gemeinsam beenden?')) return;
             if (!pending) {
@@ -180,7 +198,8 @@
                     message('Sichere Ereignis-ID nicht verfügbar. Bitte einen aktuellen Browser verwenden.');
                     return;
                 }
-                pending = {event_id: crypto.randomUUID(), action, confirm_end_pause: endPause ? '1' : '0'};
+                pending = {event_id: crypto.randomUUID(), action, confirm_end_pause: endPause ? '1' : '0',
+                    ...(action === 'start' ? {} : {expected_record: expectedRecord})};
                 rememberPending();
             }
             busy = true; revision++; render();
@@ -188,12 +207,12 @@
             try {
                 const response = await request('attendance.php', {method: 'POST', redirect: 'error',
                     body: new URLSearchParams({...pending, csrf_token: token})});
-                if (!response.ok && response.status < 500 && ![401, 403].includes(response.status)) { pending = null; rememberPending(); }
+                if (!response.ok && response.status < 500 && ![401, 403].includes(response.status)) { expectedRecord = null; pending = null; rememberPending(); }
                 const data = await readJson(response);
                 if (!response.ok) throw new Error(data.message || 'Buchung wurde nicht bestätigt.');
                 if (!data.success || !Object.hasOwn(allowed, data.state)) throw new Error('Keine gültige Buchungsbestätigung erhalten. Dieselbe Aktion erneut versuchen.');
                 pending = null; rememberPending(); confirmed = true;
-                render(data.state);
+                render(data.state, null); // Cached acknowledgment is not a current session binding.
                 // This may be a historical cached warning. It proves neither a
                 // current conflict nor current numeric totals; the fresh read
                 // below owns current period flags. Invalidate before it can fail.

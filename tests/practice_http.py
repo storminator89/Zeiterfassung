@@ -31,7 +31,7 @@ check('web attendance works with terminal disabled',b'Pause beginnen' in user.re
 status,body=user.post('/save.php',dict(action='start',startzeit='2000-01-01'));record=json.loads(body)['record_id']
 check('start uses server clock',status==200 and query('SELECT started_at FROM work_sessions WHERE record_id=?',(record,))[0][0]>time.time()-60)
 query('UPDATE work_sessions SET started_at=? WHERE record_id=?',(int(time.time())-10*3600,record))
-status,body=user.post('/save.php',dict(action='end',endzeit='2000-01-01'))
+status,body=user.post('/save.php',dict(action='end',endzeit='2000-01-01',expected_record=str(record)))
 check('ten-hour shift without recorded break has zero deduction',status==200 and query('SELECT pause FROM zeiterfassung WHERE id=?',(record,))[0][0]==0)
 check('missing break generates warning only','pause_warning' in json.loads(body))
 check('web actor in journal',query("SELECT actor FROM audit_log WHERE entity='zeiterfassung' AND record_id=? ORDER BY id DESC LIMIT 1",(record,))[0][0]=='web:2:user:2')
@@ -77,7 +77,7 @@ check('correction requests cannot be deleted',fails('DELETE FROM time_adjustment
 query("INSERT INTO zeiterfassung(startzeit,pause,user_id) VALUES(?,30,3)",(time.strftime('%Y-%m-%dT%H:%M:%S+00:00',time.gmtime(time.time()-10*3600)),))
 legacy=query('SELECT MAX(id) FROM zeiterfassung')[0][0]
 check('legacy open record visible',b'data-state="working"' in other.req('/attendance.php')[1])
-check('legacy open record adopted and ended',other.post('/save.php',dict(action='end'))[0]==200 and query('SELECT pause FROM zeiterfassung WHERE id=?',(legacy,))==[(0,)])
+check('legacy open record adopted and ended',other.post('/save.php',dict(action='end',expected_record=str(legacy)))[0]==200 and query('SELECT pause FROM zeiterfassung WHERE id=?',(legacy,))==[(0,)])
 check('adoption preserves pre-upgrade value in journal',any(json.loads(r[0])['pause']==30 for r in query("SELECT before_json FROM audit_log WHERE entity='zeiterfassung' AND record_id=? AND before_json IS NOT NULL",(legacy,))))
 # Whole absence ranges roll back if a later day conflicts.
 status,_=user.post('/save.php',dict(urlaubStart='2030-01-06',urlaubEnde='2030-01-10',beschreibung='Krankheit'))

@@ -13,6 +13,7 @@ namespace App\View\ExistingUi;
 final readonly class AttendancePage
 {
     public string $state;
+    public ?string $expectedRecord;
     public bool $reportUnresolved;
 
     /** @param list<array{date: string, name: string}> $holidaysThisWeek Already formatted display dates. */
@@ -43,6 +44,9 @@ final readonly class AttendancePage
         }
 
         $this->state = $status['state'];
+        $record = $status['expected_record'] ?? null;
+        $this->expectedRecord = $this->state !== 'absent' && is_string($record)
+            && preg_match('/\A[1-9][0-9]*\z/', $record) === 1 ? $record : null;
         $this->reportUnresolved = $reportUnresolved || ($status['report_finality']['all'] ?? false) === true;
     }
 

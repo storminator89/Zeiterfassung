@@ -61,7 +61,7 @@ function attendance_assert_unmanaged(PDO $db, array $ids): void {
  * the derived actor/reason and this fixed mutation continuation, after native
  * validation and replay decisions. Native fallback preserves audit globals.
  */
-function attendance_transition_locked(PDO $db, int $user, string $source, string $eventId, string $action, bool $confirm=false, ?int $expectedRecord=null, ?Closure $auditRunner=null): array {
+function attendance_transition_locked(PDO $db, int $user, string $source, string $eventId, string $action, bool $confirm=false, ?int $expectedRecord=null, ?Closure $auditRunner=null, bool $requireExpectedRecord=false): array {
     if (!preg_match('/^[A-Za-z0-9_-]{16,80}$/D',$eventId)) { throw new AttendanceError('Ungültige Ereignis-ID.',400); }
     if (!in_array($action,['start','pause_start','pause_end','end'],true)) { throw new AttendanceError('Ungültige Aktion.',400); }
     if (!att_one($db,'SELECT id FROM users WHERE id=?',[$user])) { throw new AttendanceError('Konto nicht verfügbar.',403); }
@@ -70,6 +70,11 @@ function attendance_transition_locked(PDO $db, int $user, string $source, string
     if ($old) {
         if (!hash_equals($old['payload_hash'],$hash)) { throw new AttendanceError('Ereignis-ID bereits anders verwendet.'); }
         return json_decode($old['response'],true);
+    }
+    // Fixed Web callers require a binding only for NEW non-start events.
+    // Existing committed legacy payloads above still replay with their original hash.
+    if ($requireExpectedRecord && $action !== 'start' && $expectedRecord === null) {
+        throw new AttendanceError('Sitzungsbindung fehlt. Keine neue Buchung ausgeführt; Status neu laden und die gewünschte Aktion anschließend bewusst wählen.');
     }
     $auditRunner ??= static function (string $actor, string $reason, Closure $operation): array {
         $GLOBALS['audit_actor']=$actor;
@@ -146,10 +151,22 @@ function attendance_transition_locked(PDO $db, int $user, string $source, string
     return $response;
     });
 }
-function attendance_transition(PDO $db, int $user, string $source, string $eventId, string $action, bool $confirm=false, ?int $record=null): array {
+function attendance_transition(PDO $db, int $user, string $source, string $eventId, string $action, bool $confirm=false, ?int $record=null, bool $requireExpectedRecord=false): array {
     $db->exec('BEGIN IMMEDIATE');
-    try { $r=attendance_transition_locked($db,$user,$source,$eventId,$action,$confirm,$record); $db->exec('COMMIT'); return $r; }
+    try { $r=attendance_transition_locked($db,$user,$source,$eventId,$action,$confirm,$record,null,$requireExpectedRecord); $db->exec('COMMIT'); return $r; }
     catch (Throwable $e) { $db->exec('ROLLBACK'); throw $e; }
+}
+/** Raw Web form only. Omission is legacy replay, never a new unbound non-start mutation. */
+function attendance_expected_record(array $form): ?int {
+    if (!array_key_exists('expected_record',$form)) { return null; }
+    $raw=$form['expected_record'];
+    $maximum=(string)PHP_INT_MAX;
+    if (!is_string($raw) || preg_match('/\A[1-9][0-9]*\z/',$raw)!==1
+        || strlen($raw)>strlen($maximum)
+        || (strlen($raw)===strlen($maximum) && strcmp($raw,$maximum)>0)) {
+        throw new AttendanceError('Ungültige Sitzungsbindung. Bitte den Status neu laden.',400);
+    }
+    return (int)$raw;
 }
 function attendance_json(callable $action): never {
     header('Content-Type: application/json; charset=UTF-8');
