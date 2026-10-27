@@ -78,88 +78,91 @@ function calculateDuration($startzeit, $endzeit, $pause) {
 /** Raw record contract is retained for the native outputRecordRow caller. */
 function report_time_record_detail(array $record): array
 {
+    $calculation = report_record_calculation($record);
+    $invalid = $calculation['status'] === 'invalid';
     $credit = !empty($record['absence_kind']);
     $startLabel = $credit ? substr($record['startzeit'], 0, 10) . ' · Gutschrift' : $record['startzeit'];
-    $endLabel = $credit ? 'Keine Stempelzeit' : ($record['endzeit'] ?? 'Läuft');
-    $durationLabel = $credit ? (int)$record['planned_minutes'] . ' Sollminuten' : calculateDuration($record['startzeit'], $record['endzeit'], $record['pause']);
+    $endLabel = $credit ? 'Keine Stempelzeit' : (($record['endzeit'] ?? '') === '' ? 'Läuft' : $record['endzeit']);
+    $durationLabel = $invalid ? 'Ungültig' : ($credit ? (int)$record['planned_minutes'] . ' Sollminuten' : calculateDuration($record['startzeit'], $record['endzeit'], $record['pause']));
 
     return [
         'id' => (int) $record['id'],
-        'week_number' => $record['weekNumber'],
+        'week_number' => $record['weekNumber'] ?? ($calculation['week'] === null ? '-' : substr($calculation['week'], 5)),
         'start_label' => $startLabel,
         'end_label' => $endLabel,
         'duration_label' => $durationLabel,
         'pause' => $record['pause'],
         'location' => $record['standort'],
         'comment' => $record['beschreibung'],
+        'is_invalid' => $invalid,
+        'validation_error' => $calculation['error'],
     ];
 }
 
 /**
- * Call only AFTER the native ten-raw-row pagination; preserve caller row order.
- * The native list supplies instant DESC/ID DESC order (CH-12).
- * Without completeDayRows, retain the existing page-local summary contract.
- * The native list can supply complete, already-own-user-scoped rows for these
- * Berlin start-days: only totals change, never the visible detail rows/order.
- * Retain raw floor/duration/pause semantics, even where a negative interval is
- * rejected by the separate detail formatter.
- * No SQL, report_days validation, escaping, HTML or global timezone mutation.
+ * Call AFTER native ten-raw-row pagination; preserve caller detail row order.
+ * Complete, already-own-user-scoped rows affect totals only (CH-05), not rows.
+ * A bad completed interval/pause invalidates its whole day's displayed total;
+ * unreadable starts remain visible without acquiring an invented calendar day.
+ * No SQL, escaping, HTML, data changes or global timezone mutation.
  */
 function report_time_record_groups(array $pagedRows, ?array $completeDayRows = null): array
 {
     $dailyRecords = [];
-    foreach ($pagedRows as $record) {
-        $record['weekNumber'] = substr(report_week($record), 5);
-        $record['workDate'] = report_day($record);
-        $dailyRecords[$record['workDate']][] = $record;
+    foreach ($pagedRows as $index => $record) {
+        $calculation = report_record_calculation($record);
+        $record['weekNumber'] = $calculation['week'] === null ? '-' : substr($calculation['week'], 5);
+        $record['workDate'] = $calculation['day'];
+        // An opaque DOM key is not a report date; keep each undated source row.
+        $key = $calculation['day'] ?? 'invalid-start-' . (int)$record['id'] . '-' . $index;
+        $dailyRecords[$key][] = $record;
     }
 
     $summaryRecords = $dailyRecords;
     if ($completeDayRows !== null) {
         $summaryRecords = [];
         foreach ($completeDayRows as $record) {
-            $workDate = report_day($record);
-            if (isset($dailyRecords[$workDate])) {
+            $workDate = report_record_calculation($record)['day'];
+            if ($workDate !== null && isset($dailyRecords[$workDate])) {
                 $summaryRecords[$workDate][] = $record;
             }
+        }
+        foreach ($dailyRecords as $key => $rows) {
+            if ($rows[0]['workDate'] === null) { $summaryRecords[$key] = $rows; }
         }
     }
 
     $groups = [];
-    foreach ($dailyRecords as $workDate => $dayRecords) {
-        if (!isset($summaryRecords[$workDate])) {
+    foreach ($dailyRecords as $key => $dayRecords) {
+        if (!isset($summaryRecords[$key])) {
             throw new RuntimeException('Complete day rows missing for a visible date.');
         }
         $totalMinutes = 0;
         $totalPause = 0;
-        foreach ($summaryRecords[$workDate] as $record) {
-            if ($record['endzeit']) {
-                // Native config fixes Berlin; do not inherit framework UTC here.
-                $start = new DateTime($record['startzeit'], new DateTimeZone('Europe/Berlin'));
-                $end = new DateTime($record['endzeit'], new DateTimeZone('Europe/Berlin'));
-                $diff = $end->getTimestamp() - $start->getTimestamp();
-                $totalMinutes += floor($diff / 60);
-                $totalPause += intval($record['pause']);
+        $invalidCount = 0;
+        foreach ($summaryRecords[$key] as $record) {
+            $calculation = report_record_calculation($record);
+            if ($calculation['status'] === 'invalid') { $invalidCount++; }
+            elseif ($calculation['status'] === 'completed') {
+                $totalMinutes += $calculation['minutes'];
+                $totalPause += $calculation['pause'];
             }
         }
-        $totalMinutes -= $totalPause;
-        $totalHours = floor($totalMinutes / 60);
-        $remainingMinutes = $totalMinutes % 60;
-        $formattedTotal = sprintf('%02d:%02d', $totalHours, $remainingMinutes);
-        $dateObj = new DateTime($workDate, new DateTimeZone('Europe/Berlin'));
-
+        $workDate = $dayRecords[0]['workDate'];
         $groups[] = [
             'work_date' => $workDate,
-            'formatted_date' => $dateObj->format('d.m.Y'),
-            'total_duration' => $formattedTotal,
-            'total_pause' => $totalPause,
+            'group_key' => $key,
+            'formatted_date' => $workDate === null ? 'Datum ungültig' : (new DateTimeImmutable($workDate, new DateTimeZone('Europe/Berlin')))->format('d.m.Y'),
+            'total_duration' => $invalidCount > 0 ? 'Ungültig' : report_format_hours($totalMinutes / 60),
+            'total_pause' => $invalidCount > 0 ? null : $totalPause,
+            'invalid_count' => $invalidCount,
             'entry_count' => count($dayRecords),
-            // Keep native raw keys as well as the agreed Blade presentation keys.
+            // Keep raw keys as well as the agreed presentation keys.
             'records' => array_map(static fn (array $record): array => array_merge($record, report_time_record_detail($record)), $dayRecords),
         ];
         if ($completeDayRows !== null) {
-            $groups[array_key_last($groups)]['day_entry_count'] = count($summaryRecords[$workDate]);
-            $groups[array_key_last($groups)]['is_partial'] = count($dayRecords) < count($summaryRecords[$workDate]);
+            $groups[array_key_last($groups)]['day_entry_count'] = count($summaryRecords[$key]);
+            $groups[array_key_last($groups)]['is_partial'] = count($dayRecords) < count($summaryRecords[$key]);
         }
     }
 

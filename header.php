@@ -401,6 +401,14 @@ $attendanceLabels = ['absent' => 'Nicht angemeldet', 'working' => 'Arbeitszeit l
 
     <!-- Main content wrapper -->
     <div id="main-content" class="main-content">
+        <?php if (!empty($reportInvalidRecords)): ?>
+        <div class="alert alert-warning mb-4" role="alert">
+            <span><strong>Datenqualität: <?= count($reportInvalidRecords) ?> ungültige eigene Zeiteinträge.</strong>
+            Arbeitszeit-, Überstunden- und Berichtssummen sind unvollständig und nicht zur Abrechnung geeignet; auch die Kalenderdarstellung kann unvollständig sein.
+            Bitte die betroffenen Einträge in der Arbeitszeitliste über „Korrektur / Storno“ prüfen. Es wurden keine Bestandsdaten geändert.
+            <a class="link" href="adjustments.php">Korrekturanträge</a></span>
+        </div>
+        <?php endif; ?>
         <!-- Your existing content goes here -->
 
     <script>
