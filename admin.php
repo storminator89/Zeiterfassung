@@ -581,8 +581,8 @@ include 'header.php';
                                         <td><?= htmlspecialchars($user->username) ?></td>
                                         <td><?= htmlspecialchars($user->email) ?></td>
                                         <td><?= htmlspecialchars($user->role) ?></td>
-                                        <td><?= htmlspecialchars($user->department_name) ?></td>
-                                        <td><?= htmlspecialchars($user->supervisor_name) ?></td>
+                                        <td><?= htmlspecialchars($user->department_name ?? '') ?></td>
+                                        <td><?= htmlspecialchars($user->supervisor_name ?? '') ?></td>
                                         <td><?= htmlspecialchars($user->regelarbeitszeit) ?></td>
                                         <td><?= htmlspecialchars($user->ueberstunden) ?></td>
                                         <td>

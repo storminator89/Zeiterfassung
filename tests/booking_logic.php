@@ -4,7 +4,7 @@ $passed=0;
 function check(string $name,bool $ok): void { global $passed;if(!$ok){throw new RuntimeException($name);} $passed++;echo "PASS $name\n"; }
 function denied(callable $action): bool { try {$action();return false;}catch(AttendanceError $e){return in_array($e->status,[400,409],true);} }
 function fixture(): PDO {
-    $db=new PDO('sqlite::memory:',null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+    $db=PDO::connect('sqlite::memory:',null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
     $db->exec("CREATE TABLE users(id INTEGER PRIMARY KEY,username TEXT,regelarbeitszeit REAL,ueberstunden REAL);
 CREATE TABLE Feiertage(id INTEGER PRIMARY KEY,datum TEXT,name TEXT);
 CREATE TABLE pause_settings(id INTEGER PRIMARY KEY,hours_threshold INTEGER,minimum_pause INTEGER);
