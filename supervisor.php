@@ -70,15 +70,13 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
             $totalOverMinutes += $overMinutes;
         }
 
-        $totalOverMinutes += ($data['vorherige_ueberstunden'] * 60);
-
-        $isNegative = $totalOverMinutes < 0;
-        $totalOverHours = floor(abs($totalOverMinutes) / 60);
-        $totalOverMinutes = abs($totalOverMinutes % 60);
+        $totalOverMinutes += (int) round($data['vorherige_ueberstunden'] * 60);
+        $formattedOvertime = report_format_hours($totalOverMinutes / 60);
 
         $ueberstundenListe[$userId] = [
             'username' => $data['username'],
-            'ueberstunden' => ($isNegative ? '-' : '') . sprintf("%02d:%02d", $totalOverHours, $totalOverMinutes)
+            'overtime_minutes' => $totalOverMinutes,
+            'ueberstunden' => $formattedOvertime
         ];
 
         $detaillierteDaten[$userId] = [
@@ -87,7 +85,8 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
             'total_hours' => round($data['total_hours'], 2),
             'total_days' => $data['total_days'],
             'avg_hours_per_day' => ($data['total_days']>0 ? round($data['total_hours'] / $data['total_days'], 2) : 0),
-            'ueberstunden' => ($isNegative ? '-' : '') . sprintf("%02d:%02d", $totalOverHours, $totalOverMinutes)
+            'overtime_minutes' => $totalOverMinutes,
+            'ueberstunden' => $formattedOvertime
         ];
     }
 }
@@ -233,7 +232,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="overtimeCards">
                         <?php if (is_array($ueberstundenListe) && !empty($ueberstundenListe)) : ?>
                             <?php foreach ($ueberstundenListe as $userId => $data) : ?>
-                                <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300 fade-in stats-card">
+                                <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300 fade-in stats-card" data-overtime-minutes="<?= $data['overtime_minutes'] ?>">
                                     <div class="card-body">
                                         <h2 class="card-title text-lg"><?= htmlspecialchars($data['username']) ?></h2>
                                         <p class="text-3xl font-bold <?= substr($data['ueberstunden'], 0, 1) === '-' ? 'text-error' : 'text-success' ?>">
@@ -638,7 +637,7 @@ function escapeHTML(value) {
             // Convert the PHP array to the correct format for charts
             const overtimeData = Object.values(<?= json_encode($ueberstundenListe, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>).map(user => ({
                 label: user.username,
-                value: parseFloat(user.ueberstunden.replace(':', '.').replace('-', '-'))
+                value: user.overtime_minutes / 60
             }));
 
             // Overtime Chart
@@ -734,10 +733,10 @@ function escapeHTML(value) {
         function filterByType(type) {
             const cards = document.querySelectorAll('#overtimeCards .card');
             cards.forEach(card => {
-                const hours = parseFloat(card.querySelector('.text-3xl').textContent.replace(':', '.'));
+                const minutes = Number(card.dataset.overtimeMinutes);
                 if (type === 'all' ||
-                    (type === 'overtime' && hours > 0) ||
-                    (type === 'undertime' && hours < 0)) {
+                    (type === 'overtime' && minutes > 0) ||
+                    (type === 'undertime' && minutes < 0)) {
                     card.style.display = '';
                 } else {
                     card.style.display = 'none';
