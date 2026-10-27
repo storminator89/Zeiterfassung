@@ -8,7 +8,7 @@ use App\View\ExistingUi\Copy;
 use App\View\ExistingUi\Interactions;
 use App\View\ExistingUi\SupervisorPage;
 use Illuminate\Contracts\Auth\Factory;
-use Illuminate\Contracts\View\View;
+use Illuminate\Http\Response;
 use Illuminate\Http\Request;
 
 /** Dormant existing supervisor UI; route/chrome/Chart asset admission is separate. */
@@ -20,7 +20,7 @@ final class LocalWebSupervisorController extends Controller
         private Interactions $interactions,
     ) {}
 
-    public function index(Request $request): View
+    public function index(Request $request): Response
     {
         $actor = $this->auth->guard('web')->user();
         $language = $request->query('lang', $request->session()->get('lang', 'de'));
@@ -32,7 +32,7 @@ final class LocalWebSupervisorController extends Controller
         // teamReport rechecks fresh role and direct-team scope in its admitted snapshot.
         $report = $this->reads->teamReport($search, $query['page'] ?? null);
 
-        return view('chrono.supervisor', [
+        return response()->view('chrono.supervisor', [
             // Deliberately blocked until a separately reviewed protected GET and
             // standard AttendancePage active-page whitelist admit supervisor.php.
             'page' => new AttendancePage(
@@ -41,6 +41,6 @@ final class LocalWebSupervisorController extends Controller
                 interactions: $this->interactions, activePage: 'supervisor.php',
             ),
             'supervisor' => new SupervisorPage($report, $search, $language),
-        ]);
+        ])->header('Cache-Control', 'no-store');
     }
 }

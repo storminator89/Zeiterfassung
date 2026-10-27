@@ -92,6 +92,35 @@
     <div class="container mx-auto px-4 py-8">
             <h2 class="text-4xl font-bold mb-8 text-center">{{ $supervisor->text('SUPERVISOR_TIMES_TITLE') }}</h2>
 
+            @if (in_array($page->role, ['supervisor', 'admin'], true) && isset($supervisor->report['team_status']))
+                <section class="card bg-base-100 shadow-xl mb-8" aria-labelledby="teamStatusTitle">
+                    <div class="card-body">
+                        <h3 id="teamStatusTitle" class="card-title">{{ $supervisor->text('TEAM_STATUS_TITLE') }}</h3>
+                        <p class="text-sm opacity-70">{{ $supervisor->text('TEAM_STATUS_SNAPSHOT_NOTE') }} <time datetime="{{ $supervisor->report['team_status']['loaded_at'] }}">{{ $supervisor->report['team_status']['loaded_at'] }}</time></p>
+                        <div class="overflow-x-auto">
+                            <table class="table table-zebra w-full">
+                                <thead><tr><th>{{ $supervisor->text('TABLE_HEADER_USERNAME') }}</th><th>{{ $supervisor->text('TEAM_STATUS_STATE') }}</th></tr></thead>
+                                <tbody>
+                                    @forelse ($supervisor->report['team_status']['people'] as $person)
+                                        @php
+                                            $stateLabel = match ($person['state']) {
+                                                'working' => 'TEAM_STATUS_WORKING',
+                                                'paused' => 'TEAM_STATUS_PAUSED',
+                                                'absent' => 'TEAM_STATUS_ABSENT',
+                                                default => 'TEAM_STATUS_UNKNOWN',
+                                            };
+                                        @endphp
+                                        <tr><td>{{ $person['username'] }}</td><td><span class="badge badge-outline">{{ $supervisor->text($stateLabel) }}</span></td></tr>
+                                    @empty
+                                        <tr><td colspan="2" class="opacity-70">{{ $supervisor->text('TEAM_STATUS_EMPTY') }}</td></tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            @endif
+
             @if (! in_array($page->role, ['supervisor', 'admin'], true))
                 <div class="alert alert-warning shadow-lg">
                     <div>
