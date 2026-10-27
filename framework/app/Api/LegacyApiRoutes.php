@@ -29,12 +29,23 @@ final class LegacyApiRoutes
                 'workentry' => [LegacyApiAttendanceController::class, 'start'],
                 'setendzeit' => [LegacyApiAttendanceController::class, 'end'],
             ] as $path => $controller) {
-                $route = $router->any($path, $controller);
+                // GET/HEAD attendance belong only to the read candidate below,
+                // including when Laravel compiles the route collection.
+                $route = $path === 'attendance'
+                    ? $router->match(['POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], $path, $controller)
+                    : $router->any($path, $controller);
                 if ($path !== 'login') {
                     $route->middleware(RequireLegacyApiToken::class);
                 }
                 $route->setAction($route->getAction() + ['legacy_api_path' => '/api.php/'.$path, 'legacy_api_method' => 'POST']);
             }
+            // Separate GET/HEAD registration changes neither the POST body
+            // parsing nor its guard/shared writer. The wire layer
+            // continues to reject raw HEAD before authentication, as natively.
+            $route = $router->get('attendance', [LegacyApiReadController::class, 'attendance'])
+                ->middleware(RequireLegacyApiToken::class);
+            $route->setAction($route->getAction() + ['legacy_api_path' => '/api.php/attendance', 'legacy_api_method' => 'GET']);
+
             $route = $router->any('timeentry/{identifier}', fn () => LegacyApiResponse::text(
                 'Use an approved correction request to cancel a record.', 409,
             ))->where('identifier', '[0-9]+')->middleware(RequireLegacyApiToken::class);

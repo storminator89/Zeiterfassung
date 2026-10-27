@@ -17,6 +17,9 @@ interface ChronoReads
     /** Existing API own-only identity, including the current wire field types. */
     public function apiIdentity(): array;
 
+    /** Authoritative own attendance state/record_id; no reporting rows or selector. */
+    public function apiAttendanceStatus(): array;
+
     /** Existing API UTC SQL filtering/paging; no subject selector or domain math. */
     public function apiTimeEntries(ApiTimeEntriesQuery $query): array;
 

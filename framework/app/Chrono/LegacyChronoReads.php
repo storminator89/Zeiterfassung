@@ -61,6 +61,14 @@ final class LegacyChronoReads implements ChronoReads
         ], false);
     }
 
+    public function apiAttendanceStatus(): array
+    {
+        return $this->snapshot(
+            fn (PDO $pdo, LegacyUser $actor): array => ['success' => true] + attendance_status($pdo, (int) $actor->getKey()),
+            false,
+        );
+    }
+
     public function apiTimeEntries(ApiTimeEntriesQuery $query): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($query): array {
