@@ -64,7 +64,7 @@ function settings_carry_in_decimal(string $raw): array
     return ['negative' => $parts[1] === '-', 'digits' => $digits, 'exponent' => $exponent + $shift];
 }
 
-/** Locale/precision-INI-independent shortest significant-digit roundtrip, not quantization. */
+/** Exact integers or shortest fractional roundtrip; locale/precision-INI independent. */
 function settings_carry_in_float_text(float $value): string
 {
     if (!is_finite($value)) {
@@ -72,6 +72,9 @@ function settings_carry_in_float_text(float $value): string
     }
     if ($value == 0.0) {
         return '0'; // Signed zero denotes the same numerical balance.
+    }
+    if (fmod($value, 1.0) === 0.0) {
+        return sprintf('%.0F', $value); // A shortest decimal can name a different integer.
     }
     for ($precision = 1; $precision <= 17; $precision++) {
         $text = sprintf('%.'.$precision.'H', $value);
