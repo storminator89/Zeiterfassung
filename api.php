@@ -22,9 +22,7 @@ $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
  * @OA\Info(title="Zeiterfassung API", version="1.0")
  */
 
-function base64UrlEncode($data) {
-    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
-}
+require_once __DIR__ . '/lib/api_tokens.php';
 
 function generateJWT($header, $payload, $secret) {
     $headerEncoded = base64UrlEncode(json_encode($header));
@@ -89,28 +87,6 @@ function login($conn) {
         http_response_code(401);
         echo json_encode(['success' => false, 'message' => 'Invalid credentials']);
     }
-}
-
-function base64UrlDecode($data) {
-    return base64_decode(strtr($data, '-_', '+/'));
-}
-
-function validateJWT($jwt, $secret) {
-    if (!is_string($jwt) || strlen($jwt) > 4096) { return false; }
-    $parts = explode('.', $jwt);
-    if (count($parts) !== 3) { return false; }
-    [$head, $body, $signature] = $parts;
-    $header = json_decode(base64_decode(strtr($head, '-_', '+/'), true) ?: '', true);
-    $payload = json_decode(base64_decode(strtr($body, '-_', '+/'), true) ?: '', true);
-    if (!is_array($header) || !is_array($payload) || ($header['alg'] ?? '') !== 'HS256' || ($header['typ'] ?? '') !== 'JWT') { return false; }
-    $expected = base64UrlEncode(hash_hmac('sha256', "$head.$body", $secret, true));
-    if (!hash_equals($expected, $signature) || !is_int($payload['exp'] ?? null) || $payload['exp'] <= time()
-        || !is_int($payload['iat'] ?? null) || $payload['iat'] > time() + 30
-        || ($payload['iss'] ?? '') !== 'localhost' || ($payload['aud'] ?? '') !== 'localhost'
-        || !is_int($payload['user_id'] ?? null) || $payload['user_id'] < 1 || !is_string($payload['ver'] ?? null)) {
-        return false;
-    }
-    return $payload;
 }
 
 function validateToken() {

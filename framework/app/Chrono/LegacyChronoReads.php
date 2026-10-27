@@ -42,6 +42,60 @@ final class LegacyChronoReads implements ChronoReads
         );
     }
 
+    public function apiIdentity(): array
+    {
+        return $this->snapshot(fn (PDO $pdo, LegacyUser $actor): array => [
+            'success' => true,
+            'data' => $this->rows($pdo, 'SELECT id,username,email,role FROM users WHERE id=?', [$actor->getKey()]),
+        ], false);
+    }
+
+    public function apiTimeEntries(ApiTimeEntriesQuery $query): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($query): array {
+            $where = ['user_id = :user_id'];
+            $parameters = [':user_id' => $actor->getKey()];
+            foreach (['start_date' => $query->startDate, 'end_date' => $query->endDate] as $field => $date) {
+                if ($date !== null) {
+                    $where[] = 'date(startzeit) '.($field === 'start_date' ? '>=' : '<=').' :'.$field;
+                    $parameters[':'.$field] = $date;
+                }
+            }
+            $predicate = implode(' AND ', $where);
+            $statement = $pdo->prepare('SELECT COUNT(*) FROM zeiterfassung WHERE '.$predicate);
+            foreach ($parameters as $name => $value) {
+                $statement->bindValue($name, $value);
+            }
+            $statement->execute();
+            $total = $statement->fetchColumn();
+            $statement->closeCursor();
+
+            $sql = 'SELECT * FROM zeiterfassung WHERE '.$predicate.' ORDER BY startzeit DESC';
+            if ($query->limit !== null) {
+                $sql .= ' LIMIT :limit';
+                $parameters[':limit'] = $query->limit;
+            }
+            if ($query->offset !== null) {
+                $sql .= ' OFFSET :offset';
+                $parameters[':offset'] = $query->offset;
+            }
+            $statement = $pdo->prepare($sql);
+            foreach ($parameters as $name => $value) {
+                // Preserve PDO's original default binding type, numeric coercion,
+                // negative limits and the offset-without-limit failure (#9/#25).
+                $statement->bindValue($name, $value);
+            }
+            $statement->execute();
+            $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+            $statement->closeCursor();
+
+            return ['success' => true, 'data' => $rows, 'meta' => [
+                'total' => $total, 'filtered' => count($rows),
+                'limit' => $query->limitMetadata, 'offset' => $query->offsetMetadata,
+            ]];
+        }, false);
+    }
+
     public function period(string $start, string $end, ?int $subject = null): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($start, $end, $subject): array {
@@ -94,7 +148,7 @@ final class LegacyChronoReads implements ChronoReads
         );
     }
 
-    private function snapshot(Closure $read): array
+    private function snapshot(Closure $read, bool $requireKnownRole = true): array
     {
         // No implicit default, environment path, replica, URL, migration, or PDO
         // factory. `chrono` remains intentionally absent in shipped config.
@@ -126,13 +180,13 @@ final class LegacyChronoReads implements ChronoReads
         require_once dirname(__DIR__, 3).'/lib/practice.php';
         require_once dirname(__DIR__, 3).'/lib/reporting.php';
 
-        return $connection->transaction(function () use ($connection, $pdo, $authenticated, $read): array {
+        return $connection->transaction(function () use ($connection, $pdo, $authenticated, $read, $requireKnownRole): array {
             if ($connection->getRawPdo() !== $pdo) {
                 throw new LogicException('The read snapshot connection changed.');
             }
             // Only the guard supplies identity. Role/team are reloaded in this
             // same snapshot, never accepted from a request or cached session.
-            $actor = $this->account($pdo, (int) $authenticated->getKey());
+            $actor = $this->account($pdo, (int) $authenticated->getKey(), $requireKnownRole);
             $result = $read($pdo, $actor);
             if ($connection->getRawPdo() !== $pdo) {
                 throw new LogicException('The read snapshot connection changed.');
@@ -142,10 +196,10 @@ final class LegacyChronoReads implements ChronoReads
         }, 1);
     }
 
-    private function account(PDO $pdo, int $identifier): LegacyUser
+    private function account(PDO $pdo, int $identifier, bool $requireKnownRole = true): LegacyUser
     {
         $row = att_one($pdo, 'SELECT id,username,role,supervisor_id,auth_source FROM users WHERE id=?', [$identifier]);
-        if ($row === null || ! in_array($row['role'], ['user', 'supervisor', 'admin'], true)) {
+        if ($row === null || ($requireKnownRole && ! in_array($row['role'], ['user', 'supervisor', 'admin'], true))) {
             throw new AuthenticationException;
         }
 
