@@ -276,18 +276,17 @@ $departments = $stmt->fetchAll(PDO::FETCH_OBJ);
 
 // Abteilung löschen
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_department'])) {
-    $department_id = $_POST['department_id'];
-
     try {
-        // Statement vorbereiten und ausführen, um die Abteilung zu löschen
-        $stmt = $conn->prepare("DELETE FROM departments WHERE id = ?");
-        $stmt->execute([$department_id]);
+        require_once __DIR__ . '/lib/departments.php';
+        department_delete_if_unused($conn, $_POST['department_id'] ?? null);
 
         $successMessage = DEPARTMENT_DELETED_SUCCESS;
 
         // Seite nach erfolgreichem Löschen neu laden
         header("Location: " . $_SERVER['PHP_SELF']);
         exit();
+    } catch (InvalidArgumentException | DomainException $e) {
+        $error = $e->getMessage();
     } catch (PDOException $e) {
         $error = DEPARTMENT_DELETED_ERROR . $e->getMessage();
     }
