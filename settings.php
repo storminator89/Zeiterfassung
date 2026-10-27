@@ -40,9 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (isset($_POST['ueberstunden']) && $user_role === 'admin') {
+        require_once __DIR__ . '/lib/settings_carry_in.php';
         $ueberstunden = floatval($_POST['ueberstunden']);
-        $updateSql = "UPDATE users SET ueberstunden = :ueberstunden WHERE id = :id";
-        $stmt = $conn->prepare($updateSql);
+        $stmt = settings_carry_in_prepare($conn);
         $stmt->execute([':ueberstunden' => $ueberstunden, ':id' => $user_id]);
         $userInfo['ueberstunden'] = $ueberstunden;
     }

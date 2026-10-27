@@ -189,6 +189,37 @@ final class AttendanceWriter
         });
     }
 
+    /** Own Admin identity only; no request target/role/reason or general account mutation. */
+    public function ownCarryIn(int $user, mixed $raw): string
+    {
+        require_once dirname(__DIR__, 3).'/lib/settings_carry_in.php';
+        $parsed = \settings_carry_in_value($raw);
+
+        return $this->executeLocked(function () use ($user, $parsed): string {
+            $actor = att_one($this->pdo, 'SELECT role,auth_source FROM users WHERE id=?', [$user]);
+            if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local') {
+                throw new AuthorizationException('Nur die Verwaltung darf den eigenen Überstunden-Übertrag ändern.');
+            }
+
+            $statement = \settings_carry_in_prepare($this->pdo);
+            // Never turn a validated float into PDO's precision-INI-dependent string.
+            $statement->bindValue(':ueberstunden', $parsed['text'], PDO::PARAM_STR);
+            $statement->bindValue(':id', $user, PDO::PARAM_INT);
+            $statement->execute();
+            $changed = $statement->rowCount();
+            $statement->closeCursor();
+            $stored = att_one($this->pdo, 'SELECT ueberstunden FROM users WHERE id=?', [$user]);
+            if ($changed !== 1 || $stored === null
+                || (! is_int($stored['ueberstunden']) && ! is_float($stored['ueberstunden']))
+                || ! is_finite((float) $stored['ueberstunden'])
+                || (float) $stored['ueberstunden'] !== $parsed['value']) {
+                throw new \InvalidArgumentException('Der Wert konnte im vorhandenen REAL-Zahlenformat nicht unverändert gespeichert werden. Es wurde nichts am Übertrag gespeichert.');
+            }
+
+            return \settings_carry_in_float_text((float) $stored['ueberstunden']);
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'settings.php', $transaction));
+    }
+
     /** Trusted own-user identity only; no caller-supplied audit actor/reason. */
     public function absence(int $user, string $start, string $end, string $kind): array
     {
