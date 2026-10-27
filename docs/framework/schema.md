@@ -2,6 +2,8 @@
 
 Status: **statische, nichtschreibende Bestandsaufnahme** zu #74. Keine ausführbare Laravel-Migration, kein bestandener Altbestand-/Rollbacktest, keine Produktivfreigabe. Quellenbasis `6c5f635506949168b6afb0a568c71fe46ae915f7` (Draft #7), Assessmentbasis `33c53edf…`; Details in [README](README.md).
 
+**Späteres Inkrement:** Der [strikt speicherinterne V2-Rehearsalkern](adoption-rehearsal.md) implementiert nun einen begrenzten Vorprüfungs-/Laraveltracking-/UDF-Lebenszyklus für synthetische Quellfixtures. Die folgende Bestandsaufnahme/volle Dateiübernahmeplanung bleibt ihre ursprüngliche Quelle und ist keine Behauptung, dass die noch offenen Datei-/Neuinstallations-/vor-v2-/Rollbackgates erledigt seien.
+
 ## 1. Vollständiges deklaratives Inventar
 
 [`schema-map.json`](schema-map.json) enthält die exakten `CREATE TABLE`-Deklarationen aus `config.php`, `security.php`, `lib/attendance.php`, `lib/practice.php`, die vier später hinzugefügten Spalten, alle drei explizit benannten Indizes und sämtliche 34 generierten Trigger. Erfassung nur durch Lesen des Quelltexts, **nicht** durch Ausführen der Bootstraps oder Öffnen einer Datenbank. Die dortigen SHA-256-Werte identifizieren **Quelldateien**, keine Datenbank, kein Produktivschema und keine personenbezogenen Daten.
