@@ -50,6 +50,9 @@ interface ChronoReads
     /** Existing Admin pause-rule rows; fresh local-admin authorization in the snapshot. */
     public function adminPauseSettings(): array;
 
+    /** Complete native department list, only after a fresh current local-Admin check. */
+    public function adminDepartments(): array;
+
     /** Native work-model target options, only after a fresh current-admin check. */
     public function workModelTargets(): array;
 }

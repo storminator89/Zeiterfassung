@@ -348,16 +348,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_department'])) 
 
 // Abteilung hinzufügen
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_department'])) {
+    require_once __DIR__ . '/lib/departments.php';
     $department_name = $_POST['department_name'];
 
     // Eingaben validieren
-    if (empty($department_name)) {
+    if (department_create_name_missing($department_name)) {
         $error = ERROR_ALL_FIELDS_REQUIRED;
     } else {
         try {
             // Statement vorbereiten und ausführen, um die neue Abteilung einzufügen
-            $stmt = $conn->prepare("INSERT INTO departments (name) VALUES (?)");
-            $stmt->execute([$department_name]);
+            department_create_core($conn, $department_name);
 
             $successMessage = DEPARTMENT_CREATED_SUCCESS;
 
@@ -480,12 +480,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_user'])) {
 
 // Abteilung bearbeiten
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_department'])) {
+    require_once __DIR__ . '/lib/departments.php';
     $department_id = $_POST['department_id'];
     $department_name = $_POST['department_name'];
 
     try {
-        $stmt = $conn->prepare("UPDATE departments SET name = ? WHERE id = ?");
-        $stmt->execute([$department_name, $department_id]);
+        department_rename_core($conn, $department_id, $department_name);
 
         $successMessage = DEPARTMENT_UPDATED_SUCCESS;
 

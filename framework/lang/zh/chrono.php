@@ -112,4 +112,23 @@ return [
     'TABLE_HEADER_MINIMUM_PAUSE' => '最短休息時間',
     'BUTTON_DELETE' => '刪除',
     'BUTTON_ADD_ROW' => '新增行',
+
+    // Exact existing native department-card/form/result copy.
+    'DEPARTMENT_MANAGEMENT_TITLE' => '部門管理',
+    'FORM_NEW_DEPARTMENT' => '新部門',
+    'BUTTON_ADD_DEPARTMENT' => '新增部門',
+    'TABLE_HEADER_DEPARTMENT_ID' => '部門編號',
+    'TABLE_HEADER_DEPARTMENT_NAME' => '部門名稱',
+    'BUTTON_EDIT' => '編輯',
+    'CONFIRM_DELETE_DEPARTMENT' => '確定要刪除此部門嗎？',
+    'SEARCH_DEPARTMENTS' => '搜索部門',
+    'MODAL_TITLE_EDIT_DEPARTMENT' => '編輯部門',
+    'FORM_DEPARTMENT_NAME' => '部門名稱',
+    'BUTTON_CANCEL' => '取消',
+    'DEPARTMENT_DELETED_SUCCESS' => '部門刪除成功。',
+    'DEPARTMENT_DELETED_ERROR' => '刪除部門時出錯：',
+    'DEPARTMENT_CREATED_SUCCESS' => '部門創建成功。',
+    'DEPARTMENT_CREATED_ERROR' => '創建部門時出錯：',
+    'DEPARTMENT_UPDATED_SUCCESS' => '部門更新成功。',
+    'DEPARTMENT_UPDATED_ERROR' => '更新部門時出錯：',
 ];
