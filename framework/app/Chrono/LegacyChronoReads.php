@@ -84,6 +84,96 @@ final class LegacyChronoReads implements ChronoReads
         });
     }
 
+    public function calendarWeek(mixed $calendarDate = null): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($calendarDate): array {
+            require_once dirname(__DIR__, 3).'/lib/calendar_range.php';
+            // One Berlin clock for both current-period cards and selected-week navigation.
+            $now = new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin'));
+            $today = $now->format('Y-m-d');
+            $user = (int) $actor->getKey();
+            $userData = $this->rows($pdo, 'SELECT ueberstunden FROM users WHERE id=?', [$user])[0];
+            $records = $this->rows($pdo, 'SELECT * FROM zeiterfassung WHERE user_id=? ORDER BY startzeit DESC', [$user]);
+            $days = report_days($records, $invalidRecords, $conflicts);
+            $finality = $this->reportFinality($conflicts, $now);
+            [$weekStart, $weekEnd] = report_week_bounds($today);
+            $periods = [
+                'week' => [$weekStart, $weekEnd],
+                'month' => [$now->format('Y-m-01'), $now->format('Y-m-t')],
+                'year' => [$now->format('Y-01-01'), $now->format('Y-12-31')],
+            ];
+            $incomplete = ['all' => $invalidRecords !== [], 'week' => false, 'month' => false, 'year' => false, 'unknown' => false];
+            $calendarRecords = [];
+            $weeks = [];
+            foreach ($records as $record) {
+                $calculation = report_record_calculation($record);
+                if ($calculation['status'] === 'invalid') {
+                    // A known report start-day narrows incompleteness. An unreadable
+                    // start cannot acquire a date: conservatively mark every period.
+                    $day = $calculation['day'];
+                    $incomplete['unknown'] = $incomplete['unknown'] || $day === null;
+                    foreach ($periods as $period => [$from, $to]) {
+                        $incomplete[$period] = $incomplete[$period] || $day === null || ($day >= $from && $day <= $to);
+                    }
+                    continue;
+                }
+                $calendarRecords[] = $record;
+                if ($calculation['status'] === 'completed') {
+                    $weeks[$calculation['week']] = true;
+                }
+            }
+
+            $range = calendar_visible_week($calendarDate, $now);
+            // Cache only: no native holiday downloader, writes, or today-relative cutoff.
+            $holidays = $this->rows($pdo, 'SELECT datum,name FROM Feiertage WHERE datum>=? AND datum<? ORDER BY datum', [
+                $range['start']->format('Y-m-d'), $range['end']->format('Y-m-d'),
+            ]);
+            $weekHours = report_period_minutes($days, $weekStart, $weekEnd) / 60;
+            $monthHours = report_period_minutes($days, ...$periods['month']) / 60;
+            $yearHours = report_period_minutes($days, ...$periods['year']) / 60;
+            $plannedWeek = planned_hours($pdo, $user, $weekStart, $weekEnd);
+            $plannedMonth = planned_hours($pdo, $user, ...$periods['month']);
+            $plannedYear = planned_hours($pdo, $user, ...$periods['year']);
+            $monthDays = array_filter($days, static fn (string $day): bool => $day >= $periods['month'][0] && $day <= $periods['month'][1], ARRAY_FILTER_USE_KEY);
+            $workedDays = count($monthDays);
+            // The native cards remain CURRENT-period statistics when browsing an old week.
+            $statistics = [
+                'regular_hours' => home_daily_hours($pdo, $user, $today),
+                'weeks_count' => count($weeks), 'is_first_week' => count($weeks) === 1,
+                'total_overtime' => report_format_hours(home_total_overtime($pdo, $user, $days, (float) ($userData['ueberstunden'] ?? 0.0))),
+                'year_overtime' => report_format_hours($yearHours - $plannedYear),
+                'week_hours' => report_format_hours($weekHours),
+                'remaining_week' => report_format_hours(max(0, $plannedWeek - $weekHours)),
+                'weekly_productivity' => number_format(report_percentage($weekHours, $plannedWeek), 1).'%',
+                'month_hours' => report_format_hours($monthHours),
+                'planned_month' => report_format_hours($plannedMonth),
+                'average_daily_hours' => report_format_hours($workedDays > 0 ? $monthHours / $workedDays : 0),
+                'worked_days' => $workedDays,
+                'monthly_productivity' => number_format(report_percentage($monthHours, $plannedMonth), 1).'%',
+            ];
+            foreach ([
+                'all' => ['weeks_count', 'is_first_week', 'total_overtime'],
+                'year' => ['year_overtime'],
+                'week' => ['week_hours', 'remaining_week', 'weekly_productivity'],
+                'month' => ['month_hours', 'average_daily_hours', 'worked_days', 'monthly_productivity'],
+            ] as $period => $keys) {
+                if ($finality[$period] || $incomplete[$period]) {
+                    foreach ($keys as $key) {
+                        $statistics[$key] = null;
+                    }
+                }
+            }
+
+            return [
+                'current_date' => $today, 'range' => $range, 'records' => $calendarRecords,
+                'holidays' => $holidays, 'statistics' => $statistics,
+                'invalid_records' => $invalidRecords, 'absence_conflicts' => $conflicts,
+                'report_finality' => $finality, 'report_incomplete' => $incomplete,
+                'status' => ['success' => true, 'report_finality' => $finality] + attendance_status($pdo, $user),
+            ];
+        });
+    }
+
     public function apiIdentity(): array
     {
         return $this->snapshot(fn (PDO $pdo, LegacyUser $actor): array => [
