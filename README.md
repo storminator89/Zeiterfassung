@@ -108,11 +108,15 @@ Located in the `time-tracker-extension_edge` folder.
 - **DataTables:** For rendering and managing tables.
 - **Chart.js:** For drawing charts (if implemented).
 - **PDFMake and JSZip:** For creating PDF files and zipping data.
+- **PHP 8.5:** Current supported PHP 8.5 patch release (Docker and CI: **8.5.12**).
+- **PHP extensions:** PDO SQLite, SQLite3, mbstring, OpenSSL, ctype, fileinfo and iconv. LDAP is optional and must be installed separately before enabling directory login.
 - **SQLite:** For data storage.
 
 ## Installation
 
 Use the Docker setup and migration steps in [SECURITY.md](SECURITY.md). Do not expose a fresh setup publicly.
+The Docker build uses the official `php:8.5.12-apache-trixie` image; the existing integration workflow uses the matching `php:8.5.12-cli-trixie` runtime.
+For the runtime upgrade and rollback checklist, see [PHP 8.5 upgrade](docs/PHP85.md).
 
 ## Database Configuration
 
