@@ -45,8 +45,8 @@ try {
         && $preflight->headers->get('Access-Control-Allow-Headers') === 'Content-Type, Authorization'
         && ! $preflight->headers->has('Set-Cookie') && $database->getConnections() === []);
     $missing = $request('GET', '/api.php/users');
-    $ensure($missing->getStatusCode() === 401 && $missing->getContent() === 'Invalid bearer token.'
-        && $missing->headers->get('Content-Type') === 'text/plain; charset=UTF-8'
+    $ensure($missing->getStatusCode() === 401 && $missing->getContent() === json_encode(['success' => false, 'message' => 'Invalid bearer token.'])
+        && $missing->headers->get('Content-Type') === 'application/json; charset=UTF-8'
         && $missing->headers->get('Access-Control-Allow-Origin') === '*' && $database->getConnections() === []);
     try {
         $app->make(LegacyApiIdentity::class)->authenticate(Request::create('/api.php/users', 'GET', [], [], [], ['HTTP_AUTHORIZATION' => 'Bearer a.b.c']));
@@ -112,12 +112,12 @@ try {
     $phase = 'token rejection, current account revocation and no web fallback';
     foreach ([$member.'x', $token(1, ['exp' => time() - 1]), $token(1, ['aud' => 'other'])] as $invalid) {
         $response = $request('GET', '/api.php/users', $invalid);
-        $ensure($response->getStatusCode() === 401 && $response->getContent() === 'Invalid or expired token.');
+        $ensure($response->getStatusCode() === 401 && $response->getContent() === json_encode(['success' => false, 'message' => 'Invalid or expired token.']));
     }
     $ensure($request('GET', '/api.php/users')->getStatusCode() === 401); // No cached prior identity.
     $app->make(AuditContext::class)->run('fixture:api-rehearsal', 'Synthetic password revocation', fn () => $pdo->exec("UPDATE users SET password='synthetic-version-b' WHERE id=1"));
     $revoked = $request('GET', '/api.php/users', $member);
-    $ensure($revoked->getStatusCode() === 401 && $revoked->getContent() === 'Account deleted or credentials changed.');
+    $ensure($revoked->getStatusCode() === 401 && $revoked->getContent() === json_encode(['success' => false, 'message' => 'Account deleted or credentials changed.']));
     $before = SourceSnapshot::capture($pdo, $mapping);
 
     $phase = 'legacy errors, no historical CRUD and unchanged snapshot';
@@ -133,7 +133,7 @@ try {
         && $request('PUT', '/api.php/users')->getStatusCode() === 405
         && $request('POST', '/api.php/users', null, ['HTTP_X_HTTP_METHOD_OVERRIDE' => 'GET'])->getStatusCode() === 400);
     $denied = $request('DELETE', '/api.php/timeentry/45', $directoryAdmin);
-    $ensure($denied->getStatusCode() === 409 && $denied->getContent() === 'Use an approved correction request to cancel a record.'
+    $ensure($denied->getStatusCode() === 409 && $denied->getContent() === json_encode(['success' => false, 'message' => 'Use an approved correction request to cancel a record.'])
         && $request('DELETE', '/api.php/timeentry/45/', $directoryAdmin)->getStatusCode() === 400);
     $ensure($request('POST', '/api.php/login')->getStatusCode() === 400
         && $request('POST', '/api.php/workentry')->getStatusCode() === 401); // Alias still requires current bearer identity.
