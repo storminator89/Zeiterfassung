@@ -1,11 +1,13 @@
 <?php
 
 use App\Terminal\LegacyTerminalHttpIngress;
+use App\Http\Middleware\CorrelateFrameworkRequest;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -16,7 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Ordinary global/web/API behavior stays intact. Only the exact native
         // terminal URL has a separate default-off raw public-protocol ingress.
-        $middleware->prepend(LegacyTerminalHttpIngress::class);
+        // Keep the terminal's dedicated raw-protocol short circuit outermost.
+        // Ordinary Laravel requests receive an opaque, request-local support ID.
+        $middleware->prepend([LegacyTerminalHttpIngress::class, CorrelateFrameworkRequest::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
@@ -29,8 +33,20 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // Do not log exception messages, SQL/bindings, URLs, headers or bodies.
-        // Diagnostics intentionally report only the type, not personal data.
+        // Diagnostics report only the safe type and opaque request ID. Unlike
+        // ::class, get_debug_type() omits an anonymous class's source filepath.
         $exceptions->report(function (Throwable $exception): void {
-            Log::error('Framework request failed.', ['exception_type' => $exception::class]);
+            $request = app()->bound('request') ? app('request') : null;
+            $id = $request instanceof Request ? CorrelateFrameworkRequest::id($request) : null;
+            $context = ['exception_type' => get_debug_type($exception)];
+            if ($id !== null) {
+                $context['request_id'] = $id;
+            }
+            Log::error('Framework request failed.', $context);
         })->stop();
+
+        // The outer HTTP kernel may render an exception after the middleware
+        // unwound; retain its ID without replacing Laravel's response contract.
+        $exceptions->respond(fn (Response $response, Throwable $exception, Request $request): Response =>
+            CorrelateFrameworkRequest::addResponseId($response, $request));
     })->create();
