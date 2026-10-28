@@ -3,7 +3,9 @@
 @section('content')
 <main class="container mx-auto px-4 py-8 chrono-page">
     <h1 class="text-2xl font-bold mb-6">Praxis-Terminals</h1>
-    @if ($terminalDevices->moduleSettingsEnabled)
+    @if ($terminalDevices->devicePairingsEnabled)
+    <div class="alert alert-info mb-6" role="note">Geräte können mit einem einmal angezeigten Code für den lokalen Gerätedienst vorbereitet werden. Das Speichern persönlicher Terminal-Zugänge ist nicht verbunden. Modulfreigabe, Standortanlage und Sperren sind nur bei gesonderter Freigabe verfügbar.</div>
+    @elseif ($terminalDevices->moduleSettingsEnabled)
     <div class="alert alert-info mb-6" role="note">Optionaler Terminal-Betrieb und Geräteübersicht mit Standort und Kontaktstatus. Koppeln und das Speichern persönlicher Terminal-Zugänge sind in dieser Laravel-Ansicht nicht verbunden. Standortanlage, Geräte- und Zugangssperre sind nur bei gesonderter Freigabe verfügbar.</div>
     @elseif ($terminalDevices->deviceRevocationsEnabled)
     <div class="alert alert-info mb-6" role="note">Geräteübersicht mit Standort und Kontaktstatus. Koppeln, Modulfreigabe und das Speichern persönlicher Terminal-Zugänge sind in dieser Laravel-Ansicht nicht verbunden. Standortanlage, Geräte- und Zugangssperre sind nur bei gesonderter Freigabe verfügbar.</div>
@@ -12,6 +14,9 @@
     @endif
     @if ($terminalDevices->error)<div class="alert alert-error mb-6" role="alert">{{ $terminalDevices->error }}</div>@endif
     @if ($terminalDevices->saved)<div class="alert alert-success mb-6">Änderung gespeichert.</div>@endif
+    @if ($terminalDevices->pairing)
+    <div class="alert alert-success mb-6"><strong>Gerät {{ $terminalDevices->pairing->deviceId }} koppeln · zehn Minuten gültig</strong><p>Den folgenden Einmalcode am Gerätedienst eingeben. Er wird nur jetzt angezeigt.</p><code>{{ $terminalDevices->pairing->takeCode() }}</code></div>
+    @endif
     @if ($terminalDevices->moduleSettingsEnabled)
     <div class="card bg-base-100 shadow-xl p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">Optionaler Terminal-Betrieb</h2>
@@ -24,6 +29,21 @@
             <button class="btn btn-primary">Speichern</button>
         </form>
     </div>
+    @endif
+    @if ($terminalDevices->devicePairingsEnabled)
+    <section class="card bg-base-100 shadow-xl p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">Neues Gerät</h2>
+        <form method="post">
+            @csrf
+            <input class="input input-bordered w-full" type="hidden" name="action" value="device">
+            <label class="block text-sm font-semibold mt-4 mb-2" for="device-name">Gerätename</label>
+            <input class="input input-bordered w-full" id="device-name" name="name" maxlength="100" placeholder="Personaleingang" required>
+            <label class="block text-sm font-semibold mt-4 mb-2" for="device-site">Standort</label>
+            <select class="select select-bordered w-full" id="device-site" name="site_id">@foreach ($terminalDevices->pairingSites as $site)<option value="{{ $site['id'] }}">{{ $site['name'] }}</option>@endforeach</select>
+            <div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary">Einmalcode erzeugen</button></div>
+        </form>
+        <p class="opacity-70">Kopplung im lokalen Gerätedienst, niemals durch Hinterlegen eines Admin-Passworts am Terminal.</p>
+    </section>
     @endif
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">Geräte</h2>

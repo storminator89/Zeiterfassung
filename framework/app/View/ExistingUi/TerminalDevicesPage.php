@@ -2,7 +2,7 @@
 
 namespace App\View\ExistingUi;
 
-/** Prepared display and composition flags; no raw pairing/credential or authorization data. */
+/** Prepared display flags plus an optional ephemeral confirmed enrollment; never key/hash data. */
 final readonly class TerminalDevicesPage
 {
     /** @param list<array{id: int, name: string, site: string, permission_label: string, contact_state: string, contact_label: string, last_seen_label: string}> $devices */
@@ -19,5 +19,9 @@ final readonly class TerminalDevicesPage
         public bool $moduleSettingsEnabled = false,
         public bool $moduleServerEnabled = false,
         public bool $moduleEnabled = false,
+        public bool $devicePairingsEnabled = false,
+        /** Name-ordered nonsecret Site options; checked again by the writer. */
+        public array $pairingSites = [],
+        #[\SensitiveParameter] public ?\App\Chrono\TerminalDevicePairing $pairing = null,
     ) {}
 }

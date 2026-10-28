@@ -8,6 +8,8 @@ use App\Chrono\LegacyLocalWebCorrectionWithdrawals;
 use App\Chrono\LegacyChronoReads;
 use App\Chrono\LegacyLocalWebTerminalSites;
 use App\Chrono\LocalWebTerminalSites;
+use App\Chrono\LocalWebTerminalDevicePairings;
+use App\Chrono\LegacyLocalWebTerminalDevicePairings;
 use App\Chrono\LocalWebTerminalModuleSettings;
 use App\Chrono\LegacyLocalWebTerminalModuleSettings;
 use App\Chrono\LocalWebTerminalCredentialRevocations;
@@ -77,6 +79,17 @@ final class ChronoDomainServiceProvider extends ServiceProvider
             function () use ($app): AttendanceWriter {
                 if (! $app->bound(AttendanceWriter::class)) {
                     throw new LogicException('No admitted operation-scoped terminal module settings writer is configured.');
+                }
+
+                return $app->make(AttendanceWriter::class);
+            },
+        ));
+        // Enrollment has no signing-key dependency; the writer is resolved only on a valid command.
+        $this->app->scoped(LocalWebTerminalDevicePairings::class, fn ($app) => new LegacyLocalWebTerminalDevicePairings(
+            $app->make('auth'),
+            function () use ($app): AttendanceWriter {
+                if (! $app->bound(AttendanceWriter::class)) {
+                    throw new LogicException('No admitted operation-scoped terminal device enrollment writer is configured.');
                 }
 
                 return $app->make(AttendanceWriter::class);
