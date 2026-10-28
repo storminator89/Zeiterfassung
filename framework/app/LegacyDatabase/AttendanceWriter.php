@@ -362,6 +362,25 @@ final class AttendanceWriter
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction));
     }
 
+    /** Existing revoke_device only; no key reads, pairing creation or credential/module changes. */
+    public function revokeTerminalDevice(int $admin, #[\SensitiveParameter] string $expectedWebVersion,
+        mixed $deviceId): void
+    {
+        if (! is_string($deviceId) || preg_match('/\A[1-9][0-9]*\z/', $deviceId) !== 1
+            || ($target = filter_var($deviceId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])) === false) {
+            throw new \InvalidArgumentException('Ungültiges Terminal-Gerät.');
+        }
+        $this->executeLocked(function () use ($admin, $expectedWebVersion, $target): void {
+            // The same IMMEDIATE lock protects fresh actor checks and mutation.
+            $this->assertExpectedWebPrincipal($admin, 'local', $expectedWebVersion, 'admin');
+            $statement = $this->pdo->prepare('UPDATE terminals SET enabled=0,generation=?,pairing_hash=NULL,pairing_expires=NULL WHERE id=?');
+            $statement->execute([bin2hex(random_bytes(16)), $target]);
+            $statement->closeCursor();
+            // Exact native replacement generation, including repeated/zero-row
+            // behavior. No existing generation, secret or pairing hash is read.
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction));
+    }
+
     /** Anonymous self-registration only: fixed ordinary role and no caller actor/privileges. */
     public function registerLocalUser(string $username, string $email, #[\SensitiveParameter] string $passwordHash,
         ?int $expectedPolicyRevision = null): bool
