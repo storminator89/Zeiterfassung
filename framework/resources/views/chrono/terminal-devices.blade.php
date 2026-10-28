@@ -3,13 +3,28 @@
 @section('content')
 <main class="container mx-auto px-4 py-8 chrono-page">
     <h1 class="text-2xl font-bold mb-6">Praxis-Terminals</h1>
-    @if ($terminalDevices->deviceRevocationsEnabled)
+    @if ($terminalDevices->moduleSettingsEnabled)
+    <div class="alert alert-info mb-6" role="note">Optionaler Terminal-Betrieb und Geräteübersicht mit Standort und Kontaktstatus. Koppeln und das Speichern persönlicher Terminal-Zugänge sind in dieser Laravel-Ansicht nicht verbunden. Standortanlage, Geräte- und Zugangssperre sind nur bei gesonderter Freigabe verfügbar.</div>
+    @elseif ($terminalDevices->deviceRevocationsEnabled)
     <div class="alert alert-info mb-6" role="note">Geräteübersicht mit Standort und Kontaktstatus. Koppeln, Modulfreigabe und das Speichern persönlicher Terminal-Zugänge sind in dieser Laravel-Ansicht nicht verbunden. Standortanlage, Geräte- und Zugangssperre sind nur bei gesonderter Freigabe verfügbar.</div>
     @else
     <div class="alert alert-info mb-6" role="note">Nur lesende Geräteübersicht mit Standort und Kontaktstatus. Koppeln, Sperren, Modulfreigabe und das Speichern persönlicher Terminal-Zugänge sind in dieser Laravel-Ansicht nicht verbunden. Standortanlage und Zugangssperre sind nur bei gesonderter Freigabe verfügbar.</div>
     @endif
     @if ($terminalDevices->error)<div class="alert alert-error mb-6" role="alert">{{ $terminalDevices->error }}</div>@endif
     @if ($terminalDevices->saved)<div class="alert alert-success mb-6">Änderung gespeichert.</div>@endif
+    @if ($terminalDevices->moduleSettingsEnabled)
+    <div class="card bg-base-100 shadow-xl p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">Optionaler Terminal-Betrieb</h2>
+        <p>Bei Aktivierung verwenden Web und Terminal dieselben Buchungen. Pausen werden tatsächlich erfasst; es erfolgt kein automatischer Mindestpausenabzug. Nachträgliche Änderungen laufen über Korrekturanträge.</p>
+        <p>Serverfreigabe: <strong>{{ $terminalDevices->moduleServerEnabled ? 'vorhanden' : 'aus – APP_TERMINAL_ENABLED=1 erforderlich' }}</strong></p>
+        <form method="post">
+            @csrf
+            <input class="input input-bordered w-full" type="hidden" name="action" value="toggle">
+            <label class="block text-sm font-semibold mt-4 mb-2"><input class="checkbox checkbox-primary" type="checkbox" name="enabled" @checked($terminalDevices->moduleEnabled)> Modul aktivieren</label>
+            <button class="btn btn-primary">Speichern</button>
+        </form>
+    </div>
+    @endif
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">Geräte</h2>
         <p class="opacity-70 mb-4">Freigabe und letzter Kontakt sind unabhängig. Kontakt gilt nach {{ $terminalDevices->contactMaxAge }} Sekunden als veraltet; aktueller Kontakt garantiert keine Erreichbarkeit. Stand beim Laden der Seite.</p>

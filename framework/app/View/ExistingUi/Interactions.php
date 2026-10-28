@@ -22,5 +22,6 @@ final readonly class Interactions
         public bool $correctionWithdrawals = false,
         public bool $terminalDeviceRevocations = false,
         public bool $ldapSessionRevocations = false,
+        public bool $terminalModuleSettings = false,
     ) {}
 }

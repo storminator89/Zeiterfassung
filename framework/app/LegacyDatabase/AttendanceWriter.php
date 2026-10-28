@@ -382,6 +382,30 @@ final class AttendanceWriter
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction));
     }
 
+    /** Native module toggle only; server permission is re-read, never written. */
+    public function saveTerminalModuleSettings(int $admin, #[\SensitiveParameter] string $expectedWebVersion,
+        bool $enabled): void
+    {
+        $this->executeLocked(function () use ($admin, $expectedWebVersion, $enabled): void {
+            $this->assertExpectedWebPrincipal($admin, 'local', $expectedWebVersion, 'admin');
+            // Exact native gates on this same IMMEDIATE-locked PDO. Do not trust
+            // the displayed status or permit changing APP_TERMINAL_ENABLED here.
+            if ($enabled && getenv('APP_TERMINAL_ENABLED') !== '1') {
+                throw new \AttendanceError('Zuerst APP_TERMINAL_ENABLED=1 auf dem Server setzen.');
+            }
+            if (! $enabled && att_one($this->pdo, 'SELECT id FROM work_sessions WHERE ended_at IS NULL LIMIT 1')) {
+                throw new \AttendanceError('Zuerst offene Arbeitszeiten beenden.');
+            }
+            if ($enabled && ! attendance_enabled($this->pdo)
+                && att_one($this->pdo, 'SELECT id FROM zeiterfassung WHERE endzeit IS NULL LIMIT 1')) {
+                throw new \AttendanceError('Zuerst vorhandene offene Arbeitszeiten im bisherigen System beenden.');
+            }
+            $statement = $this->pdo->prepare('UPDATE terminal_settings SET enabled=? WHERE id=1');
+            $statement->execute([$enabled ? 1 : 0]);
+            $statement->closeCursor();
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction));
+    }
+
     /** Anonymous self-registration only: fixed ordinary role and no caller actor/privileges. */
     public function registerLocalUser(string $username, string $email, #[\SensitiveParameter] string $passwordHash,
         ?int $expectedPolicyRevision = null): bool

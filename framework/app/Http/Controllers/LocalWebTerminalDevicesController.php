@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
 use App\Chrono\LocalWebTerminalSites;
+use App\Chrono\LocalWebTerminalModuleSettings;
 use App\Chrono\LocalWebTerminalCredentialRevocations;
 use App\Chrono\LocalWebTerminalDeviceRevocations;
 use Illuminate\Contracts\Config\Repository;
@@ -32,6 +33,7 @@ final class LocalWebTerminalDevicesController extends Controller
         private ?LocalWebTerminalCredentialRevocations $revocations = null,
         private ?Repository $config = null,
         private ?LocalWebTerminalDeviceRevocations $deviceRevocations = null,
+        private ?LocalWebTerminalModuleSettings $moduleSettings = null,
     ) {}
 
     public function index(Request $request): Response
@@ -43,6 +45,14 @@ final class LocalWebTerminalDevicesController extends Controller
     public function store(Request $request): Response|RedirectResponse
     {
         $command = array_diff_key($request->request->all(), array_flip(['_token', 'csrf_token']));
+        if (($command['action'] ?? null) === 'toggle') {
+            if (! $this->moduleSettingsEnabled()
+                || array_diff(array_keys($command), LocalWebTerminalModuleSettings::COMMAND_FIELDS) !== []) {
+                return new Response('Diese Terminalaktion ist in diesem Profil nicht verbunden.', 400,
+                    ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
+            }
+            return $this->saveModuleSettings($request, $command);
+        }
         if (($command['action'] ?? null) === 'revoke_device') {
             if (! $this->deviceRevocationsEnabled()
                 || array_diff(array_keys($command), LocalWebTerminalDeviceRevocations::COMMAND_FIELDS) !== []) {
@@ -125,10 +135,33 @@ final class LocalWebTerminalDevicesController extends Controller
         }
     }
 
+    private function moduleSettingsEnabled(): bool
+    {
+        return $this->moduleSettings !== null
+            && $this->config?->get('chrono_terminal_admin.module_settings_enabled', false) === true;
+    }
+
+    private function saveModuleSettings(Request $request, array $command): Response|RedirectResponse
+    {
+        try {
+            $this->moduleSettings->save($command);
+            // No success claim before the same-PDO writer confirms COMMIT/idle.
+            return new RedirectResponse('terminals.php?saved=1');
+        } catch (AuthenticationException|AuthorizationException $error) {
+            throw $error;
+        } catch (AttendanceError|InvalidArgumentException $error) {
+            return $this->page($request, $error->getMessage());
+        } catch (Throwable) {
+            return $this->page($request, 'Moduländerung konnte nicht bestätigt werden. Bitte neu laden und den gespeicherten Stand prüfen; nicht automatisch wiederholen.');
+        }
+    }
+
     private function page(Request $request, ?string $error = null): Response
     {
         // The snapshot independently checks the current local Admin before data.
         $projection = $this->reads->adminTerminalDevices();
+        $allowModuleSettings = $this->moduleSettingsEnabled() && $this->interactions->terminalModuleSettings;
+        $module = $allowModuleSettings ? $this->reads->adminTerminalModuleSettings() : [];
         $allowDeviceRevocations = $this->deviceRevocationsEnabled() && $this->interactions->terminalDeviceRevocations;
         $allowRevocations = $this->revocationsEnabled() && $this->interactions->terminalCredentialRevocations;
         $credentials = $allowRevocations ? $this->reads->adminTerminalCredentialRevocationTargets()
@@ -146,11 +179,14 @@ final class LocalWebTerminalDevicesController extends Controller
             ),
             'terminalDevices' => new TerminalDevicesPage(
                 $projection['devices'], $projection['contact_max_age'], $this->interactions->terminalSites,
-                $error, ($this->interactions->terminalSites || $allowRevocations || $allowDeviceRevocations) && $request->query->has('saved'),
+                $error, ($this->interactions->terminalSites || $allowRevocations || $allowDeviceRevocations || $allowModuleSettings) && $request->query->has('saved'),
                 credentials: $credentials,
                 credentialRevocationsEnabled: $allowRevocations,
                 deviceRevocationsEnabled: $allowDeviceRevocations,
+                moduleSettingsEnabled: $allowModuleSettings,
+                moduleServerEnabled: $module['server_enabled'] ?? false,
+                moduleEnabled: $module['enabled'] ?? false,
             ),
-        ], 200, ($allowRevocations || $allowDeviceRevocations) ? ['Cache-Control' => 'no-store'] : []);
+        ], 200, ($allowRevocations || $allowDeviceRevocations || $allowModuleSettings) ? ['Cache-Control' => 'no-store'] : []);
     }
 }
