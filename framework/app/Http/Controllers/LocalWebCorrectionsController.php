@@ -159,7 +159,11 @@ final class LocalWebCorrectionsController extends Controller
             'id' => (int) $row['id'], 'start' => $row['startzeit'], 'end' => $row['endzeit'],
         ], $recordOptions);
         [$requestStatus, $requestedPage] = $this->queueFilters($request);
-        $queue = $this->reads->correctionsPage($requestStatus, $requestedPage);
+        $preview = $request->isMethod('GET') ? $request->query('balance_preview') : null;
+        $previewRequestId = is_string($preview) && preg_match('/\A[1-9][0-9]*\z/D', $preview) === 1
+            ? filter_var($preview, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) : false;
+        $previewRequestId = $previewRequestId === false ? null : $previewRequestId;
+        $queue = $this->reads->correctionsPage($requestStatus, $requestedPage, $previewRequestId);
         $requests = array_map(static function (array $row): array {
             $preview = \chrono_correction_preview($row);
             return [
@@ -192,6 +196,8 @@ final class LocalWebCorrectionsController extends Controller
                 queueSelection: $this->queueSelection($request, $selectionInvalid, $selectedRecordId),
                 withdrawalsEnabled: $this->withdrawalsEnabled() && $this->interactions->corrections
                     && $this->interactions->correctionWithdrawals && $actor->auth_source === 'local',
+                balancePreviewRequestId: $previewRequestId,
+                balancePreview: $queue['balancePreview'] ?? [],
                 requestDraft: $retainRequestDraft && ! $selectionInvalid && $request->isMethod('POST')
                     ? CorrectionsPage::rejectedRequestDraft($form) : [],
             ),
