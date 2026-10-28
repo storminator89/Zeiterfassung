@@ -44,7 +44,6 @@ final class FirstAdminSetupFiles
         $state = self::instance($instance);
         $lock = self::lock($instance, $state);
         $created = [];
-        $reader = $pdo = null;
         try {
             self::sameInstance($instance, $state);
             foreach ([self::CLOSED, self::PROFILE, self::TOKEN] as $name) {
@@ -61,26 +60,9 @@ final class FirstAdminSetupFiles
             $root = dirname(__DIR__, 3);
             $files = new OfflineFiles([$root, $root.'/framework/public']);
             $before = $files->snapshot($admission->path);
-            $reader = (new RuntimeDatabase($admission, $files))->readConnection($admission->configuration(), 'chrono');
-            $pdo = $reader->getPdo();
-            $pdo->beginTransaction();
-            $mapping = json_decode(file_get_contents($root.'/docs/framework/schema-map.json'), true, 512, JSON_THROW_ON_ERROR);
-            // Refuse populated private tables by COUNT before any streaming
-            // reference digest could process their account/credential values.
-            $seeded = ['app_migrations', 'pause_settings', 'terminal_settings', 'terminal_sites'];
-            foreach ($mapping['tables'] as $table) {
-                $name = $table['name']; // Fixed trusted source inventory, never input.
-                if (in_array($name, $seeded, true)) { continue; }
-                $exists = $pdo->prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?");
-                $exists->execute([$name]);
-                if ($exists->fetchColumn() !== false && (int) $pdo->query('SELECT COUNT(*) FROM "'.$name.'"')->fetchColumn() !== 0) {
-                    throw new RuntimeException;
-                }
-            }
-            IntakePolicyV4References::build($mapping)->requireFresh($pdo);
-            $pdo->rollBack();
-            $reader->disconnect();
-            $reader = $pdo = null;
+            self::assertEmptyReadSnapshot($admission, $files, $root);
+            // No reader/statement escapes the completed void helper scope into
+            // the stopped-file comparison or later token/profile generation.
             if ($files->snapshot($admission->path) !== $before) { throw new RuntimeException; }
             self::sameInstance($instance, $state);
             self::sameJson($instance.'/runtime-admission.json', $manifestHash, $manifestState);
@@ -111,8 +93,6 @@ final class FirstAdminSetupFiles
             self::discardNew($instance, $state, $created);
             throw new RuntimeException('Setup provisioning not confirmed. Keep the instance private and inspect locally; no automatic retry.');
         } finally {
-            try { if ($pdo instanceof PDO && $pdo->inTransaction()) { $pdo->rollBack(); } $reader?->disconnect(); } catch (Throwable) {}
-            $pdo = $reader = null;
             @flock($lock, LOCK_UN);
             @fclose($lock);
         }
@@ -155,6 +135,53 @@ final class FirstAdminSetupFiles
         } finally {
             @flock($lock, LOCK_UN);
             @fclose($lock);
+        }
+    }
+
+    /** All admitted reader/statement lifetimes end BEFORE any raw cold-file hash. */
+    private static function assertEmptyReadSnapshot(RuntimeAdmission $admission, OfflineFiles $files, string $root): void
+    {
+        $reader = $pdo = $statement = null;
+        try {
+            $reader = (new RuntimeDatabase($admission, $files))->readConnection($admission->configuration(), 'chrono');
+            $pdo = $reader->getPdo();
+            $pdo->beginTransaction();
+            $mapping = json_decode(file_get_contents($root.'/docs/framework/schema-map.json'), true, 512, JSON_THROW_ON_ERROR);
+            // Same fixed inventory/count policy; never process populated
+            // account/credential values or retain a statement outside this scope.
+            foreach ($mapping['tables'] as $table) {
+                $name = $table['name'];
+                if (in_array($name, ['app_migrations', 'pause_settings', 'terminal_settings', 'terminal_sites'], true)) { continue; }
+                $statement = $pdo->prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?");
+                try {
+                    $statement->execute([$name]);
+                    $exists = $statement->fetchColumn() !== false;
+                } finally {
+                    try { if (! $statement->closeCursor()) { throw new RuntimeException; } }
+                    finally { $statement = null; }
+                }
+                if ($exists) {
+                    $statement = $pdo->query('SELECT COUNT(*) FROM "'.$name.'"');
+                    try {
+                        if ((int) $statement->fetchColumn() !== 0) { throw new RuntimeException; }
+                    } finally {
+                        try { if (! $statement->closeCursor()) { throw new RuntimeException; } }
+                        finally { $statement = null; }
+                    }
+                }
+            }
+            // Nested preflight returns metadata only, never the target handle.
+            IntakePolicyV4References::build($mapping)->requireFresh($pdo);
+            if (! $pdo->rollBack() || $pdo->inTransaction()) { throw new RuntimeException; }
+        } finally {
+            // Cleanup failure propagates, so the caller cannot continue to cold
+            // hashing, exclusive reservation or entropy after uncertain cleanup.
+            try {
+                if ($pdo instanceof PDO && $pdo->inTransaction() && ! $pdo->rollBack()) { throw new RuntimeException; }
+            } finally {
+                try { $reader?->disconnect(); }
+                finally { $statement = $pdo = $reader = null; }
+            }
         }
     }
 

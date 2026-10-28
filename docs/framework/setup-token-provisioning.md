@@ -36,7 +36,15 @@ COUNT before reference row-digests; no account/credential values are returned or
 used. Cold identity verification hashes the private file without exposing its
 bytes. There are no target DB writes (canonical references are anonymous memory
 only), user-password operations or actual LDAP/key operations. The source never accepts an existing user
-installation as a new setup target. It does not claim an atomic filesystem/DB
+installation as a new setup target. Raw before/after file hashes are strictly
+**stopped-only**: all external writers/requests must already be drained. A separate
+void read helper closes and releases every existence/COUNT statement, rolls back,
+disconnects and releases the reader/PDO; its entire scope ends before the post-read
+cold hash or any token/profile generation. A PDOStatement may retain a connection
+even after PDO variables are nulled, so that alone is not sufficient. Cleanup
+failure stops preparation rather than continuing to raw hashing. Own-handle
+cleanup neither stops nor proves absence of external writers and is not an online
+consistency/recovery mechanism. The command does not claim an atomic filesystem/DB
 transaction or protect against uncoordinated other writers; setup's writer still
 rechecks zero users under its own lock before any administrator insertion.
 
