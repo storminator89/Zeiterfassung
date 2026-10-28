@@ -1,6 +1,6 @@
 # #51 / CH-45: enger Startmetadaten-Entwurf
 
-Lokaler Entwurf auf dem exakten Quellbaum von Main `8053587c77e568fa24c32a81ab3b140ed17eedc6` (nach #239/#240/#241/#242).
+Lokaler Entwurf auf dem exakten Quellbaum von Main `8053587c77e568fa24c32a81ab3b140ed17eedc6`.
 Keine produktive Aktivierung, kein Release und keine vollständige Issue-Abnahme.
 
 ## Vertrag
