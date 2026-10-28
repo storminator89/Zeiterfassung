@@ -105,9 +105,7 @@ Located in the `time-tracker-extension_edge` folder.
 
 - **Bootstrap:** For styling and the user interface.
 - **jQuery:** For interaction and functionality.
-- **DataTables:** For rendering and managing tables.
 - **Chart.js:** For drawing charts (if implemented).
-- **PDFMake and JSZip:** For creating PDF files and zipping data.
 - **PHP 8.5:** Current supported PHP 8.5 patch release (Docker and CI: **8.5.12**).
 - **PHP extensions:** PDO SQLite, SQLite3, mbstring, OpenSSL, ctype, fileinfo and iconv. LDAP is optional and must be installed separately before enabling directory login.
 - **SQLite:** For data storage.
