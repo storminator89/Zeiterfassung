@@ -52,6 +52,70 @@ Nur für lokale Entwicklung ist `--allow-http-localhost` erlaubt; es akzeptiert 
 - Serverzeit ist maßgeblich. Uhrzeit und Kalendertage werden für `Europe/Berlin` dargestellt; die neue Ereignis-/Intervallablage verwendet UTC-Epochen, Berichtswerte enthalten einen expliziten Offset. Alte Zeitangaben ohne Offset behalten ihren Inhalt und werden als Berliner Ortszeit interpretiert. Dies vor Einführung prüfen, wenn eine bisherige Installation eine andere Zeitzone verwendet hat.
 - Einzelne Pausen werden sekundengenau gespeichert; die bisherige Berichts-Spalte erhält die abgerundete Summe in ganzen Minuten. Es werden keine nicht genommenen Pausen erfunden. Beim Gehen erscheint ein Hinweis, wenn die konfigurierte Mindestpausensumme unterschritten ist; die tatsächliche Pause bleibt unverändert. Die bestehenden Regeln müssen fachlich für die Praxis geprüft werden.
 
+## Neue Terminalaktionen an die identifizierte Arbeitszeit binden (#36)
+
+Quellstand dieses begrenzten Folgeschritts: Main
+`830d070e80ea362f0765cb05e0a3186ba7b72f69`. Gerätefreigabe, PIN-/Kartenprüfung,
+Standort, Credentialversion und zehnsekündige Identifikation bleiben unverändert.
+Die Freigabe war bisher **nicht** an den bei Identifikation gesehenen Work-Record
+gebunden: Eine zwischenzeitlich durch einen anderen Kanal ersetzte Sitzung konnte
+sonst das Ziel der ersten Terminal-Pausen-/Endaktion werden. Kein tatsächlicher
+Vorfall oder Hardwareversuch wird behauptet.
+
+`identify` ergänzt die vorhandene numerische `record_id` um die exakte
+`record_id_string` (positiver Dezimalstring oder null bei `absent`). Beide stammen
+aus demselben einmal aufgerufenen Statushelper, nicht aus zwei Statusabfragen.
+Der reine Formatter verändert weder vorhandene Werte noch gespeicherte Quittungen.
+Der Agent hält diese Bindung neben dem Grant; der Kiosk wählt keine Record-ID.
+Nur beim Erzeugen eines **neuen** Nicht-Start-Pendingevents setzt er daraus
+`expected_record`. Start bleibt beim vorhandenen Keine-offene-Sitzung-Guard.
+
+Der gemeinsame native/Laravel-Terminalkern nimmt das Feld optional an und nutzt
+den vorhandenen positiven ASCII-Stringparser vor dem Integercast (`PHP_INT_MAX`).
+Mit übermittelter Bindung prüft der bestehende gemeinsame Buchungsdienst unter
+derselben Sperre auf die noch aktive Record-ID; eine andere Sitzung ergibt409,
+ohne neue Buchung und ohne Verbrauch des Grants in der zurückgerollten Mutation.
+Authentifizierungs-/Nonceverbrauch außerhalb dieses Locks wird dadurch nicht
+rückgängig gemacht. Es gibt keine zusätzliche Transaktion, neue Grantspalte,
+Session-/Rollenpolitik oder Änderung von HMAC-Nachricht, Ereignisnamensraum,
+Payloadhashformat und ursprünglicher Replayentscheidung.
+
+Ein bestehender Pendingpayload wird **nie** umgebunden oder nachträglich ergänzt.
+Bei unklarer Antwort bleibt seine identische serialisierte Nachricht erhalten;
+der vorhandene Retry signiert sie wie bisher mit frischer Zeit/Nonce. Bereits
+verbrauchte Grants gestatten weiterhin nur ihre ursprüngliche Event-ID, deren
+alter Hash vor dem aktuellen Sitzungsvergleich wiederholt wird. Bestehende
+Credential-/Standort-/Gerätesperren bleiben auch vor einem Replay wirksam.
+Definitive Antworten behalten die bisherige lokale Grant-/Pending-Bereinigung;
+die neue Bindung wird dabei ebenfalls entfernt. Kein automatisches Neubuchen.
+
+**Bewusste optionale Kompatibilität:** Alte Agenten und alte Pendingevents ohne
+Feld bleiben beim bisherigen nullable Serververtrag. Der neue Agent bevorzugt
+die explizite Zeichenkette. Nur wenn das neue Feld auf einem älteren Server
+wirklich fehlt, darf er dessen positiven Python-JSON-Integer exakt als String
+verwenden (`type(value) is int`, kein bool/Float); ein vorhandenes ungültiges oder
+widersprüchliches Feld wird nicht durch diesen Fallback repariert. Unbekannte
+Bindung erlaubt keine neue Nicht-Start-Aktion. Der ältere Server ignoriert das
+Zusatzfeld dennoch: **für Altserverbetrieb und alte ungebundene Clients/Pending-
+events wird keine neue Stale-Session-Sicherheit behauptet**. Empfohlen ist die
+koordinierte Reihenfolge Server, dann Agent. Eine gemischte Versionsrücknahme
+oder tatsächliche Installation ist damit nicht freigegeben.
+
+Genau vier Quellpfade: reine Attendance-Metadaten/Parserbeschreibung,
+`terminal_core.php`, bestehender Python-Agent und dieser Abschnitt. Native
+Wrapper, Laravel-Terminaladapter/Writer, Kiosk, Schema, Schlüssel- und Default-
+Zulassung bleiben unverändert. Nur ein grober erfundener Speicherablauf für
+Identifikation, Sitzungswechsel, Konflikt und Replay sowie ein zugehöriger reiner
+Python-Pending-/Fake-Transportnachweis und Syntax-/Quellerhaltungsprüfung.
+Keine realen Personen, Grants, PIN-/Kartenaktionen, Pairings, Daten oder Schlüssel
+verwendet; kein Netzwerk, Listener, Browser, keine Uhrverstellung oder neue CI. Hardware-,
+Host-/SAPI- und veröffentlichte Abnahme bleiben offen.
+
+**#57 bleibt offen:** Der Agent hält Pending nur im Arbeitsspeicher. Reset,
+Neuidentifikation und Prozessneustart behalten ihre bisherigen Verlustgrenzen;
+keine dauerhafte Offline-Queue, neue Recoveryroute oder automatische Klärung
+eines unbekannten alten ungebundenen Events wird eingeführt.
+
 ## Korrekturen, Verlust und Berechtigungen
 
 `adjustments.php`: Beschäftigte beantragen eine Änderung eigener abgeschlossener Einträge oder eine fehlende Buchung. Zeitpunkte explizit mit UTC-Offset angeben, damit die doppelte Herbststunde eindeutig ist. Antrag enthält Zeitraum, tatsächliche Pausensumme und Begründung. Administratoren oder zugeordnete Vorgesetzte können fremde Anträge mit Begründung freigeben/ablehnen. Eigene Freigaben sind nicht erlaubt: für Korrekturen eines alleinigen Administrators wird eine zweite berechtigte Person benötigt.

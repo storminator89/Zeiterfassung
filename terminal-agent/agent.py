@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Chrono online kiosk. Standard-library only. Device secrets never enter the browser."""
-import argparse, getpass, hashlib, hmac, http.server, json, os, pathlib, secrets, stat, threading, time, urllib.error, urllib.parse, urllib.request
+import argparse, getpass, hashlib, hmac, http.server, json, os, pathlib, re, secrets, stat, threading, time, urllib.error, urllib.parse, urllib.request
 ROOT=pathlib.Path(__file__).resolve().parent
 class Remote:
     def __init__(self, config, allow_http=False):
@@ -31,6 +31,21 @@ class Remote:
             return response.status,data
         except (ValueError,OSError):return 503,{'success':False,'message':'Keine gültige Serverbestätigung. Vorgang nicht als gebucht behandeln.'}
 
+def identify_record_binding(result):
+    """Exact observed own record only. Never repair a present malformed string field."""
+    state=result.get('state')
+    if 'record_id_string' in result:
+        record=result['record_id_string']
+        if state=='absent' and record is None and result.get('record_id') is None:return None
+        if state in ('working','paused') and isinstance(record,str) and re.fullmatch(r'[1-9][0-9]*',record) and (len(record)<19 or (len(record)==19 and record<='9223372036854775807')) and type(result.get('record_id')) is int and str(result['record_id'])==record:return record
+        raise ValueError('Invalid record binding')
+    # Older server compatibility only: Python JSON integers are exact; bool is NOT an ID.
+    # That older server ignores expected_record, so this is not a stale-session guarantee.
+    record=result.get('record_id')
+    if state=='absent' and record is None:return None
+    if state in ('working','paused') and type(record) is int and 0<record<=9223372036854775807:return str(record)
+    raise ValueError('Unknown record binding')
+
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--config',default=str(pathlib.Path.home()/'.config/chrono-terminal/device.json'))
     parser.add_argument('--pair',action='store_true');parser.add_argument('--url');parser.add_argument('--device-id',type=int);parser.add_argument('--port',type=int,default=8765);parser.add_argument('--allow-http-localhost',action='store_true')
@@ -48,7 +63,7 @@ def main():
     if path.is_symlink() or not stat.S_ISREG(path.stat().st_mode) or path.stat().st_uid != os.getuid() or stat.S_IMODE(path.stat().st_mode)&0o077:raise SystemExit('Configuration must be a private regular file (chmod 600).')
     config=json.loads(path.read_text());remote=Remote(config,args.allow_http_localhost)
     origin=f'http://127.0.0.1:{args.port}'; browser_token=secrets.token_hex(32)
-    grant=None; grant_deadline=0; pending=None;lock=threading.Lock(); stopping=threading.Event()
+    grant=None; grant_record=None; grant_deadline=0; pending=None;lock=threading.Lock(); stopping=threading.Event()
     def heartbeat():
         while not stopping.wait(30):remote.request({'op':'heartbeat'})
     class Handler(http.server.BaseHTTPRequestHandler):
@@ -63,7 +78,7 @@ def main():
             elif self.path in ('/kiosk.js','/kiosk.css'):self.send_data(200,(ROOT/self.path[1:]).read_bytes(),'text/javascript' if self.path.endswith('.js') else 'text/css')
             else:self.send_json(404,{'success':False})
         def do_POST(self):
-            nonlocal grant,grant_deadline,pending
+            nonlocal grant,grant_record,grant_deadline,pending
             if not self.valid_host() or self.headers.get('Origin')!=origin or not hmac.compare_digest(self.headers.get('X-Kiosk-CSRF',''),browser_token):self.send_json(403,{'success':False});return
             try:
                 size=int(self.headers.get('Content-Length','0'))
@@ -73,23 +88,33 @@ def main():
             except (ValueError,TypeError):self.send_json(400,{'success':False,'message':'Ungültige Anfrage.'});return
             with lock:
                 if self.path=='/identify':
-                    grant=None;pending=None
+                    grant=None;grant_record=None;pending=None
                     status,result=remote.request({'op':'identify','employee_code':data.get('employee_code',''),'card':data.get('card',''),'pin':data.get('pin','')})
                     if status==200:
-                        grant=result.pop('grant');grant_deadline=time.monotonic()+result['expires_in']
+                        try:grant_record=identify_record_binding(result)
+                        except ValueError:
+                            status=503;result={'success':False,'message':'Keine gültige Sitzungsbindung erhalten. Bitte erneut anmelden.'}
+                        else:
+                            result.pop('record_id_string',None) # Agent-owned metadata, not a browser-selected ID.
+                            grant=result.pop('grant');grant_deadline=time.monotonic()+result['expires_in']
                     self.send_json(status,result)
                 elif self.path=='/event':
                     action=data.get('action');confirm=data.get('confirm_end_pause') is True
                     if action not in ('start','pause_start','pause_end','end'):self.send_json(400,{'success':False});return
                     if not grant or (pending is None and time.monotonic()>grant_deadline):self.send_json(401,{'success':False,'message':'Bitte erneut anmelden.'});return
                     if pending and (pending['action']!=action or pending['confirm_end_pause']!=confirm):self.send_json(409,{'success':False,'message':'Unbestätigte Aktion zuerst erneut versuchen.'});return
-                    if pending is None:pending={'op':'event','grant':grant,'event_id':secrets.token_hex(16),'action':action,'confirm_end_pause':confirm}
+                    if pending is None:
+                        if action!='start' and grant_record is None:
+                            grant=None;grant_record=None;self.send_json(409,{'success':False,'message':'Sitzungsbindung fehlt. Bitte erneut anmelden.'});return
+                        pending={'op':'event','grant':grant,'event_id':secrets.token_hex(16),'action':action,'confirm_end_pause':confirm}
+                        if action!='start':pending['expected_record']=grant_record
+                    # Never add or replace a binding on a retained legacy/current pending payload.
                     status,result=remote.request(pending)
-                    if status==200 or status<500:grant=None;pending=None
+                    if status==200 or status<500:grant=None;grant_record=None;pending=None
                     # With no confirmation, retain only the exact request for safe retries.
                     self.send_json(status,result)
                 elif self.path=='/reset':
-                    grant=None;pending=None;self.send_json(200,{'success':True})
+                    grant=None;grant_record=None;pending=None;self.send_json(200,{'success':True})
                 else:self.send_json(404,{'success':False})
     server=http.server.ThreadingHTTPServer(('127.0.0.1',args.port),Handler)
     threading.Thread(target=heartbeat,daemon=True).start()

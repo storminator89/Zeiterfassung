@@ -156,7 +156,7 @@ function attendance_transition(PDO $db, int $user, string $source, string $event
     try { $r=attendance_transition_locked($db,$user,$source,$eventId,$action,$confirm,$record,null,$requireExpectedRecord); $db->exec('COMMIT'); return $r; }
     catch (Throwable $e) { $db->exec('ROLLBACK'); throw $e; }
 }
-/** Raw Web form only. Omission is legacy replay, never a new unbound non-start mutation. */
+/** Optional raw transport field. Fixed Web callers separately require it after legacy replay. */
 function attendance_expected_record(array $form): ?int {
     if (!array_key_exists('expected_record',$form)) { return null; }
     $raw=$form['expected_record'];
@@ -167,6 +167,15 @@ function attendance_expected_record(array $form): ?int {
         throw new AttendanceError('Ungültige Sitzungsbindung. Bitte den Status neu laden.',400);
     }
     return (int)$raw;
+}
+/** Exact additive transport metadata from one trusted existing status/receipt, never another read. */
+function attendance_record_id_string(array $result): array {
+    if (!array_key_exists('record_id',$result)
+        || ($result['record_id'] !== null && (!is_int($result['record_id']) || $result['record_id'] < 1))) {
+        throw new LogicException('An existing canonical record identifier is required.');
+    }
+    $result['record_id_string']=$result['record_id']===null?null:(string)$result['record_id'];
+    return $result;
 }
 function attendance_json(callable $action): never {
     header('Content-Type: application/json; charset=UTF-8');
