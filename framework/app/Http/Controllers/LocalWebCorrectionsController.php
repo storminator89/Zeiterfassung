@@ -34,11 +34,20 @@ final class LocalWebCorrectionsController extends Controller
     public function store(Request $request): View|RedirectResponse
     {
         try {
+            require_once dirname(__DIR__, 4).'/lib/correction_selection.php';
             // Raw form bag only. No actor, role, source, audit, date or boolean normalization.
             $command = array_intersect_key($request->request->all(), array_flip([
                 'action', 'record_id', 'cancel', 'start', 'end', 'pause', 'reason',
                 'id', 'decision', 'review_reason',
             ]));
+            if (($command['action'] ?? null) === 'request') {
+                // Native request-only parser: explicit new entry 0 is valid only in POST.
+                try {
+                    \correction_selection_id($command['record_id'] ?? null, true);
+                } catch (\InvalidArgumentException $selectionError) {
+                    return $this->page($request, $selectionError->getMessage());
+                }
+            }
             $this->corrections->apply($command);
 
             return new RedirectResponse('adjustments.php?saved=1');
@@ -56,15 +65,43 @@ final class LocalWebCorrectionsController extends Controller
         // Definitions only: reuse the native pure display formatter, never its bootstrap.
         require_once dirname(__DIR__, 4).'/lib/attendance.php';
         require_once dirname(__DIR__, 4).'/lib/correction_presentation.php';
+        require_once dirname(__DIR__, 4).'/lib/correction_selection.php';
         $actor = $this->auth->guard('web')->user();
         $language = $request->query('lang', $request->session()->get('lang', 'de'));
         $language = is_string($language) && in_array($language, ['de', 'en', 'zh'], true) ? $language : 'de';
         $request->session()->put('lang', $language);
 
-        // Existing own projection order, native 200-option display cap; no new query.
+        // Same existing all-own read and first-200 order; only an explicit own
+        // older selection may add one option. Never fall back to new entry 0.
+        $allOwnRecords = $this->reads->reportRows();
+        $recordOptions = array_slice($allOwnRecords, 0, 200);
+        $selectedRecordId = 0;
+        $selectionInvalid = false;
+        $form = $request->request->all();
+        $query = $request->query->all();
+        try {
+            if ($request->isMethod('POST') && ($form['action'] ?? null) === 'request') {
+                $selectedRecordId = \correction_selection_id($form['record_id'] ?? null, true);
+            } elseif ($request->isMethod('GET') && array_key_exists('record_id', $query)) {
+                $selectedRecordId = \correction_selection_id($query['record_id']);
+            }
+            if ($selectedRecordId !== 0) {
+                $ownRecord = null;
+                foreach ($allOwnRecords as $ownRow) {
+                    if ((int) $ownRow['id'] === $selectedRecordId) {
+                        $ownRecord = $ownRow;
+                        break;
+                    }
+                }
+                $recordOptions = \correction_selection_options($recordOptions, $selectedRecordId, $ownRecord);
+            }
+        } catch (\InvalidArgumentException $selectionError) {
+            $selectionInvalid = true;
+            $error = $selectionError->getMessage();
+        }
         $records = array_map(static fn (array $row): array => [
             'id' => (int) $row['id'], 'start' => $row['startzeit'], 'end' => $row['endzeit'],
-        ], array_slice($this->reads->reportRows(), 0, 200));
+        ], $recordOptions);
         $requests = array_map(static function (array $row): array {
             $preview = \chrono_correction_preview($row);
             return [
@@ -89,8 +126,9 @@ final class LocalWebCorrectionsController extends Controller
                 interactions: $this->interactions, activePage: 'adjustments.php',
             ),
             'corrections' => new CorrectionsPage(
-                $records, $requests, (int) $request->query('record_id', 0), $error,
+                $records, $requests, $selectedRecordId, $error,
                 $request->query->has('saved'), $this->interactions->corrections,
+                selectionInvalid: $selectionInvalid,
             ),
         ]);
     }
