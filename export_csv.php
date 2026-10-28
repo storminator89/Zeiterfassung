@@ -1,12 +1,15 @@
 <?php
 require_once 'config.php';
-require_once 'functions.php';
+// Definitions only: export does not need dashboard queries or holiday loading.
+require_once __DIR__ . '/lib/csv_export.php';
 require_once __DIR__ . '/lib/report_ordering.php';
 
 // Ensure user is logged in
 require_once __DIR__ . '/security.php';
 if (!isset($_SESSION['user_id'])) {
-    die('Not authorized');
+    // Preserve the effective native redirect formerly performed by functions.php.
+    header("Location: login.php");
+    exit();
 }
 
 try {
@@ -31,51 +34,35 @@ try {
         exit;
     }
 
-    // Set headers for CSV download with UTF-8 encoding
-    header('Content-Type: text/csv; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="Arbeitszeiterfassung_' . date('Y-m-d') . '.csv"');
-
-    // Create output stream with UTF-8 encoding
-    $output = fopen('php://temp', 'w+');
-    fprintf($output, "\xEF\xBB\xBF"); // UTF-8 BOM
-
-    // Add headers
-    fputcsv($output, [
-        'Datum',
-        'Start',
-        'Ende',
-        'Pause (Min)',
-        'Arbeitszeit / Gutschrift',
-        'Standort',
-        'Beschreibung',
-        'Art',
-        'Gutschrift (Min)'
-    ], ';', '"', '\\');
-
-    // Same instant/ID order as the native list, without a page limit.
+    // Canonical diagnostics inspect the same complete source, never drop a row.
+    $hasInvalidRecords = false;
     foreach ($exportRecords as $record) {
-        $startzeit = booking_local_date(booking_time($record['startzeit']));
-        $endzeit = $record['endzeit'] ? booking_local_date(booking_time($record['endzeit'])) : null;
-
-        fputcsv($output, [
-            $startzeit->format('d.m.Y'),
-            $record['absence_kind'] ? '' : $startzeit->format('H:i'),
-            $record['absence_kind'] ? '' : ($endzeit ? $endzeit->format('H:i') : ''),
-            csv_safe($record['pause'] ?: ''),
-            calculateDuration($record['startzeit'], $record['endzeit'], $record['pause']),
-            csv_safe($record['standort']),
-            csv_safe($record['beschreibung']),
-            csv_safe($record['absence_kind'] ?? 'Arbeitszeit'),
-            $record['planned_minutes'] ?? ''
-        ], ';', '"', '\\');
+        if (report_record_calculation($record)['status'] === 'invalid') {
+            $hasInvalidRecords = true;
+        }
+    }
+    if ($hasInvalidRecords) {
+        http_response_code(409);
+        header('Content-Type: text/plain; charset=UTF-8');
+        echo 'CSV-Export nicht verfügbar: Mindestens ein Zeiteintrag ist ungültig. Bitte die Originalwerte in der eigenen Arbeitszeitliste prüfen und über Korrekturanträge klären. Es wurden keine Zeiten gelöscht oder gekürzt.';
+        exit;
     }
 
-    // Output the file with UTF-8 encoding
-    rewind($output);
-    echo mb_convert_encoding(stream_get_contents($output), 'UTF-8', 'UTF-8');
-    fclose($output);
+    // Capture the filename date at its original point, before serialization.
+    $filenameDate = date('Y-m-d');
+    // Existing pure serializer closes its temporary stream even on failure.
+    // Only complete bytes may become an attachment; no late streamed callback.
+    $document = report_csv_document($exportRecords);
+
+    header('Content-Type: text/csv; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="Arbeitszeiterfassung_' . $filenameDate . '.csv"');
+    echo $document;
     exit;
 
-} catch (Exception $e) {
-    die('Error exporting data: ' . $e->getMessage());
+} catch (Throwable) {
+    // Do not expose SQL, paths, source values or a misleading successful CSV.
+    http_response_code(500);
+    header('Content-Type: text/plain; charset=UTF-8');
+    echo 'CSV-Export konnte nicht erstellt werden. Bitte erneut versuchen.';
+    exit;
 }

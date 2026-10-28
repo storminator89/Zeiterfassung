@@ -13,7 +13,9 @@ Geändert: ausschließlich der native `csv_safe()`-Wrapper in `security.php`,
 Arbeitszeitfragment-/Standardlayout-Vorlagen, `LocalWebFixture` und ihr fester
 Router. Kein neuer Containervertrag, Reader, Writer oder Paketinstall.
 
-Der aktive native Endpoint `export_csv.php` bleibt **byte-identisch**. Alle
+Im ursprünglichen Zwölfpfad-Paket blieb der aktive native Endpoint
+`export_csv.php` **byte-identisch**; der begrenzte native #16-Nachtrag unten
+beschreibt seine spätere gesonderte Korrektur. Alle
 anderen Security-/CSRF-/Session-/Throttle-/Schlüsselbytes, Fachhelfer,
 Auth-/Policy-/Provider-/Bootstrap-/Konfigurationsdateien sowie Kalender- und
 Terminalquellen bleiben erhalten. Die vorhandenen Registrarparameter und
@@ -93,7 +95,8 @@ statt Veränderung von Laravels globalem UTC-Standard.
 Serialisierungsfehler liefert generischen **500-Text**, keine rohe Exception,
 kein erfolgreiches CSV-Attachment und keinen bereits geschriebenen Zeilenrest.
 Der native Endpoint hatte dafür einen rohen `die()`-Fehlertext, gegebenenfalls
-noch unter CSV-/Erfolgsheadern; dieser aktive Endpoint wird hier nicht geändert.
+noch unter CSV-/Erfolgsheadern; im ursprünglichen Framework-Paket wurde dieser
+aktive Endpoint nicht geändert. Der gesonderte native Nachtrag folgt unten.
 Eine `AuthenticationException` wird dagegen nicht abgefangen/umgedeutet, sondern
 an den vorhandenen Authfehlerpfad weitergereicht.
 
@@ -143,3 +146,70 @@ DB-/Server-/Browser-/JavaScript-Funktionstests, neue CI oder Veröffentlichung.
 Geschützter grober Download, Header-/Browser-/Berechtigungsablauf und operative
 Speicher-/Fehlergrenzen bleiben separat offen; dieses Paket schließt #79/#78
 oder den vollständigen Laravel-Cutover nicht.
+
+
+## Gesonderter nativer #16-Nachtrag: vollständige Bytes vor Attachment
+
+Basis: Main `fd166a2d3e78be9d40a873f93ad0c2c398a6561f`, Tree
+`31d9c067297778e47f84911f98e9c7d98c6d1dec`. Genau zwei vorhandene Dateien:
+`export_csv.php` und dieses Dokument. Keine Framework-/Helper-/Schema-/Routen-/
+Defaultaktivierungsänderung, keine neue Fachformel oder Datenkorrektur.
+
+Der native Export verwendet jetzt denselben unveränderten reinen
+`report_csv_document()`-Serializer. `config.php`, `security.php` und die dortige
+aktuelle Account-/Passwortversionsprüfung bleiben unverändert. Der bisherige
+**wirksame** unauthentifizierte `302 Location: login.php` bleibt vor der Abfrage
+erhalten: zuvor führte `functions.php` diesen Redirect aus, bevor das alte
+`Not authorized`-`die()` des Exports überhaupt erreichbar war. Kein neuer
+Admin-/Team-/Personenwähler und keine Methoden-/Session-/CSRF-/Authregel.
+
+Nur das für diese Ausgabe unbenötigte `functions.php`-Include entfällt zugunsten
+der definitions-only CSV-Datei. Damit führt der Export nicht mehr dessen
+zusätzliche Dashboardabfragen, Feiertags-Netzzugriff/-INSERT oder dortige rohe
+SQL-`die()`-Fehler aus. Der native Konfigurationsbootstrap selbst wird nicht
+umgebaut, umgangen oder als nebenwirkungsfrei behauptet; seine bereits eigenen
+Fehler-/Migrations-/Sessiongrenzen bleiben außerhalb dieses Nachtrags.
+
+Die exakt bisherige eigene Materialisierungsabfrage und Instant-/ID-Reihenfolge
+bleiben gleich. Ein Admin exportiert weiterhin nur seine eigenen Zeilen.
+Die unveränderte Konfliktprüfung bleibt zuerst und liefert denselben festen
+409-Text ohne Attachment. Danach prüft `report_record_calculation()` **jede**
+Zeile desselben vollständigen Arrays. Ein kanonisch ungültiger Start, Endwert,
+Pausenwert oder rückläufiger/negativer Zeitraum verweigert den gesamten Export
+mit ausdrücklichem `409 text/plain; charset=UTF-8` und Verweis auf eigene Liste/
+Korrekturanträge. Keine IDs, Originalwerte oder rohen Diagnostikdetails im Fehler.
+Keine still ausgelassene Zeile, Ersatz-Null oder teilweise fertige CSV.
+Gültige offene Zeilen sind nicht ungültig: leere Endspalte und bisherige
+`-`-Dauer bleiben erhalten; keine neue Endzeit oder laufende Gutschrift.
+
+Erst nach bestandenem Gate wird das Dateidatum wie bisher vor der eigentlichen
+Serialisierung unter der nativen Berlin-Konfiguration erfasst. Erst wenn der
+bestehende Serializer den **gesamten** String fertiggestellt hat, werden
+`Content-Type: text/csv; charset=UTF-8` und der unveränderte Attachmentname gesetzt
+und genau diese Bytes ausgegeben. BOM, neun Spalten, Semikolon, Quotes/Escape,
+Formelschutz und offene/Gutschrift-/Nacht-/Offsetsemantik bleiben unverändert.
+Ein technischer Fehler innerhalb dieser Exportgrenze wird als fester generischer
+`500 text/plain; charset=UTF-8` ohne Attachment beantwortet, nie mit roher
+Exceptionnachricht, SQL, Pfad oder Zeilenrest. `Throwable` schließt hier auch
+technische Type-/Formatfehler ein; es gibt kein automatisches Retry.
+
+**Materialisierungsgrenze:** `php://temp` kann bei größeren Ausgaben wie bisher
+auf temporären Speicher auslagern; vollständige Zeilen und Dokumentbytes brauchen
+Speicher. Es gibt absichtlich kein stilles Limit, Paging oder Kürzen. Der reine
+Serializer prüft seine normalen Schreib-/Lese-/Rewindfehler und schließt den
+Stream in `finally`. Fatales Speicherende, Prozessabbruch, nachgelagerte
+SAPI-/Netzfehler und alle früheren Bootstrapfehler werden dadurch nicht zu einer
+beweisbar abfangbaren oder betrieblich freigegebenen Fehlergrenze.
+
+Ein einziger grober erfundener Source-/Byte-/Antwortgrenzenvertrag vergleicht den
+originalen Formatierungsblock mit dem gemeinsamen Serializer, gültige offene/
+Gutschrift-/Textwerte, eine späte ungültige Zeile, den unveränderten Konflikttext
+und einen synthetischen technischen Fehler. Der Authfluss wird ausschließlich an
+den Originalquellgrenzen geprüft, nicht durch Session-/Logininjektion oder echte
+Anfragen. Laufzeit: PHP **8.5.12**, Prozesszeitzone **Europe/Berlin**; vier
+erfundene gültige Zeilen ergeben bytegleich 367 Bytes, Antwortfragmente
+200/409/409/500. Zusätzlich PHP-Syntax und exakter Quellerhalt aller anderen Dateien.
+Keine echte CSV, Buchung, Konten-/Saldoaktion, DB, Credentials, Header-/SAPI-/HTTP-/
+Browser-/Downloadabnahme oder neue CI. Laravel behält seinen bisherigen
+Materialisierungs-/generischen500-Vertrag unverändert; dieser Nachtrag erklärt
+keine vollständige #16-/#79-/Cutover- oder Produktivabnahme für bestanden.
