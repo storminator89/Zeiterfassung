@@ -102,9 +102,53 @@ foreach ([
     isolated_api_boundary($inventedRows . 'try {' . $encoderAndCatch, 500, $failure);
 }
 
+// One terminal-only bootstrap-free group: preserve the original terminal inner
+// transport, never read a request body, open a database or invoke signed rules.
+function isolated_terminal_boundary(string $application, int $status, string $expected, int $levels): void {
+    $source = file_get_contents(__DIR__ . '/../terminal_api.php');
+    $begin = '// BEGIN native terminal application (kept at global scope).';
+    $end = '// END native terminal application.';
+    ensure_error_response(substr_count($source, $begin) === 1 && substr_count($source, $end) === 1, 'one terminal application region');
+    [$prefix, $applicationAndSuffix] = explode($begin, $source, 2);
+    [, $suffix] = explode($end, $applicationAndSuffix, 2);
+    $prefix = substr($prefix, strlen("<?php\n"));
+    $script = '$_SERVER = ["REQUEST_METHOD" => "OPTIONS"];'
+        . 'ob_start(); echo "outer:"; http_response_code(200);'
+        . 'register_shutdown_function(static function () { fwrite(STDERR, "status:" . http_response_code() . ";levels:" . ob_get_level()); });'
+        . $prefix . $application . $suffix;
+    $process = proc_open([PHP_BINARY, '-n', '-d', 'error_reporting=E_ALL', '-d', 'display_errors=1', '-r', $script],
+        [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+    ensure_error_response(is_resource($process), 'terminal boundary subprocess available');
+    fclose($pipes[0]);
+    $body = stream_get_contents($pipes[1]);
+    $diagnostics = stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    $exit = proc_close($process);
+    ensure_error_response($exit === 0 && $body === 'outer:' . $expected
+        && $diagnostics === 'status:' . $status . ';levels:' . $levels,
+        'terminal boundary preserves outer buffer, exact status/body and inner exit without OPTIONS shortcut');
+}
+
+$terminalUnconfirmed = json_encode(['success'=>false,'message'=>'Buchung nicht bestätigt. Verbindung prüfen und denselben Vorgang erneut versuchen.']);
+isolated_terminal_boundary('echo "PRIVATE-PARTIAL"; throw new Error("PRIVATE-BOOTSTRAP-DETAIL");', 503, $terminalUnconfirmed, 1);
+isolated_terminal_boundary('require ' . var_export($helper, true) . '; abort_request(503, "Database unavailable."); echo "UNREACHABLE";',
+    503, '{"success":false,"message":"Database unavailable."}', 2);
+// Load only these two exact definitions as source, not attendance/bootstrap files.
+$attendanceSource = file_get_contents(__DIR__ . '/../lib/attendance.php');
+$classStart = strpos($attendanceSource, 'class AttendanceError extends RuntimeException {');
+$classEnd = strpos($attendanceSource, 'function att_one(', $classStart);
+$jsonStart = strpos($attendanceSource, 'function attendance_json(callable $action): never {');
+ensure_error_response($classStart !== false && $classEnd !== false && $jsonStart !== false, 'exact terminal inner transport definitions');
+$innerTransport = substr($attendanceSource, $classStart, $classEnd - $classStart) . substr($attendanceSource, $jsonStart);
+isolated_terminal_boundary($innerTransport . 'attendance_json(static function () { throw new AttendanceError("POST erforderlich.", 405); }); echo "UNREACHABLE";',
+    405, '{"success":false,"message":"POST erforderlich."}', 2);
+isolated_terminal_boundary($innerTransport . 'attendance_json(static fn() => ["success" => true, "time" => "invented"]); echo "UNREACHABLE";',
+    200, '{"success":true,"time":"invented"}', 2);
+
 echo json_encode([
     'passed' => true,
-    'groups' => ['non-API exact text and request inputs cannot opt in', 'native controlled-error JSON, original status and termination', 'entrypoint-only unexpected-failure and encoding boundary; no bootstrap'],
+    'groups' => ['non-API exact text and request inputs cannot opt in', 'native controlled-error JSON, original status and termination', 'entrypoint-only unexpected-failure and encoding boundary; no bootstrap', 'terminal-only bootstrap503, inner transport and unchanged OPTIONS path; no signed rules'],
     'runtime' => PHP_VERSION,
     'sapi' => PHP_SAPI,
     'http_headers_cors_retry_after_bootstrap_auth_db_browser_deployment_tested' => false,

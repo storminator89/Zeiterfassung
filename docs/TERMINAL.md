@@ -52,6 +52,67 @@ Nur für lokale Entwicklung ist `--allow-http-localhost` erlaubt; es akzeptiert 
 - Serverzeit ist maßgeblich. Uhrzeit und Kalendertage werden für `Europe/Berlin` dargestellt; die neue Ereignis-/Intervallablage verwendet UTC-Epochen, Berichtswerte enthalten einen expliziten Offset. Alte Zeitangaben ohne Offset behalten ihren Inhalt und werden als Berliner Ortszeit interpretiert. Dies vor Einführung prüfen, wenn eine bisherige Installation eine andere Zeitzone verwendet hat.
 - Einzelne Pausen werden sekundengenau gespeichert; die bisherige Berichts-Spalte erhält die abgerundete Summe in ganzen Minuten. Es werden keine nicht genommenen Pausen erfunden. Beim Gehen erscheint ein Hinweis, wenn die konfigurierte Mindestpausensumme unterschritten ist; die tatsächliche Pause bleibt unverändert. Die bestehenden Regeln müssen fachlich für die Praxis geprüft werden.
 
+## Native Transportfehler vor und nach dem Bootstrap (#25)
+
+Ausgangsstand dieser begrenzten Ergänzung ist Main
+`cb8fc5245e5dc980824fb3152224a499a049d3bd`. Ausschließlich der Einstieg
+`terminal_api.php` aktiviert vor `config.php` die streng serverseitige
+JSON-Fehlerform des vorhandenen `abort_request`. Kontrollierte Bootstrapfehler
+behalten Status und Nachricht, etwa 503 mit
+`{"success":false,"message":"Database unavailable."}`. Requestheader,
+Querydaten und Scriptname können dieses Opt-in nicht auswählen. Normale
+Webseiten behalten ihre bisherige Textantwort; die Sicherheits-/Schlüssel-
+und Konfigurationsquellen werden nicht verändert.
+
+Eine lokale `try`/`catch (Throwable)`-Grenze besitzt einen eigenen Antwortpuffer
+und unterdrückt angezeigte PHP-Diagnostik nur für diesen Terminaleinstieg.
+Fangbare unerwartete Fehler vor dem inneren Transport verwerfen dessen
+gepufferte Teilantwort, nicht einen vorherigen äußeren Puffer, und ergeben
+**HTTP 503** mit JSON-Content-Type und der vorhandenen Terminalmeldung:
+
+```json
+{"success":false,"message":"Buchung nicht bestätigt. Verbindung prüfen und denselben Vorgang erneut versuchen."}
+```
+
+Das ist bewusst **nicht** der generische 500-Fallback von `api.php`. Es gibt
+keine Exceptiondetails, Signatur-/Body-/PIN-/Karten-/Schlüsseldaten oder neue
+Logs in dieser Grenze. Bestehende Loggingquellen bleiben unverändert. Kein
+globaler Exception-, Shutdown- oder Warninghandler wird registriert; Warnungen
+werden nicht in Exceptions umgewandelt. Nicht fangbare Einstiegskompilierfehler,
+Speichermangel, Prozessabbruch, Server-/Proxyantworten und bereits außerhalb
+dieses Puffers versendete Bytes bleiben ohne JSON-Garantie.
+
+Der gesamte bisherige Terminal-Anwendungsblock bleibt bytegleich: Bootstrap,
+Modulsperre vor Methodenprüfung (deaktiviert 404, sonst Nicht-POST 405),
+Längenprüfung 8192 und einmaliges Rohbodylesen bis 8193 Bytes, JSON-Decodierung,
+Kopplungszweig, HMAC über **denselben unveränderten Rohbody**, Nonceverbrauch,
+Identifikation und bestehende Schreibtransaktionen. Es gibt keine neue
+CORS-Freigabe, keinen `OPTIONS`-Kurzschluss und keine neue Authentifizierung.
+Die inneren `attendance_json`-Abbrüche behalten ihre kontrollierten Statuswerte
+400/401/403/404/405/409/413/429, ihren vorhandenen unerwarteten 503 und gültige
+200-Erfolge. Deren Encoder, Meldungen und Exit bleiben unverändert.
+
+**503 bedeutet nicht „nichts gespeichert“ oder „zurückgerollt“:** Nonces und
+Identifikationszähler werden außerhalb der späteren Ereignissperre verbraucht;
+ein Grant kann schon vor einer späteren Status-/Antwortstörung gespeichert
+sein. Kopplung committet vor der Schlüsselantwort; Heartbeat/Ereignis können
+vor einem Fehler bei der JSON-Ausgabe bereits committed sein. Die neue Grenze
+ändert keine dieser Grenzen und bietet weder Rollback noch automatische
+Wiederholung oder neue Ereignis-ID an. Der unveränderte Agent hält einen
+unbestätigten Ereignispayload bei Status >= 500 im Arbeitsspeicher und signiert
+einen vom Benutzer ausgelösten Retry mit frischer Zeit/Nonce, aber identischem
+Pendingpayload. Reset/Neuidentifikation/Neustart und die offenen #57-Grenzen
+bleiben bestehen; keine dauerhafte Queue oder Recoverybehauptung.
+
+Nachweis: vorhandener bootstrapfreier PHP 8.5.12-Grobnachweis mit unveränderten
+drei Gruppen plus einer Terminalgruppe (erfundener Fehler/Teilbody, kontrollierter
+Bootstrap-503, exakter innerer 405 und gültiger Erfolg; kein `OPTIONS`-Kurzschluss),
+Syntax und statischer Ganzquellerhalt. Nur die exakten inneren Transport-
+definitionen, keine Bootstrap-/Signatur-/Schreibfunktion wurden ausgeführt.
+Keine tatsächlichen Requests, Geräte, Pairings, Ereignisse, Konten, Schlüssel,
+Datei-DBs, Header-/HTTP-/Host-/Hardware-/Browser-/Betriebsabnahme oder Aktivierung.
+Teilfortschritt #25, keine vollständige Abnahme.
+
 ## Neue Terminalaktionen an die identifizierte Arbeitszeit binden (#36)
 
 Quellstand dieses begrenzten Folgeschritts: Main

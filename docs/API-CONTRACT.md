@@ -306,9 +306,12 @@ erhalten. Der vorhandene Attendance-Fallback 503 wird nicht zu 500 umgedeutet.
 Der normale Puffer wird unverändert ausgegeben; es gibt keinen neuen globalen
 Exception-, Shutdown- oder Warninghandler und keine Warnung-zu-Exception-
 Konvertierung. `security.php`, `config.php` und gewöhnliche Webantworten sind
-unverändert. **`terminal_api.php` ist nicht Teil dieses nativen API-Vertrags**:
-sein Bootstrap vor `attendance_json` erhält hier keine neue JSON-Garantie
-oder Änderung des signierten Terminalprotokolls.
+unverändert. **`terminal_api.php` ist nicht Teil dieses API-500-Vertrags**:
+sein eigener [Terminaltransport](TERMINAL.md#native-transportfehler-vor-und-nach-dem-bootstrap-25)
+normalisiert kontrollierte Bootstrapabbrüche und fangbare unerwartete Fehler
+separat, mit dem vorhandenen Terminal-503-/Nichtbestätigungsfall statt 500.
+Rohbody, Signatur-/Nonceordnung und Terminalauthentifizierung bleiben dabei
+unverändert; dessen HTTP-/Hardware-/Recoveryabnahme bleibt offen.
 
 Ein 500 ist weder eine Commitquittung noch ein Rollbacknachweis. Es gibt keinen
 neuen Retry, keine neue Ereignis-ID und keine Recoverybehauptung für #57.
