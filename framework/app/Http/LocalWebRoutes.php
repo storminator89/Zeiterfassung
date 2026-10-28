@@ -47,10 +47,13 @@ use Symfony\Component\HttpFoundation\Response;
 /** Explicit opt-in registrar. Never called by bootstrap/providers/default routes. */
 final class LocalWebRoutes
 {
-    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false, bool $includeSetup = false, bool $includeLdapSync = false, bool $useSharedLoginBudget = false): void
+    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false, bool $includeSetup = false, bool $includeLdapSync = false, bool $useSharedLoginBudget = false, bool $includeTerminalSites = false): void
     {
         if ($useSharedLoginBudget !== SharedLoginBudgetServiceProvider::selected($app)) {
             throw new LogicException('Login route and shared budget selection must agree.');
+        }
+        if ($includeTerminalSites && ! $includeTerminalDevices) {
+            throw new LogicException('Terminal site creation requires its existing device page.');
         }
         // No opt-in page may be registered against missing or replaced chart bytes.
         if ($includeSupervisor) {
@@ -92,11 +95,12 @@ final class LocalWebRoutes
             || ($includeSettings && $request->path() === 'settings.php')
             || ($includeAdminPauseSettings && $request->path() === 'admin.php')
             || ($includeRegistration && $request->path() === 'register.php')
-            || ($includeSetup && $request->path() === 'setup.php');
+            || ($includeSetup && $request->path() === 'setup.php')
+            || ($includeTerminalSites && $request->path() === 'terminals.php');
         TrimStrings::skipWhen($nativeFormPath);
         ConvertEmptyStringsToNull::skipWhen($nativeFormPath);
 
-        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot) {
+        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeTerminalSites) {
             if ($includeDatabaseSnapshot && $request->path() === 'download.php') {
                 return new Response('Please sign in again.', 401,
                     ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
@@ -110,6 +114,11 @@ final class LocalWebRoutes
                 return $request->isMethod('POST')
                     ? new Response('Please sign in again.', 401, ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store'])
                     : new RedirectResponse('login.php');
+            }
+
+            if ($includeTerminalSites && $request->path() === 'terminals.php' && $request->isMethod('POST')) {
+                return new Response('Please sign in again.', 401,
+                    ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
             }
 
             // These opt-in reports are full pages, never status/form transports.
@@ -135,7 +144,7 @@ final class LocalWebRoutes
         $router->group(['middleware' => [
             EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class,
             ShareErrorsFromSession::class, LegacyFormCsrf::class, SubstituteBindings::class,
-        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeRegistration, $includeSetup, $includeLdapSync, $useSharedLoginBudget): void {
+        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeRegistration, $includeSetup, $includeLdapSync, $useSharedLoginBudget, $includeTerminalSites): void {
             $router->get('login.php', [LocalWebSessionController::class, 'create'])->name('login');
             $login = $router->post('login.php', [LocalWebSessionController::class, 'store']);
             if (! $useSharedLoginBudget) {
@@ -149,7 +158,7 @@ final class LocalWebRoutes
                 $router->get('register.php', [LocalWebRegistrationController::class, 'create']);
                 $router->post('register.php', [LocalWebRegistrationController::class, 'store'])->middleware('throttle:chrono-web-register');
             }
-            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeLdapSync): void {
+            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeLdapSync, $includeTerminalSites): void {
                 foreach (['/', 'index.php', 'attendance.php'] as $path) {
                     $router->get($path, [LocalWebAttendanceController::class, 'page']);
                     $router->post($path, [LocalWebAttendanceController::class, 'transition']);
@@ -184,6 +193,9 @@ final class LocalWebRoutes
                 }
                 if ($includeTerminalDevices) {
                     $router->get('terminals.php', [LocalWebTerminalDevicesController::class, 'index']);
+                }
+                if ($includeTerminalSites) {
+                    $router->post('terminals.php', [LocalWebTerminalDevicesController::class, 'store']);
                 }
                 if ($includeDatabaseSnapshot) {
                     $router->get('download.php', [LocalWebDatabaseSnapshotController::class, 'index'])->name('chrono.database-snapshot');

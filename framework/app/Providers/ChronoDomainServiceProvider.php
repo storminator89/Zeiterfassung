@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Chrono\ChronoReads;
 use App\Chrono\LegacyChronoReads;
+use App\Chrono\LegacyLocalWebTerminalSites;
+use App\Chrono\LocalWebTerminalSites;
 use App\LegacyDatabase\AttendanceWriter;
 use App\Terminal\AdmittedTerminalKeys;
 use App\Terminal\LegacyTerminalProtocol;
@@ -17,6 +19,17 @@ final class ChronoDomainServiceProvider extends ServiceProvider
     {
         // Lazy/scoped: registration and resolution open no DB or auth session.
         $this->app->scoped(ChronoReads::class, LegacyChronoReads::class);
+        // Pure lazy construction; no terminal key, module setting or default writer.
+        $this->app->scoped(LocalWebTerminalSites::class, fn ($app) => new LegacyLocalWebTerminalSites(
+            $app->make('auth'),
+            function () use ($app): AttendanceWriter {
+                if (! $app->bound(AttendanceWriter::class)) {
+                    throw new LogicException('No admitted operation-scoped terminal site writer is configured.');
+                }
+
+                return $app->make(AttendanceWriter::class);
+            },
+        ));
         // Real backend, but no route, root-key binding or fallback is installed.
         // Check explicit key admission before resolving any writer/connection.
         $this->app->scoped(TerminalProtocol::class, function ($app): TerminalProtocol {

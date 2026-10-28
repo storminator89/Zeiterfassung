@@ -306,6 +306,29 @@ final class AttendanceWriter
         }, fn (Closure $transaction): mixed => $this->context->run('setup:first-local-admin', 'First administrator setup', $transaction));
     }
 
+    /** Existing site-create only; never module settings, pairing, keys or credentials. */
+    public function createTerminalSite(int $user, mixed $name): void
+    {
+        $this->executeLocked(function () use ($user, $name): void {
+            $actor = att_one($this->pdo, 'SELECT role,auth_source FROM users WHERE id=?', [$user]);
+            if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local') {
+                throw new AuthorizationException('Nur die Verwaltung darf Terminal-Standorte anlegen.');
+            }
+            // Browser form strings only: retain native trim and 100-byte bound,
+            // but never coerce malformed arrays/objects into a stored site name.
+            if (! is_string($name)) {
+                throw new \AttendanceError('Standortnamen prüfen.', 400);
+            }
+            $name = trim($name);
+            if ($name === '' || strlen($name) > 100) {
+                throw new \AttendanceError('Standortnamen prüfen.', 400);
+            }
+            $statement = $this->pdo->prepare('INSERT INTO terminal_sites(name) VALUES(?)');
+            $statement->execute([$name]);
+            $statement->closeCursor();
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'terminals.php', $transaction));
+    }
+
     /** Anonymous self-registration only: fixed ordinary role and no caller actor/privileges. */
     public function registerLocalUser(string $username, string $email, #[\SensitiveParameter] string $passwordHash,
         ?int $expectedPolicyRevision = null): bool
