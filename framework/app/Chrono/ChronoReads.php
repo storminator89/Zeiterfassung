@@ -65,6 +65,9 @@ interface ChronoReads
     /** Read-only native device/site/contact display; fresh local Admin, no credential fields. */
     public function adminTerminalDevices(): array;
 
+    /** Existing configured terminal-access display only; fresh local Admin, never PIN/card hashes. */
+    public function adminTerminalCredentials(): array;
+
     /** Native search/order/ten-row paging, current local Admin, UI columns only. */
     public function adminUsersPage(string $search = '', int $page = 1): array;
 

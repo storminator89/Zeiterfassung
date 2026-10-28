@@ -12,5 +12,7 @@ final readonly class TerminalDevicesPage
         public bool $siteCreationEnabled = false,
         public ?string $error = null,
         public bool $saved = false,
+        /** Selected display fields only; never raw credential rows or hashes. */
+        public array $credentials = [],
     ) {}
 }

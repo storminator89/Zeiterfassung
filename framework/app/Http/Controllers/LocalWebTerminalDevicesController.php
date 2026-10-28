@@ -18,7 +18,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
-/** Existing device table and separately opt-in site form; never device actions or keys. */
+/** Existing device/access display and separately opt-in site form; never secrets or device actions. */
 final class LocalWebTerminalDevicesController extends Controller
 {
     public function __construct(
@@ -59,6 +59,7 @@ final class LocalWebTerminalDevicesController extends Controller
     {
         // The snapshot independently checks the current local Admin before data.
         $projection = $this->reads->adminTerminalDevices();
+        $credentials = $this->reads->adminTerminalCredentials();
         $actor = $this->auth->guard('web')->user();
         require_once dirname(__DIR__, 4).'/lib/language.php';
         $language = \valid_language($request->query('lang', $request->session()->get('lang', 'de')));
@@ -73,6 +74,7 @@ final class LocalWebTerminalDevicesController extends Controller
             'terminalDevices' => new TerminalDevicesPage(
                 $projection['devices'], $projection['contact_max_age'], $this->interactions->terminalSites,
                 $error, $this->interactions->terminalSites && $request->query->has('saved'),
+                credentials: $credentials,
             ),
         ]);
     }

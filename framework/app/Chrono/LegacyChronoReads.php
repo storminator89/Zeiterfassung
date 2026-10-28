@@ -574,6 +574,27 @@ final class LegacyChronoReads implements ChronoReads
         });
     }
 
+    public function adminTerminalCredentials(): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
+            if ($actor->role !== 'admin' || $actor->auth_source !== 'local') {
+                throw new AuthorizationException('Nur die Verwaltung darf Terminal-Zugänge sehen.');
+            }
+            // Exact native INNER JOINs and no added sort/cap. Never select a
+            // PIN/card hash, user password/token, credential ID, grant or key.
+            $rows = $this->rows($pdo, "SELECT c.employee_code,c.enabled,
+                CASE WHEN c.card_hash IS NULL OR c.card_hash='' OR c.card_hash='0' THEN 0 ELSE 1 END AS has_card,
+                u.username,s.name AS site
+                FROM employee_credentials c JOIN users u ON u.id=c.user_id JOIN terminal_sites s ON s.id=c.site_id", []);
+
+            return array_map(static fn (array $row): array => [
+                'username' => (string) $row['username'], 'employee_code' => (string) $row['employee_code'],
+                'site' => (string) $row['site'],
+                'access_label' => $row['enabled'] ? ($row['has_card'] ? 'PIN + Karte' : 'PIN') : 'Gesperrt',
+            ], $rows);
+        });
+    }
+
     public function adminUsersPage(string $search = '', int $page = 1): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($search, $page): array {
