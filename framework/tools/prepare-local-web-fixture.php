@@ -5,7 +5,8 @@ if (PHP_SAPI !== 'cli') {
     exit(1);
 }
 $ldapCaFile = null;
-if ($argc !== 1) {
+$registration = $argc === 2 && $argv[1] === '--registration';
+if ($argc !== 1 && ! $registration) {
     if ($argc !== 3 || $argv[1] !== '--ldap-lab' || ! str_starts_with($argv[2], '--ca=')) {
         http_response_code(404);
         exit(1);
@@ -23,7 +24,7 @@ $app = require dirname(__DIR__).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
 try {
-    echo json_encode(LocalWebFixture::prepare($app, $ldapCaFile), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR).PHP_EOL;
+    echo json_encode(LocalWebFixture::prepare($app, $ldapCaFile, $registration), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR).PHP_EOL;
 } catch (Throwable $error) {
     // No native SQL, keys, account fields, exception messages or input paths.
     fwrite(STDERR, 'Synthetic local-web preparation failed ('.$error::class.").\n");

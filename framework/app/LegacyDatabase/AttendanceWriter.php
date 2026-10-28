@@ -237,6 +237,28 @@ final class AttendanceWriter
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'admin.php', $transaction));
     }
 
+    /** Anonymous self-registration only: fixed ordinary role and no caller actor/privileges. */
+    public function registerLocalUser(string $username, string $email, #[\SensitiveParameter] string $passwordHash): bool
+    {
+        if ((password_get_info($passwordHash)['algoName'] ?? 'unknown') !== 'bcrypt') {
+            throw new \InvalidArgumentException('A configured bcrypt registration hash is required.');
+        }
+        return $this->executeLocked(function () use ($username, $email, $passwordHash): bool {
+            // Do not strand first-admin bootstrap or trust an earlier page/count.
+            if (att_one($this->pdo, "SELECT id FROM users WHERE role='admin' AND auth_source='local' LIMIT 1") === null) {
+                throw new AuthorizationException('Ordinary registration requires existing local administration.');
+            }
+            if (att_one($this->pdo, 'SELECT id FROM users WHERE username=? OR email=? LIMIT 1', [$username, $email]) !== null) {
+                return false;
+            }
+            $statement = $this->pdo->prepare("INSERT INTO users (username,password,email,role,auth_source,token,department_id,supervisor_id,regelarbeitszeit,ueberstunden) VALUES (?,?,?,'user','local',NULL,NULL,NULL,8,0)");
+            $statement->execute([$username, $passwordHash, $email]);
+            $statement->closeCursor();
+            // Existing model/audit triggers remain inside this one transaction.
+            return true;
+        }, fn (Closure $transaction): mixed => $this->context->run('web:registration', 'Self-registration', $transaction));
+    }
+
     /** Own Admin identity only; no request target/role/reason or general account mutation. */
     public function ownCarryIn(int $user, mixed $raw): string
     {

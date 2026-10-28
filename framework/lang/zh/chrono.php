@@ -169,4 +169,15 @@ return [
     // Exact selected native create-form copy.
     'FORM_PASSWORD' => '密碼',
     'USER_CREATED_SUCCESS' => '用戶創建成功。',
+
+    // Ordinary local self-registration; no email verification or first-admin claim.
+    'REGISTRATION_TITLE' => '註冊 - Quodara Chrono',
+    'REGISTRATION_NOTICE' => '建立一般本機使用者帳戶，不含管理或團隊權限。電子郵件地址尚未驗證，也不會寄送電子郵件。',
+    'REGISTRATION_CONFIRM_PASSWORD' => '確認密碼',
+    'REGISTRATION_PASSWORD_HINT' => '密碼須為 12 至 72 位元組，不可包含控制字元；兩次輸入必須相同。',
+    'REGISTRATION_BACK_LOGIN' => '返回登入',
+    'REGISTRATION_INVALID' => '請輸入有效資料，以及兩次相同、長度為 12 至 72 位元組的密碼。',
+    'REGISTRATION_UNCONFIRMED' => '無法確認註冊結果。請勿自動重試；請稍後嘗試登入。',
+    'REGISTRATION_RESULT' => '您可以嘗試登入。只有資料有效且尚未使用時，才會建立新帳戶。',
+    'REGISTRATION_NOT_READY' => '目前尚無法註冊。必須先另行設定本機管理員，請聯絡管理人員。',
 ];

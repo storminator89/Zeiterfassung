@@ -58,6 +58,17 @@ final class LegacyAuthServiceProvider extends ServiceProvider
             ];
         });
 
+        RateLimiter::for('chrono-web-register', function (Request $request): array {
+            $response = fn (Request $request, array $headers) => new Response(
+                'Too many registration attempts. Try again later.', 429,
+                array_merge($headers, ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']),
+            );
+            return [
+                Limit::perMinutes(60, 10)->by('registration-ip:'.hash('sha256', $request->ip() ?? 'unknown'))->response($response),
+                Limit::perMinutes(60, 100)->by('registration-total')->response($response),
+            ];
+        });
+
         if ($this->app->runningInConsole()) {
             $this->commands([RehearseLocalAuthentication::class]);
         }
