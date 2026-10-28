@@ -50,9 +50,61 @@ foreach ([
 $encoded = isolated_abort_response("define('CHRONO_API_JSON_ERRORS', true);", 503, "Ungültig \"/\"\n\xff");
 ensure_error_response(json_decode($encoded, true, 512, JSON_THROW_ON_ERROR) === ['success' => false, 'message' => "Ungültig \"/\"\n\u{FFFD}"], 'JSON-safe message encoding');
 
+// One additional coarse journey uses the exact API entry/exit boundary, replacing
+// only its application region with invented failures/data. Never load config.
+function isolated_api_boundary(string $application, int $status, string $expected, string $method = 'GET', int $levels = 1): void {
+    $source = file_get_contents(__DIR__ . '/../api.php');
+    $begin = '// BEGIN native API application (kept at global scope).';
+    $end = '// END native API application.';
+    ensure_error_response(substr_count($source, $begin) === 1 && substr_count($source, $end) === 1, 'one bounded application region');
+    [$prefix, $applicationAndSuffix] = explode($begin, $source, 2);
+    [, $suffix] = explode($end, $applicationAndSuffix, 2);
+    $prefix = substr($prefix, strlen("<?php\n"));
+    $suffix = substr($suffix, 0, strrpos($suffix, '?>'));
+    $script = '$_SERVER = ["REQUEST_METHOD" => ' . var_export($method, true) . '];'
+        . 'ob_start(); echo "outer:"; http_response_code(200);'
+        . 'register_shutdown_function(static function () { fwrite(STDERR, "status:" . http_response_code() . ";levels:" . ob_get_level()); });'
+        . $prefix . $application . $suffix;
+    $process = proc_open([PHP_BINARY, '-n', '-d', 'error_reporting=E_ALL', '-d', 'display_errors=1', '-r', $script],
+        [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+    ensure_error_response(is_resource($process), 'boundary subprocess available');
+    fclose($pipes[0]);
+    $body = stream_get_contents($pipes[1]);
+    $diagnostics = stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    $exit = proc_close($process);
+    ensure_error_response($exit === 0 && $body === 'outer:' . $expected
+        && $diagnostics === 'status:' . $status . ';levels:' . $levels,
+        'owned boundary preserves outer buffer, status, exact body and clean termination');
+}
+
+$failure = '{"success":false,"message":"Internal server error"}';
+isolated_api_boundary('echo "PRIVATE-PARTIAL"; throw new Error("PRIVATE-BOOTSTRAP-DETAIL");', 500, $failure);
+isolated_api_boundary('preg_match("/date/", ["invented"]);', 500, $failure);
+$helper = realpath(__DIR__ . '/../lib/http_error_response.php');
+isolated_api_boundary('require ' . var_export($helper, true) . '; abort_request(429, "Too many login attempts. Try again later."); echo "UNREACHABLE";',
+    429, '{"success":false,"message":"Too many login attempts. Try again later."}', 'GET', 2);
+isolated_api_boundary('echo "{\"success\":true,\"data\":[]}";', 200, '{"success":true,"data":[]}');
+isolated_api_boundary('throw new Error("MUST-NOT-BOOTSTRAP");', 200, '', 'OPTIONS');
+
+// Exercise both exact production success encoders and their existing Exception
+// catch bodies with invented unencodable rows, without executing their queries.
+$apiSource = file_get_contents(__DIR__ . '/../api.php');
+foreach ([
+    ["        echo json_encode(['success' => true, 'data' => \$users]", '$users = [["username" => "bad\\xff"]];'],
+    ["        echo json_encode([\n            'success' => true,\n            'data' => \$entries", '$entries = [["beschreibung" => "bad\\xff"]]; $totalCount = 1; $pagination = ["limit" => 100, "offset" => null];'],
+] as [$encoderStart, $inventedRows]) {
+    $start = strpos($apiSource, $encoderStart);
+    $finish = strpos($apiSource, "\n}\n", $start);
+    ensure_error_response($start !== false && $finish !== false, 'exact existing encoder/catch region');
+    $encoderAndCatch = substr($apiSource, $start, $finish - $start);
+    isolated_api_boundary($inventedRows . 'try {' . $encoderAndCatch, 500, $failure);
+}
+
 echo json_encode([
     'passed' => true,
-    'groups' => ['non-API exact text and request inputs cannot opt in', 'native controlled-error JSON, original status and termination'],
+    'groups' => ['non-API exact text and request inputs cannot opt in', 'native controlled-error JSON, original status and termination', 'entrypoint-only unexpected-failure and encoding boundary; no bootstrap'],
     'runtime' => PHP_VERSION,
     'sapi' => PHP_SAPI,
     'http_headers_cors_retry_after_bootstrap_auth_db_browser_deployment_tested' => false,
