@@ -20,6 +20,7 @@ final class LegacyApiAttendanceController
         return $this->respond(fn () => $this->attendance->transition(
             $input['event_id'] ?? '', $input['action'] ?? '', ($input['confirm_end_pause'] ?? false) === true,
             \attendance_expected_record(is_array($input) ? $input : []),
+            \attendance_start_metadata(is_array($input) ? $input : []),
         ));
     }
 
@@ -32,10 +33,11 @@ final class LegacyApiAttendanceController
         if (! empty($input['endzeit']) || ! empty($input['pause'])) {
             return LegacyApiResponse::text('Use a correction request for historical entries.', 409);
         }
-        // Ignore client times/location/description. Generated IDs keep the old
+        // Ignore client times and old translated location/description aliases. Generated IDs keep the old
         // retry weakness; only a supplied stable event ID is safely replayable.
         return $this->respond(fn () => $this->attendance->transition(
-            $input['event_id'] ?? bin2hex(random_bytes(16)), 'start',
+            $input['event_id'] ?? bin2hex(random_bytes(16)), 'start', false, null,
+            \attendance_start_metadata($input),
         ));
     }
 
@@ -46,6 +48,7 @@ final class LegacyApiAttendanceController
         return $this->respond(fn () => $this->attendance->transition(
             $input['event_id'] ?? bin2hex(random_bytes(16)), 'end',
             ($input['confirm_end_pause'] ?? false) === true, (int) ($input['id'] ?? 0),
+            \attendance_start_metadata(is_array($input) ? $input : []),
         ));
     }
 

@@ -25,7 +25,7 @@ Legacy password copies are removed before automatic login and never read into th
 
 Only a canonical HTTPS origin with the existing root `/api.php` path is accepted; URL credentials, query parameters, fragments, other paths and unsaved target changes are rejected. Requests omit ambient cookies and referrers and reject redirects. Server changes and logout remove credentials, account markers, old record IDs and pending events. A 401 explains manual reauthentication and removes auth state; an uncertain event may survive expiry only to be restored after the same origin and account have been verified again. Other-account login clears that event. Generation checks and aborts prevent late login/status/mutation responses from restoring a logged-out or changed session.
 
-Location/description inputs are explicitly disabled with an explanation because the current authoritative booking contract does not save that metadata; implementing metadata remains CH-45. Existing time-entry values remain display-only, and displayed duration is labelled gross duration rather than actual net work time.
+Optional start-only location/note inputs are enabled only after an explicit `start_metadata_version:1` status response. New nondefault values are stored in the same immutable pending body and require an exact `start_metadata` acknowledgement; an older server never silently enables them. Session/account/API reset and confirmed starts clear the input fields. Existing time-entry values remain display-only, and displayed duration is labelled gross duration rather than actual net work time. See [the scoped CH-45 draft and remaining acceptance limits](CH45-START-METADATA.md); audited metadata correction remains open.
 
 ## Verification performed
 

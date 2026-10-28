@@ -43,7 +43,7 @@ final class LegacyChronoReads implements ChronoReads
 
             $status = attendance_status($pdo, (int) $actor->getKey());
 
-            return ['success' => true, 'records' => $records,
+            return ['success' => true, 'start_metadata_version' => 1, 'records' => $records,
                 'report_finality' => $this->reportFinality(report_absence_conflicts($context), $today),
                 'expected_record' => $status['record_id'] === null ? null : (string) $status['record_id'],
             ] + $status;
@@ -306,7 +306,7 @@ final class LegacyChronoReads implements ChronoReads
     public function apiAttendanceStatus(): array
     {
         return $this->snapshot(
-            fn (PDO $pdo, LegacyUser $actor): array => attendance_record_id_string(['success' => true] + attendance_status($pdo, (int) $actor->getKey())),
+            fn (PDO $pdo, LegacyUser $actor): array => attendance_record_id_string(['success' => true, 'start_metadata_version' => 1] + attendance_status($pdo, (int) $actor->getKey())),
             false,
         );
     }

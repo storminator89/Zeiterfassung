@@ -56,19 +56,45 @@ function attendance_assert_unmanaged(PDO $db, array $ids): void {
         }
     }
 }
-function attendance_event_payload_hash(int $user, string $action, bool $confirm, ?int $expectedRecord): string {
-    return hash('sha256',json_encode([$user,$action,$confirm,$expectedRecord]));
+/** Optional start-only wire fields. Codes are never translated at the write boundary.
+ * Defaults deliberately retain the pre-metadata payload hash and receipt contract.
+ */
+function attendance_start_metadata(array $input): ?array {
+    if (!array_key_exists('location',$input) && !array_key_exists('note',$input)) { return null; }
+    $location=$input['location']??'office';
+    $note=$input['note']??'';
+    // A present null is not omission. Reject arrays/numbers before any coercion.
+    if ((array_key_exists('location',$input) && !is_string($input['location']))
+        || !in_array($location,['office','home_office','business_trip'],true)) {
+        throw new AttendanceError('Ungültiger Arbeitsort.',400);
+    }
+    if ((array_key_exists('note',$input) && !is_string($input['note']))
+        || strlen($note)>1000 || preg_match('//u',$note)!==1
+        || preg_match('/[\x00-\x1F\x7F]/',$note)===1
+        || in_array($note,['Urlaub','Krankheit','Feiertag'],true)) {
+        throw new AttendanceError('Ungültige Notiz: maximal 1000 UTF-8-Bytes, keine Steuerzeichen oder reservierten Abwesenheitswerte.',400);
+    }
+    return ['location'=>$location,'note'=>$note];
+}
+function attendance_event_payload_hash(int $user, string $action, bool $confirm, ?int $expectedRecord, ?array $startMetadata=null): string {
+    $payload=[$user,$action,$confirm,$expectedRecord];
+    if ($startMetadata!==null && ($startMetadata['location']!=='office' || $startMetadata['note']!=='')) {
+        $payload[]=['start-metadata-v1',$startMetadata['location'],$startMetadata['note']];
+    }
+    return hash('sha256',json_encode($payload,JSON_THROW_ON_ERROR));
 }
 /**
  * Caller owns the active transaction. A trusted optional runner receives only
  * the derived actor/reason and this fixed mutation continuation, after native
  * validation and replay decisions. Native fallback preserves audit globals.
  */
-function attendance_transition_locked(PDO $db, int $user, string $source, string $eventId, string $action, bool $confirm=false, ?int $expectedRecord=null, ?Closure $auditRunner=null, bool $requireExpectedRecord=false): array {
+function attendance_transition_locked(PDO $db, int $user, string $source, string $eventId, string $action, bool $confirm=false, ?int $expectedRecord=null, ?Closure $auditRunner=null, bool $requireExpectedRecord=false, ?array $startMetadata=null): array {
     if (!preg_match('/^[A-Za-z0-9_-]{16,80}$/D',$eventId)) { throw new AttendanceError('Ungültige Ereignis-ID.',400); }
     if (!in_array($action,['start','pause_start','pause_end','end'],true)) { throw new AttendanceError('Ungültige Aktion.',400); }
     if (!att_one($db,'SELECT id FROM users WHERE id=?',[$user])) { throw new AttendanceError('Konto nicht verfügbar.',403); }
-    $hash=attendance_event_payload_hash($user,$action,$confirm,$expectedRecord);
+    $startMetadata=$startMetadata===null?null:attendance_start_metadata($startMetadata);
+    if ($action!=='start' && $startMetadata!==null) { throw new AttendanceError('Arbeitsort und Notiz sind nur beim Kommen zulässig.',400); }
+    $hash=attendance_event_payload_hash($user,$action,$confirm,$expectedRecord,$startMetadata);
     $old=att_one($db,'SELECT * FROM attendance_events WHERE source=? AND event_id=?',[$source,$eventId]);
     if ($old) {
         if (!hash_equals($old['payload_hash'],$hash)) { throw new AttendanceError('Ereignis-ID bereits anders verwendet.'); }
@@ -84,7 +110,7 @@ function attendance_transition_locked(PDO $db, int $user, string $source, string
         $GLOBALS['audit_reason']=$reason;
         return $operation();
     };
-    return $auditRunner($source.':user:'.$user,'Stempelereignis '.$action.' / '.$eventId,static function () use ($db,$user,$source,$eventId,$action,$confirm,$expectedRecord,$hash): array {
+    return $auditRunner($source.':user:'.$user,'Stempelereignis '.$action.' / '.$eventId,static function () use ($db,$user,$source,$eventId,$action,$confirm,$expectedRecord,$hash,$startMetadata): array {
     $now=time();
     $s=att_one($db,'SELECT * FROM work_sessions WHERE user_id=? AND ended_at IS NULL',[$user]);
     if (!$s && $action!=='start') {
@@ -100,7 +126,7 @@ function attendance_transition_locked(PDO $db, int $user, string $source, string
     if ($action==='start') {
         if ($s || att_one($db,'SELECT id FROM zeiterfassung WHERE user_id=? AND endzeit IS NULL',[$user])) { throw new AttendanceError('Bereits eine offene Arbeitszeit vorhanden.'); }
         booking_assert_no_overlap($db,$user,$now,$now+1);
-        att_exec($db,'INSERT INTO zeiterfassung(startzeit,pause,beschreibung,standort,user_id) VALUES(?,0,?,?,?)',[attendance_local($now),'','office',$user]);
+        att_exec($db,'INSERT INTO zeiterfassung(startzeit,pause,beschreibung,standort,user_id) VALUES(?,0,?,?,?)',[attendance_local($now),$startMetadata['note']??'',$startMetadata['location']??'office',$user]);
         $record=(int)$db->lastInsertId();
         att_exec($db,'INSERT INTO work_sessions(user_id,record_id,started_at) VALUES(?,?,?)',[$user,$record,$now]);
         $s=att_one($db,'SELECT * FROM work_sessions WHERE id=?',[(int)$db->lastInsertId()]);
@@ -128,6 +154,11 @@ function attendance_transition_locked(PDO $db, int $user, string $source, string
         att_exec($db,'UPDATE zeiterfassung SET pause=? WHERE id=?',[(int)floor($seconds/60),$s['record_id']]);
     }
     $response=['success'=>true,'message'=>'Buchung bestätigt.','time'=>gmdate('c',$now),'local_time'=>attendance_local($now),'event_id'=>$eventId,'record_id'=>(int)$s['record_id']] + attendance_status($db,$user);
+    // Only new nondefault requests get an additive acknowledgement. Legacy and
+    // Terminal default receipts remain byte-for-byte unchanged; replay never rebuilds it.
+    if ($action==='start' && $startMetadata!==null && ($startMetadata['location']!=='office' || $startMetadata['note']!=='')) {
+        $response['start_metadata']=$startMetadata;
+    }
     if ($action==='end') {
         $actual=(int)att_one($db,'SELECT pause FROM zeiterfassung WHERE id=?',[$s['record_id']])['pause'];
         $required=(int)(att_one($db,'SELECT MAX(minimum_pause) AS minutes FROM pause_settings WHERE hours_threshold*3600 < CAST(? AS INTEGER)',[max(0,$now-(int)$s['started_at']-$seconds)])['minutes']??0);
@@ -154,9 +185,9 @@ function attendance_transition_locked(PDO $db, int $user, string $source, string
     return $response;
     });
 }
-function attendance_transition(PDO $db, int $user, string $source, string $eventId, string $action, bool $confirm=false, ?int $record=null, bool $requireExpectedRecord=false): array {
+function attendance_transition(PDO $db, int $user, string $source, string $eventId, string $action, bool $confirm=false, ?int $record=null, bool $requireExpectedRecord=false, ?array $startMetadata=null): array {
     $db->exec('BEGIN IMMEDIATE');
-    try { $r=attendance_transition_locked($db,$user,$source,$eventId,$action,$confirm,$record,null,$requireExpectedRecord); $db->exec('COMMIT'); return $r; }
+    try { $r=attendance_transition_locked($db,$user,$source,$eventId,$action,$confirm,$record,null,$requireExpectedRecord,$startMetadata); $db->exec('COMMIT'); return $r; }
     catch (Throwable $e) { $db->exec('ROLLBACK'); throw $e; }
 }
 /** Optional raw transport field. Fixed Web callers separately require it after legacy replay. */

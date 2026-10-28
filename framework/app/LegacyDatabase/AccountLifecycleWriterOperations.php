@@ -15,16 +15,16 @@ trait AccountLifecycleWriterOperations
 {
     /** Fixed Web actor/namespace; generation is checked before replay and DML. */
     public function transitionWeb(AccountLifecycleAuthority $actor, string $eventId, string $action,
-        bool $confirm = false, ?int $expectedRecord = null): array
+        bool $confirm = false, ?int $expectedRecord = null, ?array $startMetadata = null): array
     {
         $this->requireLifecycleWebProfile();
         $source = 'web:'.$actor->id;
 
-        return $this->executeLocked(function () use ($actor, $source, $eventId, $action, $confirm, $expectedRecord): array {
+        return $this->executeLocked(function () use ($actor, $source, $eventId, $action, $confirm, $expectedRecord, $startMetadata): array {
             $this->assertLifecycleWebPrincipalLocked($actor);
 
             return attendance_transition_locked($this->pdo, $actor->id, $source, $eventId, $action,
-                $confirm, $expectedRecord, null, true);
+                $confirm, $expectedRecord, null, true, $startMetadata);
         }, fn (Closure $transaction): mixed => $this->context->run($source.':user:'.$actor->id,
             'Stempelereignis '.$action.' / '.$eventId, $transaction), lifecycleReady: true);
     }
@@ -90,17 +90,17 @@ trait AccountLifecycleWriterOperations
 
     /** Fixed API actor/namespace; no target/source/generation supplied by command data. */
     public function transitionApi(AccountLifecycleAuthority $actor, string $eventId, string $action,
-        bool $confirm = false, ?int $expectedRecord = null): array
+        bool $confirm = false, ?int $expectedRecord = null, ?array $startMetadata = null): array
     {
         if (! $this->accountLifecycleV5) {
             throw new LogicException('V5 API authority cannot target an older account profile.');
         }
         $source = 'api:'.$actor->id;
 
-        return $this->executeLocked(function () use ($actor, $source, $eventId, $action, $confirm, $expectedRecord): array {
+        return $this->executeLocked(function () use ($actor, $source, $eventId, $action, $confirm, $expectedRecord, $startMetadata): array {
             $this->assertLifecyclePrincipalLocked($actor);
 
-            return attendance_transition_locked($this->pdo, $actor->id, $source, $eventId, $action, $confirm, $expectedRecord);
+            return attendance_transition_locked($this->pdo, $actor->id, $source, $eventId, $action, $confirm, $expectedRecord, null, false, $startMetadata);
         }, fn (Closure $transaction): mixed => $this->context->run($source.':user:'.$actor->id,
             'Stempelereignis '.$action.' / '.$eventId, $transaction), lifecycleReady: true);
     }

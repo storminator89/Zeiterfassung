@@ -104,13 +104,13 @@ final class AttendanceWriter
         }
     }
 
-    public function transition(int $user, string $source, string $eventId, string $action, bool $confirm = false, ?int $expectedRecord = null, bool $requireExpectedRecord = false, ?string $expectedWebSource = null, #[\SensitiveParameter] ?string $expectedWebVersion = null): array
+    public function transition(int $user, string $source, string $eventId, string $action, bool $confirm = false, ?int $expectedRecord = null, bool $requireExpectedRecord = false, ?string $expectedWebSource = null, #[\SensitiveParameter] ?string $expectedWebVersion = null, ?array $startMetadata = null): array
     {
         return $this->executeLocked(
-            function () use ($user, $source, $eventId, $action, $confirm, $expectedRecord, $requireExpectedRecord, $expectedWebSource, $expectedWebVersion): array {
+            function () use ($user, $source, $eventId, $action, $confirm, $expectedRecord, $requireExpectedRecord, $expectedWebSource, $expectedWebVersion, $startMetadata): array {
                 $this->assertExpectedWebPrincipal($user, $expectedWebSource, $expectedWebVersion);
 
-                return attendance_transition_locked($this->pdo, $user, $source, $eventId, $action, $confirm, $expectedRecord, null, $requireExpectedRecord);
+                return attendance_transition_locked($this->pdo, $user, $source, $eventId, $action, $confirm, $expectedRecord, null, $requireExpectedRecord, $startMetadata);
             },
             fn (Closure $transaction): mixed => $this->context->run($source.':user:'.$user, 'Stempelereignis '.$action.' / '.$eventId, $transaction),
         );

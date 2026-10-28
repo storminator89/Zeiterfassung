@@ -59,9 +59,9 @@ Auch Administratoren lesen hier nur das eigene Konto, keine Mitarbeiterliste.
 | Methode/Pfad | Eingabe und Erfolg (HTTP 200) |
 |---|---|
 | `POST /login` | JSON-Zeichenketten `username`, `password`; `{success:true,token}`. |
-| `GET /attendance` | Nur eigener Status: `{success:true,state,record_id,record_id_string}`. Kein Event, Zeitstempel oder Schreibvorgang. |
-| `POST /attendance` | `action`: `start`, `pause_start`, `pause_end`, `end`; `event_id` erforderlich; optional `confirm_end_pause` (nur echtes JSON-`true` bestätigt) und kanonische Stringbindung `expected_record`. Liefert die Buchungsquittung unten. |
-| `POST /workentry` | Legacy-Startalias mit JSON-Objekt; `event_id` dringend mitsenden. Kein historischer Writer. Nichtleere `endzeit`/`pause` werden verweigert; `startzeit`, Beschreibung und Standort bestimmen die Buchung nicht. |
+| `GET /attendance` | Nur eigener Status: `{success:true,state,record_id,record_id_string,start_metadata_version:1}`. Kein Event, Zeitstempel oder Schreibvorgang. |
+| `POST /attendance` | `action`: `start`, `pause_start`, `pause_end`, `end`; `event_id` erforderlich; optional `confirm_end_pause` (nur echtes JSON-`true` bestätigt) und kanonische Stringbindung `expected_record`. Bei `start` optionale `location`/`note` nach [CH-45](CH45-START-METADATA.md). Liefert die Buchungsquittung unten. |
+| `POST /workentry` | Legacy-Startalias mit JSON-Objekt; `event_id` dringend mitsenden. Kein historischer Writer. Nichtleere `endzeit`/`pause` werden verweigert; `startzeit` und alte `beschreibung`/`standort`-Parameter bestimmen die Buchung nicht. Neue optionale `location`/`note` werden nach [CH-45](CH45-START-METADATA.md) gespeichert. |
 | `POST /setendzeit` | Legacy-Endalias, `id` muss zur eigenen offenen Buchung passen; `event_id` und `confirm_end_pause` mitsenden. Antwort ist dieselbe Quittung mit **`record_id`**, nicht `id`. |
 | `GET /users` | `{success:true,data:[{id,username,email,role}]}` für das eigene Konto. Normalerweise genau ein Element; bei Kontolöschung zwischen Prüfung und Lesen kann die Liste leer sein. |
 | `GET /timeentries` | Eigene rohe Berichtszeilen und `meta`; siehe Filtergrenzen unten. |
@@ -208,7 +208,8 @@ Konfliktdiagnose. Details und Grenzen: [Nachtschicht und Abwesenheit](CH29-NIGHT
 Nach unbestätigter Antwort dieselbe ID mit derselben Aktion/Bestätigung und
 gegebenenfalls erwarteten Datensatz-ID wiederholen, nicht eine neue Buchung
 raten. Die Speicherung ist nach `api:{user_id}` und Ereignis-ID abgegrenzt;
-der Inhaltshash umfasst Benutzer, Aktion, Bestätigung und erwarteten Datensatz.
+der Inhaltshash umfasst Benutzer, Aktion, Bestätigung und erwarteten Datensatz;
+Nichtdefault-Startmetadaten ergänzen ihn versioniert nach [CH-45](CH45-START-METADATA.md).
 Anderer gehashter Inhalt mit derselben ID führt zu JSON-409. Ignorierte
 Zusatzfelder sind keine neue Idempotenzdimension. Eine gespeicherte Quittung
 kann nach weiteren Aktionen einen **älteren** Status enthalten: danach GET lesen.
