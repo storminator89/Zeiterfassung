@@ -23,10 +23,14 @@ final class LegacyTimeQuality
         $counts = [];
         $offsetFree = 0;
         $records = 0;
-        $add = static function (int $id, string $category, ?string $column = null) use (&$findings, &$counts, $limit): void {
+        $add = static function (int $id, string $category, ?string $column = null, ?int $relatedId = null) use (&$findings, &$counts, $limit): void {
             $counts[$category] = ($counts[$category] ?? 0) + 1;
             if (count($findings) < $limit) {
-                $findings[] = ['record_id' => $id, 'category' => $category, 'column' => $column];
+                $finding = ['record_id' => $id, 'category' => $category, 'column' => $column];
+                if ($relatedId !== null) {
+                    $finding['related_record_id'] = $relatedId;
+                }
+                $findings[] = $finding;
             }
         };
 
@@ -72,11 +76,12 @@ final class LegacyTimeQuality
             $add((int) $id, 'multiple_open_records');
         }
         $open->closeCursor();
+        $this->absenceConflicts($pdo, $add);
         ksort($counts);
         $total = array_sum($counts);
 
         return [
-            'report_version' => 1,
+            'report_version' => 2,
             'scope_status' => 'partial_diagnostic_only',
             'read_only' => true,
             'records_checked' => $records,
@@ -84,7 +89,9 @@ final class LegacyTimeQuality
                 'timestamp_shape_calendar_and_berlin_dst' => 'checked',
                 'closed_order_and_pause' => 'checked_only_for_unambiguous_supported_timestamps',
                 'multiple_open_records' => 'checked',
-                'overlap' => 'deferred_pending_shared_booking_conflict_helper',
+                'overlap' => 'partial_work_whole_day_absence_only',
+                'work_whole_day_absence_overlap' => 'checked_only_for_unambiguous_supported_completed_rows',
+                'work_work_absence_absence_and_open_overlap' => 'not_checked',
                 'event_session_break_projection_reconciliation' => 'not_checked',
                 'mapping_or_repair' => 'not_performed_requires_separate_confirmation',
             ],
@@ -96,6 +103,57 @@ final class LegacyTimeQuality
             'findings_truncated' => $total > count($findings),
             'finding_limit' => $limit,
         ];
+    }
+
+    /** Every eligible same-user work/absence pair exactly once, with bounded helper input/output. */
+    private function absenceConflicts(PDO $pdo, callable $add): void
+    {
+        $columns = 'id,user_id,startzeit,endzeit,pause,absence_kind,beschreibung';
+        $absences = $pdo->query('SELECT '.$columns.' FROM zeiterfassung ORDER BY id');
+        $works = $pdo->prepare('SELECT '.$columns.' FROM zeiterfassung WHERE user_id=? ORDER BY id');
+        while (($absence = $absences->fetch(PDO::FETCH_ASSOC)) !== false) {
+            if (! \booking_is_absence($absence) || ! $this->unambiguousCompleted($absence)) {
+                continue;
+            }
+            $check = static function (array $batch) use ($absence, $add): void {
+                // One absence and at most 128 work rows: the unchanged shared
+                // helper owns whole-local-day, half-open and owner semantics.
+                // It can return at most 128 pairs, never a quadratic pair list.
+                foreach (\report_absence_conflicts([$absence, ...$batch]) as $conflict) {
+                    $add($conflict['work_id'], 'work_absence_overlap', null, $conflict['absence_id']);
+                }
+            };
+            $works->execute([$absence['user_id']]);
+            $batch = [];
+            while (($work = $works->fetch(PDO::FETCH_ASSOC)) !== false) {
+                if (\booking_is_absence($work) || ! $this->unambiguousCompleted($work)) {
+                    continue;
+                }
+                $batch[] = $work;
+                if (count($batch) === 128) {
+                    $check($batch);
+                    $batch = [];
+                }
+            }
+            $works->closeCursor();
+            if ($batch !== []) {
+                $check($batch);
+            }
+        }
+        $absences->closeCursor();
+    }
+
+    private function unambiguousCompleted(array $row): bool
+    {
+        // Do not let the runtime parser choose a legacy fold or normalize a
+        // gap/unsupported shape merely to run the shared conflict projection.
+        foreach (['startzeit', 'endzeit'] as $column) {
+            if ($this->timestamp($row[$column])['category'] !== null) {
+                return false;
+            }
+        }
+
+        return \report_record_calculation($row)['status'] === 'completed';
     }
 
     /** No conversion is returned: in particular a repeated Berlin hour has no chosen instant. */
