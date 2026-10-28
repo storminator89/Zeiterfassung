@@ -81,10 +81,52 @@ Der Dienst und einzige frische zugelassene Writer besitzen Validierung,
 Tagesüberlappung, historischen Sollsnapshot, atomare Projektion und Triggeraudit.
 Die Antwort ist unverändert `success,message`; `AttendanceError` liefert den
 bestehenden Status/Text, technische Fehler das generische native 503-JSON.
-Alte Direktänderungs-/Löschfelder liefern weiter 409. Der ungenutzte
-`save.php`-Stempelalias ist ausdrücklich nicht Teil dieses Kandidaten und
-liefert 410, nicht versehentlich eine Abwesenheit. Sonstige unbekannte Formulare
-liefern wie nativ 400. Keine neue Idempotenz-/Auto-Retryregel für Abwesenheiten.
+Alte Direktänderungs-/Löschfelder liefern weiter 409, auch zusammen mit `action`.
+Der vorbereitete `save.php`-Stempelalias nutzt inzwischen denselben
+`LocalWebAttendance`-Dienst wie die direkte Anwesenheitsseite, nicht den
+Abwesenheitsdienst. Sonstige unbekannte Formulare liefern wie nativ 400.
+Keine neue Idempotenz-/Auto-Retryregel für Abwesenheiten.
+
+### Additive Stempelaliasparität (#78/#79)
+
+Begrenzte Quelle auf Main `b5558c36b64c9491ddec26800a0588952d32316a`:
+Nur `LocalWebHomeController` und dieses Dokument ändern sich. Der bereits
+registrierbare `POST save.php`-Pfad übernimmt den nativen `action`-Zweig statt
+der bisherigen festen 410-Antwort. `id/update/delete` haben weiterhin Vorrang
+und verweigern vor einem Dienstaufruf. `action` hat wie nativ Vorrang vor
+gleichzeitig gelieferten Abwesenheitsfeldern; es gibt keinen zweiten Writer.
+
+Die rohe POSTbag bleibt durch die unveränderte Registrar-Ausnahme von
+Trim-/Nullnormalisierung ausgenommen. `confirm_end_pause` ist nur bei exakt
+Zeichenfolge `'1'` wahr; `attendance_expected_record()` prüft den vorhandenen
+positiven, kanonischen Record-ID-String ohne neuen Parser. Der vorhandene
+Webdienst wählt Identität/Quelle ausschließlich aus dem geprüften Webguard und
+übergibt `requireExpectedRecord=true` an den einzigen zugelassenen Writer.
+Die bestehenden Konto-/Quellenprüfungen unter dessen Sperre bleiben erhalten.
+Neue Pause-/Endereignisse dürfen daher keine andere oder ungebundene Sitzung
+verändern. Ein bereits gespeichertes identisches Ereignis wird nach dem
+bestehenden Payloadhash wiedergegeben, nicht erneut ausgeführt; geänderte
+Payload/Bindung bleiben Konflikte. Keine neue Hash-, Retry- oder Freigabelogik.
+
+Ein fehlendes `event_id` erzeugt wie im nativen Alias eine neue zufällige
+32-stellige Hex-ID. Das erhält die alte Retryschwäche: Nur ein vom Client
+bewahrtes identisches Ereignis ist wiederholbar. Keine sichere Idempotenz für
+fehlende IDs behaupten, keine automatisch wiederholte Anfrage und kein
+Clientumbau. Aktuelle Buchungsbuttons nutzen weiterhin ihren bisherigen Pfad.
+
+Autorisierung und CSRF sind nicht im Controller ersetzt oder simuliert:
+Die vorhandene Route bleibt in demselben obligatorischen Web-/CSRF-/Refresh-/
+Auth-/Sessionstack. Guard, Policy, Middleware, Sessionblocking, Routen,
+Provider, Writer, native Quellen, Form-/UI-/Pendingassets und Standardfreigaben
+bleiben unverändert. Die Foundation registriert weiter nicht diese Geschäftsrouten.
+Technische Fehler bleiben generisches JSON-503, `AttendanceError` behält Status
+und Meldung, Authfehler gehen weiterhin an den unveränderten äußeren Stack.
+
+Nachweise unterscheiden reine Quell-/Syntaxprüfung und grobe erfundene
+Transport-/Domänenfälle von tatsächlichem Auth-/CSRF-/HTTP-/Browserbetrieb.
+Keine tatsächliche Anmeldung, Konto-/Schlüssel-/Fixturevorbereitung,
+Laufzeitaktivierung oder Bereitstellung. Die umfassende #78/#79-Migration und
+geschützte Browserabnahme bleiben offen.
 
 Die bestehenden Assets `main.js` und `attendance.js` bleiben bytegleich:
 `main.js` ist bereits der schreibfreie Tabellen-/Präsentationsclient;
