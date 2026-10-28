@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
 use App\Chrono\LocalWebDepartments;
+use App\Chrono\LocalWebAdminUsers;
 use App\Chrono\LocalWebPauseSettings;
 use App\View\ExistingUi\AdminPauseSettingsPage;
 use App\View\ExistingUi\AttendancePage;
@@ -20,13 +21,14 @@ use InvalidArgumentException;
 use DomainException;
 use Throwable;
 
-/** Original Admin cards and read-only users; never include/dispatch native admin.php. */
+/** Original Admin cards, bounded create and read-only details; no native dispatch. */
 final class LocalWebAdminPauseSettingsController extends Controller
 {
     public function __construct(
         private ChronoReads $reads,
         private LocalWebPauseSettings $pauseSettings,
         private LocalWebDepartments $departments,
+        private LocalWebAdminUsers $adminUsers,
         private Factory $auth,
         private Interactions $interactions,
     ) {}
@@ -68,7 +70,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
     {
         $form = $request->request->all();
         $supported = ['update_pause_settings' => LocalWebPauseSettings::COMMAND_FIELDS,
-            ...LocalWebDepartments::COMMAND_FIELDS];
+            ...LocalWebDepartments::COMMAND_FIELDS, ...LocalWebAdminUsers::COMMAND_FIELDS];
         $actions = [];
         foreach ($supported as $flag => $fields) {
             if (isset($form[$flag])) {
@@ -80,6 +82,10 @@ final class LocalWebAdminPauseSettingsController extends Controller
             // Reject all other/mixed Admin actions before reads, writes or preferences.
             return new Response('Diese Verwaltungsaktion ist in der Laravel-Ansicht noch nicht verbunden.', 400,
                 ['Content-Type' => 'text/plain; charset=UTF-8']);
+        }
+
+        if ($actions[0] === 'add_user') {
+            return $this->createUser($request, $form);
         }
 
         if ($actions[0] !== 'update_pause_settings') {
@@ -98,6 +104,26 @@ final class LocalWebAdminPauseSettingsController extends Controller
         } catch (Throwable) {
             return $this->page($request,
                 'Pauseneinstellungen konnten nicht gespeichert werden. Bitte neu laden und den gespeicherten Stand prüfen.');
+        }
+    }
+
+    private function createUser(Request $request, array $form): Response
+    {
+        try {
+            if (! $this->adminUsers->create(array_diff_key($form, array_flip(['_token', 'csrf_token'])))) {
+                return $this->page($request, errorKey: 'ERROR_ALL_FIELDS_REQUIRED');
+            }
+
+            // Native create renders after commit; no redirect/retry/credential echo.
+            return $this->page($request, successKey: 'USER_CREATED_SUCCESS');
+        } catch (AuthenticationException|AuthorizationException $error) {
+            throw $error;
+        } catch (InvalidArgumentException $error) {
+            return $this->page($request, $error->getMessage());
+        } catch (Throwable) {
+            // Never expose PDO/constraint/account/path details or claim rollback.
+            return $this->page($request,
+                'Benutzer konnte nicht bestätigt werden. Bitte neu laden und den gespeicherten Stand prüfen.');
         }
     }
 
@@ -123,12 +149,13 @@ final class LocalWebAdminPauseSettingsController extends Controller
         }
     }
 
-    private function page(Request $request, ?string $error = null, ?string $errorKey = null): Response
+    private function page(Request $request, ?string $error = null, ?string $errorKey = null, ?string $successKey = null): Response
     {
         // This reader independently reloads and checks the current local Admin
         // before returning even a read-only configuration row.
         $rules = $this->reads->adminPauseSettings();
         $departments = $this->reads->adminDepartments();
+        $supervisors = $this->reads->adminSupervisorOptions();
         $query = $request->query->all();
         $search = $query['search'] ?? '';
         $requestedPage = $query['page'] ?? 1;
@@ -152,7 +179,8 @@ final class LocalWebAdminPauseSettingsController extends Controller
             ),
             'adminPauseSettings' => new AdminPauseSettingsPage(
                 $rules, $errorKey === null ? $error : $copy->text($errorKey),
-                $this->interactions->adminPauseSettings, $departments, $users,
+                $this->interactions->adminPauseSettings, $departments, $users, $supervisors,
+                $successKey === null ? null : $copy->text($successKey),
             ),
         ], 200, ['Cache-Control' => 'no-store']);
     }

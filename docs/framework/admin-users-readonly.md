@@ -1,5 +1,7 @@
 # #79 – vorhandene Benutzerliste und Details, ausschließlich lesend
 
+**Späterer begrenzter Folgeschritt:** [Benutzer erstellen](admin-users-create.md) ersetzt ausschließlich die unten dokumentierte Create-Sperre. Bearbeiten, Löschen und Passwortänderungen bleiben gesperrt; die folgenden Leseverträge bleiben unverändert.
+
 Basis ist die bereits optionale Adminseite mit Pausen-/Abteilungskarten. Die
 originale Karte `admin.php#user-management` ergänzt Benutzerliste, vorhandenes
 GET-Suchfeld, Zehner-Paginierung und den vorhandenen Benutzerdialog. Klassen,

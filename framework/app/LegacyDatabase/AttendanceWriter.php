@@ -189,6 +189,44 @@ final class AttendanceWriter
         });
     }
 
+    /** Existing create only; no request actor, auth source, token or SQL callback. */
+    public function createLocalUser(int $user, mixed $username, mixed $password, mixed $email, mixed $role,
+        mixed $department, mixed $supervisor, mixed $regularHours, mixed $carryIn): bool
+    {
+        // Exact native required-field semantics, without trim/default/coercion.
+        if (empty($username) || empty($password) || empty($email) || empty($role)
+            || empty($department) || empty($regularHours)) {
+            return false;
+        }
+        // HTTP form fields are raw strings. Refuse malformed arrays/objects rather
+        // than letting password_hash/PDO coerce them or emit technical diagnostics.
+        foreach ([$username, $password, $email, $role, $department, $supervisor, $regularHours, $carryIn] as $value) {
+            if ($value !== null && ! is_string($value)) {
+                throw new \InvalidArgumentException('Ungültige Benutzereingabe.');
+            }
+        }
+        require_once dirname(__DIR__, 3).'/lib/admin_users.php';
+
+        return $this->executeLocked(function () use ($user, $username, $password, $email, $role,
+            $department, $supervisor, $regularHours, $carryIn): bool {
+            $actor = att_one($this->pdo, 'SELECT role,auth_source FROM users WHERE id=?', [$user]);
+            if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local') {
+                throw new AuthorizationException('Nur die Verwaltung darf Benutzer erstellen.');
+            }
+            // Existing exact role/department/supervisor/chain validation on this
+            // same locked PDO. Never call the native raw-BEGIN wrapper here.
+            $assignment = \validateUserAssignment($this->pdo, $role, $supervisor, $department);
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+            $statement = $this->pdo->prepare('INSERT INTO users (username, password, email, role, department_id, supervisor_id, regelarbeitszeit, ueberstunden) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+            $statement->execute([$username, $hashedPassword, $email, $role,
+                $assignment['department_id'], $assignment['supervisor_id'], $regularHours, $carryIn]);
+            $statement->closeCursor();
+            // Existing initial-work-model and audit triggers run once in this
+            // transaction; auth_source/token retain their native defaults.
+            return true;
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'admin.php', $transaction));
+    }
+
     /** Own Admin identity only; no request target/role/reason or general account mutation. */
     public function ownCarryIn(int $user, mixed $raw): string
     {

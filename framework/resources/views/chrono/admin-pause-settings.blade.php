@@ -2,15 +2,72 @@
 
 @section('content')
 <main class="container mx-auto px-4 py-8 chrono-page">
-    <div class="alert alert-info mb-4" role="note">In dieser Laravel-Ansicht sind die vorhandene Pausenregel- und Abteilungsverwaltung verbunden; Benutzerliste und Benutzerdetails sind nur lesend verfügbar. Benutzeränderungen, LDAP, Zugangsdaten und API-Token sind hier noch nicht zur Verwaltung angebunden.</div>
+    <div class="alert alert-info mb-4" role="note">In dieser Laravel-Ansicht sind die vorhandene Pausenregel-, Abteilungsverwaltung und das Erstellen lokaler Benutzer verbunden. Bestehende Benutzerdetails bleiben nur lesend; Änderungen, Löschen, Passwortänderungen, LDAP und API-Token sind nicht angebunden.</div>
     @if ($adminPauseSettings->error)
     <div class="alert alert-error shadow-lg mb-4" role="alert"><div><i class="fas fa-exclamation-circle"></i><span>{{ $adminPauseSettings->error }}</span></div></div>
+    @endif
+    @if ($adminPauseSettings->success)
+    <div class="alert alert-success shadow-lg mb-4" role="status"><div><i class="fas fa-check-circle"></i><span>{{ $adminPauseSettings->success }}</span></div></div>
     @endif
     <div id="user-management" class="card bg-base-100 shadow-xl mb-8">
         <div class="card-body">
             <h2 class="card-title text-2xl mb-4">{{ $page->copy->text('USER_MANAGEMENT_TITLE') }}</h2>
-            <div id="user-mutations-hold" class="alert alert-info mb-4" role="note">Nur lesend: Benutzer erstellen, ändern oder löschen und Passwortänderungen sind hier noch nicht verbunden. Die angezeigten Werte werden nicht gespeichert.</div>
-            <button type="button" class="btn btn-primary mb-4" id="toggleUserForm" disabled aria-describedby="user-mutations-hold"><i class="fas fa-plus mr-2"></i>{{ $page->copy->text('BUTTON_CREATE_USER') }}</button>
+            <div id="user-mutations-hold" class="alert alert-info mb-4" role="note">Bestehende Benutzer bleiben nur lesend: Ändern, Löschen und Passwortänderungen sind nicht verbunden.</div>
+            <button type="button" class="btn btn-primary mb-4" id="toggleUserForm" @disabled(! $adminPauseSettings->enabled)><i class="fas fa-plus mr-2"></i>{{ $page->copy->text('BUTTON_CREATE_USER') }}</button>
+            <div id="userForm" class="hidden mb-6">
+                <form method="post" class="space-y-4">
+                    @csrf
+                    <input type="hidden" name="add_user" value="1">
+                    <fieldset @disabled(! $adminPauseSettings->enabled) class="space-y-4">
+                    <div class="form-control">
+                        <label class="label" for="username"><span class="label-text">{{ $page->copy->text('FORM_USERNAME') }}</span></label>
+                        <input type="text" id="username" name="username" class="input input-bordered" required>
+                    </div>
+                    <div class="form-control">
+                        <label class="label" for="password"><span class="label-text">{{ $page->copy->text('FORM_PASSWORD') }}</span></label>
+                        <input type="password" id="password" name="password" class="input input-bordered" required>
+                    </div>
+                    <div class="form-control">
+                        <label class="label" for="email"><span class="label-text">{{ $page->copy->text('FORM_EMAIL') }}</span></label>
+                        <input type="email" id="email" name="email" class="input input-bordered" required>
+                    </div>
+                    <div class="form-control">
+                        <label class="label" for="role"><span class="label-text">{{ $page->copy->text('FORM_ROLE') }}</span></label>
+                        <select id="role" name="role" class="select select-bordered" required>
+                            <option value="user">{{ $page->copy->text('FORM_ROLE_USER') }}</option>
+                            <option value="admin">{{ $page->copy->text('FORM_ROLE_ADMIN') }}</option>
+                            <option value="supervisor">{{ $page->copy->text('FORM_ROLE_SUPERVISOR') }}</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label" for="department"><span class="label-text">{{ $page->copy->text('FORM_DEPARTMENT') }}</span></label>
+                        <select id="department" name="department" class="select select-bordered" required>
+                            @foreach ($adminPauseSettings->departments as $department)
+                            <option value="{{ $department['id'] }}">{{ $department['name'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label" for="supervisor"><span class="label-text">{{ $page->copy->text('FORM_SUPERVISOR') }}</span></label>
+                        <select id="supervisor" name="supervisor" class="select select-bordered">
+                            <option value="">{{ $page->copy->text('FORM_NO_SUPERVISOR') }}</option>
+                            @foreach ($adminPauseSettings->supervisors as $supervisor)
+                            <option value="{{ $supervisor['id'] }}">{{ $supervisor['username'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label" for="regelarbeitszeit"><span class="label-text">{{ $page->copy->text('FORM_REGULAR_WORKING_HOURS') }}</span></label>
+                        <input type="number" id="regelarbeitszeit" name="regelarbeitszeit" class="input input-bordered" step="0.01" required>
+                    </div>
+                    <div class="form-control">
+                        <label class="label" for="ueberstunden"><span class="label-text">{{ $page->copy->text('FORM_OVERTIME') }}</span></label>
+                        <input type="number" id="ueberstunden" name="ueberstunden" class="input input-bordered" step="0.01" value="0">
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus mr-2"></i>{{ $page->copy->text('BUTTON_CREATE_USER') }}</button>
+                    </fieldset>
+                </form>
+            </div>
             <div id="user-detail-error" class="alert alert-error mb-4 hidden" role="alert"></div>
             <form action="" method="GET" class="mb-4">
                 <div class="form-control"><div class="input-group">
@@ -184,8 +241,11 @@
     });
 </script>
 <script>
-    // Native department search/modal behavior only; no account/LDAP Admin JS.
+    // Original create toggle and department behavior; no edit/delete/LDAP actions.
     document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('toggleUserForm').addEventListener('click', function () {
+            document.getElementById('userForm').classList.toggle('hidden');
+        });
         document.getElementById('departmentSearch').addEventListener('input', function () {
             const searchTerm = this.value.toLowerCase();
             document.querySelectorAll('#department-management table tbody tr').forEach(function (row) {
