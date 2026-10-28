@@ -14,7 +14,8 @@ use Throwable;
 
 final class LegacyApiWire
 {
-    public function handle(Request $request, Closure $next): Response
+    /** Also used before routing by the explicitly selected API method ingress. */
+    public function restoreRawMethod(Request $request): void
     {
         // Native api.php ignores Laravel/Symfony method overrides entirely.
         // Candidate paths match all framework verbs; only the raw method below
@@ -25,6 +26,11 @@ final class LegacyApiWire
         $request->request->remove('_method');
         $request->query->remove('_method');
         $request->setMethod($rawMethod);
+    }
+
+    public function handle(Request $request, Closure $next): Response
+    {
+        $this->restoreRawMethod($request);
 
         // Must precede guard/session/DB/key resolution, including unknown paths.
         if ($request->server('REQUEST_METHOD') === 'OPTIONS') {
