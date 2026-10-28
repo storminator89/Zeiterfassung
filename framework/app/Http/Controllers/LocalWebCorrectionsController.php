@@ -55,6 +55,7 @@ final class LocalWebCorrectionsController extends Controller
     {
         // Definitions only: reuse the native pure display formatter, never its bootstrap.
         require_once dirname(__DIR__, 4).'/lib/attendance.php';
+        require_once dirname(__DIR__, 4).'/lib/correction_presentation.php';
         $actor = $this->auth->guard('web')->user();
         $language = $request->query('lang', $request->session()->get('lang', 'de'));
         $language = is_string($language) && in_array($language, ['de', 'en', 'zh'], true) ? $language : 'de';
@@ -64,16 +65,21 @@ final class LocalWebCorrectionsController extends Controller
         $records = array_map(static fn (array $row): array => [
             'id' => (int) $row['id'], 'start' => $row['startzeit'], 'end' => $row['endzeit'],
         ], array_slice($this->reads->reportRows(), 0, 200));
-        $requests = array_map(static fn (array $row): array => [
-            'id' => (int) $row['id'], 'user_id' => (int) $row['user_id'],
-            'username' => $row['username'], 'status' => $row['status'],
-            'cancel' => (bool) $row['cancel'],
-            // Native pure Berlin display formatting, not input parsing/accounting.
-            'start' => \attendance_local((int) $row['proposed_start']),
-            'end' => \attendance_local((int) $row['proposed_end']),
-            'pause' => (int) $row['proposed_pause'], 'reason' => $row['reason'],
-            'review_reason' => $row['review_reason'],
-        ], $this->reads->corrections());
+        $requests = array_map(static function (array $row): array {
+            $preview = \chrono_correction_preview($row);
+            return [
+                'id' => (int) $row['id'], 'user_id' => (int) $row['user_id'],
+                'username' => $row['username'], 'status' => $row['status'],
+                'cancel' => (bool) $row['cancel'],
+                // Native pure Berlin display formatting, not input parsing/accounting.
+                'start' => $preview['proposed_usable'] ? \attendance_local((int) $row['proposed_start']) : '',
+                'end' => $preview['proposed_usable'] ? \attendance_local((int) $row['proposed_end']) : '',
+                'pause' => $preview['proposed_usable'] ? (int) $row['proposed_pause'] : null, 'reason' => $row['reason'],
+                'review_reason' => $row['review_reason'],
+                // Selected time fields only; no original snapshot is passed to Blade.
+                'preview' => $preview,
+            ];
+        }, $this->reads->corrections());
 
         return view('chrono.corrections', [
             // Reuse the existing shared chrome contract; no legacy header/bootstrap include.

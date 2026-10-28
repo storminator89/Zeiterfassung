@@ -38,7 +38,15 @@
     @foreach ($corrections->requests as $a)
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <p class="text-sm font-semibold opacity-70 mb-2">#{{ $a['id'] }} · {{ $a['username'] }} · {{ ['pending' => 'Offen', 'approved' => 'Freigegeben', 'rejected' => 'Abgelehnt'][$a['status']] }}</p>
-        <p>{{ $a['cancel'] ? 'STORNIERUNG · ' : '' }}{{ $a['start'] }} – {{ $a['end'] }} · {{ $a['pause'] }} Minuten Pause</p>
+        @if ($a['cancel'])<p>STORNIERUNG · kein neuer Zeitwert</p>
+        @elseif ($a['preview']['proposed_usable'])<p>{{ $a['start'] }} – {{ $a['end'] }} · {{ $a['pause'] }} Minuten Pause</p>
+        @else<p>Beantragte Zeitangaben nicht auswertbar.</p>@endif
+        <div class="text-sm my-3">
+            <p class="font-semibold">Gespeicherte Netto-Buchungsdauer · kein Kontosaldo</p>
+            <p>Vorher: {{ $a['preview']['before'] }} · Beantragt: {{ $a['preview']['after'] }}</p>
+            <p>{{ $a['preview']['difference'] === null ? 'Keine verlässliche Dauer-Differenz verfügbar.' : 'Dauer-Differenz: ' . $a['preview']['difference'] }}</p>
+            <p class="opacity-70">Nur ausgewählte Zeitfelder des gespeicherten Originals und Antrags. Keine Freigabe- oder Saldozusage; die Entscheidung prüft den aktuellen Datensatz erneut.</p>
+        </div>
         <p>{{ $a['reason'] }}</p>
         @if ($a['review_reason'])<p class="opacity-70">Entscheidung: {{ $a['review_reason'] }}</p>@endif
         @if ($a['status'] === 'pending' && $a['user_id'] !== $page->userId && in_array($page->role, ['admin', 'supervisor'], true))

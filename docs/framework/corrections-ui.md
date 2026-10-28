@@ -130,6 +130,60 @@ produktive Aktivierung. Weitere Korrekturzweige sind am selben bestehenden
 Dienst verdrahtet, aber nicht durch diesen einen Browserfall neu abgenommen.
 Vollständige #79-/Sicherheits-/operative Cutoverfreigabe bleibt ausstehend.
 
+## #50 – ausgewählte Vorher-/Beantragt-Buchungsdauer
+
+Ergänzende Basis: Main `6f032fd8b9faadad5b9da045e4296e11542251c3`, Tree
+`eb465a4cf2a87b432e16767b4dccd06cde06d9a8`. Genau sechs Pfade: neuer reiner
+`lib/correction_presentation.php`, vorhandene native Antragskarten in
+`adjustments.php`, Laravel-Controller-Payload, `CorrectionsPage`-Payloaddokumentation,
+vorhandene Korrektur-Bladevorlage und dieses Dokument. Keine neue Oberfläche.
+
+In jeder bestehenden Antragskarte stehen nun ausgewählte gespeicherte
+Netto-Buchungsdauer vorher und beantragt sowie eine vorzeichenbehaftete
+Minutendifferenz, **nur wenn beide Seiten auswertbar abgeschlossen sind**.
+Das ist eine Buchungsdauer-Vorschau, **kein Vorher-/Nachher-Kontosaldo**, keine
+Freigabezusage und kein neuer Schreib-/Genehmigungsweg. Der tatsächliche Kern
+prüft bei der Entscheidung unverändert den aktuellen Datensatz, Snapshot,
+Zeit-/Gutschriftenregeln, Berechtigungen und das Vier-Augen-Prinzip.
+
+Der originale Snapshot wird ausschließlich als begrenztes JSONobjekt gelesen:
+höchstens 65.536 Bytes, Parser-Tiefe 8 und feste Auswahl von `startzeit`, `endzeit`
+und `pause`. Andere Namen und Werte werden nicht in die Projektion übernommen;
+keine beliebige Rekursion, Notiz-, Standort-, Personen- oder Geheimnisfelder.
+Die vollständigen Originalsnapshots werden nicht an Blade weitergegeben.
+Ungültiges/zu großes/zu tiefes JSON, fehlende Zeitfelder und falsche Typen
+ergeben nur einen festen Hinweis, keine erfundenen Nullminuten. Der bestehende
+`report_record_calculation()` allein liefert Dauer, tatsächliche Pause und
+Offset-/Berlin-/DSTinterpretation. Gespeicherte beantragte Epochwerte werden
+auf darstellbare Ganzzahlen geprüft und über den vorhandenen kanonischen
+Instant-/Offsetpfad in denselben Kalkulator gegeben; keine neue lokale Zeitwahl.
+
+Ein Nachtrag ohne Original heißt „Kein vorheriger Eintrag“, eine offene
+Originalbuchung hat keine abgeschlossene Dauer. Storno heißt „kein neuer
+Zeitwert“ und zeigt insbesondere nicht mehr die technischen Antragstimestamps
+als scheinbar neu gebuchte Zeit. Diese Fälle sowie jede unlesbare Seite zeigen
+**keine numerische Differenz**. Unbrauchbare vorgeschlagene Zeit-/Pausenwerte
+und nicht positive Vorschlagsintervalle bleiben ebenfalls ohne Differenz und
+werden nicht als scheinbar normalisierte Zeitangaben angezeigt.
+Eine auswertbare gespeicherte Dauer ist ausdrücklich keine Zusage, dass der
+gesamte Antrag nach allen unveränderten Regeln genehmigt werden kann.
+
+Alle neuen Inhalte bleiben escaped Text in den vorhandenen Karten. Der Helfer
+nutzt nur bereits gelesene, bereits autorisierte Anträge und deren gespeicherten
+Snapshot; keine aktuellen Buchungen nachladen, keine Rückschlüsse aus fremden
+Datensätzen und keine neuen SQLabfragen. Native Statusfilter/Seitenzählung und
+Laravel-100er-Limit behalten ihre bisherigen getrennten Verträge. Query, Rollen,
+Freigabe, Audit, Writer, Rohdaten, Routen, Auth, Session und übrige UI bleiben
+unverändert. Kein Export oder Aktivieren der standardmäßig geschlossenen Laravel-
+Verdrahtung und keine Datenmutation durch die Vorschau.
+
+Ein grober rein erfundener Vorschau-/Unverfügbarkeits-/Auslassungsnachweis mit
+16 vorhandenen Kartenfragmenten und PHP-/Blade-Syntax bestand am 28.10.2026 unter
+PHP 8.5.12. Nachweis und Quellenprüfung werden separat eingefroren; keine tatsächlichen Daten, DB,
+App-/Controller-/Session-/Auth-/HTTP-/Browserausführung oder neue CI-Läufe.
+Geschützte/visuelle Abnahme, echte Datumsauswahl einschließlich Herbststunde,
+Kontosaldovorschau, Rücknahme, Vertretung und vollständiges #50 bleiben offen.
+
 Nach dem Abschluss wurde auch das Mitglied ausgeloggt, der eigene Browser-/
 Terminaltab geschlossen und ausschließlich der temporäre 18090-Prozess beendet.
 Der fehlende Listener wurde nativ bestätigt; die vorhandene 18083-Anwendung
