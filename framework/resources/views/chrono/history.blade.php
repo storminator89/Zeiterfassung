@@ -31,6 +31,7 @@
     @endif
     @if ($history->newestUrl !== null)<p class="mb-6"><a href="{{ $history->newestUrl }}">Neueste Treffer mit diesen Filtern</a></p>@endif
     @if ($history->exportUrl !== null)<p class="mb-6"><a class="btn btn-outline" href="{{ $history->exportUrl }}">Aktuelle Treffer dieser Filterseite als ausgewähltes JSON (max. 100)</a></p>@endif
+    @if ($history->correlatedExportUrl !== null)<p class="mb-6"><a class="btn btn-outline" href="{{ $history->correlatedExportUrl }}">Bezüge dieser Treffer als JSON (begrenzt)</a><span class="block text-sm opacity-70 mt-2">Zugehörige Referenzen können außerhalb der Ankerfilter liegen. Aktuelle gespeicherte Beziehungen, keine verursachenden Ereigniszuweisungen oder vollständige Historie.</span></p>@endif
     @foreach ($history->entries as $r)
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <p class="text-sm font-semibold opacity-70 mb-2">#{{ $r['id'] }} · {{ $r['occurred_at'] }}</p>

@@ -9,6 +9,32 @@ $exportMode=chrono_history_export_mode($_GET);
 if ($exportMode['requested']) {
     try {
         if (!$exportMode['valid'] || $filters['errors']) { $export=chrono_history_export_failure(400); }
+        elseif (chrono_history_correlated_requested($_GET)) {
+            require_once __DIR__.'/lib/history_correlation.php';
+            // This opt-in alone owns a DEFERRED read snapshot, never a writer/caller transaction.
+            $correlatedRead=static function(PDO $db,array $filters,int $actorId): array {
+                if ($db->inTransaction()) { throw new LogicException('History read requires an idle connection.'); }
+                if (!$db->beginTransaction()) { throw new RuntimeException('History read unavailable.'); }
+                try {
+                    $actorStatement=$db->prepare('SELECT id,role FROM users WHERE id=?');
+                    $actorStatement->execute([$actorId]);$actor=$actorStatement->fetch(PDO::FETCH_ASSOC);$actorStatement->closeCursor();
+                    if (!$actor || !in_array($actor['role'],['user','supervisor','admin'],true)) { throw new AttendanceError('Bitte erneut anmelden.',401); }
+                    $query=chrono_history_query($filters,$actorId,$actor['role']);
+                    $statement=$db->prepare($query['sql']);$statement->execute($query['params']);$anchorRows=$statement->fetchAll(PDO::FETCH_ASSOC);$statement->closeCursor();
+                    $result=['rows'=>$anchorRows,'correlation'=>chrono_history_correlations($db,$anchorRows,$actorId,$actor['role'])];
+                    if (!$db->commit()) { throw new RuntimeException('History read unavailable.'); }
+                    return $result;
+                } catch (Throwable $readError) {
+                    if ($db->inTransaction()) { $db->rollBack(); }
+                    throw $readError;
+                }
+            };
+            try { $export=chrono_history_correlated_export_page($correlatedRead($conn,$filters,$user),$values); }
+            catch (AttendanceError $authorizationError) {
+                if ($authorizationError->status!==401 && $authorizationError->status!==403) { throw $authorizationError; }
+                $export=chrono_history_correlated_authorization_failure($authorizationError->status);
+            }
+        }
         else {
             $query=chrono_history_query($filters,$user,$role);$s=$conn->prepare($query['sql']);$s->execute($query['params']);$rows=$s->fetchAll(PDO::FETCH_ASSOC);
             $export=chrono_history_export_page($rows,$values);
@@ -46,6 +72,7 @@ chrono_page('Änderungshistorie');
 <?php elseif(!$rows): ?><p class="mb-6" role="status">Keine sichtbaren Einträge für diese Filter.</p><?php endif; ?>
 <?php if(!$filters['errors']&&$filters['ids']['before']!==null): ?><p class="mb-6"><a href="<?= h(chrono_history_url($filters)) ?>">Neueste Treffer mit diesen Filtern</a></p><?php endif; ?>
 <?php if(!$filters['errors']): ?><p class="mb-6"><a class="btn btn-outline" href="<?= h(chrono_history_export_url($values)) ?>">Aktuelle Treffer dieser Filterseite als ausgewähltes JSON (max. 100)</a></p><?php endif; ?>
+<?php if(!$filters['errors']): ?><p class="mb-6"><a class="btn btn-outline" href="<?= h(chrono_history_correlated_export_url($values)) ?>">Bezüge dieser Treffer als JSON (begrenzt)</a><span class="block text-sm opacity-70 mt-2">Zugehörige Referenzen können außerhalb der Ankerfilter liegen. Aktuelle gespeicherte Beziehungen, keine verursachenden Ereigniszuweisungen oder vollständige Historie.</span></p><?php endif; ?>
 <?php foreach($rows as $r): $presentation=chrono_history_presentation($r['entity'],$r['before_json']??null,$r['after_json']??null); ?>
 <section class="card bg-base-100 shadow-xl p-6 mb-6"><p class="text-sm font-semibold opacity-70 mb-2">#<?= (int)$r['id'] ?> · <?= h(attendance_local((int)$r['occurred_at'])) ?></p><h2 class="text-xl font-semibold mb-4"><?= h(chrono_history_entities()[$r['entity']]??$r['entity']) ?> #<?= (int)$r['record_id'] ?> · <?= h($r['operation']) ?></h2><p><?= h($r['actor']) ?> · <?= h($r['reason']) ?></p>
 <details><summary>Vorher und nachher ansehen</summary>
