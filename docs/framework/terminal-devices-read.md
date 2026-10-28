@@ -6,8 +6,10 @@ Beschriftungen. Keine zweite Terminalverwaltung und keine neue URL. Die Ansicht
 kennzeichnet sich ausdrücklich als nur lesend. Kein Koppeln/Sperren, Modulschalter,
 Standortanlage, Personalcode, PIN, NFC-Zuordnung, Token oder Geräteschlüssel.
 Keine inaktiven Scheinaktionen; die bisherige Sperr-Formularspalte fehlt bewusst.
-Auch native `saved`-/Pairing-Banner werden nicht imitiert, und der native
-`terminal_pairing`-Sessionwert wird weder gelesen noch verbraucht.
+Das ursprüngliche nur lesende Profil imitiert weder native `saved`- noch
+Pairing-Banner; der native `terminal_pairing`-Sessionwert wird weiterhin weder
+gelesen noch verbraucht. Die unten getrennt beschriebene optionale Standortanlage
+verwendet nur für ihren eigenen Erfolg das vorhandene `saved`-Banner.
 
 ## Ein begrenzter Snapshot, keine Geheimnisse
 
@@ -85,3 +87,160 @@ CLI-Boot behielt nur `/up`; keine Anfrage, Geräteverbindung oder Hardware wurde
 verwendet. Notwendige PHP-/kompilierte-Blade-Syntaxprüfung ersetzt keine offene
 Betriebsabnahme. Ein früher Fehler der Autoload-Reihenfolge im Evidence-Helfer
 vor Bootstrap ist separat dokumentiert; Anwendungscode blieb dabei unverändert.
+
+
+## Getrennte Ergänzung: vorhandene Standortanlage, standardmäßig geschlossen
+
+Basis des Zehnpfadpakets ist der tatsächliche Main
+`4c2ceb1ba8aa35c9bf0c6f02378669433705616a`, Baum
+`278a57667ef1c997c5164b08d80bbcceabf5b0b3`. Bezug #79/#81. Die vorhandene native
+Karte **Standort ergänzen** aus `terminals.php` wird mit denselben Feldnamen,
+Labels, CSS-Klassen und ihrem normalen POST/Redirect in die bestehende Blade-
+Ansicht übernommen. Keine neue Oberfläche, Standortlöschung/-umbenennung,
+Geräteanlage/-sperre, Modulfrei­gabe, Beschäftigten-/PIN-/Kartenaktion oder
+Terminalprotokolländerung. Die vorhandene Geräteliste bleibt unverändert.
+
+### Getrennte Fähigkeiten, kein schleichender Read-only-Cutover
+
+`LocalWebRoutes::register(..., includeTerminalSites: true)` ist ein **neuer,
+standardmäßig falscher** vertrauenswürdiger Schalter. Er verlangt die bereits
+bestehende `includeTerminalDevices: true`-Seite; alleine wird er verweigert.
+Das vorhandene reine Geräteprofil erhält dadurch ausdrücklich **keine** neue
+POST-Route. Nur die separate Freigabe registriert `POST terminals.php` im
+bestehenden Session-/`LegacyFormCsrf`-/`RefreshLocalAccount`-/`auth:web`-/
+`auth.session`-Stack. Kein neuer öffentlicher Endpoint oder Defaultboot:
+gewöhnliches Boot bleibt ausschließlich `/up`.
+
+Zusätzlich bleibt `Interactions::terminalSites` standardmäßig false. Der neue
+Anzeigeflag und die DTO-Zusätze besitzen inaktive Defaults; die native Karte ist
+ohne ausdrückliche Anzeigefreigabe deaktiviert und erklärt den Hold. Der Flag
+ist **keine Berechtigungsprüfung**. Auch eine handgeschriebene POST-Anfrage
+benötigt die getrennt registrierte Route, gültige Session/CSRF und den aktuellen
+lokalen Admin. Das bisher nur lesende Profil zeigt kein nachgeahmtes Erfolgs-
+banner. Wird später nur die Anzeige ohne die passende Route aktiviert, ist das
+keine funktionsfähige Schreibkomposition; beide Fähigkeiten gehören explizit
+zusammen und werden nicht aus Anfragen oder Umgebungswerten abgeleitet.
+
+Der optionale Raw-Form-Pfad erhält wie nativ die Eingaben ohne globale
+Trim-/Leerstringnormalisierung; die fachliche Namensprüfung erfolgt im festen
+Writer. Authverlust beim optionalen POST ergibt `401 text/plain`, beim
+vorhandenen GET weiterhin den Loginredirect. Fachliche Formularfehler bleiben
+wie nativ im HTML; Fehler enthalten keine SQL-, Pfad- oder Constraintdetails.
+Nach bestätigtem Erfolg folgt ausschließlich `terminals.php?saved=1`.
+Ein technischer Fehler behauptet weder Erfolg noch sicheren Rollback, sondern
+fordert zum Neuladen und Prüfen des gespeicherten Stands auf. Kein Auto-Retry
+oder neu erfundenes Idempotenzversprechen für Standortanlagen.
+
+### Ein festes Kommando, ein vorhandener Writer
+
+`LocalWebTerminalSites`/`LegacyLocalWebTerminalSites` erlauben genau
+`action=site` und `name`, keine Actor-, Role-, Standort-ID-, SQL-, Schlüssel-
+oder anderen Terminalaktionsfelder. Controller und Dienst verweigern
+unbekannte/gemischte Aktionen; der Dienst verlangt einen lokalen Admin aus dem
+bestehenden `web`-Guard, bevor ein Writer aufgelöst wird. Die lazy/scoped Bindung
+im bestehenden `ChronoDomainServiceProvider` öffnet selbst keine Verbindung und
+verweigert eine fehlende explizite `AttendanceWriter`-Bindung. Keine native
+Bootstrapeinbindung, Schlüsselauflösung oder Ersatzverbindung.
+
+Genau die neue feste Methode `AttendanceWriter::createTerminalSite()` verwendet
+den unveränderten bestehenden Operation-/IMMEDIATE-/Same-PDO-/Fehlerlebenszyklus.
+Innerhalb dieser Sperre wird der aktuelle Akteur erneut aus `users` gelesen und
+auf lokale Adminrolle geprüft. Danach gelten die vorhandenen Regeln:
+Namensstring trimmen, nicht leer und höchstens **100 Bytes**, fester
+`INSERT INTO terminal_sites(name) VALUES(?)`. Literal `"0"` bleibt ein gültiger
+nichtleerer Name. Nichtskalare/fehlende Namen werden statt einer PHP-
+Array-/Objektkonvertierung kontrolliert als ungültig verworfen. Die Datenbank
+behält die vorhandene Unique-Regel; Duplikate ergeben keinen zweiten Standort.
+
+Keine neue Transaktionsverwaltung, frei übergebene SQL-Closure, Migration,
+Schema-/Indexänderung, Daten-/Schlüsselkopie oder andere Schreibmethode. Der
+Auditkontext heißt fest `web:{aktuellerAdmin}` / `terminals.php`; es wird **kein
+neues Terminal-Standortjournal** behauptet oder ergänzt (#32 bleibt getrennt).
+Alle bisherigen Writer-, Auth-, Setup-, Aufnahme-/LDAP-, Protokoll-/Geräte- und
+Buchungsregeln bleiben unverändert. Vor einer späteren Integration mit anderen
+Paketen sind die additiven Writer-/Registrarhunks seriell auf dem tatsächlichen
+Main zu übernehmen und gemeinsam erneut zu prüfen.
+
+### Grober synthetischer Nachweis und Grenzen
+
+PHP **8.5.12** / Laravel **13.38.0**: Ein einziger wegwerfbarer privater
+known-v2-Fixturebestand aus der bestehenden anonymen Quellfixture wurde mit
+dem vorhandenen Offline-Adopter zugelassen. Die tatsächliche Dienst-/Writer-
+Grenze prüfte fehlende/nichtadministrative/LDAP-Identitäten und unbekannte
+Kommandos vor Writerauflösung, einen nur gecachten Admin gegen den aktuellen
+DBrollenstand, ungültige/leere/zu lange Namen und Duplikatrollback. Zwei
+rein erfundene Standorte wurden angelegt; Trim und Literal0 sowie der echte
+Controller-Erfolgsredirect wurden geprüft. Andere vorhandene Tabellen,
+synthetisches Original und Backup bleiben unverändert, die temporären Dateien
+wurden anschließend entfernt. Das sind **keine** echten Konten/Standorte.
+
+Zwei getrennte inaktive Prozesse prüfen Read-only-/Site-Routenprofile jeweils
+nur einmal: alte Freigabe ohne POST, zusätzliche Route mit unverändertem
+Middlewarestack, POST401/GET302 und Raw-Form-Vertrag, ohne DBverbindung oder
+Requestdispatch. Drei inaktive Bladefälle prüfen den deaktivierten Default,
+freigegebene Karte und escaped Fehlerausgabe. PHP-Syntax einschließlich
+kompilierter Bladeausgabe und `git diff --check` sind grün. Keine neue Testsuite
+oder GitHub-CI gestartet.
+
+Die erste Nachweishilfe behandelte eine optionale im Fixture nicht vorhandene
+Mappingtabelle fälschlich als vorhanden; nur ihr Digestlauf wurde auf dieselbe
+Existenzprüfung wie der bestehende SourceSnapshot korrigiert. Ein weiterer
+Nachweisversuch registrierte zwei inkompatible Profilcallback-Sätze im selben
+Appprozess; sie werden jetzt getrennt gebootet, statt den zuerst registrierten
+Callback als spätere Laufzeitkonfiguration zu missdeuten. Anwendungscode und
+fachliche Prüfassertionen wurden für diese Nachweisrecovery nicht abgeschwächt.
+
+Keine tatsächlichen Standorte, Geräte, Schlüssel, Zugangsdaten, Einstellungen
+oder Runtime aktiviert/geändert. Kein HTTP-/Browser-/Login-/CSRF-Gesamtjourney,
+keine visuelle/hardwarebezogene oder produktive Freigabe. Das bestehende
+Fixtureprofil wurde nicht aktiviert oder umgestellt; #79/#81 bleiben offen.
+Die Standortanlage alleine ist keine vollständige Terminalverwaltung oder
+abgeschlossene Laravel-Umstellung.
+
+
+### Additive Quellintegration auf Main `12a338e`
+
+Das unabhängig quellgeprüfte Paket `a98efb58f82692224be8b63f77bf77513229e108`
+wurde auf den tatsächlichen Main `12a338e2f9742fb71de453b5ecc469fb36fc007c`
+neu verankert. Seine sieben übrigen Codepfade und der ursprüngliche
+Dokumentationsinhalt sind unverändert übernommen; der Writer erhält
+ausschließlich dieselbe feste `createTerminalSite()`-Methode.
+Im Registrar wird `includeTerminalSites` **nach** den vorhandenen Setup- und
+LDAP-Sync-Argumenten angehängt; bestehende positionsbezogene Aufrufe sowie
+Setup-/LDAP-/Policy-/Save-Alias-/Verwaltungsänderungen bleiben erhalten.
+Die Writer- und Registrarunion wird getrennt bytegenau zurückgerechnet.
+
+Diese Übernahme führt keine lokale Funktionsprüfung aus und wiederholt die
+oben ausschließlich historisch beschriebenen synthetischen Nachweise nicht.
+Notwendige Syntaxprüfung und Quellerhaltung sind von einer weiterhin offenen
+HTTP-/Browser-/CSRF-/Rollen-/Hardwareabnahme zu unterscheiden. Kein
+Runtimeprofil oder Defaultschalter wird geändert; die bestehende Fresh-Web-
+Komposition schaltet die Standortanlage nicht still ein. #79/#81 bleiben offen.
+
+
+### Erneute additive Quellintegration auf Main `0264df96`
+
+Das auf `12a338e` unabhängig quellgeprüfte Paket
+`7a1438e908ba6a2415bb3dc0196457da5c19a6b0` wird auf Main
+`0264df96f20451168632b2ac5259588b1709728d` neu verankert. Dieser tatsächliche
+Main enthält die History-Relationen aus #208 und die standardmäßig geschlossene
+gemeinsame Loginbudget-Quellunion aus #209. Beide bleiben vollständig erhalten.
+
+Die sieben übrigen Codepfade sind weiterhin bytegleich zum geprüften Paket.
+Der Writer erhält nur dieselbe feste `createTerminalSite()`-Methode; entfernt
+man sie, bleibt jede aktuelle Main-Writerzeile einschließlich Budgetkonstruktor-/
+Cookie-/IMMEDIATE-/Commitgrenze sowie Admin-/Setup-/LDAPoperationen unverändert.
+Im Registrar wird der neue standardmäßig falsche Terminalschalter **nach**
+`useSharedLoginBudget` angehängt. Die bestehende Budgetauswahlprüfung und der
+bedingte Login-Throttle bleiben unverändert; alle acht Terminalergänzungen
+werden separat auf den vollständigen aktuellen Main-Registrar zurückgerechnet.
+Keine zuvor vorhandene Position oder benannte Option verschiebt sich.
+
+Diese erneute Übernahme ist weiterhin ausschließlich Quellintegration. Es werden
+nur notwendige PHP-/kompilierte-Blade-Syntax und statische Hash-/Objekt-/
+Patch-/Baumprojektionen geprüft; keine lokalen Funktionstests oder neuen
+GitHub-CI-Läufe, Runtime-/Konfigurations-/Konten-/Standort-/Geräte-/Schlüssel-
+änderungen. Standard-/FreshWeb-/Loginbudget-Schalter und historische
+Abnahmegrenzen bleiben unverändert. Eine unabhängige Prüfung bezieht sich
+ausschließlich auf den finalen neuen Baum; Browser-/HTTP-/CSRF-/Hardware-
+und Betriebsabnahme bleiben offen. #79/#81 bleiben teilweise offen.
