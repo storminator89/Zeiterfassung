@@ -5,6 +5,9 @@ namespace App\Providers;
 use App\Api\AdmittedLegacyApiConfiguration;
 use App\Api\LegacyApiRoutes;
 use App\Api\LegacyApiTokenKey;
+use App\Http\Middleware\LegacyApiMethodIngress;
+use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Foundation\Http\Kernel as FoundationHttpKernel;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
 use LogicException;
@@ -33,6 +36,13 @@ final class AdmittedLegacyApiServiceProvider extends ServiceProvider
             }
             // One extant route definition, now with its explicit trailing profile gate.
             (new LegacyApiRoutes)->registerCandidate($router, requireAdmittedProfile: true);
+            // Keep stock maintenance/CORS/global gates ahead of this narrow
+            // raw-method adapter, but run it BEFORE route method selection.
+            // The helper covers both an already-resolved HTTP kernel (normal
+            // HTTP boot) and a kernel resolved later (console boot first).
+            $this->callAfterResolving(HttpKernel::class, static function (FoundationHttpKernel $kernel): void {
+                $kernel->pushMiddleware(LegacyApiMethodIngress::class);
+            });
         });
     }
 }
