@@ -9,6 +9,8 @@ use App\View\ExistingUi\LoginPage;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 
 /** Existing local login transport only; its registrar must supply session/CSRF/throttle. */
 final class LocalWebSessionController extends Controller
@@ -20,10 +22,14 @@ final class LocalWebSessionController extends Controller
         return $this->page($request);
     }
 
-    public function store(Request $request): View|RedirectResponse
+    public function store(Request $request): View|RedirectResponse|Response
     {
-        if ($this->sessions->attempt($request)) {
-            return new RedirectResponse('index.php');
+        try {
+            if ($this->sessions->attempt($request)) {
+                return new RedirectResponse('index.php');
+            }
+        } catch (ServiceUnavailableHttpException) {
+            return new Response($this->page($request, 'Anmeldung derzeit nicht bestätigt. Bitte später erneut versuchen.'), 503);
         }
 
         $copy = $this->copy($request);

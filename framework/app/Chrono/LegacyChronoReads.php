@@ -3,7 +3,9 @@
 namespace App\Chrono;
 
 use App\Auth\LegacyUser;
+use App\Auth\ExistingAccountUserProvider;
 use Closure;
+use Illuminate\Auth\SessionGuard;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Auth\Access\Gate;
@@ -641,10 +643,13 @@ final class LegacyChronoReads implements ChronoReads
             throw new LogicException('An explicitly admitted named chrono read connection is required.');
         }
 
-        $authenticated = $this->auth->guard()->user();
+        $guard = $this->auth->guard();
+        $authenticated = $guard->user();
         if (! $authenticated instanceof LegacyUser || (int) $authenticated->getKey() < 1) {
             throw new AuthenticationException;
         }
+        $provider = $guard instanceof SessionGuard ? $guard->getProvider() : null;
+        $webContext = $provider instanceof ExistingAccountUserProvider ? $provider->context($authenticated) : null;
 
         $connection = $this->database->connection('chrono');
         if (! $connection instanceof SQLiteConnection || $connection->transactionLevel() !== 0) {
@@ -662,13 +667,23 @@ final class LegacyChronoReads implements ChronoReads
         require_once dirname(__DIR__, 3).'/lib/reporting.php';
         require_once dirname(__DIR__, 3).'/lib/home_projection.php';
 
-        return $connection->transaction(function () use ($connection, $pdo, $authenticated, $read, $requireKnownRole): array {
+        return $connection->transaction(function () use ($connection, $pdo, $authenticated, $read, $requireKnownRole, $webContext): array {
             if ($connection->getRawPdo() !== $pdo) {
                 throw new LogicException('The read snapshot connection changed.');
             }
             // Only the guard supplies identity. Role/team are reloaded in this
             // same snapshot, never accepted from a request or cached session.
             $actor = $this->account($pdo, (int) $authenticated->getKey(), $requireKnownRole);
+            if ($webContext !== null) {
+                // ACTOR only, never period subjects/API. Private version data is
+                // not attached to the actor model, DTO or returned projection.
+                $version = att_one($pdo, 'SELECT password FROM users WHERE id=?', [(int) $authenticated->getKey()])['password'] ?? null;
+                if ($actor->auth_source !== $webContext[0] || $actor->role !== $authenticated->role
+                    || ! is_string($version) || ! $version
+                    || ! hash_equals($webContext[1], hash('sha256', $version))) {
+                    throw new AuthenticationException('Unauthenticated.', ['web']);
+                }
+            }
             $result = $read($pdo, $actor);
             if ($connection->getRawPdo() !== $pdo) {
                 throw new LogicException('The read snapshot connection changed.');

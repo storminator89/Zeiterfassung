@@ -8,7 +8,7 @@ PHP-LDAP-Verifier und einen echten synthetischen Protokollnachweis. Keine Änder
 an nativen Einstiegen, Authkonfiguration, Providern, Middleware, Routen,
 Composerdateien, Konten, Schlüsseln oder tatsächlicher Produktionseinrichtung.
 
-## Unterstützte Grenze, nicht aktivierter Laufweg
+## Ursprüngliche Providergrenze (Standardweg bleibt lokal)
 
 `ExistingLdapUserProvider` erweitert Laravels vorhandenen
 `EloquentUserProvider` und erfüllt dessen `UserProvider`-Vertrag. Es gibt keinen
@@ -24,9 +24,10 @@ bleiben die Integrationsstelle.
 | Schreibgrenze | Keine Änderungen an Hash, ID, Quelle, E-Mail, Rolle, Abteilung oder Supervisor. Erzwungener Rehash ist ebenfalls wirkungslos: kein Directorypasswort als lokaler Hash. Remember-Abruf liefert nichts; Remember-Schreibversuch wird ausdrücklich abgewiesen. |
 | Aktueller lokaler Weg | `config/auth.php`, Standardprovider `chrono_users`, `LocalSession`, `RefreshLocalAccount` und sämtliche Policies bleiben unverändert. Insbesondere akzeptiert die lokale Sessionaktion weiterhin nur lokale Konten; diese Datei erweitert sie **nicht** um LDAP. |
 
-Es gibt **keine** `Auth::provider`-Registrierung, keinen Guardnamen für diese
-Klasse und keine Containerbindung des Verifiers. Die konkrete optionale
-Implementierung aktiviert diese Bindungen ausdrücklich nicht. Eine Modell-/Verifierprüfung ist weder eine
+Die ursprüngliche `ExistingLdapUserProvider`-Klasse wird weiterhin nicht direkt
+als Guardprovider registriert und hat keine globale Verifier-Containerbindung.
+Der unten beschriebene spätere Vierzehnpfad-Slice registriert ausschließlich eine
+lazy benannte Kombiproviderfactory, ohne den Standardguard umzuschalten. Eine Modell-/Verifierprüfung ist weder eine
 Anmeldung noch eine Freigabe, die Grenze als vollständigen Login zu verwenden.
 
 ## Konkreter optionaler PHP-8.5-Verifier statt ungeprüftem Paket-Drop-in
@@ -173,8 +174,8 @@ lokale Namen sind kein Enrollmentweg.
    Konflikterhalt übernehmen, keine Rollenbeförderung oder neue OU-Regel.
 5. **Gemeinsamer Auth-/UI-Cutover:** Separat zugelassene Bestandsverbindung,
    Laravel-Standard-Session/CSRF/Throttle, frische Identität/Policy und
-   Versionswiderruf gemeinsam mit #76 integrieren. Aktuelles
-   `RefreshLocalAccount` akzeptiert bewusst kein LDAP. Keine native
+   Versionswiderruf gemeinsam mit #76 integrieren. Ohne das unten beschriebene ausdrückliche Profil akzeptiert
+   `RefreshLocalAccount` weiterhin kein LDAP. Keine native
    Sessionkopie, kein Token-/Sessioneinschleusen und kein Aktivieren dieser
    Klasse allein durch Austausch des Providerdrivers.
 6. **Abnahmegrenze:** Das ausdrücklich freigegebene neue synthetische Directory
@@ -202,3 +203,145 @@ Laravelbootstrap/-Guard/-Session, Login, Tokenausgabe, LDAP/Netzwerk/Bind,
 Import/Konfigurationsschreiben, echte Geheimnisse, HTTP/Server/Browser,
 zusätzliche CI, Aktivierung oder Deployment. Das ist eine Providergrenzen-
 Kompatibilitätsprobe, kein lokaler Funktionstest des vollständigen Logins.
+
+## Optionaler Laravel-Webpfad für gewöhnliche LDAPbenutzer (erster Slice)
+
+Auf Main `7c9642f39e1672797786fa45263c033672201b0e` ergänzt dieses getrennt
+reviewte Vierzehnpfad-Paket einen nutzbaren **Opt-in-Pfad**, keine globale
+Loginumschaltung. Standardkonfiguration und `config/auth.php` bleiben eloquent/
+lokal; `chrono_ldap.enabled=false`. Erst vertrauenswürdige vollständige
+Konfiguration **und** Auswahl des lazy registrierten `chrono-existing`-Providers
+aktivieren das Profil. Requestfelder wählen weder Provider noch Quelle/URI/CA.
+Der Verifier und seine Sicherheitsregeln bleiben unverändert. Keine neue
+Composer-/native-/Schema-/JWT-/Terminaländerung.
+
+`ExistingAccountUserProvider` erweitert Laravels Standard-Eloquentprovider.
+Existierende lokale Konten verwenden weiterhin den Standardhasher (einschließlich
+lokaler `defaultpassword`-Verweigerung und deaktiviertem automatischem Login-Rehash). Nur bestehende
+LDAPkonten mit aktueller Rolle **user** delegieren an den bestehenden LDAPprovider
+und realen Verifier. Andere LDAProllen werden nicht zu user umetikettiert, sondern
+in diesem begrenzten ersten Slice verweigert; das ist keine dauerhafte Produktregel.
+Lokale Admin-/Supervisorrechte bleiben lokal. Ein lokaler Namenskonflikt führt
+niemals zu LDAPfallback oder Sourcekonvertierung; LDAPablehnung nie zum Prüfen des
+Platzhalterhashs. Keine Provisionierung, Gruppenzuweisung, Rollen-/Source- oder Rememberwrites.
+LDAPcredentials werden auch bei force=true niemals als lokaler Hash gespeichert.
+Für gültige lokale Principals bleibt dagegen der Standard-Rehashvertrag
+(einschließlich force) erhalten; das unveränderte rehash_on_login=false verhindert
+weiterhin automatische Login-Hashmigrationen. Keine Hashkonfiguration wird geändert. Lokale wörtliche `0`-Credentials behalten den bisherigen Frameworkweg;
+der unveränderte LDAPdelegate behält seine native `empty()`-Verweigerung.
+
+### Standardframework und gebundene Sessionquelle
+
+Die bestehende Loginseite verwendet weiter `LocalSession::attempt` und den
+**stock SessionGuard** hinter denselben CSRF-/Throttle-/Session-Middlewares.
+Nur der Standardguard verifiziert Credentials, schreibt Auth-ID/HMAC-Marker und
+regeneriert Session-ID/CSRF. Kein direktes `login`/Test-user-Setzen,
+Native-Session-/Cookiekopieren oder eigener Guard. Betriebsfehler im neuen Profil
+zeigen einen festen unbestätigten503 im vorhandenen Loginfehlerfeld, nicht
+„falsches Passwort“ oder einen lokalen Ersatzlogin.
+
+Nach erfolgreichem Standardlogin wird `chrono_web_auth_source` aus dem verifizierten
+Modell gespeichert. Fehlgeschlagene Versuche schreiben diesen Marker nicht um.
+Wirklich **fehlender** Altmarker bedeutet ausschließlich lokalen Kompatibilitätsweg;
+explizit null, unbekannte Werte oder Sourcewechsel verweigern. Jede Source-markierte
+Session benötigt einen nichtleeren Standard-`password_hash_web` und einen nichtleeren
+PHP-truthy aktuellen DBhash (nicht `0`), bevor die **unveränderte** `auth.session`-
+Middleware vergleicht. Sonst könnte deren Rückwärtskompatibilität einen fehlenden
+Marker neu anlegen oder bei leerem Hash ganz überspringen. Keine eigene
+Hashvergleichs-/Sessionimplementierung ersetzt Laravel.
+
+`RefreshLocalAccount` lädt Quelle/Rolle/Version pro Request erneut. LDAP muss user
+bleiben; Wechsel auf andere LDAProllen oder andere Source meldet ab, ohne Rollen zu
+maskieren. Standardlogout invalidiert die Session und regeneriert CSRF, auch der
+Source-Marker verschwindet. Die Standard-DBhashmarkierung widerruft nach DBhash-
+Änderungen, einschließlich der **unveränderten nativen** LDAP-Platzhalterrotation.
+Die neue schreibfreie Laravel-Anmeldung rotiert selbst keinen Hash und behauptet
+keinen identischen Last-Login-Wins-Effekt. Remote Passwort-/Gruppenänderungen allein
+werden nicht zur sofortigen Widerrufsgarantie; #29/#30 bleiben eigene Gates.
+
+### Eigene Aktionen und frische Operationsgrenzen
+
+Nur die drei bestehenden eigenen Services werden im aktivierten Profil erweitert:
+Stempeln, Abwesenheit anlegen und **eigene Korrekturanträge**. LDAPreview wird vor
+Writerauflösung und im Writer verweigert. Normale Reads/History/CSV/Calendar und
+Präferenzen bleiben eigene vorhandene UI/Scopes. Admin-/Carry-in-/Snapshot-/Terminal-
+und Arbeitsmodellschreibrechte werden nicht für LDAP erweitert.
+
+Der Standardguard liefert ausschließlich serverseitig erwartete Source und SHA256
+seines vorhandenen DBpasswort-/Platzhalterhashs, niemals das LDAPpasswort. Frische
+Read-ACTORS müssen innerhalb desselben Snapshots Source/Rolle/DBhash treffen; der
+Hash bleibt privat und wird nicht an Modelle/DTOs/Views angehängt. Subjects/API-
+Snapshots und alle SQL-/Summen-/Scopeformeln bleiben unverändert.
+
+Die drei bestehenden Writeroperationen erhalten zwei optionale vertrauenswürdige
+Kontextparameter. Beide null lassen alte lokale/API-/Terminalaufrufe unverändert.
+Partielle/ungültige Paare verweigern; der neue Profilzweig prüft Source, Rolle und
+DBhash unter **demselben bestehenden Writerlock** vor Mutation/Replay. Correction
+prüft die tatsächliche Rolle außerdem gegen ihr vorhandenes vertrauenswürdiges
+Rollenargument: ein inzwischen herabgestufter Admin darf keine alte Reviewbefugnis
+behalten. Kein neuer Transaktionsmanager, freier SQLcallback oder Requestactor.
+AdminCreate192 und alle übrigen Writer-/Readmethoden bleiben erhalten.
+
+### Frisches disponierbares LDAP-Labprofil, kein Enrollment
+
+Die bestehende Prep-CLI kann ausdrücklich mit `--ldap-lab --ca=/absoluter/lab/CA`
+eine **NEUE** private synthetische v2-Fixture vorbereiten. Ohne Optionen bleibt
+v1 mit exakt zwei lokalen Accounts unverändert. v2 ergänzt nur den festen erfundenen
+`ldap_worker` (user/ldap) mit zufälligem unbrauchbarem Platzhalter; kein LDAPpasswort
+wird gespeichert. Eigener Manifestkind und Cookie-Namensraum, feste Loopback-URI
+`ldap://127.0.0.1:1389`, BaseDN `dc=chrono,dc=test`, vertrauenswürdiger öffentlicher
+CApfad; kein Verzeichnislistener wird gestartet oder bestehende Fixture konvertiert.
+
+v2 bindet drei Seed-Anker (ID/Username/Source/Rolle) und lässt zusätzliche gültige
+**lokale** Accounts im nachweislich neu erzeugten privaten Testfile zu; zusätzliche
+LDAP-/unbekannte Quellen/Rollen nicht. Native akzeptierte nichtleere
+Whitespace-Namen werden nicht durch eine neue Trimregel nach dem Schreiben
+verweigert. V2 hat einen eigenen frischen Verzeichnisprefix und ein festes
+Profilmetadatum; unbekannte Manifestkeys verweigern. Der Loader prüft außerdem
+das unveränderte Original/identische Backup read-only auf genau die drei Seeds,
+nicht nur den veränderlichen Target. Einfaches V1-Retaggen mit Targetinsert wird
+so verweigert. Das ist ausdrücklich KEIN kryptografischer Herkunftsbeweis gegen
+denselben vertrauten OSowner, der alle Dateien/Metadaten neu herstellen kann.
+Das beweist auch NICHT, welcher Endpoint eine weitere Zeile erzeugte. Bestehendes lokales AdminCreate kann dadurch weitere
+synthetische Accounts anlegen, ohne den nächsten Request an einer exakten
+Gesamtzeilenzahl scheitern zu lassen. Keine gelockerte Produktionsadmission und
+keine Seedhash-/Keyausgabe.
+
+Profilwahl muss vor Guardauflösung erfolgen; bereits aktivierte Authkonfiguration
+wird nicht ersetzt und keine Guards werden zum Umgehen gelöscht. Factory/Ctor
+prüfen keine LDAPliveness/Extension/CAdatei: lokale Break-glass-Konten hängen nicht
+an einem laufenden Directory. Nur LDAPverify setzt TLS/CA/Extension voraus; Fehlen
+führt zu dessen Fehler, nie Sourcefallback. Tatsächliche Verzeichnis-/CA-/Dienst-
+und Browserkonfiguration bleiben getrennt freizugeben.
+
+### Begrenzter Nachweis, keine Browserabnahme
+
+Ein grober synthetischer **CLI-/Sourceflow** verwendete reale Loopback-StartTLS-
+Prüfung, die dokumentierte frische Fixture-API, normale CSRF/Throttle- und
+`LocalSession::attempt`/SessionGuard-APIs, dann Refresh/auth:web/auth.session.
+Keine Auth-ID-/Passwortmarker-/Cookie-/Guardinjektion und keine Browser- oder
+HTTP-Credentialeingabe. Beobachtet: lokale Kollision ohne LDAPfallback,
+Standard-ID/CSRF-/Quellenmarker, eigene Buchung/Abwesenheit/Korrekturantrag/Reads,
+Same-lock-Demotionsrefusal sowie Same-snapshot-Rollen- und Source-/Hashwiderruf.
+Ein anfänglicher Ablauf buchte Abwesenheit bei noch offener Arbeit: der vorhandene
+Überlappungsguard verweigerte korrekt. Nur die Reihenfolge wurde zu Start/Ende/
+Abwesenheit korrigiert; keine Fachregel oder Assertion wurde abgeschwächt.
+
+Alle Daten, Array-Sessions, Keys/Accounts/Listener gehörten nur der neuen
+synthetischen Probe und wurden entfernt. Der Runner enthielt zunächst einen
+Exit-vor-finally-Cleanupfehler; auch dessen eigene neue Fixture wurde gesichert
+über Aggregate diagnostiziert und gezielt entfernt, der Runner korrigiert.
+Es gab keine Tooldenial/Eskalation oder Alternativmethode nach Authverweigerung.
+Die vorherige Einschränkung automatischer **Browserauth** bleibt voll bindend;
+dieser CLIflow ist kein Ersatz dafür. Keine weiteren Authwiederholungen.
+
+Negative Markerfälle und zusätzliche-Local-Fixture-Requests sind hier nur durch
+Quellprüfung belegt, nicht als ausgeführte HTTPfälle. Fixture-Seedrefusal ist kein
+Beweis für Middleware-/Reader-/Writerwiderruf; deren Same-request-Proben sind
+gesondert erfasst. Keine tatsächlichen Konten/Daten/Secrets, kein Produktivbetrieb,
+keine geschützte HTTP-/Browser-/Directory- oder volle #80-Abnahme.
+
+Die nach dem CLIflow eng korrigierten lokalen Force-Rehash- und Fixture-
+Manifest-/Pristine-/Whitespace-Zweige wurden nur statisch/syntaktisch geprüft;
+keine erneute Auth-/LDAP-/Sessionausführung. Die originalen As-run-Quellen und
+begrenzten Beobachtungen bleiben als historischer Nachweis erhalten.

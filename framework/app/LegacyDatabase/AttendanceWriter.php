@@ -50,10 +50,14 @@ final class AttendanceWriter
         require_once dirname(__DIR__, 3).'/lib/attendance.php';
     }
 
-    public function transition(int $user, string $source, string $eventId, string $action, bool $confirm = false, ?int $expectedRecord = null, bool $requireExpectedRecord = false): array
+    public function transition(int $user, string $source, string $eventId, string $action, bool $confirm = false, ?int $expectedRecord = null, bool $requireExpectedRecord = false, ?string $expectedWebSource = null, #[\SensitiveParameter] ?string $expectedWebVersion = null): array
     {
         return $this->executeLocked(
-            fn (): array => attendance_transition_locked($this->pdo, $user, $source, $eventId, $action, $confirm, $expectedRecord, null, $requireExpectedRecord),
+            function () use ($user, $source, $eventId, $action, $confirm, $expectedRecord, $requireExpectedRecord, $expectedWebSource, $expectedWebVersion): array {
+                $this->assertExpectedWebPrincipal($user, $expectedWebSource, $expectedWebVersion);
+
+                return attendance_transition_locked($this->pdo, $user, $source, $eventId, $action, $confirm, $expectedRecord, null, $requireExpectedRecord);
+            },
             fn (Closure $transaction): mixed => $this->context->run($source.':user:'.$user, 'Stempelereignis '.$action.' / '.$eventId, $transaction),
         );
     }
@@ -108,11 +112,17 @@ final class AttendanceWriter
     }
 
     /** Trusted server identity/role only; never supplied by correction command data. */
-    public function correction(int $user, string $role, array $command): void
+    public function correction(int $user, string $role, array $command, ?string $expectedWebSource = null, #[\SensitiveParameter] ?string $expectedWebVersion = null): void
     {
         require_once dirname(__DIR__, 3).'/lib/corrections.php';
 
-        $this->executeLocked(function () use ($user, $role, $command): void {
+        $this->executeLocked(function () use ($user, $role, $command, $expectedWebSource, $expectedWebVersion): void {
+            // New-profile correction privileges use the same-lock role, never a
+            // pre-demotion admin role. Null/null retains the exact old path.
+            $this->assertExpectedWebPrincipal($user, $expectedWebSource, $expectedWebVersion, $role);
+            if ($expectedWebSource === 'ldap' && ($command['action'] ?? null) !== 'request') {
+                throw new \AttendanceError('Keine Freigabeberechtigung.', 403);
+            }
             correction_apply_locked($this->pdo, $user, $role, $command,
                 fn (string $reason, Closure $operation): mixed => $this->context->run('web:'.$user, $reason, $operation),
             );
@@ -259,7 +269,7 @@ final class AttendanceWriter
     }
 
     /** Trusted own-user identity only; no caller-supplied audit actor/reason. */
-    public function absence(int $user, string $start, string $end, string $kind): array
+    public function absence(int $user, string $start, string $end, string $kind, ?string $expectedWebSource = null, #[\SensitiveParameter] ?string $expectedWebVersion = null): array
     {
         require_once dirname(__DIR__, 3).'/lib/practice.php';
 
@@ -267,10 +277,35 @@ final class AttendanceWriter
         // under lock through this same parser; no caller can bypass the rules.
         practice_absence_range($start, $end, $kind);
 
-        return $this->executeLocked(fn (): array => practice_absence_apply_locked(
-            $this->pdo, $user, $start, $end, $kind,
-            fn (string $reason, Closure $operation): mixed => $this->context->run('web:'.$user, $reason, $operation),
-        ));
+        return $this->executeLocked(function () use ($user, $start, $end, $kind, $expectedWebSource, $expectedWebVersion): array {
+            $this->assertExpectedWebPrincipal($user, $expectedWebSource, $expectedWebVersion);
+
+            return practice_absence_apply_locked(
+                $this->pdo, $user, $start, $end, $kind,
+                fn (string $reason, Closure $operation): mixed => $this->context->run('web:'.$user, $reason, $operation),
+            );
+        });
+    }
+
+    /** Trusted guard-derived pair only; never accepted from command/request data. */
+    private function assertExpectedWebPrincipal(int $user, ?string $source, #[\SensitiveParameter] ?string $version, ?string $role = null): void
+    {
+        if ($source === null && $version === null) {
+            return; // Existing local/API/terminal methods do not gain new rules.
+        }
+        if (! $this->pdo->inTransaction() || ! in_array($source, ['local', 'ldap'], true)
+            || ! is_string($version) || preg_match('/\A[a-f0-9]{64}\z/', $version) !== 1) {
+            throw new \AttendanceError('Sitzung nicht mehr gültig. Bitte neu anmelden.', 401);
+        }
+        $actor = att_one($this->pdo, 'SELECT role,auth_source,password FROM users WHERE id=?', [$user]);
+        if ($user < 1 || $actor === null || $actor['auth_source'] !== $source
+            || ! in_array($actor['role'], ['user', 'supervisor', 'admin'], true)
+            || ($source === 'ldap' && $actor['role'] !== 'user')
+            || ($role !== null && $actor['role'] !== $role)
+            || ! is_string($actor['password']) || ! $actor['password']
+            || ! hash_equals($version, hash('sha256', $actor['password']))) {
+            throw new \AttendanceError('Sitzung nicht mehr gültig. Bitte neu anmelden.', 401);
+        }
     }
 
     // The single existing #75 transaction/guard/failure lifecycle, shared only

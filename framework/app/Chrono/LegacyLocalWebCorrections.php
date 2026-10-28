@@ -3,9 +3,12 @@
 namespace App\Chrono;
 
 use App\Auth\LegacyUser;
+use App\Auth\ExistingAccountUserProvider;
 use App\LegacyDatabase\AttendanceWriter;
 use Closure;
+use Illuminate\Auth\SessionGuard;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Auth\Factory;
 use LogicException;
 
@@ -19,11 +22,22 @@ final class LegacyLocalWebCorrections implements LocalWebCorrections
     {
         // Mandatory before a later HTTP use: #76 RefreshLocalAccount,
         // auth:web and auth.session, plus the existing web/CSRF middleware.
-        $actor = $this->auth->guard('web')->user();
+        $guard = $this->auth->guard('web');
+        $actor = $guard->user();
+        $provider = $guard instanceof SessionGuard ? $guard->getProvider() : null;
+        $profile = $provider instanceof ExistingAccountUserProvider;
+        $context = null;
         if (! $actor instanceof LegacyUser || (int) $actor->getKey() < 1
-            || $actor->auth_source !== 'local'
+            || (! $profile && $actor->auth_source !== 'local')
             || ! in_array($actor->role, ['user', 'supervisor', 'admin'], true)) {
             throw new AuthenticationException('Unauthenticated.', ['web']);
+        }
+        if ($profile) {
+            $context = $provider->context($actor);
+        }
+
+        if ($context !== null && $context[0] === 'ldap' && ($command['action'] ?? null) !== 'request') {
+            throw new AuthorizationException('Diese LDAP-Slice erlaubt nur eigene Korrekturanträge.');
         }
 
         $writer = ($this->writer)();
@@ -34,6 +48,11 @@ final class LegacyLocalWebCorrections implements LocalWebCorrections
         // Only the current trusted guard supplies actor/role. Same assurance as
         // the refreshed native session; no new lock-time account/role rule.
         // Command user_id/role/source/audit fields are ignored by the core.
+        if ($context !== null) {
+            $writer->correction((int) $actor->getKey(), $actor->role, $command, $context[0], $context[1]);
+
+            return;
+        }
         $writer->correction((int) $actor->getKey(), $actor->role, $command);
     }
 }

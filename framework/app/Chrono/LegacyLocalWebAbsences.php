@@ -3,8 +3,10 @@
 namespace App\Chrono;
 
 use App\Auth\LegacyUser;
+use App\Auth\ExistingAccountUserProvider;
 use App\LegacyDatabase\AttendanceWriter;
 use Closure;
+use Illuminate\Auth\SessionGuard;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Auth\Factory;
 use LogicException;
@@ -19,11 +21,18 @@ final class LegacyLocalWebAbsences implements LocalWebAbsences
     {
         // Mandatory before later HTTP use: #76 RefreshLocalAccount, auth:web,
         // auth.session and the existing web/session/CSRF middleware.
-        $actor = $this->auth->guard('web')->user();
+        $guard = $this->auth->guard('web');
+        $actor = $guard->user();
+        $provider = $guard instanceof SessionGuard ? $guard->getProvider() : null;
+        $profile = $provider instanceof ExistingAccountUserProvider;
+        $context = null;
         if (! $actor instanceof LegacyUser || (int) $actor->getKey() < 1
-            || $actor->auth_source !== 'local'
+            || (! $profile && $actor->auth_source !== 'local')
             || ! in_array($actor->role, ['user', 'supervisor', 'admin'], true)) {
             throw new AuthenticationException('Unauthenticated.', ['web']);
+        }
+        if ($profile) {
+            $context = $provider->context($actor);
         }
 
         // Resolve no writer/path/configuration before authenticating the owner.
@@ -32,6 +41,9 @@ final class LegacyLocalWebAbsences implements LocalWebAbsences
             throw new LogicException('A trusted admitted operation-scoped attendance writer is required.');
         }
 
+        if ($context !== null) {
+            return $writer->absence((int) $actor->getKey(), $start, $end, $kind, $context[0], $context[1]);
+        }
         return $writer->absence((int) $actor->getKey(), $start, $end, $kind);
     }
 }
