@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
 use App\Chrono\LocalWebAbsences;
+use App\Chrono\LocalWebAttendance;
 use App\View\ExistingUi\Copy;
 use App\View\ExistingUi\TimeRecordsPage;
 use Illuminate\Auth\AuthenticationException;
@@ -17,7 +18,12 @@ use Throwable;
 /** Native own-record fragment and absence form transport, never a second rule engine. */
 final class LocalWebHomeController extends Controller
 {
-    public function __construct(private ChronoReads $reads, private LocalWebAbsences $absences, private Router $router) {}
+    public function __construct(
+        private ChronoReads $reads,
+        private LocalWebAbsences $absences,
+        private Router $router,
+        private LocalWebAttendance $attendance,
+    ) {}
 
     public function records(Request $request): View
     {
@@ -44,14 +50,21 @@ final class LocalWebHomeController extends Controller
         if (isset($form['id']) || isset($form['update']) || isset($form['delete'])) {
             return $this->text('Änderungen und Stornierungen bitte über einen begründeten Korrekturantrag vornehmen.', 409);
         }
-        if (isset($form['action'])) {
-            return $this->text('This legacy attendance alias is not available in the synthetic local preview.', 410);
-        }
-        if (! isset($form['urlaubStart'], $form['urlaubEnde'], $form['beschreibung'])) {
-            return $this->text('Unbekannte Aktion.', 400);
-        }
-
         try {
+            if (isset($form['action'])) {
+                require_once dirname(__DIR__, 4).'/lib/attendance.php';
+
+                // Exact native save.php alias parsing and shared web:{id} service.
+                // Only a supplied stable event ID is safe to replay after loss.
+                return new JsonResponse($this->attendance->transition(
+                    $form['event_id'] ?? bin2hex(random_bytes(16)), (string) $form['action'],
+                    ($form['confirm_end_pause'] ?? '') === '1', \attendance_expected_record($form),
+                ));
+            }
+            if (! isset($form['urlaubStart'], $form['urlaubEnde'], $form['beschreibung'])) {
+                return $this->text('Unbekannte Aktion.', 400);
+            }
+
             // Match native save.php: raw POST isset/string casts, no normalization/422.
             return new JsonResponse($this->absences->create(
                 (string) $form['urlaubStart'], (string) $form['urlaubEnde'], (string) $form['beschreibung'],
