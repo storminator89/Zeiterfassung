@@ -133,6 +133,7 @@
                         </span>
                     </div>
                     <div data-report-period="all" data-report-presentation="{{ $dashboard->presentation('all') }}" class="stat-value">{{ $dashboard->value('total_overtime', 'all') }}</div>
+                    <p class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p>
                     <div data-report-period="year" data-report-presentation="{{ $dashboard->presentation('year') }}" class="stat-desc text-sm font-medium opacity-80">
                         {{ sprintf($page->copy->text('DASHBOARD_OVER_HOURS_YEAR'), $dashboard->value('year_overtime', 'year')) }}
                     </div>

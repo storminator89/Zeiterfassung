@@ -91,7 +91,7 @@ define('DASHBOARD_PROGRESS', 'Fortschritt');
 define('DASHBOARD_CURRENT_WEEK', 'Aktuelle Woche %s');
 define('DASHBOARD_HOURS_OF', '%s von %s Stunden');
 define('DASHBOARD_CALENDAR', 'Kalender');
-define('DASHBOARD_OVERTIME_INFO', "Gesamte Überstunden, einschließlich der\naus vorherigen Zeiträumen\nübertragenen Stunden.");
+define('DASHBOARD_OVERTIME_INFO', 'Übertrag plus Differenzen aus abgeschlossenen Buchungstagen und deren Soll. Enthält Arbeitszeit und Abwesenheitsgutschriften. Kein lückenloses Vertragszeitkonto und kein Saldo bis heute.');
 define('DASHBOARD_WEEKLY_PRODUCTIVITY_INFO', "Berechnet als Prozentsatz der\ntatsächlich gearbeiteten Stunden\nim Vergleich zur erwarteten\nWochenarbeitszeit.");
 define('DASHBOARD_PRODUCTIVITY_SCORE_INFO', "Berechnet als Prozentsatz der\ntatsächlich gearbeiteten Stunden\nim Vergleich zur erwarteten\nMonatsarbeitszeit.");
 define('BUTTON_PREV_WEEK', 'Vorherige Woche');
