@@ -1,5 +1,9 @@
 # #52/C — begrenzte strukturelle Historienbezüge
 
+Die folgenden Abschnitte dokumentieren den historischen Exportvertrag. Die
+additive native HTML-Ansicht auf Main `f7b4dbf0` ist am Dokumentende abgegrenzt;
+sie ändert weder Resolver, JSON-Export noch Rollen-/Teamscope.
+
 Basis: Main `8139842bab8fc64f93313e7b1848a16b96b496c2`, Tree
 `ea1ac5ed0d5f31b16eda72436a0506165538144c`.
 [#52](https://github.com/storminator89/Zeiterfassung/issues/52) verlangt
@@ -143,3 +147,56 @@ Historie, DB, Datei mit Nutzerdaten, Accounts, Credentials, App-/Auth-
 Schreibzugriff. Die genehmigte technische Projektion ist keine neue Rolle oder
 Aktivierung des vorbereiteten Laravel-Pfads. Vollständiges #52, echte Rollen-/UI-
 /Export-/Stornointegration und Performance bleiben ausdrücklich offen.
+
+
+## Additive native HTML-Ansicht auf Main f7b4dbf0
+
+Enger lokaler Quellstand auf Basis
+`f7b4dbf0196d65ee01de84818213806ec01904dd` (nach #239/#240), ohne produktive Abnahme oder Release.
+Die bereits vorhandene Laravel-Bezugsansicht wird nicht neu implementiert oder
+aktiviert. Die native Seite erhält dieselbe begrenzte praktische Lesemöglichkeit:
+**Bezüge anzeigen** setzt explizit `relations=1`. Ohne Opt-in werden weiter nur
+die bisherigen Anker gelesen, keine zusätzlichen Bezüge. Nur der exakte String
+`1` aktiviert den Modus; andere vorhandene Werte ergeben eine sichtbare 400-
+Filterverweigerung. Bestehende Downloadmodi werden vorher unverändert behandelt.
+
+Der bisher inline definierte native Exportreader wird definitionsgleich nach
+`lib/native_history_relations.php` ausgelagert. Export und HTML verwenden genau
+seine bisherige DEFERRED-Lesesnapshot-Hülle: frische Rolle aus dem aktuellen
+Konto, dann Anker, danach der unveränderte owner-geprüfte Korrelationsresolver;
+Commit bzw. Rollback vor der Darstellung. Eine bereits fremd geöffnete Transaktion
+wird nicht übernommen. Die Sitzung liefert nur die vorhandene Akteurs-ID,
+keinen neuen Scope. Diese Abfrage ersetzt nicht die bestehende Authentifizierung.
+
+Vor der neuen festen Fragmentansicht durchlaufen die Bezüge den vorhandenen
+öffentlichen Exportserializer. Die Ansicht erhält dadurch nur die oben genannten
+validierten Felder und ergänzt feste Typ-/Zeitlabels. Keine zusätzlichen Namen,
+Notizen, Begründungen, Quellen, Antwortpayloads oder internen Ownerdaten. Anker
+bleiben im bisherigen Feldvergleich; referenzierte Tabellen stehen kompakt in
+aufklappbaren Abschnitten. Ungeklärte/gekappte Beziehungen und heutige Antrags-
+zuordnungen sind beschriftet, niemals als vollständige Ursache dargestellt.
+Filter, älterer Cursor, Neueste-Link und Umschalter bewahren den Darstellungsmodus;
+**Filter zurücksetzen** kehrt bewusst zur bisherigen Standardansicht zurück.
+
+Fehlgeschlagene Opt-in-Reads liefern vor der Seitenausgabe einen festen Text,
+no-store/nosniff und 503 bzw. die bestehende 401/403-Verweigerung. Kein Fallback
+auf alte/gecachte Bezüge, keine Ausnahme-/SQLdetails und kein Teilrendering.
+Neue Metadaten-, Index-, Schema-, Schreib-, Geräte- oder Rollenverträge entstehen
+nicht. Der gemeinsame Resolver und die JSON-Projektionsfunktionen bleiben exakt.
+
+### Grober lokaler Nachweis
+
+PHP **8.5.12**: ein grober Durchlauf rendert den unverändert kopierten nativen
+Seitenquelltext gegen eine anonym erfundene, `query_only` gesetzte In-Memory-DB.
+Nur Config und Seitenchrome sind sichere Teststubs, keine echte Appinitialisierung.
+Er prüft Standardansicht ohne Beziehungsqueries, eigene/stornierte/ungeklärte
+Bezüge trotz veralteter gecachter Adminrolle, aktuelles Direktteam, Teamwechsel,
+Adminscope, Escaping und fehlende private Payloads. SQLite-Lesetraces bestätigen
+Rolle/Anker/Bezüge im selben Snapshot; ein erzwungener Beziehungsfehler rollt ohne
+Mutation zurück. Die HTML-Daten entsprechen der vorhandenen öffentlichen JSON-
+Projektion. PHP-Syntax und `git diff --check` sind sauber.
+
+Keine native Bootstrap-/Login-/Session-Neuabnahme, echte HTTP-Header-/Browser-
+/Layout-/Konkurrenzprüfung, reale Historie, Betriebsdatenbank, neue GitHub-CI,
+Remoteänderung oder Veröffentlichung. Vollständige #52-Abnahme und Performance
+bleiben offen; ein lokaler Quellnachweis ist keine Produktivfreigabe.
