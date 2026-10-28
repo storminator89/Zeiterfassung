@@ -5,7 +5,8 @@ use PDO;
 use RuntimeException;
 use Throwable;
 
-// Coarse controller-boundary proof only. No config.php, sessions, PDO connection,
+// Coarse controller-boundary proof with PDO-shaped fakes only. No native PDO connection,
+// config.php, sessions,
 // real LDAP implementation, network, server, credentials or account writes.
 require_once __DIR__ . '/../languages/en.php';
 const LDAP_OPT_PROTOCOL_VERSION = 17;
@@ -13,11 +14,13 @@ const LDAP_OPT_NETWORK_TIMEOUT = 20485;
 const ENCRYPTION_KEY = 'unused-synthetic-marker';
 const ENCRYPTION_METHOD = 'unused-synthetic-marker';
 
-final class Fixture
+final class Fixture extends PDO
 {
     public array $events = [];
     public string $saved = 'existing-configuration';
     public int $writes = 0;
+    private bool $transaction = false;
+    private array $snapshot = [];
     public function __construct(public array $case) {}
     public function boundary(string $stage): bool
     {
@@ -25,17 +28,35 @@ final class Fixture
         if (($this->case['throw'] ?? '') === $stage) { throw new RuntimeException('synthetic diagnostic must not surface'); }
         return ($this->case['fail'] ?? '') !== $stage;
     }
-    public function prepare(string $sql): Statement { return new Statement($this, $sql); }
-    public function query(string $sql): Statement { return $this->prepare($sql); }
-    public function beginTransaction(): bool { return $this->boundary('import-begin'); }
-    public function commit(): bool { return $this->boundary('import-commit'); }
-    public function inTransaction(): bool { return false; }
+    public function prepare(string $sql, array $options = []): \PDOStatement|false { return new Statement($this, $sql); }
+    public function query(string $sql, ?int $fetchMode = null, mixed ...$fetchModeArgs): \PDOStatement|false { return $this->prepare($sql); }
+    public function beginTransaction(): bool
+    {
+        if (!$this->boundary('import-begin')) { return false; }
+        $this->snapshot = [$this->saved, $this->writes];
+        $this->transaction = true;
+        return true;
+    }
+    public function commit(): bool
+    {
+        if (!$this->boundary('import-commit')) { return false; }
+        $this->transaction = false;
+        return true;
+    }
+    public function rollBack(): bool
+    {
+        if (!$this->boundary('import-rollback')) { return false; }
+        [$this->saved, $this->writes] = $this->snapshot;
+        $this->transaction = false;
+        return true;
+    }
+    public function inTransaction(): bool { return $this->transaction; }
 }
 
-final class Statement
+final class Statement extends \PDOStatement
 {
     public function __construct(private Fixture $fixture, private string $sql) {}
-    public function execute(array $values = []): bool
+    public function execute(?array $values = null): bool
     {
         if (str_starts_with($this->sql, 'UPDATE ldap_settings') || str_starts_with($this->sql, 'INSERT INTO ldap_settings')) {
             $this->fixture->boundary('save');
@@ -46,8 +67,8 @@ final class Statement
         }
         return true;
     }
-    public function fetchColumn(): int { return $this->fixture->case['existing'] ?? 1; }
-    public function fetchAll(int $mode): array { return []; }
+    public function fetchColumn(int $column = 0): mixed { return $this->fixture->case['existing'] ?? 1; }
+    public function fetchAll(int $mode = PDO::FETCH_DEFAULT, mixed ...$args): array { return []; }
 }
 
 // Namespaced stubs ensure that even a runtime with ext-ldap cannot contact LDAP.
@@ -88,8 +109,8 @@ $start = strpos($source, '// LDAP-Synchronisation');
 $end = strpos($source, '// Aktuellen Benutzer aus der Datenbank abrufen', $start);
 check($start !== false && $end !== false, 'Native controller boundary must be present');
 $controller = substr($source, $start, $end - $start);
-// Only resolve the existing pure manager helper path for eval's test directory.
-$controller = str_replace("__DIR__ . '/lib/ldap_manager_mapping.php'", var_export(__DIR__ . '/../lib/ldap_manager_mapping.php', true), $controller);
+// Only resolve the definitions-only import helper path for eval's test directory.
+$controller = str_replace("__DIR__ . '/lib/ldap_import.php'", var_export(__DIR__ . '/../lib/ldap_import.php', true), $controller);
 $controller = "namespace ChronoLdapSettingsProof; use PDO; use RuntimeException; use Throwable;\n" . $controller;
 
 // One failure cohort proves preflight cannot change the previous saved state.
@@ -107,9 +128,15 @@ $failures = [
     ['fail' => 'entries', 'error' => LDAP_SEARCH_FAILED],
     ['malformed' => true, 'error' => LDAP_SEARCH_FAILED],
     ['throw' => 'encrypt', 'error' => LDAP_SYNC_FAILED],
-    ['throw' => 'save', 'error' => LDAP_SYNC_FAILED],
 ];
-foreach (array_merge($failures, [['existing' => 1], ['existing' => 0, 'ldaps' => true], ['throw' => 'free'], ['throw' => 'unbind']]) as $case) {
+$mutationFailure = ['throw' => 'save', 'error' => LDAP_SYNC_FAILED];
+$cleanupFailures = [
+    ['throw' => 'free', 'error' => LDAP_SYNC_FAILED, 'after_encrypt' => true],
+    ['throw' => 'unbind', 'error' => LDAP_SYNC_FAILED, 'after_encrypt' => true],
+    ['fail' => 'free', 'error' => LDAP_SYNC_FAILED, 'after_encrypt' => true],
+    ['fail' => 'unbind', 'error' => LDAP_SYNC_FAILED, 'after_encrypt' => true],
+];
+foreach (array_merge($failures, [$mutationFailure, ['existing' => 1], ['existing' => 0, 'ldaps' => true]], $cleanupFailures) as $case) {
     $fixture = new Fixture($case);
     $conn = $fixture;
     $_SERVER['REQUEST_METHOD'] = 'POST';
@@ -121,21 +148,28 @@ foreach (array_merge($failures, [['existing' => 1], ['existing' => 0, 'ldaps' =>
     try { eval($controller); } catch (Throwable $e) { $escaped = true; }
     $events = $fixture->events;
     if (isset($case['error'])) {
-        check($fixture->saved === 'existing-configuration' && $fixture->writes === 0 && !in_array('import-begin', $events, true), 'Failed preflight must preserve settings and avoid import');
+        check($fixture->saved === 'existing-configuration' && $fixture->writes === 0 && !$fixture->inTransaction(), 'Failure must preserve settings and leave no owned transaction');
+        if (($case['throw'] ?? '') === 'save') {
+            check(in_array('import-begin', $events, true) && in_array('import-rollback', $events, true)
+                && !in_array('import-commit', $events, true)
+                && array_search('import-begin', $events, true) < array_search('save', $events, true)
+                && array_search('save', $events, true) < array_search('import-rollback', $events, true), 'A database failure must roll back its owned import transaction');
+        } else {
+            check(!in_array('import-begin', $events, true), 'Failed preflight/encryption/cleanup must avoid import');
+        }
         check(!$escaped && $error === $case['error'] && $successMessage === '', 'Failure must use the safe localized error surface');
-        if (!in_array($case['throw'] ?? '', ['encrypt', 'save'], true)) {
+        if (!in_array($case['throw'] ?? '', ['encrypt', 'save'], true) && !($case['after_encrypt'] ?? false)) {
             check(!in_array('encrypt', $events, true), 'Encrypt only after successful validation');
         }
     } else {
-        if (in_array($case['throw'] ?? '', ['free', 'unbind'], true)) {
-            check(!$escaped && $error === LDAP_SYNC_FAILED && $successMessage === '', 'Cleanup exceptions must not expose diagnostics or skip remaining cleanup');
-        } else {
-            check(!$escaped && $error === '' && $successMessage === LDAP_SYNC_SUCCESS, 'Valid empty result must complete the existing path');
-        }
+        check(!$escaped && $error === '' && $successMessage === LDAP_SYNC_SUCCESS && !$fixture->inTransaction(), 'Valid empty result must complete the existing path');
         check($fixture->writes === 1 && $fixture->saved === 'validated-configuration', 'Validated settings must be written once');
         check(array_search('entries', $events, true) < array_search('encrypt', $events, true)
-            && array_search('encrypt', $events, true) < array_search('save', $events, true)
-            && array_search('save', $events, true) < array_search('import-begin', $events, true), 'Validate, encrypt, persist, then import');
+            && array_search('encrypt', $events, true) < array_search('free', $events, true)
+            && array_search('free', $events, true) < array_search('unbind', $events, true)
+            && array_search('unbind', $events, true) < array_search('import-begin', $events, true)
+            && array_search('import-begin', $events, true) < array_search('save', $events, true)
+            && array_search('save', $events, true) < array_search('import-commit', $events, true), 'Validate, encrypt, finish transport, then save inside one import transaction');
         check(in_array('tls', $events, true) !== ($case['ldaps'] ?? false), 'Preserve mandatory StartTLS and existing LDAPS behavior');
     }
     $opened = in_array('connect', $events, true) && ($case['fail'] ?? '') !== 'connect';
@@ -143,4 +177,4 @@ foreach (array_merge($failures, [['existing' => 1], ['existing' => 0, 'ldaps' =>
     check(count(array_filter($events, static fn($event) => $event === 'unbind')) === (int)$opened, 'Close every opened connection exactly once');
     check(count(array_filter($events, static fn($event) => $event === 'free')) === (int)$hasResult, 'Free every obtained result exactly once');
 }
-echo "PASS: coarse synthetic LDAP preflight failure cohort preserves settings; validated update/insert order and cleanup; no real LDAP, config, DB or credentials\n";
+echo "PASS: coarse synthetic LDAP preflight/encryption/cleanup failures preserve settings; owned transaction rollback and validated update/insert order; no real LDAP, config, DB or credentials\n";

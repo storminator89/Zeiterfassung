@@ -115,7 +115,12 @@ lokale Namen sind kein Enrollmentweg.
    `ENCRYPTION_METHOD='aes-256-cbc'` ist kein Formatbeleg. Kein Laravel-Crypt-
    Ersatz, Schlüsselwrite oder Entschlüsseln realer Binddaten. Der gemergte
    #28-Preflight aus PR #138 ist Voraussetzung, nicht neu zu implementieren;
-   Gesamtimportatomarität/Recovery bleiben dort offen. Vorhandene
+   Die native Importeinheit kapselt inzwischen Konfiguration, Identitäten und
+   Beziehungen in einer eigenen Transaktion nach abgeschlossenem Transport;
+   siehe [Transaktionsgrenze und Risiken](../LDAP-MANAGER-MAPPING.md). Das ist
+   keine Providerbindung oder tatsächliche LDAP-/Recoveryabnahme. Insbesondere
+   bleiben lokale Username-Konvertierung/Enrollment, Break-glass, dauerhafte
+   Quittungen und reale Fehler-/Wiederanlauffälle offen. Vorhandene
    [Managerplanung](../LDAP-MANAGER-MAPPING.md) mit vollständigen DNs und
    Konflikterhalt übernehmen, keine Rollenbeförderung oder neue OU-Regel.
 5. **Gemeinsamer Auth-/UI-Cutover:** Separat zugelassene Bestandsverbindung,
