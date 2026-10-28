@@ -15,7 +15,7 @@ zusätzlicher Webroot oder Zugriff auf private Frameworkquellen wird eingeführt
 | `assets/css/main.css` | `framework/public/assets/css/main.css` | 19247 | `d293dcf9d31e0adfc0c6cda1c2f03f4c57afe325c79e223794460dc9f94c4e6f` |
 | `assets/css/app_ui.css` | `framework/public/assets/css/app_ui.css` | 6546 | `4f8bf76f83a5c5d3ea3807818a792aa2b4c12ec83aaf46a33342d1aadf4adc1e` |
 | `assets/js/main.js` | `framework/public/assets/js/main.js` | 6130 | `d5786e6ebe049297ef5c38499a598104e2edf0e2b97960401daf21c604879365` |
-| `assets/js/attendance.js` | `framework/public/assets/js/attendance.js` | 19203 | `4e5f763c32b9fe903cb63d28c05ca916ec833ca6de76ad4ee8c8e157ef53480b` |
+| `assets/js/attendance.js` | `framework/public/assets/js/attendance.js` | 22140 | `7779dab0587914880a51561fd999306b17198b648a7ee9f76d3fc505441b9697` |
 | `framework/resources/js/chrono-local-web.js` | `framework/public/assets/js/chrono-local-web.js` | 2984 | `9940b5723b21a2fa21f39db9471523ff5818bc6946a480607c2e5cac20516b3b` |
 
 Logo, CSS und die drei vorhandenen Clients blieben im ursprünglichen Paket unverändert. Keine neue
@@ -68,3 +68,31 @@ nachgestellten Leerzeichen (Quellzeilen94,444,578,582). Der normale
 `git diff --check` meldet diese geerbten Stellen; sie werden nicht durch eine
 heimliche Normalisierung der Kopie verändert. Die übrigen neuen Dateien und
 die Dokumentation bestehen die unveränderte Whitespaceprüfung.
+
+
+## #51-Nachtrag: tatsächlichen Laravel-Public-Client synchronisieren
+
+Enger Quellnachtrag auf Main `667b8f834c4e7f596cab6c4fd11d629a8f224b38` (nach PR #245).
+PR #243 hatte den gemeinsamen Repository-Client für optionale Startmetadaten
+aktualisiert, die vorhandene feste Public-Kopie und ihren exakten Assetpin jedoch
+noch auf den alten Bytes belassen. Mit dem bisherigen Public-Client blieb das
+neue Laravel-Metadaten-Fieldset deaktiviert; der ältere Standardstart funktionierte
+weiter. Dies war ein konkret bestätigter Source-/Public-Drift, keine behauptete
+Produktionsbeobachtung.
+
+Die Public-Kopie ist jetzt **bytegleich** mit dem bereits geprüften gemeinsamen
+`assets/js/attendance.js`. Nur dessen bestehender SHA-256-Eintrag in
+`FreshWebConfiguration::assets()` sowie die Tabellenzeile oben werden angepasst.
+Kein neuer Client, Paket-/Bibliotheksversionswechsel, Startupadapter, dynamischer
+Copy-/Fallbackweg oder abgeschwächter Validator. Alle fünf übrigen Assetpins,
+Source-/Public-Paare, Kompositions-, Authentifizierungs-, Terminal- und Domain-
+regeln bleiben unverändert. Die Aktualisierung aktiviert kein Betriebsprofil.
+
+Ein grober tatsächlicher Public-Client-/unveränderter Startupadapter-VM-Nachweis
+mit erfundenem DOM, Speicher und Transport bestätigt den Vorher-Nachher-Unterschied,
+optionalen Metadatenstart, Antwortverlust nach angenommener Speicherung, Reload
+und identischen Pending-Replay sowie Speicher-/fremde-Pending-Verweigerung. Die
+vorhandene statische Assetvalidierung akzeptiert jeweils passende alte/neue
+Kopie+Pins und verweigert gemischte bzw. veraltete Bytes. Syntax/Diffcheck und
+vollständige Quellerhaltung sind geprüft. Keine echte Login-/HTTP-/Browser-/
+Download-/Produktionsabnahme, realen Daten, Keys, Datenbank oder neuen CI-Läufe.

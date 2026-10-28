@@ -3,6 +3,23 @@
  */
 (() => {
     'use strict';
+    function validStartMetadata(body) {
+        const present = Object.hasOwn(body, 'location') || Object.hasOwn(body, 'note');
+        if (!present) return true; // Exact legacy pending requests remain valid and unchanged.
+        return body.action === 'start'
+            && (!Object.hasOwn(body, 'location') || ['office', 'home_office', 'business_trip'].includes(body.location))
+            && (!Object.hasOwn(body, 'note') || (typeof body.note === 'string'
+                && (body.note === '' || new TextEncoder().encode(body.note).length <= 1000) && !/[\x00-\x1F\x7F]/.test(body.note)
+                && !['Urlaub', 'Krankheit', 'Feiertag'].includes(body.note)));
+    }
+    function nondefaultStartMetadata(body) {
+        return (body.location ?? 'office') !== 'office' || (body.note ?? '') !== '';
+    }
+    function acknowledgedStartMetadata(body, data) {
+        return !nondefaultStartMetadata(body) || (data.start_metadata?.location === (body.location ?? 'office')
+            && data.start_metadata?.note === (body.note ?? ''));
+    }
+
     const ready = callback => document.readyState === 'loading'
         ? document.addEventListener('DOMContentLoaded', callback, {once: true}) : callback();
     ready(() => {
@@ -23,7 +40,7 @@
         if (!Object.hasOwn(allowed, state)) state = 'absent';
         let expectedRecord = state !== 'absent' && recordString(document.body.dataset.attendanceRecord)
             ? document.body.dataset.attendanceRecord : null;
-        let busy = false, refreshing = null, revision = 0, pending = null;
+        let busy = false, refreshing = null, revision = 0, pending = null, supportsStartMetadata = false;
         let pendingVerified = true;
         const actionOf = button => button.dataset.attendanceAction || button.dataset.action;
         const buttons = () => [...document.querySelectorAll(buttonSelector)];
@@ -45,7 +62,8 @@
                     || typeof stored.event?.event_id !== 'string' || !/^[A-Za-z0-9_-]{16,80}$/.test(stored.event.event_id)
                     || !['start', 'pause_start', 'pause_end', 'end'].includes(stored.event?.action)
                     || !['0', '1'].includes(stored.event?.confirm_end_pause)
-                    || (Object.hasOwn(stored.event, 'expected_record') && !recordString(stored.event.expected_record))) {
+                    || (Object.hasOwn(stored.event, 'expected_record') && !recordString(stored.event.expected_record))
+                    || !validStartMetadata(stored.event)) {
                     blockUnverifiedPending();
                     // Preserve foreign/malformed values, never delete to unblock.
                 } else {
@@ -141,6 +159,13 @@
             const actions = document.getElementById('actions');
             if (actions) actions.dataset.state = state;
             document.querySelectorAll('[data-attendance-status], #status').forEach(element => { element.textContent = labels[state]; });
+            document.querySelectorAll('[data-start-metadata]').forEach(fields => {
+                fields.disabled = busy || Boolean(pending) || state !== 'absent' || !supportsStartMetadata;
+                if (pending?.action === 'start') {
+                    fields.querySelector('#attendance-location').value = pending.location ?? 'office';
+                    fields.querySelector('#attendance-note').value = pending.note ?? '';
+                }
+            });
             buttons().forEach(button => {
                 const action = actionOf(button);
                 // An uncertain event must be acknowledged with the same ID,
@@ -185,7 +210,7 @@
                         || (data.state === 'absent' ? data.expected_record !== null : !recordString(data.expected_record))) {
                         throw new Error('Anwesenheitsstatus und Sitzungsbindung konnten nicht geladen werden. Bitte neu laden.');
                     }
-                    if (startedAt === revision && !busy) { render(data.state, data.expected_record); renderRecent(data.records); applyReportFinality(data.report_finality); }
+                    if (startedAt === revision && !busy) { supportsStartMetadata = data.start_metadata_version === 1; render(data.state, data.expected_record); renderRecent(data.records); applyReportFinality(data.report_finality); }
                 })().finally(() => { refreshing = null; });
             }
             await refreshing;
@@ -219,8 +244,15 @@
                     message('Sichere Ereignis-ID nicht verfügbar. Bitte einen aktuellen Browser verwenden.');
                     return;
                 }
+                const metadata = action === 'start' ? {location: document.getElementById('attendance-location')?.value ?? 'office',
+                    note: document.getElementById('attendance-note')?.value ?? ''} : {};
+                if (!validStartMetadata({action, ...metadata})) { message('Arbeitsort oder Notiz ungültig. Maximal 1000 UTF-8-Bytes; keine Steuerzeichen oder reservierten Abwesenheitswerte.'); return; }
+                if (nondefaultStartMetadata(metadata) && !supportsStartMetadata) { message('Dieser Server bestätigt Arbeitsort und Notiz noch nicht. Status aktualisieren; keine Buchung gesendet.'); return; }
                 pending = {event_id: crypto.randomUUID(), action, confirm_end_pause: endPause ? '1' : '0',
-                    ...(action === 'start' ? {} : {expected_record: expectedRecord})};
+                    ...(action === 'start' ? nondefaultStartMetadata(metadata) ? metadata : {} : {expected_record: expectedRecord})};
+            }
+            if (nondefaultStartMetadata(pending) && !supportsStartMetadata) {
+                render(); message('Dieser Server bestätigt Arbeitsort und Notiz noch nicht. Unbestätigten Vorgang unverändert behalten und Serverstatus prüfen.'); return;
             }
             // Applies to new events AND retries. Failure keeps the same in-page
             // identity and any stored uncertain event, but sends no mutation.
@@ -237,7 +269,10 @@
                 if (!response.ok && response.status < 500 && ![401, 403].includes(response.status)) { expectedRecord = null; pending = null; rememberPending(); }
                 const data = await readJson(response);
                 if (!response.ok) throw new Error(data.message || 'Buchung wurde nicht bestätigt.');
-                if (!data.success || !Object.hasOwn(allowed, data.state)) throw new Error('Keine gültige Buchungsbestätigung erhalten. Dieselbe Aktion erneut versuchen.');
+                if (!data.success || !Object.hasOwn(allowed, data.state) || !acknowledgedStartMetadata(pending, data)) throw new Error('Keine gültige Buchungsbestätigung erhalten. Dieselbe Aktion erneut versuchen.');
+                if (pending.action === 'start') {
+                    document.querySelectorAll('[data-start-metadata]').forEach(fields => { fields.querySelector('#attendance-location').value = 'office'; fields.querySelector('#attendance-note').value = ''; });
+                }
                 pending = null; rememberPending(); confirmed = true;
                 render(data.state, null); // Cached acknowledgment is not a current session binding.
                 // This may be a historical cached warning. It proves neither a
