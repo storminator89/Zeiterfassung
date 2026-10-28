@@ -76,6 +76,33 @@ Existing DB audit triggers run once in the same transaction, under `web:{id}` /
 `admin.php`. V2 versus separately admitted V3/V4 audit payload differences remain
 as they are. This packet adds no audit table/trigger or duplicate manual audit.
 
+### Lifecycle notice correction on Main `4d78a700`
+
+The Laravel history-protected delete still refuses with 409 under the exact
+existing audit-row predicate; no account or history is changed. Its old native
+hint incorrectly suggested that a password change plus terminal blocking was a
+central access-removal workflow. The fixed refusal and a short accessible help
+tooltip on the existing Admin card now state the actual limit: local password
+changes do not prevent a new LDAP login and do not disable terminal access.
+This is an intentional Laravel copy correction, not native-text equivalence or
+an implemented account-deactivation feature.
+
+The tooltip is hidden until focus, hover or activation, described by its labelled
+button, remains reachable while hovered, and dismisses on Escape, outside pointer
+interaction or leaving focus/hover. It uses the existing nonce-script branch and
+local scoped styling; no remote asset, new form, request or preference is added.
+Source/syntax inspection is not keyboard/touch/browser acceptance.
+
+[#29](https://github.com/storminator89/Zeiterfassung/issues/29) still requires an
+explicit stable-auth-version or deliberate single-session model plus separate
+parallel-login and actual-revocation acceptance.
+[#30](https://github.com/storminator89/Zeiterfassung/issues/30) still requires one
+reviewed account-status/deactivation contract enforced across login, existing
+sessions, JWTs, terminal grants and LDAP sync, without deleting history or silent
+reactivation. No status field, hash/version lifecycle, schema/admission, auth,
+Writer transaction, native endpoint, route/provider/profile or runtime flag is
+changed by this three-file display-only correction.
+
 ### Explicit Root-approved Laravel recovery restriction
 
 Native `COUNT(role='admin')` counts directory Admins, but the currently admitted
