@@ -647,3 +647,113 @@ body:has(.main-content.expanded) .attendance-feedback { margin-left: 1rem; }
     right: .25rem;
     margin-left: 0;
 }
+
+/* Sidebar-only organization and refinement; existing 250px/off-canvas geometry stays authoritative. */
+.sidebar.chrono-sidebar {
+    height: 100vh;
+    height: 100dvh;
+    background: hsl(var(--b1));
+    color: hsl(var(--bc));
+    border-right: 1px solid hsl(var(--bc) / 12%);
+    padding-top: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.sidebar.chrono-sidebar .sidebar-shell {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    padding: 1.25rem 1rem max(1.25rem, env(safe-area-inset-bottom));
+}
+.sidebar.chrono-sidebar .sidebar-brand {
+    padding: .25rem .4rem 1.25rem;
+    border-bottom: 1px solid hsl(var(--bc) / 10%);
+    margin-bottom: 1.25rem;
+}
+.sidebar.chrono-sidebar .sidebar-brand-row {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+.sidebar.chrono-sidebar .sidebar-brand-mark {
+    display: grid;
+    place-items: center;
+    flex: 0 0 2.25rem;
+    height: 2.25rem;
+    border-radius: .7rem;
+    background: #fff;
+    border: 1px solid hsl(var(--bc) / 12%);
+}
+.sidebar.chrono-sidebar .sidebar-brand-mark img { width: 1.75rem; height: 1.75rem; object-fit: contain; }
+.sidebar.chrono-sidebar .sidebar-navigation { display: flex; flex: 1; flex-direction: column; gap: 1.25rem; }
+.sidebar.chrono-sidebar .sidebar-heading {
+    margin: 0 0 .45rem .8rem;
+    color: hsl(var(--bc) / 72%);
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: .06em;
+}
+.sidebar.chrono-sidebar .sidebar-items { display: flex; flex-direction: column; gap: .25rem; }
+.sidebar.chrono-sidebar .sidebar-link {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 44px;
+    margin: 0;
+    padding: .65rem .8rem;
+    gap: .65rem;
+    border: 1px solid transparent;
+    border-radius: .7rem;
+    background: transparent;
+    color: hsl(var(--bc));
+    text-align: left;
+    line-height: 1.4;
+    transform: none;
+    transition: background-color .15s ease, color .15s ease;
+}
+.sidebar.chrono-sidebar .sidebar-link span { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.sidebar.chrono-sidebar .sidebar-link i { flex: 0 0 1.25rem; width: 1.25rem; transform: none; }
+.sidebar.chrono-sidebar .sidebar-link::before { content: none; }
+.sidebar.chrono-sidebar .sidebar-link:hover { background: hsl(var(--p) / 10%); color: hsl(var(--bc)); transform: none; }
+.sidebar.chrono-sidebar .sidebar-link:hover i { transform: none; }
+.sidebar.chrono-sidebar .sidebar-link.active {
+    background: hsl(var(--p));
+    color: hsl(var(--pc));
+    font-weight: 600;
+    border-left: 3px solid hsl(var(--pc));
+    padding-left: calc(.8rem - 2px);
+    box-shadow: 0 3px 10px hsl(var(--p) / 15%);
+}
+.sidebar.chrono-sidebar .sidebar-link:focus-visible,
+.sidebar.chrono-sidebar .sidebar-close:focus-visible { outline: 2px solid hsl(var(--p)); outline-offset: 2px; }
+.sidebar.chrono-sidebar .sidebar-link:disabled { cursor: not-allowed; opacity: .5; }
+.sidebar.chrono-sidebar .sidebar-account { margin-top: auto; padding-top: 1rem; border-top: 1px solid hsl(var(--bc) / 10%); }
+.sidebar.chrono-sidebar .sidebar-close { display: none; }
+@media (max-width: 768px) {
+    .sidebar.chrono-sidebar .sidebar-close {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .5rem;
+        box-sizing: border-box;
+        width: 100%;
+        min-height: 44px;
+        margin-top: .8rem;
+        padding: .6rem .75rem;
+        border: 1px solid hsl(var(--bc) / 20%);
+        border-radius: .6rem;
+        background: hsl(var(--b2));
+        color: hsl(var(--bc));
+        font: inherit;
+        text-align: left;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .sidebar.chrono-sidebar,
+    .sidebar.chrono-sidebar .sidebar-link,
+    .sidebar.chrono-sidebar .sidebar-link i { transition: none; }
+}

@@ -304,49 +304,72 @@ $attendanceLabels = ['absent' => 'Nicht angemeldet', 'working' => 'Arbeitszeit l
 
 <body class="<?= $strictAppUi ? 'chrono-local-ui' : '' ?>" data-attendance-state="<?= h($attendanceState) ?>" data-attendance-user="<?= (int)$user_id ?>" data-attendance-record="<?= $attendanceSnapshot['record_id'] === null ? '' : (int)$attendanceSnapshot['record_id'] ?>">
     <!-- Sidebar -->
-    <div class="sidebar" id="sidebar">
-        <div class="p-4">
-            <nav class="space-y-2">
-                <a href="index.php" class="sidebar-link <?= in_array(basename($_SERVER['PHP_SELF']), ['index.php', 'attendance.php'], true) ? 'active' : '' ?>">
-                    <i class="fas fa-home w-6"></i>
-                    <span><?= NAV_HOME ?></span>
-                </a>
-                <a href="dashboard.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'dashboard.php' ? 'active' : '' ?>">
-                    <i class="fas fa-tachometer-alt w-6"></i>
-                    <span><?= NAV_DASHBOARD ?></span>
-                </a>
-                <a href="settings.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'settings.php' ? 'active' : '' ?>">
-                    <i class="fas fa-cog w-6"></i>
-                    <span><?= NAV_SETTINGS ?></span>
-                </a>
-                <?php if ($user_role === 'admin') : ?>
-                    <a href="admin.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'admin.php' ? 'active' : '' ?>">
-                        <i class="fas fa-user-shield w-6"></i>
-                        <span>Admin</span>
-                    </a>
-                <?php endif; ?>
+    <div class="sidebar chrono-sidebar" id="sidebar">
+        <div class="sidebar-shell">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-row"><span class="sidebar-brand-mark"><img src="assets/kolibri_icon.png" alt="" aria-hidden="true"></span><span>Quodara Chrono</span></div>
+                <button type="button" class="sidebar-close" id="sidebar-close"><span><?= h(NAV_MENU_CLOSE) ?></span><i class="fas fa-times" aria-hidden="true"></i></button>
+            </div>
+            <nav class="sidebar-navigation" aria-label="<?= h(NAV_MAIN_MENU) ?>">
+                <section class="sidebar-group" aria-labelledby="sidebar-work-label">
+                    <h2 class="sidebar-heading" id="sidebar-work-label"><?= h(NAV_SECTION_WORK) ?></h2>
+                    <div class="sidebar-items">
+                        <a href="index.php" class="sidebar-link <?= in_array(basename($_SERVER['PHP_SELF']), ['index.php', 'attendance.php'], true) ? 'active' : '' ?>"<?= in_array(basename($_SERVER['PHP_SELF']), ['index.php', 'attendance.php'], true) ? ' aria-current="page"' : '' ?>>
+                            <i class="fas fa-home w-6" aria-hidden="true"></i>
+                            <span><?= NAV_HOME ?></span>
+                        </a>
+                        <a href="dashboard.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'dashboard.php' ? 'active' : '' ?>"<?= basename($_SERVER['PHP_SELF']) === 'dashboard.php' ? ' aria-current="page"' : '' ?>>
+                            <i class="fas fa-tachometer-alt w-6" aria-hidden="true"></i>
+                            <span><?= NAV_DASHBOARD ?></span>
+                        </a>
+                        <a href="adjustments.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'adjustments.php' ? 'active' : '' ?>"<?= basename($_SERVER['PHP_SELF']) === 'adjustments.php' ? ' aria-current="page"' : '' ?>><i class="fas fa-pen-to-square w-6" aria-hidden="true"></i><span>Korrekturanträge</span></a>
+                        <a href="work_models.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'work_models.php' ? 'active' : '' ?>"<?= basename($_SERVER['PHP_SELF']) === 'work_models.php' ? ' aria-current="page"' : '' ?>><i class="fas fa-business-time w-6" aria-hidden="true"></i><span>Arbeitszeitmodelle</span></a>
+                        <a href="history.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'history.php' ? 'active' : '' ?>"<?= basename($_SERVER['PHP_SELF']) === 'history.php' ? ' aria-current="page"' : '' ?>><i class="fas fa-history w-6" aria-hidden="true"></i><span>Änderungshistorie</span></a>
+                    </div>
+                </section>
                 <?php if ($user_role === 'supervisor' || $user_role === 'admin') : ?>
-                    <a href="supervisor.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'supervisor.php' ? 'active' : '' ?>">
-                        <i class="fas fa-user-tie w-6"></i>
-                        <span><?= NAV_SUPERVISOR ?></span>
-                    </a>
+                <section class="sidebar-group" aria-labelledby="sidebar-team-label">
+                    <h2 class="sidebar-heading" id="sidebar-team-label"><?= h(NAV_SECTION_TEAM) ?></h2>
+                    <div class="sidebar-items">
+                        <a href="supervisor.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'supervisor.php' ? 'active' : '' ?>"<?= basename($_SERVER['PHP_SELF']) === 'supervisor.php' ? ' aria-current="page"' : '' ?>>
+                            <i class="fas fa-user-tie w-6" aria-hidden="true"></i>
+                            <span><?= NAV_SUPERVISOR ?></span>
+                        </a>
+                    </div>
+                </section>
                 <?php endif; ?>
-                <button type="button" class="sidebar-link w-full" onclick="showAboutModal()">
-                    <i class="fas fa-info-circle w-6"></i>
-                    <span><?= NAV_ABOUT ?></span>
-                </button>
-                <form action="logout.php" method="post">
-                    <?= csrf_field() ?>
-                    <button type="submit" class="sidebar-link w-full">
-                        <i class="fas fa-sign-out-alt w-6"></i>
-                        <span><?= NAV_LOGOUT ?></span>
-                    </button>
-                </form>
-
-                <a href="adjustments.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'adjustments.php' ? 'active' : '' ?>"><i class="fas fa-pen-to-square w-6"></i><span>Korrekturanträge</span></a>
-                <a href="history.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'history.php' ? 'active' : '' ?>"><i class="fas fa-history w-6"></i><span>Änderungshistorie</span></a>
-                <a href="work_models.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'work_models.php' ? 'active' : '' ?>"><i class="fas fa-business-time w-6"></i><span>Arbeitszeitmodelle</span></a>
-                <?php if ($user_role === 'admin'): ?><a href="terminals.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'terminals.php' ? 'active' : '' ?>"><i class="fas fa-desktop w-6"></i><span>Praxis-Terminals</span></a><?php endif; ?>
+                <?php if ($user_role === 'admin') : ?>
+                <section class="sidebar-group" aria-labelledby="sidebar-admin-label">
+                    <h2 class="sidebar-heading" id="sidebar-admin-label"><?= h(NAV_SECTION_ADMIN) ?></h2>
+                    <div class="sidebar-items">
+                        <a href="admin.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'admin.php' ? 'active' : '' ?>"<?= basename($_SERVER['PHP_SELF']) === 'admin.php' ? ' aria-current="page"' : '' ?>>
+                            <i class="fas fa-user-shield w-6" aria-hidden="true"></i>
+                            <span>Admin</span>
+                        </a>
+                        <a href="terminals.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'terminals.php' ? 'active' : '' ?>"<?= basename($_SERVER['PHP_SELF']) === 'terminals.php' ? ' aria-current="page"' : '' ?>><i class="fas fa-desktop w-6" aria-hidden="true"></i><span>Praxis-Terminals</span></a>
+                    </div>
+                </section>
+                <?php endif; ?>
+                <section class="sidebar-group sidebar-account" aria-labelledby="sidebar-account-label">
+                    <h2 class="sidebar-heading" id="sidebar-account-label"><?= h(NAV_SECTION_ACCOUNT) ?></h2>
+                    <div class="sidebar-items">
+                        <a href="settings.php" class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'settings.php' ? 'active' : '' ?>"<?= basename($_SERVER['PHP_SELF']) === 'settings.php' ? ' aria-current="page"' : '' ?>>
+                            <i class="fas fa-cog w-6" aria-hidden="true"></i>
+                            <span><?= NAV_SETTINGS ?></span>
+                        </a>
+                        <button type="button" class="sidebar-link w-full" onclick="showAboutModal()">
+                            <i class="fas fa-info-circle w-6" aria-hidden="true"></i>
+                            <span><?= NAV_ABOUT ?></span>
+                        </button>
+                        <form action="logout.php" method="post">
+                            <?= csrf_field() ?>
+                            <button type="submit" class="sidebar-link w-full">
+                                <i class="fas fa-sign-out-alt w-6" aria-hidden="true"></i>
+                                <span><?= NAV_LOGOUT ?></span>
+                            </button>
+                        </form>
+                    </div>
+                </section>
             </nav>
         </div>
     </div>
@@ -525,6 +548,12 @@ $attendanceLabels = ['absent' => 'Nicht angemeldet', 'working' => 'Arbeitszeit l
         // Off-canvas links must not remain in the keyboard order on narrow screens.
         setSidebarCollapsed(window.innerWidth <= 768 || localStorage.getItem('sidebarCollapsed') === 'true');
         sidebarToggle.addEventListener('click', toggleSidebar);
+        document.getElementById('sidebar-close').addEventListener('click', function() {
+            setSidebarCollapsed(true);
+            if (sidebarToggle.getClientRects().length > 0 && getComputedStyle(sidebarToggle).visibility === 'visible') {
+                sidebarToggle.focus();
+            }
+        });
         document.addEventListener('click', function(e) {
             if (window.innerWidth <= 768 && !sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
                 setSidebarCollapsed(true);

@@ -263,49 +263,72 @@
 
 <body class="chrono-local-ui" data-attendance-state="{{ $page->state }}" data-attendance-user="{{ $page->userId }}" data-attendance-record="{{ $page->expectedRecord ?? '' }}">
     <!-- Sidebar -->
-    <div class="sidebar" id="sidebar">
-        <div class="p-4">
-            <nav class="space-y-2">
-                <a href="index.php" class="sidebar-link {{ in_array($page->activePage, ['index.php', 'attendance.php'], true) ? 'active' : '' }}">
-                    <i class="fas fa-home w-6"></i>
-                    <span>{{ $page->copy->text('NAV_HOME') }}</span>
-                </a>
-                <a href="dashboard.php" class="sidebar-link {{ $page->activePage === 'dashboard.php' ? 'active' : '' }}">
-                    <i class="fas fa-tachometer-alt w-6"></i>
-                    <span>{{ $page->copy->text('NAV_DASHBOARD') }}</span>
-                </a>
-                <a href="settings.php" class="sidebar-link {{ $page->activePage === 'settings.php' ? 'active' : '' }}">
-                    <i class="fas fa-cog w-6"></i>
-                    <span>{{ $page->copy->text('NAV_SETTINGS') }}</span>
-                </a>
-                @if ($page->role === 'admin')
-                    <a href="admin.php" class="sidebar-link {{ $page->activePage === 'admin.php' ? 'active' : '' }}">
-                        <i class="fas fa-user-shield w-6"></i>
-                        <span>Admin</span>
-                    </a>
-                @endif
+    <div class="sidebar chrono-sidebar" id="sidebar">
+        <div class="sidebar-shell">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-row"><span class="sidebar-brand-mark"><img src="assets/kolibri_icon.png" alt="" aria-hidden="true"></span><span>Quodara Chrono</span></div>
+                <button type="button" class="sidebar-close" id="sidebar-close"><span>{{ $page->copy->text('NAV_MENU_CLOSE') }}</span><i class="fas fa-times" aria-hidden="true"></i></button>
+            </div>
+            <nav class="sidebar-navigation" aria-label="{{ $page->copy->text('NAV_MAIN_MENU') }}">
+                <section class="sidebar-group" aria-labelledby="sidebar-work-label">
+                    <h2 class="sidebar-heading" id="sidebar-work-label">{{ $page->copy->text('NAV_SECTION_WORK') }}</h2>
+                    <div class="sidebar-items">
+                        <a href="index.php" class="sidebar-link {{ in_array($page->activePage, ['index.php', 'attendance.php'], true) ? 'active' : '' }}" @if (in_array($page->activePage, ['index.php', 'attendance.php'], true)) aria-current="page" @endif>
+                            <i class="fas fa-home w-6" aria-hidden="true"></i>
+                            <span>{{ $page->copy->text('NAV_HOME') }}</span>
+                        </a>
+                        <a href="dashboard.php" class="sidebar-link {{ $page->activePage === 'dashboard.php' ? 'active' : '' }}" @if ($page->activePage === 'dashboard.php') aria-current="page" @endif>
+                            <i class="fas fa-tachometer-alt w-6" aria-hidden="true"></i>
+                            <span>{{ $page->copy->text('NAV_DASHBOARD') }}</span>
+                        </a>
+                        <a href="adjustments.php" class="sidebar-link {{ $page->activePage === 'adjustments.php' ? 'active' : '' }}" @if ($page->activePage === 'adjustments.php') aria-current="page" @endif><i class="fas fa-pen-to-square w-6" aria-hidden="true"></i><span>Korrekturanträge</span></a>
+                        <a href="work_models.php" class="sidebar-link {{ $page->activePage === 'work_models.php' ? 'active' : '' }}" @if ($page->activePage === 'work_models.php') aria-current="page" @endif><i class="fas fa-business-time w-6" aria-hidden="true"></i><span>Arbeitszeitmodelle</span></a>
+                        <a href="history.php" class="sidebar-link {{ $page->activePage === 'history.php' ? 'active' : '' }}" @if ($page->activePage === 'history.php') aria-current="page" @endif><i class="fas fa-history w-6" aria-hidden="true"></i><span>Änderungshistorie</span></a>
+                    </div>
+                </section>
                 @if (in_array($page->role, ['supervisor', 'admin'], true))
-                    <a href="supervisor.php" class="sidebar-link {{ $page->activePage === 'supervisor.php' ? 'active' : '' }}">
-                        <i class="fas fa-user-tie w-6"></i>
-                        <span>{{ $page->copy->text('NAV_SUPERVISOR') }}</span>
-                    </a>
+                <section class="sidebar-group" aria-labelledby="sidebar-team-label">
+                    <h2 class="sidebar-heading" id="sidebar-team-label">{{ $page->copy->text('NAV_SECTION_TEAM') }}</h2>
+                    <div class="sidebar-items">
+                        <a href="supervisor.php" class="sidebar-link {{ $page->activePage === 'supervisor.php' ? 'active' : '' }}" @if ($page->activePage === 'supervisor.php') aria-current="page" @endif>
+                            <i class="fas fa-user-tie w-6" aria-hidden="true"></i>
+                            <span>{{ $page->copy->text('NAV_SUPERVISOR') }}</span>
+                        </a>
+                    </div>
+                </section>
                 @endif
-                <button type="button" class="sidebar-link w-full" onclick="showAboutModal()">
-                    <i class="fas fa-info-circle w-6"></i>
-                    <span>{{ $page->copy->text('NAV_ABOUT') }}</span>
-                </button>
-                <form action="logout.php" method="post">
-                    @csrf
-                    <button type="submit" @disabled(! $page->interactions->logout) class="sidebar-link w-full">
-                        <i class="fas fa-sign-out-alt w-6"></i>
-                        <span>{{ $page->copy->text('NAV_LOGOUT') }}</span>
-                    </button>
-                </form>
-
-                <a href="adjustments.php" class="sidebar-link {{ $page->activePage === 'adjustments.php' ? 'active' : '' }}"><i class="fas fa-pen-to-square w-6"></i><span>Korrekturanträge</span></a>
-                <a href="history.php" class="sidebar-link {{ $page->activePage === 'history.php' ? 'active' : '' }}"><i class="fas fa-history w-6"></i><span>Änderungshistorie</span></a>
-                <a href="work_models.php" class="sidebar-link {{ $page->activePage === 'work_models.php' ? 'active' : '' }}"><i class="fas fa-business-time w-6"></i><span>Arbeitszeitmodelle</span></a>
-                @if ($page->role === 'admin')<a href="terminals.php" class="sidebar-link {{ $page->activePage === 'terminals.php' ? 'active' : '' }}"><i class="fas fa-desktop w-6"></i><span>Praxis-Terminals</span></a>@endif
+                @if ($page->role === 'admin')
+                <section class="sidebar-group" aria-labelledby="sidebar-admin-label">
+                    <h2 class="sidebar-heading" id="sidebar-admin-label">{{ $page->copy->text('NAV_SECTION_ADMIN') }}</h2>
+                    <div class="sidebar-items">
+                        <a href="admin.php" class="sidebar-link {{ $page->activePage === 'admin.php' ? 'active' : '' }}" @if ($page->activePage === 'admin.php') aria-current="page" @endif>
+                            <i class="fas fa-user-shield w-6" aria-hidden="true"></i>
+                            <span>Admin</span>
+                        </a>
+                        <a href="terminals.php" class="sidebar-link {{ $page->activePage === 'terminals.php' ? 'active' : '' }}" @if ($page->activePage === 'terminals.php') aria-current="page" @endif><i class="fas fa-desktop w-6" aria-hidden="true"></i><span>Praxis-Terminals</span></a>
+                    </div>
+                </section>
+                @endif
+                <section class="sidebar-group sidebar-account" aria-labelledby="sidebar-account-label">
+                    <h2 class="sidebar-heading" id="sidebar-account-label">{{ $page->copy->text('NAV_SECTION_ACCOUNT') }}</h2>
+                    <div class="sidebar-items">
+                        <a href="settings.php" class="sidebar-link {{ $page->activePage === 'settings.php' ? 'active' : '' }}" @if ($page->activePage === 'settings.php') aria-current="page" @endif>
+                            <i class="fas fa-cog w-6" aria-hidden="true"></i>
+                            <span>{{ $page->copy->text('NAV_SETTINGS') }}</span>
+                        </a>
+                        <button type="button" class="sidebar-link w-full" onclick="showAboutModal()">
+                            <i class="fas fa-info-circle w-6" aria-hidden="true"></i>
+                            <span>{{ $page->copy->text('NAV_ABOUT') }}</span>
+                        </button>
+                        <form action="logout.php" method="post">
+                            @csrf
+                            <button type="submit" @disabled(! $page->interactions->logout) class="sidebar-link w-full">
+                                <i class="fas fa-sign-out-alt w-6" aria-hidden="true"></i>
+                                <span>{{ $page->copy->text('NAV_LOGOUT') }}</span>
+                            </button>
+                        </form>
+                    </div>
+                </section>
             </nav>
         </div>
     </div>
@@ -492,6 +515,12 @@
         // Off-canvas links must not remain in the keyboard order on narrow screens.
         setSidebarCollapsed(window.innerWidth <= 768 || localStorage.getItem('sidebarCollapsed') === 'true');
         sidebarToggle.addEventListener('click', toggleSidebar);
+        document.getElementById('sidebar-close').addEventListener('click', function() {
+            setSidebarCollapsed(true);
+            if (sidebarToggle.getClientRects().length > 0 && getComputedStyle(sidebarToggle).visibility === 'visible') {
+                sidebarToggle.focus();
+            }
+        });
         document.addEventListener('click', function(e) {
             if (window.innerWidth <= 768 && !sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
                 setSidebarCollapsed(true);
