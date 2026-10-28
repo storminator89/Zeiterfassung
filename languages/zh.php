@@ -294,5 +294,17 @@ define('DASHBOARD_REPORT_UNRESOLVED', '待釐清');
 define('DASHBOARD_REPORT_INCOMPLETE', '資料不完整');
 define('DASHBOARD_REPORT_REVIEW_HINT', '請人工檢查紀錄。');
 define('DASHBOARD_CURRENT_PERIOD_NOTE', '週（%s–%s）與月（%s–%s）數值涵蓋完整當期，並非截至今日的餘額。切換日曆不會改變這些數值。');
+// Read-only native holiday inventory; never an attestation of completeness.
+define('HOLIDAY_INVENTORY_TITLE', '核对已存储的公共假日');
+define('HOLIDAY_INVENTORY_UNVERIFIED', '完整性尚未核实');
+define('HOLIDAY_INVENTORY_ACTION', '在登记缺勤或使用应工作时数之前，请与管理员核对相关年份及工作地点的已存储日期。');
+define('HOLIDAY_INVENTORY_LIMIT', '现有数据未证明其地区、来源或完整性。目前的自动来源为巴登-符腾堡州。本视图仅显示已存储数据，不会导入年份或修改日期。');
+define('HOLIDAY_INVENTORY_YEAR', '年份');
+define('HOLIDAY_INVENTORY_SHOW', '显示已存储日期');
+define('HOLIDAY_INVENTORY_INVALID_YEAR', '年份无效，现显示当前年份。请选择 1 至 9999 之间的年份。');
+define('HOLIDAY_INVENTORY_COUNT', '显示 %d 条已存储记录，不代表数据完整。');
+define('HOLIDAY_INVENTORY_DATA_ISSUE', '存在无效日期或记录超过 366 条：显示已受限，请管理员核对原始数据。');
+define('HOLIDAY_INVENTORY_EMPTY', '该年份没有已存储记录。这并不表示该年没有公共假日。');
+define('HOLIDAY_INVENTORY_ABSENCE_LINK', '计入缺勤时数前，请核对相关年份的已存储公共假日（新标签页）。');
 ?>
 
