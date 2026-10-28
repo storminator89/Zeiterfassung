@@ -3,6 +3,7 @@
 namespace App\Chrono;
 
 use App\Auth\LegacyUser;
+use App\Auth\AccountLifecycleWebIdentity;
 use App\LegacyDatabase\AttendanceWriter;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -15,7 +16,8 @@ use LogicException;
 final class LegacyLocalWebPauseSettings implements LocalWebPauseSettings
 {
     /** @param Closure(): AttendanceWriter $writer Trusted operation-scope resolver. */
-    public function __construct(private readonly Factory $auth, private readonly Closure $writer) {}
+    public function __construct(private readonly Factory $auth, private readonly Closure $writer,
+        private readonly ?AccountLifecycleWebIdentity $lifecycle = null) {}
 
     public function apply(array $command): void
     {
@@ -34,12 +36,18 @@ final class LegacyLocalWebPauseSettings implements LocalWebPauseSettings
         }
 
         // Never resolve a writer for nonadmins or an unsupported/mixed command.
+        $authority = $this->lifecycle?->capture($actor);
         $writer = ($this->writer)();
         if (! $writer instanceof AttendanceWriter) {
             throw new LogicException('A trusted admitted operation-scoped attendance writer is required.');
         }
-        $writer->pauseSettings(
-            (int) $actor->getKey(), $command['hours_threshold'] ?? null, $command['minimum_pause'] ?? null,
-        );
+        try {
+            $writer->pauseSettings(
+                (int) $actor->getKey(), $command['hours_threshold'] ?? null, $command['minimum_pause'] ?? null, $authority,
+            );
+        } catch (\AttendanceError $error) {
+            if ($authority !== null && $error->status === 401) { throw new AuthenticationException('Unauthenticated.', ['web']); }
+            throw $error;
+        }
     }
 }

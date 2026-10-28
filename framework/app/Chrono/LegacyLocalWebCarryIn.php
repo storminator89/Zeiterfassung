@@ -3,6 +3,7 @@
 namespace App\Chrono;
 
 use App\Auth\LegacyUser;
+use App\Auth\AccountLifecycleWebIdentity;
 use App\LegacyDatabase\AttendanceWriter;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -14,7 +15,8 @@ use LogicException;
 final class LegacyLocalWebCarryIn implements LocalWebCarryIn
 {
     /** @param Closure(): AttendanceWriter $writer Trusted operation-scope resolver. */
-    public function __construct(private readonly Factory $auth, private readonly Closure $writer) {}
+    public function __construct(private readonly Factory $auth, private readonly Closure $writer,
+        private readonly ?AccountLifecycleWebIdentity $lifecycle = null) {}
 
     public function replace(mixed $raw): string
     {
@@ -30,11 +32,17 @@ final class LegacyLocalWebCarryIn implements LocalWebCarryIn
         require_once dirname(__DIR__, 3).'/lib/settings_carry_in.php';
         \settings_carry_in_value($raw);
 
+        $authority = $this->lifecycle?->capture($actor);
         $writer = ($this->writer)();
         if (! $writer instanceof AttendanceWriter) {
             throw new LogicException('A trusted admitted operation-scoped attendance writer is required.');
         }
 
-        return $writer->ownCarryIn((int) $actor->getKey(), $raw);
+        try {
+            return $writer->ownCarryIn((int) $actor->getKey(), $raw, $authority);
+        } catch (\AttendanceError $error) {
+            if ($authority !== null && $error->status === 401) { throw new AuthenticationException('Unauthenticated.', ['web']); }
+            throw $error;
+        }
     }
 }

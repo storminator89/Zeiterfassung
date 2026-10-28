@@ -86,6 +86,7 @@ class AppServiceProvider extends ServiceProvider
                 }
                 return $app->make(AttendanceWriter::class);
             },
+            $app->make(AccountLifecycleWebIdentity::class),
         ));
         $this->app->scoped(SelfRegistration::class, fn ($app) => new SelfRegistration(
             $app->make('config'), $app->make('hash'),
@@ -115,7 +116,7 @@ class AppServiceProvider extends ServiceProvider
                 }
 
                 return $app->make(AttendanceWriter::class);
-            },
+            }, $app->make(AccountLifecycleWebIdentity::class),
         ));
         $this->app->scoped(LocalWebCorrections::class, fn ($app) => new LegacyLocalWebCorrections(
             $app->make('auth'),
@@ -125,7 +126,7 @@ class AppServiceProvider extends ServiceProvider
                 }
 
                 return $app->make(AttendanceWriter::class);
-            },
+            }, $app->make(AccountLifecycleWebIdentity::class),
         ));
         $this->app->scoped(LocalWebWorkModels::class, fn ($app) => new LegacyLocalWebWorkModels(
             $app->make('auth'),
@@ -135,7 +136,7 @@ class AppServiceProvider extends ServiceProvider
                 }
 
                 return $app->make(AttendanceWriter::class);
-            },
+            }, $app->make(AccountLifecycleWebIdentity::class),
         ));
         $this->app->scoped(LocalWebPauseSettings::class, fn ($app) => new LegacyLocalWebPauseSettings(
             $app->make('auth'),
@@ -145,7 +146,7 @@ class AppServiceProvider extends ServiceProvider
                 }
 
                 return $app->make(AttendanceWriter::class);
-            },
+            }, $app->make(AccountLifecycleWebIdentity::class),
         ));
         $this->app->scoped(LocalWebDepartments::class, fn ($app) => new LegacyLocalWebDepartments(
             $app->make('auth'),
@@ -155,7 +156,7 @@ class AppServiceProvider extends ServiceProvider
                 }
 
                 return $app->make(AttendanceWriter::class);
-            },
+            }, $app->make(AccountLifecycleWebIdentity::class),
         ));
         $this->app->scoped(LocalWebAdminUsers::class, fn ($app) => new LegacyLocalWebAdminUsers(
             $app->make('auth'),
@@ -175,7 +176,7 @@ class AppServiceProvider extends ServiceProvider
                 }
 
                 return $app->make(AttendanceWriter::class);
-            },
+            }, $app->make(AccountLifecycleWebIdentity::class),
         ));
         $this->app->scoped(LocalWebAbsences::class, fn ($app) => new LegacyLocalWebAbsences(
             $app->make('auth'),
@@ -185,7 +186,7 @@ class AppServiceProvider extends ServiceProvider
                 }
 
                 return $app->make(AttendanceWriter::class);
-            },
+            }, $app->make(AccountLifecycleWebIdentity::class),
         ));
     }
 

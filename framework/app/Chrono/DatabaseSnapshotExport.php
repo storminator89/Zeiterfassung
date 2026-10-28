@@ -3,6 +3,7 @@
 namespace App\Chrono;
 
 use App\Auth\LegacyUser;
+use App\Auth\AccountLifecycleWebIdentity;
 use App\LegacyDatabase\RuntimeDatabase;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -15,15 +16,16 @@ final class DatabaseSnapshotExport
 
     public function authorizeHead(): void
     {
-        $this->actor();
+        $this->principal();
     }
 
     public function create(): DatabaseSnapshotArtifact
     {
-        return $this->database->databaseSnapshot($this->actor());
+        [$actor, $authority] = $this->principal();
+        return $this->database->databaseSnapshot($actor, $authority);
     }
 
-    private function actor(): LegacyUser
+    private function principal(): array
     {
         $actor = $this->auth->guard('web')->user();
         if (! $actor instanceof LegacyUser || (int) $actor->getKey() < 1 || $actor->auth_source !== 'local'
@@ -34,6 +36,9 @@ final class DatabaseSnapshotExport
             throw new AuthorizationException('Only administrators may export a database snapshot.');
         }
 
-        return $actor;
+        // Same immutable Runtime instance as the export, never optional columns
+        // or a forgotten nullable facade dependency selecting an older profile.
+        $authority = AccountLifecycleWebIdentity::fromRuntime($this->database)->capture($actor);
+        return [$actor, $authority];
     }
 }

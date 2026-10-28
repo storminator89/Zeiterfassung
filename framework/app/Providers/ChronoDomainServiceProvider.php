@@ -60,7 +60,7 @@ final class ChronoDomainServiceProvider extends ServiceProvider
                 }
 
                 return $app->make(AttendanceWriter::class);
-            },
+            }, $app->make(\App\Auth\AccountLifecycleWebIdentity::class),
         ));
         // A fixed Admin operation, independently selected; no writer/key is resolved here.
         $this->app->scoped(LocalWebTerminalDeviceRevocations::class, fn ($app) => new LegacyLocalWebTerminalDeviceRevocations(

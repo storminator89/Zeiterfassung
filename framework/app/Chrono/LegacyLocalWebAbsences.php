@@ -3,6 +3,7 @@
 namespace App\Chrono;
 
 use App\Auth\LegacyUser;
+use App\Auth\AccountLifecycleWebIdentity;
 use App\Auth\ExistingAccountUserProvider;
 use App\LegacyDatabase\AttendanceWriter;
 use Closure;
@@ -15,7 +16,8 @@ use LogicException;
 final class LegacyLocalWebAbsences implements LocalWebAbsences
 {
     /** @param Closure(): AttendanceWriter $writer Trusted operation-scope resolver. */
-    public function __construct(private readonly Factory $auth, private readonly Closure $writer) {}
+    public function __construct(private readonly Factory $auth, private readonly Closure $writer,
+        private readonly ?AccountLifecycleWebIdentity $lifecycle = null) {}
 
     public function create(string $start, string $end, string $kind): array
     {
@@ -35,10 +37,16 @@ final class LegacyLocalWebAbsences implements LocalWebAbsences
             $context = $provider->context($actor);
         }
 
+        $authority = $this->lifecycle?->capture($actor);
+
         // Resolve no writer/path/configuration before authenticating the owner.
         $writer = ($this->writer)();
         if (! $writer instanceof AttendanceWriter) {
             throw new LogicException('A trusted admitted operation-scoped attendance writer is required.');
+        }
+
+        if ($authority !== null) {
+            return $writer->absenceWeb($authority, $start, $end, $kind);
         }
 
         if ($context !== null) {

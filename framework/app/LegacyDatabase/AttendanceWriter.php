@@ -73,7 +73,7 @@ final class AttendanceWriter
                 $this->assertIntakeProfileLocked(requireV4: true);
 
                 return $limited;
-            });
+            }, lifecycleReady: $this->accountLifecycleV5);
         } catch (Throwable) {
             // Never a confirmed 429/allow result, auth failure, retry or fallback.
             throw new RuntimeException('Login budget commit was not confirmed.');
@@ -195,26 +195,45 @@ final class AttendanceWriter
         });
     }
 
+    /** One fixed Admin identity check; never infer a V5 actor from current-active alone. */
+    private function assertAdminOperationAuthorityLocked(int $user, ?\App\Accounts\AccountLifecycleAuthority $authority,
+        ?string $role = null): void
+    {
+        if (! $this->accountLifecycleV5) {
+            if ($authority !== null) { throw new LogicException('V5 Admin authority cannot target an older account profile.'); }
+            return;
+        }
+        if ($authority === null || $authority->id !== $user || $authority->source !== 'local' || $authority->role !== 'admin'
+            || ($role !== null && $role !== $authority->role)) {
+            throw new \AttendanceError('Sitzung nicht mehr gültig. Bitte neu anmelden.', 401);
+        }
+        $this->assertLifecyclePrincipalLocked($authority, localAdmin: true);
+    }
+
     /** Trusted admin identity/role only; command user_id is the model target. */
-    public function workModel(int $user, string $role, array $command): void
+    public function workModel(int $user, string $role, array $command,
+        ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): void
     {
         require_once dirname(__DIR__, 3).'/lib/practice.php';
 
-        $this->executeLocked(function () use ($user, $role, $command): void {
+        $this->executeLocked(function () use ($user, $role, $command, $lifecycleAuthority): void {
+            $this->assertAdminOperationAuthorityLocked($user, $lifecycleAuthority, $role);
             practice_work_model_apply_locked($this->pdo, $user, $role, $command,
                 fn (string $reason, Closure $operation): mixed => $this->context->run('web:'.$user, $reason, $operation),
             );
-        });
+        }, lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
     }
 
     /** One fixed Admin operation; no caller-supplied role, PDO or SQL callback. */
-    public function pauseSettings(int $user, mixed $hoursThresholds, mixed $minimumPauses): void
+    public function pauseSettings(int $user, mixed $hoursThresholds, mixed $minimumPauses,
+        ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): void
     {
         require_once dirname(__DIR__, 3).'/lib/pause_settings.php';
         // Exact native complete-list validation before any DELETE/INSERT or transaction.
         $rules = \validatePauseSettings($hoursThresholds, $minimumPauses);
 
-        $this->executeLocked(function () use ($user, $rules): void {
+        $this->executeLocked(function () use ($user, $rules, $lifecycleAuthority): void {
+            $this->assertAdminOperationAuthorityLocked($user, $lifecycleAuthority);
             // Re-authorize under the existing IMMEDIATE writer lock, not against
             // a request role or an earlier rendered/refreshed guard snapshot.
             $actor = att_one($this->pdo, 'SELECT role,auth_source FROM users WHERE id=?', [$user]);
@@ -232,11 +251,12 @@ final class AttendanceWriter
             }
             // The existing transaction shell commits the complete list once.
             // This native table has no audit trigger; do not invent an audit claim.
-        });
+        }, lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
     }
 
     /** Fixed department operations; native wrapper transactions must not nest here. */
-    public function department(int $user, string $operation, mixed $departmentId, mixed $departmentName): bool
+    public function department(int $user, string $operation, mixed $departmentId, mixed $departmentName,
+        ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): bool
     {
         require_once dirname(__DIR__, 3).'/lib/departments.php';
         if (! in_array($operation, ['create', 'rename', 'delete'], true)) {
@@ -249,7 +269,8 @@ final class AttendanceWriter
         }
         $targetId = $operation === 'delete' ? \department_delete_id($departmentId) : $departmentId;
 
-        return $this->executeLocked(function () use ($user, $operation, $targetId, $departmentName): bool {
+        return $this->executeLocked(function () use ($user, $operation, $targetId, $departmentName, $lifecycleAuthority): bool {
+            $this->assertAdminOperationAuthorityLocked($user, $lifecycleAuthority);
             $actor = att_one($this->pdo, 'SELECT role,auth_source FROM users WHERE id=?', [$user]);
             if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local') {
                 throw new AuthorizationException('Nur die Verwaltung darf Abteilungen ändern.');
@@ -262,13 +283,14 @@ final class AttendanceWriter
             };
 
             return true;
-        });
+        }, lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
     }
 
     /** Existing create only; no request actor, auth source, token or SQL callback. */
     public function createLocalUser(int $user, mixed $username, mixed $password, mixed $email, mixed $role,
         mixed $department, mixed $supervisor, mixed $regularHours, mixed $carryIn,
-        ?int $expectedPolicyRevision = null, #[\SensitiveParameter] ?string $expectedWebVersion = null): bool
+        ?int $expectedPolicyRevision = null, #[\SensitiveParameter] ?string $expectedWebVersion = null,
+        ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): bool
     {
         // Exact native required-field semantics, without trim/default/coercion.
         if (empty($username) || empty($password) || empty($email) || empty($role)
@@ -285,8 +307,8 @@ final class AttendanceWriter
         require_once dirname(__DIR__, 3).'/lib/admin_users.php';
 
         return $this->executeLocked(function () use ($user, $username, $password, $email, $role,
-            $department, $supervisor, $regularHours, $carryIn, $expectedPolicyRevision, $expectedWebVersion): bool {
-            $this->requireIntakeLocked(\App\Accounts\IntakeMethod::Manual, $expectedPolicyRevision, $user, $expectedWebVersion);
+            $department, $supervisor, $regularHours, $carryIn, $expectedPolicyRevision, $expectedWebVersion, $lifecycleAuthority): bool {
+            $this->requireIntakeLocked(\App\Accounts\IntakeMethod::Manual, $expectedPolicyRevision, $user, $expectedWebVersion, $lifecycleAuthority);
             $actor = att_one($this->pdo, 'SELECT role,auth_source FROM users WHERE id=?', [$user]);
             if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local') {
                 throw new AuthorizationException('Nur die Verwaltung darf Benutzer erstellen.');
@@ -295,14 +317,17 @@ final class AttendanceWriter
             // same locked PDO. Never call the native raw-BEGIN wrapper here.
             $assignment = \validateUserAssignment($this->pdo, $role, $supervisor, $department);
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-            $statement = $this->pdo->prepare('INSERT INTO users (username, password, email, role, department_id, supervisor_id, regelarbeitszeit, ueberstunden) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+            $statement = $this->pdo->prepare($this->accountLifecycleV5
+                ? "INSERT INTO users (username, password, email, role, department_id, supervisor_id, regelarbeitszeit, ueberstunden, account_status, auth_generation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 1)"
+                : 'INSERT INTO users (username, password, email, role, department_id, supervisor_id, regelarbeitszeit, ueberstunden) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
             $statement->execute([$username, $hashedPassword, $email, $role,
                 $assignment['department_id'], $assignment['supervisor_id'], $regularHours, $carryIn]);
             $statement->closeCursor();
             // Existing initial-work-model and audit triggers run once in this
             // transaction; auth_source/token retain their native defaults.
             return true;
-        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'admin.php', $transaction));
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'admin.php', $transaction),
+            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
     }
 
     /** Operator-authorized setup only; the empty-state decision is made under this lock. */
@@ -311,16 +336,26 @@ final class AttendanceWriter
         if ((password_get_info($passwordHash)['algoName'] ?? 'unknown') !== 'bcrypt') {
             throw new \InvalidArgumentException('A configured bcrypt setup hash is required.');
         }
+        if ($this->accountLifecycleV5 && ! \App\Accounts\AccountLifecycleAuthority::locallyLoginEligibleAdmin([
+            'username' => $username, 'password' => $passwordHash, 'role' => 'admin', 'auth_source' => 'local',
+            'account_status' => 'active', 'auth_generation' => 1,
+        ])) {
+            throw new \InvalidArgumentException('A locally login-eligible first administrator is required.');
+        }
         return $this->executeLocked(function () use ($username, $email, $passwordHash): bool {
+            if ($this->accountLifecycleV5) { $this->assertIntakeProfileLocked(true); }
             // ALL users, not only admins: never take over an existing installation.
             if ((int) $this->pdo->query('SELECT COUNT(*) FROM users')->fetchColumn() !== 0) {
                 return false;
             }
-            $statement = $this->pdo->prepare("INSERT INTO users (username,password,email,role,auth_source,token,department_id,supervisor_id,regelarbeitszeit,ueberstunden) VALUES (?,?,?,'admin','local',NULL,NULL,NULL,8,0)");
+            $statement = $this->pdo->prepare($this->accountLifecycleV5
+                ? "INSERT INTO users (username,password,email,role,auth_source,token,department_id,supervisor_id,regelarbeitszeit,ueberstunden,account_status,auth_generation) VALUES (?,?,?,'admin','local',NULL,NULL,NULL,8,0,'active',1)"
+                : "INSERT INTO users (username,password,email,role,auth_source,token,department_id,supervisor_id,regelarbeitszeit,ueberstunden) VALUES (?,?,?,'admin','local',NULL,NULL,NULL,8,0)");
             $statement->execute([$username, $passwordHash, $email]);
             $statement->closeCursor();
             return true;
-        }, fn (Closure $transaction): mixed => $this->context->run('setup:first-local-admin', 'First administrator setup', $transaction));
+        }, fn (Closure $transaction): mixed => $this->context->run('setup:first-local-admin', 'First administrator setup', $transaction),
+            lifecycleReady: $this->accountLifecycleV5);
     }
 
     /** Existing site-create only; never module settings, pairing, keys or credentials. */
@@ -451,18 +486,22 @@ final class AttendanceWriter
         return $this->executeLocked(function () use ($username, $email, $passwordHash, $expectedPolicyRevision): bool {
             $this->requireIntakeLocked(\App\Accounts\IntakeMethod::Registration, $expectedPolicyRevision);
             // Do not strand first-admin bootstrap or trust an earlier page/count.
-            if (att_one($this->pdo, "SELECT id FROM users WHERE role='admin' AND auth_source='local' LIMIT 1") === null) {
+            if ($this->accountLifecycleV5 ? ! $this->hasV5LocalAdministrationLocked()
+                : att_one($this->pdo, "SELECT id FROM users WHERE role='admin' AND auth_source='local' LIMIT 1") === null) {
                 throw new AuthorizationException('Ordinary registration requires existing local administration.');
             }
             if (att_one($this->pdo, 'SELECT id FROM users WHERE username=? OR email=? LIMIT 1', [$username, $email]) !== null) {
                 return false;
             }
-            $statement = $this->pdo->prepare("INSERT INTO users (username,password,email,role,auth_source,token,department_id,supervisor_id,regelarbeitszeit,ueberstunden) VALUES (?,?,?,'user','local',NULL,NULL,NULL,8,0)");
+            $statement = $this->pdo->prepare($this->accountLifecycleV5
+                ? "INSERT INTO users (username,password,email,role,auth_source,token,department_id,supervisor_id,regelarbeitszeit,ueberstunden,account_status,auth_generation) VALUES (?,?,?,'user','local',NULL,NULL,NULL,8,0,'active',1)"
+                : "INSERT INTO users (username,password,email,role,auth_source,token,department_id,supervisor_id,regelarbeitszeit,ueberstunden) VALUES (?,?,?,'user','local',NULL,NULL,NULL,8,0)");
             $statement->execute([$username, $passwordHash, $email]);
             $statement->closeCursor();
             // Existing model/audit triggers remain inside this one transaction.
             return true;
-        }, fn (Closure $transaction): mixed => $this->context->run('web:registration', 'Self-registration', $transaction));
+        }, fn (Closure $transaction): mixed => $this->context->run('web:registration', 'Self-registration', $transaction),
+            lifecycleReady: $this->accountLifecycleV5);
     }
 
     /** Trusted server Admin ID and completed materialized stage, never request identity. */
@@ -510,22 +549,24 @@ final class AttendanceWriter
 
     /** Strict persisted V4 policy CAS only; not an intake path or arbitrary account command. */
     public function changeIntakePolicy(int $user, #[\SensitiveParameter] string $expectedWebVersion,
-        \App\Accounts\IntakePolicyChange $change): void
+        \App\Accounts\IntakePolicyChange $change, ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): void
     {
-        $this->executeLocked(function () use ($user, $expectedWebVersion, $change): void {
+        $this->executeLocked(function () use ($user, $expectedWebVersion, $change, $lifecycleAuthority): void {
             $this->assertIntakeProfileLocked(true);
-            $this->assertExpectedWebPrincipal($user, 'local', $expectedWebVersion, 'admin');
-            (new \App\Accounts\IntakePolicyStore)->applyLocked($this->pdo, $user, $change);
-        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'Aufnahmewege ändern', $transaction));
+            $this->assertExpectedWebPrincipal($user, 'local', $expectedWebVersion, 'admin', $lifecycleAuthority);
+            (new \App\Accounts\IntakePolicyStore)->applyLocked($this->pdo, $user, $change, $this->accountLifecycleV5);
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'Aufnahmewege ändern', $transaction),
+            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
     }
 
     /** Own Admin identity only; no request target/role/reason or general account mutation. */
-    public function ownCarryIn(int $user, mixed $raw): string
+    public function ownCarryIn(int $user, mixed $raw, ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): string
     {
         require_once dirname(__DIR__, 3).'/lib/settings_carry_in.php';
         $parsed = \settings_carry_in_value($raw);
 
-        return $this->executeLocked(function () use ($user, $parsed): string {
+        return $this->executeLocked(function () use ($user, $parsed, $lifecycleAuthority): string {
+            $this->assertAdminOperationAuthorityLocked($user, $lifecycleAuthority);
             $actor = att_one($this->pdo, 'SELECT role,auth_source FROM users WHERE id=?', [$user]);
             if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local') {
                 throw new AuthorizationException('Nur die Verwaltung darf den eigenen Überstunden-Übertrag ändern.');
@@ -547,7 +588,8 @@ final class AttendanceWriter
             }
 
             return \settings_carry_in_float_text((float) $stored['ueberstunden']);
-        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'settings.php', $transaction));
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'settings.php', $transaction),
+            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
     }
 
     /** Trusted own-user identity only; no caller-supplied audit actor/reason. */
@@ -595,11 +637,12 @@ final class AttendanceWriter
 
     /** Legacy profiles retain their contract; V4 never accepts an absent/stale server context. */
     private function requireIntakeLocked(\App\Accounts\IntakeMethod $method, ?int $revision,
-        ?int $admin = null, #[\SensitiveParameter] ?string $version = null): void
+        ?int $admin = null, #[\SensitiveParameter] ?string $version = null,
+        ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): void
     {
         $this->assertIntakeProfileLocked();
         if (! $this->intakePolicyV4) {
-            if ($revision !== null || $version !== null) {
+            if ($revision !== null || $version !== null || $lifecycleAuthority !== null) {
                 throw new LogicException('A V4 intake context cannot target a legacy profile.');
             }
             return;
@@ -611,9 +654,24 @@ final class AttendanceWriter
             if ($admin === null || $version === null) {
                 throw new LogicException('A fresh local Admin intake context is required.');
             }
-            $this->assertExpectedWebPrincipal($admin, 'local', $version, 'admin');
+            $this->assertExpectedWebPrincipal($admin, 'local', $version, 'admin', $lifecycleAuthority);
         }
-        (new \App\Accounts\IntakePolicyStore)->requireAllowedLocked($this->pdo, $method, $revision);
+        (new \App\Accounts\IntakePolicyStore)->requireAllowedLocked($this->pdo, $method, $revision, $this->accountLifecycleV5);
+    }
+
+    /** Anonymous registration still needs an active usable local recovery Admin. */
+    private function hasV5LocalAdministrationLocked(): bool
+    {
+        $this->assertIntakeProfileLocked(true);
+        $statement = $this->pdo->query("SELECT username,password,role,auth_source,account_status,auth_generation FROM users WHERE role='admin' AND auth_source='local' AND account_status='active'");
+        try {
+            while (($row = $statement->fetch(PDO::FETCH_ASSOC)) !== false) {
+                if (\App\Accounts\AccountLifecycleAuthority::locallyLoginEligibleAdmin($row)) { return true; }
+            }
+            return false;
+        } finally {
+            $statement->closeCursor();
+        }
     }
 
     /** Trusted guard-derived pair only; never accepted from command/request data. */

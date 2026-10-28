@@ -3,6 +3,7 @@
 namespace App\Accounts;
 
 use App\Auth\LegacyUser;
+use App\Auth\AccountLifecycleWebIdentity;
 use App\LegacyDatabase\AttendanceWriter;
 use Closure;
 use DomainException;
@@ -27,35 +28,50 @@ final readonly class IntakePolicyAccess
         private DatabaseManager $database,
         private IntakePolicyStore $policies,
         private Closure $writer,
-    ) {}
+        private ?AccountLifecycleWebIdentity $lifecycle = null,
+    ) {
+        if ($v4 && $this->isV5()) { throw new LogicException('V5 intake must not be aliased into V4.'); }
+    }
 
     public function isV4(): bool
     {
         return $this->v4;
     }
 
+    public function isV5(): bool
+    {
+        return $this->lifecycle?->requiresGeneration() ?? false;
+    }
+
+    private function selected(): bool
+    {
+        return $this->v4 || $this->isV5();
+    }
+
     /** Legacy profiles have no policy card, not a fabricated permitted V4 policy. */
     public function current(): ?IntakePolicy
     {
-        return $this->v4 ? $this->state($this->localAdmin())['policy'] : null;
+        return $this->selected() ? $this->state($this->localAdmin())['policy'] : null;
     }
 
     /** Only service-internal guard context; never forward this array to a view or request. */
     public function manualContext(): ?array
     {
-        if (! $this->v4) {
+        if (! $this->selected()) {
             return null;
         }
         $state = $this->state($this->localAdmin());
         $this->requireAllowed($state['policy'], IntakeMethod::Manual);
 
-        return ['user' => $state['user'], 'version' => $state['version'], 'revision' => $state['policy']->revision];
+        $context = ['user' => $state['user'], 'version' => $state['version'], 'revision' => $state['policy']->revision];
+        if ($state['authority'] !== null) { $context['lifecycle_authority'] = $state['authority']; }
+        return $context;
     }
 
     /** Public registration learns only availability/revision, never Admin/audit/other policy metadata. */
     public function registrationRevision(): ?int
     {
-        if (! $this->v4) {
+        if (! $this->selected()) {
             return null;
         }
         $policy = $this->state()['policy'];
@@ -66,7 +82,7 @@ final readonly class IntakePolicyAccess
 
     public function change(array $form): void
     {
-        if (! $this->v4) {
+        if (! $this->selected()) {
             throw new InvalidArgumentException('Aufnahmeauswahl ist in diesem Anwendungsprofil nicht verfügbar.');
         }
         $authenticated = $this->localAdmin();
@@ -80,7 +96,7 @@ final readonly class IntakePolicyAccess
             if (! $writer instanceof AttendanceWriter) {
                 throw new LogicException;
             }
-            $writer->changeIntakePolicy($state['user'], $state['version'], $change);
+            $writer->changeIntakePolicy($state['user'], $state['version'], $change, $state['authority']);
         } catch (\AttendanceError $error) {
             if ($error->status === 401) {
                 throw new AuthenticationException('Unauthenticated.', ['web']);
@@ -114,6 +130,7 @@ final readonly class IntakePolicyAccess
     /** One idle admitted named read snapshot; no network, key, writer or path resolution. */
     private function state(#[\SensitiveParameter] ?LegacyUser $authenticated = null): array
     {
+        $authority = $authenticated === null ? null : $this->lifecycle?->capture($authenticated);
         try {
             $connection = $this->database->connection('chrono');
             if (! $connection instanceof SQLiteConnection || $connection->transactionLevel() !== 0) {
@@ -126,29 +143,35 @@ final readonly class IntakePolicyAccess
             $user = $authenticated === null ? null : (int) $authenticated->getKey();
             $version = $authenticated === null ? null : hash('sha256', $authenticated->getAuthPassword());
 
-            return $connection->transaction(function () use ($connection, $pdo, $user, $version): array {
+            return $connection->transaction(function () use ($connection, $pdo, $user, $version, $authority): array {
                 if ($connection->getRawPdo() !== $pdo) {
                     throw new LogicException;
                 }
                 if ($user !== null) {
-                    $statement = $pdo->prepare('SELECT role,auth_source,password FROM users WHERE id=?');
+                    $statement = $pdo->prepare($this->isV5()
+                        ? 'SELECT id,username,role,auth_source,password,account_status,auth_generation FROM users WHERE id=?'
+                        : 'SELECT role,auth_source,password FROM users WHERE id=?');
                     $statement->execute([$user]);
                     $actor = $statement->fetch(PDO::FETCH_ASSOC);
                     $statement->closeCursor();
                     if ($actor === false || $actor['auth_source'] !== 'local' || ! is_string($actor['password'])
-                        || $actor['password'] === '' || ! hash_equals($version, hash('sha256', $actor['password']))) {
+                        || $actor['password'] === '' || ! hash_equals($version, hash('sha256', $actor['password']))
+                        || ($this->isV5() && ($authority === null || ! $authority->matches($actor)))) {
                         throw new AuthenticationException('Unauthenticated.', ['web']);
                     }
                     if ($actor['role'] !== 'admin') {
                         throw new AuthorizationException('Nur die aktuelle lokale Verwaltung darf Aufnahmewege verwalten.');
                     }
+                    if ($this->isV5() && ! AccountLifecycleAuthority::locallyLoginEligibleAdmin($actor)) {
+                        throw new AuthenticationException('Unauthenticated.', ['web']);
+                    }
                 }
-                $policy = $this->policies->read($pdo);
+                $policy = $this->policies->read($pdo, $this->isV5());
                 if ($connection->getRawPdo() !== $pdo) {
                     throw new LogicException;
                 }
 
-                return compact('policy', 'user', 'version');
+                return compact('policy', 'user', 'version', 'authority');
             }, 1);
         } catch (AuthenticationException|AuthorizationException $error) {
             throw $error;

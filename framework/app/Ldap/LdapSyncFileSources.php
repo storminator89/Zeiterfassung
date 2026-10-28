@@ -28,13 +28,20 @@ final readonly class LdapSyncFileSources implements JsonSerializable
     /** Canonical PUBLIC DB admission metadata, not a DB read or key fingerprint generator. */
     public static function databaseProfileDigest(RuntimeAdmission $database): string
     {
-        return hash('sha256', json_encode([
+        $metadata = [
             'version' => 1, 'path' => $database->path, 'device' => $database->device, 'inode' => $database->inode,
             'schema_version' => $database->schemaVersion, 'schema_signature' => $database->schemaSignature,
             'foreign_keys' => $database->foreignKeys, 'journal_mode' => $database->journalMode, 'synchronous' => $database->synchronous,
             'schema_profile' => $database->schemaProfile, 'base_schema_signature' => $database->baseSchemaSignature,
             'user_audit_schema_signature' => $database->userAuditSchemaSignature,
-        ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+        ];
+        // V5 binds its fourth explicit lineage signature as well. Do not add
+        // a null field to V2/V3/V4: their historical digest bytes stay exact.
+        if ($database->schemaProfile === 'account-lifecycle-v5') {
+            $metadata['intake_policy_schema_signature'] = $database->intakePolicySchemaSignature;
+        }
+
+        return hash('sha256', json_encode($metadata, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
     }
 
     /** Call only inside the authorized collector operation; no key read. */

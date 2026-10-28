@@ -3,6 +3,7 @@
 namespace App\Chrono;
 
 use App\Auth\LegacyUser;
+use App\Auth\AccountLifecycleWebIdentity;
 use App\Auth\ExistingAccountUserProvider;
 use App\LegacyDatabase\AttendanceWriter;
 use Closure;
@@ -15,7 +16,8 @@ use LogicException;
 final class LegacyLocalWebAttendance implements LocalWebAttendance
 {
     /** @param Closure(): AttendanceWriter $writer Trusted operation-scope resolver. */
-    public function __construct(private readonly Factory $auth, private readonly Closure $writer) {}
+    public function __construct(private readonly Factory $auth, private readonly Closure $writer,
+        private readonly ?AccountLifecycleWebIdentity $lifecycle = null) {}
 
     public function transition(string $eventId, string $action, bool $confirm = false, ?int $expectedRecord = null): array
     {
@@ -35,6 +37,8 @@ final class LegacyLocalWebAttendance implements LocalWebAttendance
             $context = $provider->context($actor);
         }
 
+        $authority = $this->lifecycle?->capture($actor);
+
         // Resolve only after authentication. The application never constructs a
         // PDO, opens a path, binds a default connection or adopts a file here.
         $writer = ($this->writer)();
@@ -42,6 +46,10 @@ final class LegacyLocalWebAttendance implements LocalWebAttendance
             throw new LogicException('A trusted admitted operation-scoped attendance writer is required.');
         }
         $identifier = (int) $actor->getKey();
+
+        if ($authority !== null) {
+            return $writer->transitionWeb($authority, $eventId, $action, $confirm, $expectedRecord);
+        }
 
         // EXACT existing web namespace. Do not rotate it across migration,
         // recompute payloads/responses, catch errors or replay automatically.

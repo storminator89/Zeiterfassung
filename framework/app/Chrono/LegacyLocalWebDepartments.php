@@ -3,6 +3,7 @@
 namespace App\Chrono;
 
 use App\Auth\LegacyUser;
+use App\Auth\AccountLifecycleWebIdentity;
 use App\LegacyDatabase\AttendanceWriter;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -15,7 +16,8 @@ use LogicException;
 final class LegacyLocalWebDepartments implements LocalWebDepartments
 {
     /** @param Closure(): AttendanceWriter $writer Trusted operation-scope resolver. */
-    public function __construct(private readonly Factory $auth, private readonly Closure $writer) {}
+    public function __construct(private readonly Factory $auth, private readonly Closure $writer,
+        private readonly ?AccountLifecycleWebIdentity $lifecycle = null) {}
 
     public function apply(array $command): bool
     {
@@ -41,6 +43,7 @@ final class LegacyLocalWebDepartments implements LocalWebDepartments
         }
 
         // Never resolve a writer for a nonadmin or an unsupported/mixed command.
+        $authority = $this->lifecycle?->capture($actor);
         $writer = ($this->writer)();
         if (! $writer instanceof AttendanceWriter) {
             throw new LogicException('A trusted admitted operation-scoped attendance writer is required.');
@@ -51,9 +54,14 @@ final class LegacyLocalWebDepartments implements LocalWebDepartments
             'delete_department' => 'delete',
         };
 
-        return $writer->department(
-            (int) $actor->getKey(), $operation,
-            $command['department_id'] ?? null, $command['department_name'] ?? null,
-        );
+        try {
+            return $writer->department(
+                (int) $actor->getKey(), $operation,
+                $command['department_id'] ?? null, $command['department_name'] ?? null, $authority,
+            );
+        } catch (\AttendanceError $error) {
+            if ($authority !== null && $error->status === 401) { throw new AuthenticationException('Unauthenticated.', ['web']); }
+            throw $error;
+        }
     }
 }
