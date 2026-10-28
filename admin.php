@@ -679,8 +679,8 @@ include 'header.php';
                                         <td><?= htmlspecialchars($user->role) ?></td>
                                         <td><?= htmlspecialchars($user->department_name ?? '') ?></td>
                                         <td><?= htmlspecialchars($user->supervisor_name ?? '') ?></td>
-                                        <td><?= htmlspecialchars($user->regelarbeitszeit) ?></td>
-                                        <td><?= htmlspecialchars($user->ueberstunden) ?></td>
+                                        <td><?= h($user->regelarbeitszeit) ?></td>
+                                        <td><?= h($user->ueberstunden) ?></td>
                                         <td>
                                             <button class="btn btn-ghost btn-sm" onclick="editUser(<?= $user->id ?>)" title="<?= BUTTON_EDIT ?>">
                                                 <i class="fas fa-edit"></i>
