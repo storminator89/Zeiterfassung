@@ -5,8 +5,12 @@ namespace App\Http\Middleware;
 use App\Api\LegacyApiResponse;
 use Closure;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as IlluminateResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 final class LegacyApiWire
 {
@@ -39,11 +43,28 @@ final class LegacyApiWire
                 $response = $next($request);
             } catch (HttpResponseException $error) {
                 $response = $error->getResponse();
+            } catch (Throwable) {
+                // Scoped API failure boundary, never HTML/debug/SQL/path/key output.
+                // No credential fallback, retry or conversion of uncertainty to 401/429.
+                $response = LegacyApiResponse::json(['success' => false, 'message' => 'Internal server error'], 500);
+            }
+            // Laravel's Routing\Pipeline renders exceptions in EACH inner slice;
+            // those failures return instead of reaching the outer catch above.
+            // Its ResponseTrait marker preserves the original exception. Normalize
+            // ONLY this API stack, never ordinary/global route rendering, and keep
+            // intentional HttpResponseException responses (including Retry-After).
+            if (($response instanceof IlluminateResponse || $response instanceof JsonResponse
+                    || $response instanceof RedirectResponse)
+                && $response->exception instanceof Throwable
+                && ! $response->exception instanceof HttpResponseException) {
+                $response = LegacyApiResponse::json(['success' => false, 'message' => 'Internal server error'], 500);
             }
         }
         $response->headers->set('Access-Control-Allow-Origin', '*');
         $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE');
         $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        $response->headers->set('Cache-Control', 'no-store');
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
 
         return $response;
     }

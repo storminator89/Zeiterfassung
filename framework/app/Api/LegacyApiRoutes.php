@@ -7,14 +7,17 @@ use App\Http\Controllers\Api\LegacyApiLoginController;
 use App\Http\Controllers\Api\LegacyApiAttendanceController;
 use App\Http\Middleware\LegacyApiWire;
 use App\Http\Middleware\RequireLegacyApiToken;
+use App\Http\Middleware\RequireAdmittedLegacyApiProfile;
 use Illuminate\Routing\Router;
 
-/** Dormant candidate only. Never called from bootstrap or a shipped route file. */
+/** Single route definition; public composition requires the explicit admitted profile. */
 final class LegacyApiRoutes
 {
-    public function registerCandidate(Router $router): void
+    public function registerCandidate(Router $router, bool $requireAdmittedProfile = false): void
     {
-        $router->group(['prefix' => 'api.php', 'middleware' => [LegacyApiWire::class]], function (Router $router): void {
+        $middleware = [LegacyApiWire::class];
+        if ($requireAdmittedProfile) { $middleware[] = RequireAdmittedLegacyApiProfile::class; }
+        $router->group(['prefix' => 'api.php', 'middleware' => $middleware], function (Router $router): void {
             foreach (['users' => 'identity', 'timeentries' => 'entries'] as $path => $action) {
                 $route = $router->any($path, [LegacyApiReadController::class, $action])
                     ->middleware(RequireLegacyApiToken::class);
