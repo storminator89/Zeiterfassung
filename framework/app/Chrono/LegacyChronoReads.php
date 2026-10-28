@@ -574,6 +574,22 @@ final class LegacyChronoReads implements ChronoReads
         });
     }
 
+    public function adminTerminalModuleSettings(): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
+            if ($actor->role !== 'admin' || $actor->auth_source !== 'local') {
+                throw new AuthorizationException('Nur die lokale Verwaltung darf den Terminal-Modulstatus sehen.');
+            }
+            // Match attendance_enabled() and the native checkbox. The boolean
+            // reveals no environment value and never authorizes a later write.
+            $serverEnabled = getenv('APP_TERMINAL_ENABLED') === '1';
+            $row = $this->rows($pdo, 'SELECT enabled FROM terminal_settings WHERE id=1', [])[0] ?? [];
+
+            return ['server_enabled' => $serverEnabled,
+                'enabled' => $serverEnabled && (int) ($row['enabled'] ?? 0) === 1];
+        });
+    }
+
     public function adminTerminalCredentials(): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {

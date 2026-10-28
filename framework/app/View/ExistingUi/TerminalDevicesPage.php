@@ -16,5 +16,8 @@ final readonly class TerminalDevicesPage
         public array $credentials = [],
         public bool $credentialRevocationsEnabled = false,
         public bool $deviceRevocationsEnabled = false,
+        public bool $moduleSettingsEnabled = false,
+        public bool $moduleServerEnabled = false,
+        public bool $moduleEnabled = false,
     ) {}
 }
