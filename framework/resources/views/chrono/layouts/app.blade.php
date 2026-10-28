@@ -9,6 +9,7 @@
     <title>{{ $page->copy->text('TITLE') }}</title>
 
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
+    @if ($page->cspNonce === null)
     <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />
 
 
@@ -30,8 +31,10 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shepherd.js@10.0.1/dist/css/shepherd.css"/>
 
 
+    @endif
     <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
     <link rel="stylesheet" href="assets/css/app_ui.css">
+    @if ($page->cspNonce !== null) @include('chrono.partials.admin-credential-style') @endif
     @if ($page->interactions->home)<script src="assets/js/main.js" defer></script>@endif
     @if ($page->interactions->attendance)<script src="assets/js/chrono-local-web.js" defer></script>@endif
     @if ($page->activePage === 'supervisor.php')<script src="assets/vendor/chartjs/4.6.1/chart.umd.min.js" defer></script>@endif
@@ -261,7 +264,7 @@
     </style>
 </head>
 
-<body class="chrono-local-ui" data-attendance-state="{{ $page->state }}" data-attendance-user="{{ $page->userId }}" data-attendance-record="{{ $page->expectedRecord ?? '' }}">
+<body class="chrono-local-ui{{ $page->cspNonce !== null ? ' chrono-admin-credential' : '' }}" data-attendance-state="{{ $page->state }}" data-attendance-user="{{ $page->userId }}" data-attendance-record="{{ $page->expectedRecord ?? '' }}">
     <!-- Sidebar -->
     <div class="sidebar chrono-sidebar" id="sidebar">
         <div class="sidebar-shell">
@@ -316,7 +319,7 @@
                             <i class="fas fa-cog w-6" aria-hidden="true"></i>
                             <span>{{ $page->copy->text('NAV_SETTINGS') }}</span>
                         </a>
-                        <button type="button" class="sidebar-link w-full" onclick="showAboutModal()">
+                        <button type="button" class="sidebar-link w-full" @if ($page->cspNonce === null) onclick="showAboutModal()" @else data-local-about="open" @endif>
                             <i class="fas fa-info-circle w-6" aria-hidden="true"></i>
                             <span>{{ $page->copy->text('NAV_ABOUT') }}</span>
                         </button>
@@ -373,7 +376,7 @@
             <h3 class="font-bold text-lg">Über Quodara Chrono</h3>
             <p class="py-4">Quodara Chrono ist eine umfassende Zeiterfassungssoftware, die entwickelt wurde, um Ihre Arbeitszeiten effizient zu verwalten und zu verfolgen. Mit benutzerfreundlichen Funktionen und einem intuitiven Design hilft es Ihnen, Ihre Produktivität zu maximieren.</p>
             <div class="modal-action">
-                <button class="btn" onclick="closeAboutModal()">Schließen</button>
+                <button class="btn" @if ($page->cspNonce === null) onclick="closeAboutModal()" @else data-local-about="close" @endif>Schließen</button>
             </div>
         </div>
     </dialog>
@@ -415,12 +418,17 @@
         @endif
         @yield('content')
 
-    <script>
+    <script @if ($page->cspNonce !== null) nonce="{{ $page->cspNonce }}" @endif>
         function showAboutModal() {
             document.getElementById('aboutModal').showModal();
         }
 
         function closeAboutModal() { document.getElementById('aboutModal').close(); }
+        @if ($page->cspNonce !== null)
+        document.querySelectorAll('[data-local-about]').forEach(function (button) {
+            button.addEventListener('click', function () { button.dataset.localAbout === 'open' ? showAboutModal() : closeAboutModal(); });
+        });
+        @endif
 
         // Theme toggle functionality
         const themeToggle = document.getElementById('theme-toggle');

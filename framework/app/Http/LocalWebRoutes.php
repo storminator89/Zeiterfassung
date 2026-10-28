@@ -18,6 +18,8 @@ use App\Http\Controllers\LocalWebSupervisorController;
 use App\Http\Controllers\LocalWebTerminalDevicesController;
 use App\Http\Controllers\LocalWebWorkModelsController;
 use App\Http\Middleware\LegacyFormCsrf;
+use App\Http\Middleware\LdapSyncThrottle;
+use App\LegacyDatabase\AttendanceWriter;
 use App\Http\Middleware\RefreshLocalAccount;
 use App\LegacyDatabase\RuntimeDatabase;
 use Illuminate\Auth\AuthenticationException;
@@ -44,7 +46,7 @@ use Symfony\Component\HttpFoundation\Response;
 /** Explicit opt-in registrar. Never called by bootstrap/providers/default routes. */
 final class LocalWebRoutes
 {
-    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false, bool $includeSetup = false): void
+    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false, bool $includeSetup = false, bool $includeLdapSync = false): void
     {
         // No opt-in page may be registered against missing or replaced chart bytes.
         if ($includeSupervisor) {
@@ -65,6 +67,14 @@ final class LocalWebRoutes
                 throw new LogicException('First-admin setup requires an explicitly admitted writer.');
             }
         }
+        if ($includeLdapSync && (! $includeAdminPauseSettings
+            || $app->make('config')->get('app.debug') !== false
+            || ! $app->bound(RuntimeDatabase::class) || ! $app->make(RuntimeDatabase::class)->isIntakePolicyV4()
+            || ! $app->bound(AttendanceWriter::class)
+            || ! $app->make(CacheFactory::class)->store('file')->getStore() instanceof FileStore)) {
+            throw new LogicException('LDAP HTTP sync requires explicit writable V4, non-debug Admin composition and persistent file cache.');
+        }
+        $app->make('config')->set('chrono_ldap_sync.http_enabled', $includeLdapSync);
         self::requireSessionBlocking($app);
         $router = $app->make(Router::class);
         // Keep Laravel's middleware sorter from moving identity ahead of CSRF.
@@ -94,7 +104,7 @@ final class LocalWebRoutes
             if (($includeSettings && $request->path() === 'settings.php')
                 || ($includeAdminPauseSettings && $request->path() === 'admin.php')) {
                 return $request->isMethod('POST')
-                    ? new Response('Please sign in again.', 401, ['Content-Type' => 'text/plain; charset=UTF-8'])
+                    ? new Response('Please sign in again.', 401, ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store'])
                     : new RedirectResponse('login.php');
             }
 
@@ -121,7 +131,7 @@ final class LocalWebRoutes
         $router->group(['middleware' => [
             EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class,
             ShareErrorsFromSession::class, LegacyFormCsrf::class, SubstituteBindings::class,
-        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeRegistration, $includeSetup): void {
+        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeRegistration, $includeSetup, $includeLdapSync): void {
             $router->get('login.php', [LocalWebSessionController::class, 'create'])->name('login');
             $router->post('login.php', [LocalWebSessionController::class, 'store'])->middleware('throttle:chrono-web-login');
             if ($includeSetup) {
@@ -132,7 +142,7 @@ final class LocalWebRoutes
                 $router->get('register.php', [LocalWebRegistrationController::class, 'create']);
                 $router->post('register.php', [LocalWebRegistrationController::class, 'store'])->middleware('throttle:chrono-web-register');
             }
-            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot): void {
+            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeLdapSync): void {
                 foreach (['/', 'index.php', 'attendance.php'] as $path) {
                     $router->get($path, [LocalWebAttendanceController::class, 'page']);
                     $router->post($path, [LocalWebAttendanceController::class, 'transition']);
@@ -161,7 +171,8 @@ final class LocalWebRoutes
                 }
                 if ($includeAdminPauseSettings) {
                     $router->get('admin.php', [LocalWebAdminPauseSettingsController::class, 'index']);
-                    $router->post('admin.php', [LocalWebAdminPauseSettingsController::class, 'store']);
+                    $adminPost = $router->post('admin.php', [LocalWebAdminPauseSettingsController::class, 'store']);
+                    if ($includeLdapSync) { $adminPost->middleware(LdapSyncThrottle::class); }
                     $router->get('get_user.php', [LocalWebAdminPauseSettingsController::class, 'user']);
                 }
                 if ($includeTerminalDevices) {

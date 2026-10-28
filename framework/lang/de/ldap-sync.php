@@ -1,0 +1,27 @@
+<?php
+
+return [
+    "title" => "LDAP-Synchronisierung",
+    "notice" => "Nur das zugelassene Ziel kann verwendet werden. Die gespeicherte Aufnahmefreigabe wird vor und nach dem Verzeichnislauf geprüft.",
+    "disabled" => "LDAP-Synchronisierung ist durch die Aufnahmeauswahl deaktiviert. Die lokale Verwaltung kann sie hier wieder freigeben.",
+    "not_ready" => "LDAP-HTTP-Verbindung oder privates Connectorprofil ist noch nicht zugelassen. Es werden keine Binddaten abgefragt.",
+    "unconfirmed" => "Das vorige Synchronisierungsergebnis konnte nicht bestätigt werden. Gespeicherten Stand prüfen; nicht automatisch wiederholen.",
+    "host" => "LDAP-Host (fest zugelassen)",
+    "port" => "LDAP-Port",
+    "bind_user" => "LDAP-Bind-DN",
+    "bind_password" => "LDAP-Bind-Passwort",
+    "base_dn" => "LDAP-Base-DN",
+    "submit" => "LDAP synchronisieren",
+    "password_hint" => "Binddaten werden nicht vorausgefüllt. Passwort unverändert eingeben; höchstens 65536 Bytes. Zieländerungen benötigen eine gesonderte Zulassung.",
+    "success" => "LDAP-Konfiguration und importierbare Identitäten wurden synchronisiert.",
+    "conflicts" => "LDAP-Identitäten synchronisiert. Bei :count Managerzuordnungen besteht Klärungsbedarf; betroffene bisherige Beziehungen bleiben erhalten.",
+    "truncated" => "Angezeigt: :shown von :total Konflikten.",
+    "account" => "Konto #:id",
+    "reason_ambiguous_identity" => "Mehrdeutige LDAP-Identität",
+    "reason_invalid_identity_dn" => "Ungültiger Identitäts-DN oder DN-Parser nicht verfügbar",
+    "reason_invalid_manager_dn" => "Ungültiger Manager-DN oder DN-Parser nicht verfügbar",
+    "reason_unknown_manager" => "Manager nicht eindeutig im aktuellen Import",
+    "reason_ambiguous_manager" => "Mehrdeutiger Manager",
+    "reason_self_manager" => "Selbstzuordnung",
+    "reason_cyclic_manager" => "Zyklische Managerbeziehung",
+];

@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\FreshWeb\FreshWebConfiguration;
+use App\Ldap\AdmittedLdapSettingsCipher;
+use App\Ldap\LdapSyncTransport;
 use App\Http\LocalWebRoutes;
 use App\Http\Middleware\RequireFreshWebProfile;
 use App\LegacyDatabase\AttendanceWriter;
@@ -21,7 +23,16 @@ final class FreshWebServiceProvider extends ServiceProvider
     {
         $profile = FreshWebConfiguration::fromApplication($this->app);
         if ($profile === null) { return; }
+        if ($profile->ldapSyncProfile() !== null
+            && ($this->app->bound(LdapSyncTransport::class) || $this->app->bound(AdmittedLdapSettingsCipher::class))) {
+            throw new LogicException('Fresh LDAP sync must not replace another transport/root profile.');
+        }
         $profile->configure($this->app->make('config'));
+        if (($sync = $profile->ldapSyncProfile()) !== null) {
+            // Pure lazy bindings; authorized orchestration resolves these after its fresh policy check.
+            $this->app->scoped(LdapSyncTransport::class, fn () => $sync->transport());
+            $this->app->scoped(AdmittedLdapSettingsCipher::class, fn () => $sync->cipher());
+        }
         $this->app->instance(FreshWebConfiguration::class, $profile);
     }
 
@@ -51,10 +62,11 @@ final class FreshWebServiceProvider extends ServiceProvider
                 workModels: true, history: true, supervisor: true, dashboard: true, adminPauseSettings: true,
             ));
             // Terminal protocol/key and secret-bearing DB-download capabilities are NOT inferred.
-            $router->group(['middleware' => [RequireFreshWebProfile::class]], function () use ($config): void {
+            $router->group(['middleware' => [RequireFreshWebProfile::class]], function () use ($config, $profile): void {
                 LocalWebRoutes::register($this->app, includeHistory: true, includeSupervisor: true, includeDashboard: true,
                     includeCsv: true, includeSettings: true, includeAdminPauseSettings: true,
-                    includeRegistration: true, includeSetup: $config->get('chrono_setup.enabled') === true);
+                    includeRegistration: true, includeSetup: $config->get('chrono_setup.enabled') === true,
+                    includeLdapSync: $profile->ldapSyncProfile() !== null);
             });
         });
     }

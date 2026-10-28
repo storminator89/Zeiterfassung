@@ -1,0 +1,27 @@
+<?php
+
+return [
+    "title" => "LDAP synchronization",
+    "notice" => "Only the admitted target can be used. The persisted intake policy is checked before and after directory collection.",
+    "disabled" => "LDAP synchronization is disabled by the intake policy. Local administration can enable it again here.",
+    "not_ready" => "LDAP HTTP access or the private connector profile is not admitted yet. No bind credentials are requested.",
+    "unconfirmed" => "The previous synchronization result could not be confirmed. Inspect the stored state; do not retry automatically.",
+    "host" => "LDAP host (fixed admitted target)",
+    "port" => "LDAP port",
+    "bind_user" => "LDAP bind DN",
+    "bind_password" => "LDAP bind password",
+    "base_dn" => "LDAP base DN",
+    "submit" => "Synchronize LDAP",
+    "password_hint" => "Bind credentials are never prefilled. Enter the password unchanged, at most 65536 bytes. Target changes require separate admission.",
+    "success" => "LDAP settings and importable identities were synchronized.",
+    "conflicts" => "LDAP identities synchronized. :count manager relationships require review; affected previous relationships are retained.",
+    "truncated" => "Showing :shown of :total conflicts.",
+    "account" => "Account #:id",
+    "reason_ambiguous_identity" => "Ambiguous LDAP identity",
+    "reason_invalid_identity_dn" => "Invalid identity DN or unavailable DN parser",
+    "reason_invalid_manager_dn" => "Invalid manager DN or unavailable DN parser",
+    "reason_unknown_manager" => "Manager not uniquely present in this import",
+    "reason_ambiguous_manager" => "Ambiguous manager",
+    "reason_self_manager" => "Self-management",
+    "reason_cyclic_manager" => "Cyclic manager relationship",
+];

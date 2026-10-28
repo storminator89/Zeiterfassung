@@ -6,6 +6,7 @@ use App\Accounts\IntakeMethod;
 use App\Accounts\IntakePolicyStore;
 use App\Auth\LegacyUser;
 use App\Ldap\AdmittedLdapSettingsCipher;
+use App\Ldap\LdapSyncTarget;
 use App\Ldap\LdapSyncTransport;
 use App\Ldap\MaterializedLdapImport;
 use App\LegacyDatabase\AttendanceWriter;
@@ -39,21 +40,29 @@ final readonly class LegacyLocalWebLdapSync implements LocalWebLdapSync
         private Closure $writer,
     ) {}
 
+    public function targetForForm(): LdapSyncTarget
+    {
+        $authenticated = $this->authenticatedLocalAdmin();
+        try {
+            $this->authorizeSnapshot($authenticated);
+            // The snapshot is closed before resolving the pure target profile.
+            // No collect, cipher factory/key or writer is touched on this path.
+            $transport = $this->resolve($this->transport, LdapSyncTransport::class);
+            try {
+                return $transport->target();
+            } catch (Throwable) {
+                throw new RuntimeException('LDAP synchronization target admission refused.');
+            }
+        } catch (AuthenticationException|AuthorizationException $error) {
+            throw $error;
+        } catch (Throwable) {
+            throw new RuntimeException('LDAP synchronization form availability could not be confirmed.');
+        }
+    }
+
     public function synchronize(#[\SensitiveParameter] array $command): array
     {
-        try {
-            $authenticated = $this->auth->guard('web')->user();
-        } catch (Throwable) {
-            throw new RuntimeException('LDAP synchronization identity could not be confirmed.');
-        }
-        if (! $authenticated instanceof LegacyUser || (int) $authenticated->getKey() < 1
-            || $authenticated->auth_source !== 'local' || ! is_string($authenticated->getAuthPassword())
-            || ! $authenticated->getAuthPassword()) {
-            throw new AuthenticationException('Unauthenticated.', ['web']);
-        }
-        if ($authenticated->role !== 'admin') {
-            throw new AuthorizationException('Only local administration may synchronize LDAP.');
-        }
+        $authenticated = $this->authenticatedLocalAdmin();
         if (count($command) !== count(self::COMMAND_FIELDS)
             || array_diff(array_keys($command), self::COMMAND_FIELDS) !== []
             || ($command['sync_ldap'] ?? null) !== '1') {
@@ -109,6 +118,25 @@ final readonly class LegacyLocalWebLdapSync implements LocalWebLdapSync
             // No SQL, target, staff data, root-source error or previous exception.
             throw new RuntimeException('LDAP synchronization result could not be confirmed.');
         }
+    }
+
+    private function authenticatedLocalAdmin(): LegacyUser
+    {
+        try {
+            $authenticated = $this->auth->guard('web')->user();
+        } catch (Throwable) {
+            throw new RuntimeException('LDAP synchronization identity could not be confirmed.');
+        }
+        if (! $authenticated instanceof LegacyUser || (int) $authenticated->getKey() < 1
+            || $authenticated->auth_source !== 'local' || ! is_string($authenticated->getAuthPassword())
+            || ! $authenticated->getAuthPassword()) {
+            throw new AuthenticationException('Unauthenticated.', ['web']);
+        }
+        if ($authenticated->role !== 'admin') {
+            throw new AuthorizationException('Only local administration may synchronize LDAP.');
+        }
+
+        return $authenticated;
     }
 
     /** Fixed read snapshot, never a public PDO/callback or transaction around LDAP. */

@@ -20,6 +20,10 @@ use App\Chrono\LocalWebCorrections;
 use App\Chrono\LocalWebCarryIn;
 use App\Chrono\LocalWebDepartments;
 use App\Chrono\LocalWebAdminUsers;
+use App\Chrono\LocalWebLdapSync;
+use App\Chrono\LegacyLocalWebLdapSync;
+use App\Ldap\LdapSyncTransport;
+use App\Ldap\AdmittedLdapSettingsCipher;
 use App\Chrono\LocalWebWorkModels;
 use App\Chrono\LocalWebPauseSettings;
 use App\Chrono\LegacyLocalWebPauseSettings;
@@ -41,6 +45,22 @@ class AppServiceProvider extends ServiceProvider
                 if (! $app->bound(AttendanceWriter::class)) {
                     throw new LogicException('No admitted operation-scoped first-admin writer is configured.');
                 }
+                return $app->make(AttendanceWriter::class);
+            },
+        ));
+        // Pure/lazy service only. No default directory, root loader or connection.
+        $this->app->scoped(LocalWebLdapSync::class, fn ($app) => new LegacyLocalWebLdapSync(
+            $app->make('auth'), $app->make('db'), new IntakePolicyStore,
+            function () use ($app): LdapSyncTransport {
+                if (! $app->bound(LdapSyncTransport::class)) { throw new LogicException('No admitted LDAP sync transport.'); }
+                return $app->make(LdapSyncTransport::class);
+            },
+            function () use ($app): AdmittedLdapSettingsCipher {
+                if (! $app->bound(AdmittedLdapSettingsCipher::class)) { throw new LogicException('No admitted existing LDAP settings root.'); }
+                return $app->make(AdmittedLdapSettingsCipher::class);
+            },
+            function () use ($app): AttendanceWriter {
+                if (! $app->bound(AttendanceWriter::class)) { throw new LogicException('No admitted LDAP sync writer.'); }
                 return $app->make(AttendanceWriter::class);
             },
         ));

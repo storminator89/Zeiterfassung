@@ -1,0 +1,27 @@
+<?php
+
+return [
+    "title" => "LDAP 同步",
+    "notice" => "只能使用已核准的目標；讀取目錄前後都會檢查儲存的帳戶加入政策。",
+    "disabled" => "帳戶加入政策已停用 LDAP 同步。本機管理員仍可在此重新啟用。",
+    "not_ready" => "LDAP HTTP 存取或私有連接器設定尚未核准；目前不會要求繫結憑證。",
+    "unconfirmed" => "無法確認上次同步結果。請檢查儲存狀態，不要自動重試。",
+    "host" => "LDAP 主機（已核准的固定目標）",
+    "port" => "LDAP 連接埠",
+    "bind_user" => "LDAP 繫結 DN",
+    "bind_password" => "LDAP 繫結密碼",
+    "base_dn" => "LDAP 基底 DN",
+    "submit" => "同步 LDAP",
+    "password_hint" => "不會預填繫結憑證。請原樣輸入密碼，最多 65536 位元組。變更目標須另外核准。",
+    "success" => "已同步 LDAP 設定及可匯入的身分。",
+    "conflicts" => "已同步 LDAP 身分；:count 個主管關係仍須確認，受影響的原有關係保持不變。",
+    "truncated" => "顯示 :total 個衝突中的 :shown 個。",
+    "account" => "帳戶 #:id",
+    "reason_ambiguous_identity" => "LDAP 身分不明確",
+    "reason_invalid_identity_dn" => "身分 DN 無效或 DN 解析器不可用",
+    "reason_invalid_manager_dn" => "主管 DN 無效或 DN 解析器不可用",
+    "reason_unknown_manager" => "本次匯入中無法唯一確認主管",
+    "reason_ambiguous_manager" => "主管不明確",
+    "reason_self_manager" => "指定自己為主管",
+    "reason_cyclic_manager" => "主管關係形成循環",
+];

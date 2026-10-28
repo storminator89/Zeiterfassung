@@ -3,6 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
+use App\Chrono\LocalWebLdapSync;
+use App\Http\AdminCredentialDocument;
+use App\View\ExistingUi\LdapSyncForm;
+use App\View\ExistingUi\LdapSyncOutcome;
+use Illuminate\Contracts\Config\Repository;
 use App\Accounts\IntakePolicyAccess;
 use App\Chrono\LocalWebDepartments;
 use App\Chrono\LocalWebAdminUsers;
@@ -33,6 +38,8 @@ final class LocalWebAdminPauseSettingsController extends Controller
         private Factory $auth,
         private Interactions $interactions,
         private ?IntakePolicyAccess $intake = null,
+        private ?LocalWebLdapSync $ldapSync = null,
+        private ?Repository $config = null,
     ) {}
 
     public function index(Request $request): Response
@@ -75,6 +82,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
             ...LocalWebDepartments::COMMAND_FIELDS, ...LocalWebAdminUsers::COMMAND_FIELDS];
         if ($this->intake?->isV4() === true) {
             $supported['update_intake_policy'] = ['update_intake_policy', 'revision', 'manual_enabled', 'ldap_sync_enabled', 'registration_enabled'];
+            if ($this->ldapHttpEnabled()) { $supported['sync_ldap'] = LocalWebLdapSync::COMMAND_FIELDS; }
         }
         $actions = [];
         foreach ($supported as $flag => $fields) {
@@ -87,6 +95,10 @@ final class LocalWebAdminPauseSettingsController extends Controller
             // Reject all other/mixed Admin actions before reads, writes or preferences.
             return new Response('Diese Verwaltungsaktion ist in der Laravel-Ansicht noch nicht verbunden.', 400,
                 ['Content-Type' => 'text/plain; charset=UTF-8']);
+        }
+
+        if ($actions[0] === 'sync_ldap') {
+            return $this->synchronizeLdap($request, $form);
         }
 
         if ($actions[0] === 'update_intake_policy') {
@@ -114,6 +126,54 @@ final class LocalWebAdminPauseSettingsController extends Controller
             return $this->page($request,
                 'Pauseneinstellungen konnten nicht gespeichert werden. Bitte neu laden und den gespeicherten Stand prüfen.');
         }
+    }
+
+    private function ldapHttpEnabled(): bool
+    {
+        return $this->intake?->isV4() === true && $this->ldapSync !== null
+            && $this->config?->get('chrono_ldap_sync.http_enabled', false) === true;
+    }
+
+    private function synchronizeLdap(#[\SensitiveParameter] Request $request, #[\SensitiveParameter] array $form): Response|RedirectResponse
+    {
+        // Never feed a secret-bearing error into a debug exception page.
+        if (! $this->ldapHttpEnabled() || $this->config?->get('app.debug') !== false) {
+            return $this->ldapFailure('LDAP synchronization HTTP composition is unavailable.', 503);
+        }
+        try {
+            $plan = $this->ldapSync->synchronize(array_diff_key($form, array_flip(['_token', 'csrf_token'])));
+        } catch (AuthenticationException $error) {
+            throw $error;
+        } catch (AuthorizationException) {
+            return $this->ldapFailure('LDAP synchronization is not authorized or is disabled.', 403);
+        } catch (\AttendanceError $error) {
+            return $this->ldapFailure('Please sign in again.', $error->status === 401 ? 401 : 503);
+        } catch (InvalidArgumentException) {
+            return $this->ldapFailure('Invalid LDAP synchronization fields or target.', 400);
+        } catch (DomainException) {
+            return $this->ldapFailure('LDAP synchronization refused: reload the current policy and inspect account-name conflicts.', 409);
+        } catch (Throwable) {
+            return $this->ldapFailure('LDAP synchronization could not be confirmed. Reload and inspect the stored state; do not retry automatically.', 503);
+        }
+        try {
+            // The service has returned after COMMIT. Every subsequent failure is
+            // unconfirmed, never a validation/permission failure or rollback claim.
+            $outcome = LdapSyncOutcome::fromCommittedPlan($plan);
+            $actor = $this->auth->guard('web')->user();
+            $id = $actor === null ? 0 : (int) $actor->getAuthIdentifier();
+            if ($id < 1) { throw new \RuntimeException; }
+            $request->session()->flash('chrono_ldap_sync_result', ['actor_id' => $id, 'display' => $outcome->toDisplay()]);
+
+            return new RedirectResponse('admin.php#ldap-sync', 303, ['Cache-Control' => 'no-store']);
+        } catch (Throwable) {
+            return $this->ldapFailure('LDAP synchronization could not be confirmed. Reload and inspect the stored state; do not retry automatically.', 503);
+        }
+    }
+
+    private function ldapFailure(string $text, int $status): Response
+    {
+        return new Response($text, $status, ['Content-Type' => 'text/plain; charset=UTF-8',
+            'Cache-Control' => 'no-store', 'X-Content-Type-Options' => 'nosniff', 'Referrer-Policy' => 'no-referrer']);
     }
 
     private function intakePolicy(Request $request, array $form): Response|RedirectResponse
@@ -179,6 +239,10 @@ final class LocalWebAdminPauseSettingsController extends Controller
 
     private function page(Request $request, ?string $error = null, ?string $errorKey = null, ?string $successKey = null): Response
     {
+        $v4 = $this->intake?->isV4() === true;
+        if ($v4 && $this->config?->get('app.debug') !== false) {
+            return $this->ldapFailure('Private non-debug Admin document composition is required.', 503);
+        }
         // This reader independently reloads and checks the current local Admin
         // before returning even a read-only configuration row.
         $rules = $this->reads->adminPauseSettings();
@@ -194,28 +258,70 @@ final class LocalWebAdminPauseSettingsController extends Controller
         // Native scalar cast, including zero/negative/out-of-range pages; no new clamping.
         $users = $this->reads->adminUsersPage($search, (int) $requestedPage);
         $policy = $this->intake?->current();
+        $ldapForm = null;
+        $ldapOutcome = null;
+        $ldapNotice = null;
+        if ($policy !== null) {
+            if (! $policy->ldapSyncEnabled) {
+                $ldapNotice = 'disabled'; // All-off Admin recovery must remain reachable, no factory call.
+            } elseif (! $this->ldapHttpEnabled()) {
+                $ldapNotice = 'not_ready';
+            } else {
+                try {
+                    $ldapForm = LdapSyncForm::fromTarget($this->ldapSync->targetForForm());
+                } catch (AuthenticationException $error) {
+                    throw $error;
+                } catch (AuthorizationException $error) {
+                    // Distinguish a policy-off race from lost Admin authority.
+                    $policy = $this->intake->current();
+                    if ($policy === null || $policy->ldapSyncEnabled) { throw $error; }
+                    $ldapNotice = 'disabled';
+                } catch (Throwable) {
+                    $ldapNotice = 'not_ready'; // Fixed text, no private resolver diagnostics.
+                }
+            }
+        }
         $intakePolicy = $policy === null ? null : [
             'revision' => $policy->revision, 'manual_enabled' => $policy->manualEnabled,
             'ldap_sync_enabled' => $policy->ldapSyncEnabled, 'registration_enabled' => $policy->registrationEnabled,
         ];
         $actor = $this->auth->guard('web')->user();
+        if ($v4) {
+            $result = $request->session()->pull('chrono_ldap_sync_result');
+            if (is_array($result) && count($result) === 2 && ($result['actor_id'] ?? null) === (int) $actor->getAuthIdentifier()
+                && is_array($result['display'] ?? null)) {
+                try { $ldapOutcome = LdapSyncOutcome::fromDisplay($result['display']); }
+                catch (Throwable) { $ldapNotice = 'unconfirmed'; }
+            }
+        }
+        $nonce = $v4 ? AdminCredentialDocument::nonce() : null;
         require_once dirname(__DIR__, 4).'/lib/language.php';
         $language = \valid_language($request->query('lang', $request->session()->get('lang', 'de')));
         $request->session()->put('lang', $language);
         $copy = new Copy($language);
 
-        return response()->view('chrono.admin-pause-settings', [
+        $response = response()->view('chrono.admin-pause-settings', [
             'page' => new AttendancePage(
                 $copy, (int) $actor->getAuthIdentifier(), $actor->username,
                 $actor->role, $this->reads->attendanceStatus(),
                 interactions: $this->interactions, activePage: 'admin.php',
+                cspNonce: $nonce,
             ),
             'adminPauseSettings' => new AdminPauseSettingsPage(
                 $rules, $errorKey === null ? $error : $copy->text($errorKey),
                 $this->interactions->adminPauseSettings, $departments, $users, $supervisors,
                 $successKey === null ? null : $copy->text($successKey),
                 intakePolicy: $intakePolicy,
+                ldapSyncForm: $ldapForm, ldapSyncOutcome: $ldapOutcome, ldapSyncNotice: $ldapNotice,
             ),
         ], 200, ['Cache-Control' => 'no-store']);
+        if ($nonce !== null) {
+            foreach (AdminCredentialDocument::headers($nonce) as $name => $value) {
+                // Multiple CSPs intersect: never replace an existing stricter one.
+                $response->headers->set($name, $value, $name !== 'Content-Security-Policy');
+            }
+        }
+
+        return $response;
     }
 }
