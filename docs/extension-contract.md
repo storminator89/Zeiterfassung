@@ -10,12 +10,14 @@
 ## Matched contract
 
 The client reads authenticated `GET /api.php/attendance` as top-level
-`{success:true,state:'absent'|'working'|'paused',record_id:integer|null}`.
+`{success:true,state:'absent'|'working'|'paused',record_id:integer|null,record_id_string:string|null}`.
+The added exact string is preferred when present; legacy servers without it retain
+the existing safe-integer-only mode. A present malformed string fails closed.
 This endpoint is a **separately reviewed dependency**, not present in the source baseline. It must expose the existing authoritative `attendance_status` helper under the existing JWT guard. Until it is integrated, these clients fail closed instead of guessing pause state from time-entry rows. Do not release this client packet without that dependency.
 
-Start/pause/resume use `POST /api.php/attendance`; end uses the existing record-matched `POST /api.php/setendzeit`. Requests contain an action, a secure event ID, Boolean pause-end confirmation, and the expected record ID for end. No client timestamps, invented pause totals or locally calculated booking status are sent. Acknowledgements must match the event ID and top-level `record_id` and contain a recognised server state. A fresh authoritative read follows an acknowledgement, including a cached replay, or a definitive conflict.
+Start/pause/resume use `POST /api.php/attendance`; end uses the existing record-matched `POST /api.php/setendzeit`. Requests contain an action, a secure event ID and Boolean pause-end confirmation. With the added server metadata, new pause/resume requests capture optional `expected_record` as an exact string, and new end requests use string `id`. Start remains unbound. Older-server mode preserves the old request shapes: unbound pauses and safe numeric end ID, explicitly labelled in the existing status line. No client timestamps, invented pause totals or locally calculated booking status are sent. Acknowledgements must match the event ID and top-level `record_id` and contain a recognised server state. A fresh authoritative read follows an acknowledgement, including a cached replay, or a definitive conflict.
 
-The exact event is saved before sending and restored on popup restart. An uncertain response blocks different actions and exposes an explicit same-event retry. The event ID and confirmation payload are unchanged on retry. A confirmed/rejected event is cleared; 5xx, invalid/mismatched acknowledgements and response loss retain the event. End during a pause requires explicit confirmation. These guarantees rely on the existing server's transaction, ownership and idempotency checks; mocks are not a substitute for deployed integration testing.
+The exact event is saved before sending and restored on popup restart. An uncertain response blocks different actions and exposes an explicit same-event retry. The event ID, endpoint, body types, confirmation and any captured record binding are unchanged on retry; old pending bodies are never augmented or rebound. Both legacy numeric-end and new exact-string pending shapes are recognized. Matching-origin/account pending objects with malformed new binding/string-ID fields remain saved and block actions/retry instead of being silently deleted; other legacy-invalid/foreign-account cleanup remains unchanged. A receipt may carry an exact affected `record_id_string`, including after end; it never supplies the next current binding. New actions remain disabled until the following fresh status succeeds. A confirmed/rejected event is cleared; 5xx, invalid/mismatched acknowledgements and response loss retain the event. End during a pause requires explicit confirmation. These guarantees rely on the existing server's transaction, ownership and idempotency checks; mocks are not a substitute for deployed integration testing.
 
 ## Credential and destination handling
 
@@ -41,6 +43,22 @@ git diff --check
 Result: **34/34 focused tests passed**, plus JavaScript syntax and whitespace checks. Each bundle covers HTTPS/target validation, password/token migration, explicit synthetic login without password persistence, start, pause, resume, cancelled/confirmed end during pause, repeated clicks, popup restart, lost start/end responses, exact event replay, refresh after a stale replay, conflict, 503, malformed/mismatched acknowledgement, storage failure, missing status dependency, token expiry/account binding, logout/server change, late responses, text-safe server messages and failed account-switch lookup. One focused deferred-storage regression additionally covers both controllers' actual initialization continuation after logout and server change: stale snapshots cannot restore API/auth state or trigger automatic login. Static checks compare controller parity, markup hooks, existing permissions and wrapping/hidden-control CSS.
 
 Independent review found that the original `49b9c0bf7736a2abad5f1fb703c8b3da11d39943` startup storage read was not generation-bound despite its 33 passing cases. The corrective candidate binds both storage initialization and its automatic-login continuation to the captured session generation. The new focused regression fails against that historical controller (stale API restored after logout) and passes with the correction; the full focused suite remains green. No pending-event, account, target, mutation or other control semantics were changed by this correction.
+
+## Additive #36 follow-up on main f69fee3
+
+This source follow-up uses the shared fixed metadata formatter, optional direct
+API binding and the two byte-identical popup controllers. It changes no permission,
+endpoint, login/token/storage-key/account-switch policy or HTML/CSS/UI structure.
+The older-server safe-numeric mode is deliberately weaker: it cannot prevent
+stale unbound pause actions. Already stored unbound pending requests retain their
+old hash semantics; unknown legacy-event reconciliation remains #57, not solved by
+adding today's ID. Receipt projection never changes stored response/hash bytes.
+
+Only one coarse invented memory/actual-popup-VM binding and pending proof plus
+syntax/source preservation is used for this follow-up, not a new fine-grained
+suite. The historical 34-case proof above was not rerun or expanded. Existing
+real-installation, browser/CORS, distribution, token and operational gates remain.
+No actual request, key, account, browser, server, new CI or deployment action.
 
 ## Explicitly not verified
 

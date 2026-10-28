@@ -141,7 +141,7 @@ function createNewWorkEntry($conn, $user_id) {
     $data=json_decode(file_get_contents('php://input'),true);
     if (!is_array($data)) { abort_request(400,'Invalid request.'); }
     if (!empty($data['endzeit']) || !empty($data['pause'])) { abort_request(409,'Use a correction request for historical entries.'); }
-    attendance_json(fn()=>attendance_transition($conn,(int)$user_id,'api:'.$user_id,$data['event_id']??bin2hex(random_bytes(16)),'start'));
+    attendance_json(fn()=>attendance_record_id_string(attendance_transition($conn,(int)$user_id,'api:'.$user_id,$data['event_id']??bin2hex(random_bytes(16)),'start')));
 }
 
 /**
@@ -160,7 +160,7 @@ function createNewWorkEntry($conn, $user_id) {
  * )
  */
 function setEndzeit($conn, $input, $user_id) {
-    attendance_json(fn()=>attendance_transition($conn,(int)$user_id,'api:'.$user_id,$input['event_id']??bin2hex(random_bytes(16)),'end',($input['confirm_end_pause']??false)===true,(int)($input['id']??0)));
+    attendance_json(fn()=>attendance_record_id_string(attendance_transition($conn,(int)$user_id,'api:'.$user_id,$input['event_id']??bin2hex(random_bytes(16)),'end',($input['confirm_end_pause']??false)===true,(int)($input['id']??0))));
 }
 
 /**
@@ -353,7 +353,7 @@ if ($method === 'POST') {
         case $basePath . '/attendance':
             $tokenData = validateToken();
             $input = json_decode(file_get_contents('php://input'), true);
-            attendance_json(fn() => attendance_transition($conn, (int)$tokenData['user_id'], 'api:'.$tokenData['user_id'], $input['event_id'] ?? '', $input['action'] ?? '', ($input['confirm_end_pause'] ?? false) === true));
+            attendance_json(fn() => attendance_record_id_string(attendance_transition($conn, (int)$tokenData['user_id'], 'api:'.$tokenData['user_id'], $input['event_id'] ?? '', $input['action'] ?? '', ($input['confirm_end_pause'] ?? false) === true, attendance_expected_record(is_array($input) ? $input : []))));
         case $basePath . '/workentry':
             $tokenData = validateToken();
             createNewWorkEntry($conn, $tokenData['user_id']);
@@ -375,7 +375,7 @@ if ($method === 'POST') {
             attendance_json(function () use ($conn, $tokenData) {
                 $conn->beginTransaction();
                 try {
-                    $status = ['success' => true] + attendance_status($conn, (int)$tokenData['user_id']);
+                    $status = attendance_record_id_string(['success' => true] + attendance_status($conn, (int)$tokenData['user_id']));
                     $conn->commit();
                     return $status;
                 } catch (Throwable $error) {

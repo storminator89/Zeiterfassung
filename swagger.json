@@ -159,7 +159,8 @@
                   "local_time": "2026-10-27T09:00:00+01:00",
                   "event_id": "example-start-000001",
                   "record_id": 42,
-                  "state": "working"
+                  "state": "working",
+                  "record_id_string": "42"
                 }
               }
             }
@@ -244,8 +245,18 @@
                 ],
                 "properties": {
                   "id": {
-                    "type": "integer",
-                    "minimum": 1
+                    "oneOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      {
+                        "type": "string",
+                        "pattern": "^[1-9][0-9]*$",
+                        "maxLength": 19
+                      }
+                    ],
+                    "description": "Recommended matching record ID, including exact string from status. Native legacy PHP integer coercion remains unchanged; this schema is not a new strict alias validator."
                   },
                   "event_id": {
                     "type": "string",
@@ -284,7 +295,8 @@
                       "local_time": "2026-10-27T17:00:00+01:00",
                       "event_id": "example-end-00000001",
                       "record_id": 42,
-                      "state": "absent"
+                      "state": "absent",
+                      "record_id_string": "42"
                     }
                   },
                   "accepted_end_overlap": {
@@ -300,7 +312,8 @@
                       "overlap_record_ids": [
                         43
                       ],
-                      "overlap_warning": "Arbeitsende gespeichert. Arbeitszeit überschneidet sich mit einer ganztägigen Abwesenheit. Betroffene Summen sind bis zur manuellen Klärung nicht abschließend. Bitte Korrekturanträge prüfen."
+                      "overlap_warning": "Arbeitsende gespeichert. Arbeitszeit überschneidet sich mit einer ganztägigen Abwesenheit. Betroffene Summen sind bis zur manuellen Klärung nicht abschließend. Bitte Korrekturanträge prüfen.",
+                      "record_id_string": "42"
                     }
                   }
                 }
@@ -568,6 +581,12 @@
                   "confirm_end_pause": {
                     "type": "boolean",
                     "default": false
+                  },
+                  "expected_record": {
+                    "type": "string",
+                    "pattern": "^[1-9][0-9]*$",
+                    "maxLength": 19,
+                    "description": "Optional exact active record ID, canonical positive ASCII decimal <= PHP_INT_MAX. Present invalid values are JSON400. Omission retains legacy null semantics; no new required-field or client upgrade. Already committed identical payloads replay before current-record matching."
                   }
                 }
               },
@@ -596,7 +615,8 @@
                       "local_time": "2026-10-27T09:00:00+01:00",
                       "event_id": "example-start-000001",
                       "record_id": 42,
-                      "state": "working"
+                      "state": "working",
+                      "record_id_string": "42"
                     }
                   },
                   "accepted_end_overlap": {
@@ -612,7 +632,8 @@
                       "overlap_record_ids": [
                         43
                       ],
-                      "overlap_warning": "Arbeitsende gespeichert. Arbeitszeit überschneidet sich mit einer ganztägigen Abwesenheit. Betroffene Summen sind bis zur manuellen Klärung nicht abschließend. Bitte Korrekturanträge prüfen."
+                      "overlap_warning": "Arbeitsende gespeichert. Arbeitszeit überschneidet sich mit einer ganztägigen Abwesenheit. Betroffene Summen sind bis zur manuellen Klärung nicht abschließend. Bitte Korrekturanträge prüfen.",
+                      "record_id_string": "42"
                     }
                   }
                 }
@@ -635,11 +656,11 @@
             "$ref": "#/components/responses/AttendanceUnavailable"
           }
         },
-        "description": "Own server-time start/pause/end transition. event_id is required; reuse the identical ID and parsed action/confirmation/expected-record semantics after an unconfirmed response. Same-ID payload conflict is 409; stored replay can be stale. Only boolean true confirms ending an active pause. This route ignores id; use setendzeit when the extension binds end to a known record. Request timestamps/location/user selectors are not authoritative."
+        "description": "Own server-time start/pause/end transition. event_id is required; reuse the identical ID and parsed action/confirmation/expected-record semantics after an unconfirmed response. Same-ID payload conflict is 409; stored replay can be stale. Only boolean true confirms ending an active pause. Optional expected_record is a canonical positive decimal string checked before cast and forwarded to the existing record guard; omission remains null for old clients. This route still ignores id; setendzeit keeps its legacy id alias. New popup pause/resume bodies bind only after exact-string status metadata is available. Request timestamps/location/user selectors are not authoritative."
       },
       "get": {
         "summary": "Read authoritative own attendance status",
-        "description": "Read-only own status snapshot with existing bearer validation. No query/body user selector, booking, event_id, time or local_time. absent -> record_id null; working/paused -> positive integer. A legacy open reporting row can return working without a managed session; multiple legacy open rows are not diagnosed by this read.",
+        "description": "Read-only own status snapshot with existing bearer validation. No query/body user selector, booking, event_id, time or local_time. absent -> record_id null; working/paused -> positive integer. A legacy open reporting row can return working without a managed session; multiple legacy open rows are not diagnosed by this read. Additive record_id_string duplicates the same current ID exactly as a decimal string or null; older clients may ignore it. It is metadata from the same snapshot, not a receipt or another query.",
         "security": [
           {
             "bearerAuth": []
@@ -658,21 +679,24 @@
                     "value": {
                       "success": true,
                       "state": "absent",
-                      "record_id": null
+                      "record_id": null,
+                      "record_id_string": null
                     }
                   },
                   "working": {
                     "value": {
                       "success": true,
                       "state": "working",
-                      "record_id": 42
+                      "record_id": 42,
+                      "record_id_string": "42"
                     }
                   },
                   "paused": {
                     "value": {
                       "success": true,
                       "state": "paused",
-                      "record_id": 42
+                      "record_id": 42,
+                      "record_id_string": "42"
                     }
                   }
                 }
@@ -744,9 +768,16 @@
             "minimum": 1,
             "nullable": true,
             "description": "Current own open record, otherwise null. Legacy open reporting rows can yield working."
+          },
+          "record_id_string": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "maxLength": 19,
+            "nullable": true,
+            "description": "Additive exact text of the same record_id, not a replacement numeric field. Null when no current record."
           }
         },
-        "description": "Read-only status: absent has null record_id; working/paused have a positive integer record_id. No event ID or timestamp is returned."
+        "description": "Read-only status: absent has null record_id; working/paused have a positive integer record_id. No event ID or timestamp is returned. The optional additive record_id_string preserves exact record-ID text for updated clients; malformed present metadata must not be repaired through numeric fallback."
       },
       "AttendanceReceipt": {
         "type": "object",
@@ -814,9 +845,16 @@
           "overlap_warning": {
             "type": "string",
             "description": "Optional end-overlap clarification warning, also appended to message after any pause warning. Work end is saved: HTTP 200, success true, state absent. A stored replay retains this historical warning even after a later correction."
+          },
+          "record_id_string": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "maxLength": 19,
+            "nullable": false,
+            "description": "Additive exact text of the same record_id, not a replacement numeric field. Affected positive record even after end; projected from the original receipt, never a fresh binding or stored JSON rewrite."
           }
         },
-        "description": "Stored acknowledgement of this event. A replay can describe an older state: refresh GET /attendance before another action. Since #35, a saved end overlapping all-day absence can include optional overlap_record_ids/overlap_warning and an extended message, still HTTP 200/success true. Genuine refused transitions remain JSON 409/success false."
+        "description": "Stored acknowledgement of this event. A replay can describe an older state: refresh GET /attendance before another action. Since #35, a saved end overlapping all-day absence can include optional overlap_record_ids/overlap_warning and an extended message, still HTTP 200/success true. Genuine refused transitions remain JSON 409/success false. The optional additive record_id_string preserves exact record-ID text for updated clients; malformed present metadata must not be repaired through numeric fallback."
       },
       "User": {
         "type": "object",

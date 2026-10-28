@@ -16,9 +16,10 @@ final class LegacyApiAttendanceController
     public function __invoke(Request $request): Response
     {
         $input = json_decode($request->getContent(), true);
-        // Direct endpoint deliberately still omits expectedRecord (#36).
+        // Optional exact string binding; omitted legacy payloads retain null/replay semantics.
         return $this->respond(fn () => $this->attendance->transition(
             $input['event_id'] ?? '', $input['action'] ?? '', ($input['confirm_end_pause'] ?? false) === true,
+            \attendance_expected_record(is_array($input) ? $input : []),
         ));
     }
 
@@ -51,7 +52,10 @@ final class LegacyApiAttendanceController
     private function respond(callable $operation): Response
     {
         try {
-            return LegacyApiResponse::json($operation());
+            require_once dirname(__DIR__, 5).'/lib/attendance.php';
+
+            // Transport-only metadata, never a rewrite of the stored receipt/hash.
+            return LegacyApiResponse::json(\attendance_record_id_string($operation()));
         } catch (AttendanceError $error) {
             return LegacyApiResponse::json(['success' => false, 'message' => $error->getMessage()], $error->status);
         } catch (Throwable) {

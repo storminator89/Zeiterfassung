@@ -5,6 +5,9 @@ Dieses Folgepaket ergänzt ausschließlich den **weiterhin unregistrierten**
 `POST /api.php/attendance`. Kein produktiver Routenschalter: `api.php`,
 Altissuer/-verifier, `security.php`, Schlüssel, Konten, DB-/Hash-/Hostkonfiguration,
 Web-/Terminaldienste und UI bleiben unverändert. Ausgeliefert bleibt nur `/up`.
+Die native Unverändertheit beschreibt das ursprüngliche Kandidatpaket; der
+spätere ausdrückliche #36-Nachtrag unten gleicht die optionale Bindung und
+exakte Antwortmetadaten mit dem aktiven nativen APIpfad ab.
 Die vorhandenen Aliasrouten werden inzwischen vom getrennten
 [inaktiven Aliasfolgeschritt](candidate-api-aliases.md) bedient; #77 bleibt offen.
 
@@ -79,12 +82,14 @@ kein lokaler Webdienst und keine neue Rollen-/Authquellenallowlist. Die zwei
 kleinen Wrapperklassen stammen unverändert aus dem getrennt vorbereiteten
 Domainartefakt; Provider/Transport bilden hier die gemeinsame Reviewgrenze.
 
-Der Controller delegiert nur `event_id`, `action` und
-`confirm_end_pause === true` aus rohem JSON. Keine neue Bool-Koerzierung,
-422-Validierung, Clientzeit oder manuelle historische Buchung.
-**`expectedRecord` bleibt beim direkten Endpoint weggelassen** wie im Bestand;
-[#36](https://github.com/storminator89/Zeiterfassung/issues/36) wird nicht als
-Nebenwirkung behoben oder durch ein Requestfeld umgangen. Eventvalidierung,
+Der Controller delegiert `event_id`, `action`, `confirm_end_pause === true`
+und nach dem ausdrücklich abgegrenzten #36-Folgeschritt optionales
+`expected_record` aus rohem JSON. Vorhandene positive Stringparserprüfung vor Cast,
+fehlend weiterhin null; keine neue API-Pflicht, Bool-Koerzierung,422-Validierung,
+Clientzeit oder manuelle historische Buchung. Erfolgsantworten ergänzen nur die
+exakte `record_id_string` aus der ursprünglichen Quittung, auch beim Replay;
+gespeicherte Bytes/Hash bleiben unverändert. [Exakter optionaler Vertrag und
+Legacy-/#57-Grenze](../API-CONTRACT.md#optionaler-exakter-record-string-und-neue-clientbindung-36). Eventvalidierung,
 Lock, eine Transaktion, Account-exists unter Lock, Projektion, Audit,
 Idempotenz/Payloadkonflikt und gespeicherte Retryantwort bleiben ausschließlich
 im bestehenden #75-/Legacy-Domänenpfad. Kein zweiter PDO, Retry oder
@@ -121,5 +126,5 @@ Quelle und das Backup bleiben unverändert; keine reale Datei oder Zugangsdaten.
 Die vorhandenen groben Tokenprofil-/API-Wire-/Read-/Webprüfungen werden
 wiederverwendet, keine Mikrotests oder neue Vollsuite. Noch offen: persistentes
 geteiltes Loginbudget, vollständige Erweiterungskorrekturen #22/#23/#25,
-`expectedRecord`-Entscheidung, `nbf`-Profilentscheidung, Swagger, echte
+vollständige kanalübergreifende `expectedRecord`-Abnahme, `nbf`-Profilentscheidung, echte
 Browsererweiterungs-/Verteilungsabnahme und separat reviewter Gesamtcutover.
