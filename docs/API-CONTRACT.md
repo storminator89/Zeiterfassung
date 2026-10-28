@@ -2,17 +2,16 @@
 
 ## Geltung und Nachweisstand
 
-Ausgangsstand dieses Laufzeitpakets:
-[`7d4077c6d62edf14a8ebe17ab51946312e976542`](https://github.com/storminator89/Zeiterfassung/commit/7d4077c6d62edf14a8ebe17ab51946312e976542),
-`main` am 27.10.2026, einschließlich der streng begrenzten Pagination aus #24
-und des akzeptierten Endes mit Abwesenheitswarnung aus #35. Die bereits
-geprüfte native Fehlerformatierung bleibt dabei inhaltlich unverändert;
-gegenüber ihrem Stand `77076181a819f50ab470f0eda4b00ba03fde998c` werden nur diese
-Vertragsdokumentation und `swagger.json` an den neuen Elternstand angeglichen.
-PR #131 hat zuvor nur Dokumentation/Schema und die falsche Geolocation-Werbung
-im README korrigiert. **Dieses Paket normalisiert die kontrollierten nativen
-`abort_request`-Fehler**, auch vor abgeschlossenem Bootstrap. Es ändert weder
-Erfolgsantworten noch Fehlerbedingungen, Auth, DB, UI oder Hosting.
+Ausgangsstand dieser begrenzten Erweiterung:
+[`fd166a2d3e78be9d40a873f93ad0c2c398a6561f`](https://github.com/storminator89/Zeiterfassung/commit/fd166a2d3e78be9d40a873f93ad0c2c398a6561f),
+`main` am 28.10.2026. PR #131 hat zuvor Dokumentation/Schema und die falsche
+Geolocation-Werbung korrigiert; PR #140 hat kontrollierte native
+`abort_request`-Fehler zu JSON vereinheitlicht. Diese Erweiterung ergänzt
+**nur am Einstieg von `api.php`** eine Grenze für fangbare unerwartete
+`Throwable`-Fehler vor und nach dem Bootstrap. Gültige Erfolgsdaten bleiben
+unverändert; nicht JSON-kodierbare Rohdaten der beiden Leselisten ergeben
+nun einen Fehler statt eines leeren HTTP-200-Bodys. Auth, SQL, Mutationen,
+Transaktionen, UI und Hosting bleiben unverändert.
 
 Maßgeblich ist der aktive native Router. `api.php` aktiviert die JSON-Fehlerform
 explizit vor `config.php`; `security.php` lädt den definitions-only
@@ -34,9 +33,9 @@ Die alten `@OA`-Kommentare in `api.php` sind teilweise überholt; `apidoc.html`
 lädt `swagger.json`. Eine automatische Neugenerierung aus diesen Kommentaren
 würde die dokumentierten Korrekturen nicht zuverlässig bewahren.
 
-**Keine vollständige Abnahme von #25:** Kontrollierte native Fehler sind nun
-JSON, aber ungefangene PHP-/Infrastrukturfehler werden nicht pauschal abgefangen.
-Eine vollständige HTTP-/Client-/Erweiterungsabnahme bleibt offen. Dieses
+**Keine vollständige Abnahme von #25:** Kontrollierte Fehler und am lokalen
+Einstieg fangbare unerwartete Fehler erhalten JSON. Nicht fangbare Abbrüche
+und die vollständige HTTP-/Client-/Erweiterungsabnahme bleiben offen. Dieses
 Dokument behauptet weder deren Erfolg noch einen Produktiv-Rollout.
 
 **CH-18 / #24-Nachtrag:** Die Pagination wurde auf Basis von
@@ -231,7 +230,7 @@ nur zur Anzeige. Start/Pausen laufen über POST `/attendance`, Ende über
 Client vor dem JSON-Parsing. Dies ist Quellenabgleich, **keine** Firefox-/Edge-,
 Store-, Netzwerk- oder Browserabnahme.
 
-## Fehler: kontrollierte native JSON-Antworten und verbleibende Grenzen
+## Fehler: kontrollierte Antworten, lokale Ausnahmegrenze und verbleibende Grenzen
 
 ### Kanonische Form für kontrollierte native API-Fehler
 
@@ -276,18 +275,55 @@ Zähler, Attendance-Quittungen und Erfolgsdaten werden verändert.
 | Gemeinsamer Bootstrap, Speicher-/DB-Verweigerung | 503 JSON, z. B. `{success:false,message:"Database unavailable."}`; gilt auch vor dem Handler. |
 
 Die kontrollierte Bootstrap-Sessionwiderrufung (`Please sign in again.`, 401)
-verwendet im nativen API-Pfad ebenfalls diese JSON-Form. Nicht jede
-PHP-/Infrastrukturstörung läuft durch `abort_request` oder einen bestehenden
-Handler: eine nichtskalare Datumsquery kann weiterhin einen ungefangenen
-`TypeError` auslösen. Es gibt **keinen** neuen globalen Exception-/Shutdown-
-oder Warninghandler. Body und Deploymentdarstellung ungefangener Fehler sind
-nicht garantiert; PHP-Warnungen werden nicht als Erfolg umgedeutet und es gibt
-keine erfundene generelle JSON-500- oder „alle Invaliddaten sind 400“-Abnahme.
+verwendet im nativen API-Pfad ebenfalls diese JSON-Form.
+
+### Lokale Grenze für fangbare unerwartete Fehler
+
+Nach dem unveränderten CORS-/`OPTIONS`-Abschnitt umschließt ausschließlich
+`api.php` seinen Bootstrap und Router mit `try`/`catch (Throwable)`. Der
+Anwendungscode bleibt im globalen Scope; insbesondere bleibt die vorhandene
+Verbindung für `validateToken` dieselbe. Die Grenze unterdrückt angezeigte
+PHP-Diagnostik nur für diese API und besitzt einen eigenen Antwortpuffer.
+Bei einer gefangenen Ausnahme verwirft sie nur die seit dieser Grenze
+angelegten Puffer, nicht einen vorherigen äußeren Puffer, und beendet mit:
+
+```json
+{"success":false,"message":"Internal server error"}
+```
+
+Der neue Fallback hat **HTTP 500**, JSON-Content-Type und keine Exceptiontexte,
+Stacktraces, Requestdaten oder neu protokollierten Details. Bestehende
+Loggingquellen bleiben unverändert. Eine nichtskalare Datumsquery kann noch
+immer einen `TypeError` auslösen; dieser ergibt jetzt den generischen JSON-500,
+**keinen erfundenen Validierungs-400**. Die zwei DB-Erfolgsenkoder für `/users`
+und `/timeentries` verwenden `JSON_THROW_ON_ERROR`: ungültige UTF-8-Rohwerte
+führen über ihre bestehenden `Exception`-Catches zu JSON-500 statt einem leeren HTTP-200-Body.
+Gültige Rohwerte werden nicht ersetzt, normalisiert oder neu gefiltert.
+
+Kontrollierte `abort_request`- und `attendance_json`-Abbrüche verlassen den
+Prozess weiterhin direkt; ihre Statuswerte, Nachrichten und Header bleiben
+erhalten. Der vorhandene Attendance-Fallback 503 wird nicht zu 500 umgedeutet.
+Der normale Puffer wird unverändert ausgegeben; es gibt keinen neuen globalen
+Exception-, Shutdown- oder Warninghandler und keine Warnung-zu-Exception-
+Konvertierung. `security.php`, `config.php` und gewöhnliche Webantworten sind
+unverändert. **`terminal_api.php` ist nicht Teil dieses nativen API-Vertrags**:
+sein Bootstrap vor `attendance_json` erhält hier keine neue JSON-Garantie
+oder Änderung des signierten Terminalprotokolls.
+
+Ein 500 ist weder eine Commitquittung noch ein Rollbacknachweis. Es gibt keinen
+neuen Retry, keine neue Ereignis-ID und keine Recoverybehauptung für #57.
+Bereits bestätigte Attendance-Belege und ihre Wiederholungsregeln bleiben wie
+oben beschrieben. Nicht fangbare Fehler vor Ausführung dieses Einstiegscodes,
+Speichermangel, Prozessabbruch, Server-/Proxyantworten und bereits außerhalb
+dieser Grenze versendete Bytes bleiben ausdrücklich ohne JSON-Garantie.
 
 ## Zeitfilter und Pagination: aktuelle Grenzen bewahren
 
 `GET /timeentries` wählt eigene `zeiterfassung`-Zeilen mit `SELECT *`, sortiert
-nach gespeichertem `startzeit DESC` (keine neue Instant-Sortierung). `data[].id`
+nach `chrono_report_start_epoch(startzeit) DESC, id DESC`: absteigender Instant,
+bei Gleichstand absteigende ID, vor der Pagination. Unlesbare Startwerte
+bleiben SQL-NULL und stehen zuletzt; gespeicherte Texte werden nicht repariert.
+`data[].id`
 ist weiterhin die Berichtszeilen-ID; `record_id` ersetzt dieses Legacyfeld
 **nicht**. Timestamps werden nicht normalisiert: alte Strings können ohne
 Offset vorliegen, `endzeit` kann `null` sein. Nullable Altwerte für Pause,
@@ -353,16 +389,20 @@ Lint der geänderten PHP-Dateien und ein grober, bootstrapfreier Subprozesslauf
   derselben Meldung im JSON-Envelope und demselben Status; gültige Sonderzeichen
   und ungültige UTF-8-Bytes bleiben JSON-kodierbar. Der Abbruch kehrt nicht zurück.
 
-Der obige PHP-Nachweis gehört zum unveränderten ursprünglichen Codepaket
-`77076181a819f50ab470f0eda4b00ba03fde998c`; er wurde für diese reine
-Dokumentationsangleichung nicht erneut ausgeführt. Am neuen Elternstand wurde
-nur der bestehende grobe statische Quellen-/Schemaabgleich durchgeführt:
-JSON parsebar, lokale `$ref`-Ziele und Beispiele konsistent, Opt-in vor Bootstrap,
-unveränderte CORS-/OPTIONS- und Retry-After-Quellen, identische App-/Helper-/
-Testbytes zum geprüften Codepaket und alle nicht freigegebenen Pfade byte-
-identisch zum neuen Ausgangsstand. Die optionalen Endwarnfelder und der
-200-vs.-409-Unterschied sind aus dem tatsächlichen gemeinsamen Writer und
-seinem Konfliktleser abgeleitet, nicht neu zur Laufzeit abgenommen.
+Der obige historische PHP-Nachweis gehört zum unveränderten ursprünglichen
+Codepaket `77076181a819f50ab470f0eda4b00ba03fde998c`. Für diese lokale Grenze
+wurde derselbe vorhandene grobe Nachweis um eine bootstrapfreie Gruppe
+erweitert: Die exakte Einstieg-/Ausgangsquelle ersetzt nur ihren markierten
+Anwendungsbereich durch erfundene Fehler oder Werte. Sie prüft generischen
+Error und TypeError, Verwerfen eines Teilbodys bei erhaltenem äußeren Puffer,
+einen kontrollierten 429-Abbruch, unveränderte gültige Antwort, leeres frühes
+OPTIONS und beide exakten Leselisten-Enkoder/Catches mit ungültigen UTF-8-Werten.
+Alle bisherigen Assertions zur kontrollierten und nichtAPI-Fehlerform bleiben
+erhalten. Dazu kommen Syntax und der enge statische Quellen-/Schemaabgleich:
+alle Auth-/SQL-/Mutations-/Routerbytes sind nach Entfernung der lokalen Grenze
+und der zwei Encoderflags rekonstruierbar, CORS/OPTIONS/Retry-After bleiben
+unverändert und lokale Schema-Referenzen passen zu den Beispielen.
+
 Exakte Commit-/Baum-/Patchidentitäten, Werkzeugversionen und Protokolle stehen
 im eingefrorenen Übergabepaket. Dies ist **keine** vollständige OpenAPI- oder
 Laufzeitabnahme. Insbesondere beweist PHP CLI keine tatsächlichen HTTP-Header.

@@ -3,7 +3,7 @@
   "info": {
     "title": "Zeiterfassung API",
     "version": "2.0",
-    "description": "Native api.php contract based on main 7d4077c6d62edf14a8ebe17ab51946312e976542 (2026-10-27), with this package's controlled JSON-error normalization; not a full runtime acceptance. Server-time attendance and actual breaks; own-account reads only. Existing handlers and native abort_request failures, including controlled bootstrap refusals, use {success:false,message} with the original HTTP status. Uncaught PHP/infrastructure errors are not globally normalized. See docs/API-CONTRACT.md for scope and remaining limits. No geolocation webhook is implemented. Inactive framework candidates now match controlled-error JSON envelopes via their central response formatter, preserving statuses and messages without changing authentication acceptance or activating published endpoints; their full HTTP/client acceptance remains open. The #35 accepted end with an all-day absence overlap remains HTTP 200/success true and can add overlap_record_ids and overlap_warning to the stored receipt/message; this is not a 409 refusal. Documentation reconciled onto the current parent without changing the reviewed native formatter code or claiming new runtime acceptance."
+    "description": "Native api.php contract based on main fd166a2d3e78be9d40a873f93ad0c2c398a6561f (2026-10-28), with controlled JSON errors and an entrypoint-local catchable-Throwable boundary; not a full runtime acceptance. Server-time attendance and actual breaks; own-account reads only. Existing handlers and native abort_request failures, including controlled bootstrap refusals, use {success:false,message} with the original HTTP status. Catchable unexpected bootstrap/dispatch failures now return JSON 500 with a fixed Internal server error message; uncatchable failures remain outside the guarantee. No global handler or terminal_api.php protocol change. See docs/API-CONTRACT.md for scope and remaining limits. No geolocation webhook is implemented. Inactive framework candidates now match controlled-error JSON envelopes via their central response formatter, preserving statuses and messages without changing authentication acceptance or activating published endpoints; their full HTTP/client acceptance remains open. The #35 accepted end with an all-day absence overlap remains HTTP 200/success true and can add overlap_record_ids and overlap_warning to the stored receipt/message; this is not a 409 refusal. Controlled statuses, CORS/OPTIONS, Retry-After, authentication and write semantics remain unchanged; invalid UTF-8 in raw read successes now fails as JSON500, not empty200. No full HTTP/client acceptance or commit/rollback guarantee is claimed."
   },
   "paths": {
     "/api.php/login": {
@@ -114,9 +114,12 @@
           },
           "503": {
             "$ref": "#/components/responses/BootstrapUnavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/UnexpectedFailure"
           }
         },
-        "description": "Local-account credential login only; no LDAP login here. Token lasts one hour, is invalidated by password change/account deletion. Pre-handler and malformed-input exceptions are not all normalized.",
+        "description": "Local-account credential login only; no LDAP login here. Token lasts one hour, is invalidated by password change/account deletion. Catchable unexpected pre-handler/malformed-input failures use the entrypoint JSON500 fallback, not a new validation400; uncatchable failures remain outside the guarantee.",
         "security": []
       }
     },
@@ -221,6 +224,9 @@
           },
           "503": {
             "$ref": "#/components/responses/AttendanceUnavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/UnexpectedFailure"
           }
         },
         "security": [
@@ -334,6 +340,9 @@
           },
           "503": {
             "$ref": "#/components/responses/AttendanceUnavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/UnexpectedFailure"
           }
         },
         "security": [
@@ -496,7 +505,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Own raw reporting rows ordered by stored startzeit DESC; no user_id selector, overlap-window selection or normalization. Inclusive date bounds use the Europe/Berlin reporting start day via chrono_api_booking_day(startzeit), shared with report_day; no day splitting. Empty/unreadable starts are excluded under date filters, not repaired. Syntax-only query dates. Strict nonnegative integer pagination: limit defaults to 100, maximum 1000, 0 returns no rows; offset defaults to zero, maximum 2147483647. meta.limit is the effective integer limit; omitted meta.offset stays null. Deliberate compatibility change: omitted limit and offset-only no longer return unlimited rows. Iterate pages using explicit limit/offset; see docs/API-CONTRACT.md."
+        "description": "Own raw reporting rows ordered before paging by chrono_report_start_epoch(startzeit) DESC, id DESC (instant order, descending ID tie-break; unreadable starts remain SQL NULL last); no user_id selector, overlap-window selection or normalization. Inclusive date bounds use the Europe/Berlin reporting start day via chrono_api_booking_day(startzeit), shared with report_day; no day splitting. Empty/unreadable starts are excluded under date filters, not repaired. Syntax-only query dates. Strict nonnegative integer pagination: limit defaults to 100, maximum 1000, 0 returns no rows; offset defaults to zero, maximum 2147483647. meta.limit is the effective integer limit; omitted meta.offset stays null. Deliberate compatibility change: omitted limit and offset-only no longer return unlimited rows. Iterate pages using explicit limit/offset; see docs/API-CONTRACT.md."
       }
     },
     "/api.php/timeentry/{id}": {
@@ -533,6 +542,9 @@
           },
           "503": {
             "$ref": "#/components/responses/BootstrapUnavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/UnexpectedFailure"
           }
         },
         "security": [
@@ -654,6 +666,9 @@
           },
           "503": {
             "$ref": "#/components/responses/AttendanceUnavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/UnexpectedFailure"
           }
         },
         "description": "Own server-time start/pause/end transition. event_id is required; reuse the identical ID and parsed action/confirmation/expected-record semantics after an unconfirmed response. Same-ID payload conflict is 409; stored replay can be stale. Only boolean true confirms ending an active pause. Optional expected_record is a canonical positive decimal string checked before cast and forwarded to the existing record guard; omission remains null for old clients. This route still ignores id; setendzeit keeps its legacy id alias. New popup pause/resume bodies bind only after exact-string status metadata is available. Request timestamps/location/user selectors are not authoritative."
@@ -708,6 +723,9 @@
           },
           "503": {
             "$ref": "#/components/responses/AttendanceUnavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/UnexpectedFailure"
           }
         }
       }
@@ -739,7 +757,7 @@
             "type": "string"
           }
         },
-        "description": "Canonical controlled native API error envelope, including abort_request bootstrap/auth/validation/rate-limit refusals and existing JSON handlers. HTTP status is preserved; message text is not a stable machine error code. Uncaught failures are not covered. Dormant Laravel candidate errors remain deliberately mixed."
+        "description": "Native API error envelope: controlled abort_request/bootstrap/auth/validation/rate-limit refusals and existing handlers preserve their statuses. The api.php-local catchable-Throwable fallback uses fixed JSON500; read encoding failures also fail500. Message is not a stable machine error code. Uncatchable/server failures and terminal_api.php bootstrap are outside this guarantee; no global handler or full HTTP/client acceptance."
       },
       "AttendanceStatus": {
         "type": "object",
@@ -1021,7 +1039,7 @@
         }
       },
       "BootstrapUnavailable": {
-        "description": "Controlled shared bootstrap/storage/database refusal: native JSON 503 before the handler. Other uncaught failures are not normalized.",
+        "description": "Controlled shared bootstrap/storage/database refusal: native JSON 503 before the handler. Other catchable unexpected failures use the entrypoint JSON500 fallback; uncatchable failures are not guaranteed.",
         "content": {
           "application/json": {
             "schema": {
@@ -1035,7 +1053,7 @@
         }
       },
       "AttendanceUnavailable": {
-        "description": "JSON 503 from the attendance handler or a controlled earlier bootstrap refusal. Mutation outcome may be unconfirmed: retry the same event ID and content. Uncaught failures are not universally covered.",
+        "description": "JSON 503 from the attendance handler or a controlled earlier bootstrap refusal. Mutation outcome may be unconfirmed: retry the same event ID and content. Catchable unexpected failures outside the attendance handler use JSON500; uncatchable failures remain outside the guarantee.",
         "content": {
           "application/json": {
             "schema": {
@@ -1101,7 +1119,21 @@
         }
       },
       "ReadFailure": {
-        "description": "Caught read exception (JSON).",
+        "description": "Existing read Exception catch: JSON500 Internal server error, now also for unencodable raw UTF-8 success data; no empty HTTP200. Other catchable unexpected failures use the same envelope via the entrypoint boundary.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "success": false,
+              "message": "Internal server error"
+            }
+          }
+        }
+      },
+      "UnexpectedFailure": {
+        "description": "Entrypoint-local catchable unexpected bootstrap/dispatch Throwable: JSON500, fixed message, no raw diagnostics. No commit/rollback guarantee or automatic retry. Controlled statuses including attendance503 are unchanged; uncatchable/server failures are not covered.",
         "content": {
           "application/json": {
             "schema": {
@@ -1116,12 +1148,12 @@
       }
     }
   },
-  "x-source-commit": "7d4077c6d62edf14a8ebe17ab51946312e976542",
+  "x-source-commit": "fd166a2d3e78be9d40a873f93ad0c2c398a6561f",
   "x-router-behavior": {
     "OPTIONS": "200, empty body, any path before authentication/bootstrap; existing CORS permits GET, POST, OPTIONS, DELETE.",
     "unknown-path": "GET/POST/DELETE unknown paths: 400 application/json {success:false,message:\"Invalid endpoint\"}.",
     "unsupported-method": "Other methods, including HEAD: 405 application/json {success:false,message:\"Method Not Allowed\"}, after bootstrap.",
-    "unhandled-failures": "Only controlled refusals are normalized. No new global exception/shutdown/warning handler: uncaught PHP, infrastructure and some malformed-input failures retain unspecified bodies; no universal JSON guarantee or full HTTP/client acceptance.",
-    "controlled-errors": "Only native api.php opts in with the strict server-owned CHRONO_API_JSON_ERRORS=true before config/security bootstrap; Accept, headers, query/body and script name cannot select this mode. abort_request retains the HTTP status, uses application/json; charset=UTF-8 and {success:false,message}, substituting invalid message UTF-8 bytes with U+FFFD. Existing Retry-After: 600 on login-budget 429 and all CORS/OPTIONS behavior remain unchanged. Non-API abort_request output stays text/plain with original message bytes. Inactive Laravel candidates/guards keep their previous mixed wire."
+    "unhandled-failures": "After unchanged CORS/OPTIONS, only api.php owns a local buffer and try/catch(Throwable). Catchable unexpected bootstrap/dispatch failures discard only owned buffered bytes and terminate JSON500 {success:false,message:\"Internal server error\"}, without raw/newly logged diagnostics. Existing abort/attendance exits and statuses remain unchanged. No global exception/shutdown/warning handler, new retry or rollback guarantee. Entry compile failures, memory exhaustion, termination/server/proxy responses and bytes outside the owned boundary are not guaranteed. terminal_api.php is unchanged and excluded. Full HTTP/header/client acceptance remains open.",
+    "controlled-errors": "Only native api.php opts in with the strict server-owned CHRONO_API_JSON_ERRORS=true before config/security bootstrap; Accept, headers, query/body and script name cannot select this mode. abort_request retains the HTTP status, uses application/json; charset=UTF-8 and {success:false,message}, substituting invalid message UTF-8 bytes with U+FFFD. Existing Retry-After: 600 on login-budget 429 and all CORS/OPTIONS behavior remain unchanged. Non-API abort_request output stays text/plain with original message bytes. Existing inactive Laravel behavior is unchanged by this native-only boundary."
   }
 }

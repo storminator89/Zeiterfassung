@@ -14,6 +14,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 // This is server-owned policy, never selected by request headers or parameters.
 define('CHRONO_API_JSON_ERRORS', true);
 
+// This entrypoint alone owns the buffer; shared web/bootstrap policy is unchanged.
+$chronoApiOutputLevel = ob_get_level();
+try {
+    ini_set('display_errors', '0');
+    if (!ob_start()) { throw new RuntimeException('API response buffer unavailable.'); }
+
+// BEGIN native API application (kept at global scope).
 // Including configuration settings
 require_once 'config.php';
 header('Content-Type: application/json; charset=UTF-8');
@@ -177,7 +184,7 @@ function getUsers($conn, $user_id) {
         $stmt = $conn->prepare("SELECT id, username, email, role FROM users WHERE id = ?");
         $stmt->execute([$user_id]);
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        echo json_encode(['success' => true, 'data' => $users]);
+        echo json_encode(['success' => true, 'data' => $users], JSON_THROW_ON_ERROR);
     } catch (\Exception $exception) {
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Internal server error']);
@@ -314,7 +321,7 @@ function getTimeEntries($conn, $user_id) {
                 'limit' => $pagination['limit'],
                 'offset' => $pagination['offset']
             ]
-        ]);
+        ], JSON_THROW_ON_ERROR);
     } catch (\Exception $exception) {
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Internal server error']);
@@ -411,5 +418,15 @@ if ($method === 'POST') {
 } else {
     http_response_code(405);
     echo json_encode(['success' => false, 'message' => 'Method Not Allowed']);
+}
+// END native API application.
+
+    ob_end_flush();
+} catch (Throwable $error) {
+    // No exception text, stack, request payload or secret is sent or newly logged.
+    while (ob_get_level() > $chronoApiOutputLevel) { ob_end_clean(); }
+    http_response_code(500);
+    header('Content-Type: application/json; charset=UTF-8');
+    exit('{"success":false,"message":"Internal server error"}');
 }
 ?>
