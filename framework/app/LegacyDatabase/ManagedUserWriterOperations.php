@@ -67,7 +67,7 @@ trait ManagedUserWriterOperations
             // EXACT native retention predicate: any owned audit, including user
             // or work-model history/baselines, not only time-entry mutations.
             if (att_one($this->pdo, 'SELECT id FROM audit_log WHERE user_id=?', [$targetId])) {
-                throw new \AttendanceError('Konten mit Zeithistorie bleiben erhalten. Zugang über Passwortänderung und Terminal-Sperre entziehen.', 409);
+                throw new \AttendanceError('Konten mit Änderungshistorie bleiben erhalten. Eine zentrale Kontodeaktivierung ist noch nicht verbunden; ein lokaler Passwortwechsel sperrt LDAP-Anmeldungen und Terminal-Zugänge nicht.', 409);
             }
             $statement = $this->pdo->prepare('DELETE FROM users WHERE id = ?');
             $statement->execute([$targetId]);

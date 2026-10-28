@@ -2,6 +2,12 @@
 
 @section('content')
 @php($managedUsersEnabled = $managedUsersEnabled ?? false)
+<style>
+    #user-management > .card-body > .card-title { position:relative; }
+    #account-lifecycle-help { display:inline-flex;align-self:stretch;align-items:center; }
+    #account-lifecycle-tooltip { position:absolute;left:0;top:100%;z-index:20;width:min(24rem,100%);padding:.75rem;border:1px solid hsl(var(--b3,214 16% 91%));border-radius:.5rem;background:hsl(var(--b1,0 0% 100%));color:hsl(var(--bc,215 28% 17%));font-size:.875rem;font-weight:400;line-height:1.4;box-shadow:0 .25rem .75rem rgb(0 0 0 / .15); }
+    #account-lifecycle-tooltip[hidden] { display:none; }
+</style>
 <main class="container mx-auto px-4 py-8 chrono-page">
     @if ($managedUsersEnabled)
     <div class="alert alert-info mb-4" role="note">Die vorhandene Benutzerverwaltung ist in diesem privaten Laravel-V4-Profil verbunden. Historiengeschützte Konten und die letzte lokale Administration bleiben erhalten. API-Token sind nicht angebunden; LDAP benötigt weiterhin die getrennte HTTP- und Aufnahmefreigabe.</div>
@@ -45,7 +51,12 @@
     @endif
     <div id="user-management" class="card bg-base-100 shadow-xl mb-8">
         <div class="card-body">
-            <h2 class="card-title text-2xl mb-4">{{ $page->copy->text('USER_MANAGEMENT_TITLE') }}</h2>
+            <h2 class="card-title text-2xl mb-4">{{ $page->copy->text('USER_MANAGEMENT_TITLE') }}
+                <span id="account-lifecycle-help">
+                    <button type="button" id="account-lifecycle-trigger" class="btn btn-ghost btn-sm" aria-label="Hinweis zu Kontosperren" aria-describedby="account-lifecycle-tooltip" aria-controls="account-lifecycle-tooltip" aria-expanded="false">ⓘ</button>
+                    <span id="account-lifecycle-tooltip" role="tooltip" hidden>Eine zentrale Kontosperre fehlt noch. Lokale Passwortänderungen sperren weder erneute LDAP-Anmeldungen noch Terminal-Zugänge.</span>
+                </span>
+            </h2>
             @if ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled'])<p class="alert alert-info mb-4" role="note">Manuelle Benutzeraufnahme ist durch die gespeicherte Auswahl deaktiviert.</p>@endif
             @unless ($managedUsersEnabled)
             <div id="user-mutations-hold" class="alert alert-info mb-4" role="note">Bestehende Benutzer bleiben nur lesend: Ändern, Löschen und Passwortänderungen sind nicht verbunden.</div>
@@ -338,6 +349,35 @@
     }
 </script>
 <script @if ($page->cspNonce !== null) nonce="{{ $page->cspNonce }}" @endif>
+    // Display-only help: keyboard/touch access, hover persistence and Escape dismissal.
+    const lifecycleHelp = document.getElementById('account-lifecycle-help');
+    const lifecycleTrigger = document.getElementById('account-lifecycle-trigger');
+    const lifecycleTooltip = document.getElementById('account-lifecycle-tooltip');
+    let lifecyclePointerInside = false;
+    function setLifecycleHelp(visible) {
+        lifecycleTooltip.hidden = !visible;
+        lifecycleTrigger.setAttribute('aria-expanded', String(visible));
+    }
+    lifecycleHelp.addEventListener('mouseenter', function () {
+        lifecyclePointerInside = true;
+        setLifecycleHelp(true);
+    });
+    lifecycleHelp.addEventListener('mouseleave', function () {
+        lifecyclePointerInside = false;
+        if (document.activeElement !== lifecycleTrigger) setLifecycleHelp(false);
+    });
+    lifecycleTrigger.addEventListener('focus', function () { setLifecycleHelp(true); });
+    lifecycleTrigger.addEventListener('blur', function () {
+        if (!lifecyclePointerInside) setLifecycleHelp(false);
+    });
+    lifecycleTrigger.addEventListener('click', function () { setLifecycleHelp(true); });
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') setLifecycleHelp(false);
+    });
+    document.addEventListener('pointerdown', function (event) {
+        if (!lifecycleHelp.contains(event.target)) setLifecycleHelp(false);
+    });
+    window.addEventListener('pageshow', function () { setLifecycleHelp(false); });
     // Same safe get_user.php projection; no password/source/token is returned.
     const managedUsersEnabled = {{ $managedUsersEnabled ? 'true' : 'false' }};
     const userModal = document.getElementById('editUserModal');
