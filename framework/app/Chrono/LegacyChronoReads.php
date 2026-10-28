@@ -194,12 +194,14 @@ final class LegacyChronoReads implements ChronoReads
                 throw new AuthorizationException('This report requires a current supervisor or administrator.');
             }
             require_once dirname(__DIR__, 3).'/lib/supervisor_projection.php';
+            require_once dirname(__DIR__, 3).'/lib/report_ordering.php';
+            \report_register_start_order($pdo);
             // Exact native scope/order: no subject selector or implicit own rows.
             $records = $this->rows($pdo, "SELECT z.*, u.username, u.id as user_id, u.regelarbeitszeit, u.ueberstunden as vorherige_ueberstunden, substr(z.startzeit,1,10) AS day, NULL AS weekNumber
                             FROM zeiterfassung z
                             JOIN users u ON z.user_id = u.id
                             WHERE u.supervisor_id = ? OR ?='admin'
-                            ORDER BY z.startzeit DESC", [$actor->getKey(), $actor->role]);
+                            ORDER BY chrono_report_start_epoch(z.startzeit) DESC, z.id DESC", [$actor->getKey(), $actor->role]);
 
             $report = \supervisor_report_projection($pdo, $records, $userSearch, $page);
 

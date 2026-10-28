@@ -102,3 +102,46 @@ Token/Login, Session, echte Daten/DB, HTTP, Browser, Deployment oder neue CI.
 Dies ist keine geschützte/API-HTTP-/Exportabnahme und keine Performanceaussage.
 Teamreihenfolge, weitere Berichtspfade, große Historien und vollständiges #17
 bleiben offen; der bis hier eingefrorene Fortschritt ist nur API-Quellparität.
+
+## Ergänzung: native und vorbereitete Laravel-Teamreihenfolge
+
+Basis dieses getrennten Dreipfadpakets: Main
+`8aa48d23f843b33eb69efa625f177c651388fca2`, Tree
+`a1f3c3a14f59a9d8ae7f74e4cdc1a4e8d5eea224`. Ausschließlich der bestehende
+SELECT in `supervisor.php`, `LegacyChronoReads::teamReport()` und dieses
+Dokument ändern sich. Beide Rollen-prüfenden Leser registrieren den festen
+unveränderten `lib/report_ordering.php`-Helfer auf ihrer **bereits vorhandenen
+PDO** und sortieren nach `chrono_report_start_epoch(z.startzeit) DESC,
+z.id DESC`. Das geschieht vor dem unveränderten Gruppieren, Namensfilter und
+Zehn-Gruppen-Paging. Keine neue Verbindung, Abfrage, Datenkopie oder Migration.
+
+Der genaue bisherige Umfang bleibt `u.supervisor_id = ? OR ?='admin'`:
+frisch autorisierter Supervisor sieht seine direkt zugeordneten Personen,
+Administrator den bisherigen Gesamtrahmen. Kein impliziter Eigen-, rekursiver
+Team- oder Fremdpersonenzugriff. Bindings, Rohwerte, Gruppen-/Summenberechnung,
+Zeitzone, Sollzeit, Übertrag, Konflikt-/Unvollständigkeitsregeln, Suche und
+Seitenbegrenzung bleiben unverändert. Die getrennte aktuelle Teamstatus-
+Projektion aus #54 und alle anderen Reader-Methoden sind bytegleich erhalten.
+Die Darstellung kann sich dadurch in der beabsichtigten chronologischen
+Reihenfolge von Gruppen und deren Einträgen ändern. Auch die bestehende
+Benutzerreihenfolge der Überstunden-/Detailkarten folgt dem ersten Auftreten
+in diesen sortierten Zeilen und kann sich dadurch ändern; die Kartenwerte
+bleiben unverändert.
+
+Es gelten unverändert die oben beschriebenen Parser-/Berlin-/DST-Grenzen,
+NULL-Sortierung für unlesbare Werte, wiederholbare UDFregistrierung auf derselben
+Verbindung und der feste Fehler ohne Text-Fallback oder Ersatzverbindung.
+Dies behebt keine ungültigen Bestandszeilen: der native Vorab-Qualitätsschutz
+bleibt eine getrennte #16-Aufgabe. Keine neue Reparatur- oder Rechenregel und
+keine Performanceverbesserung behauptet.
+
+Ein grober Query-only-Nachweis verwendet ausschließlich erfundene Daten in
+einer `sqlite::memory:`-PDO und die zwei tatsächlichen SELECTs. Er betrachtet
+Offset-/Legacy-/Herbst-DST-Reihenfolge, Gleichstand nach ID, bisherigen
+Administrator-/Direktteamumfang und die unveränderte Suche/Gruppenseitengrenze;
+dazu PHP-Syntax und vollständige Quellen-Erhaltung. Der grobe Nachweis und
+PHP-Syntax bestanden am 28.10.2026 unter PHP 8.5.12. Kein Bootstrap, Reader-
+Dispatch, Berichtsvollrechnung, Login, Session, echte Daten/DB, HTTP oder Browser,
+kein neuer CI-Lauf, Remote-Schreibzugriff oder Deployment. Der Fortschritt ist
+Team-Quellparität, keine geschützte Rollen-/Browserabnahme, kein #16-Nachweis und
+kein flächendeckender Abschluss von #17 oder Lastnachweis großer Historien.
