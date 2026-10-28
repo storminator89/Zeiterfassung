@@ -1,0 +1,119 @@
+/* Local equivalents of the existing Tailwind layout utilities used by Chrono.
+ * Sensitive application pages keep the familiar DaisyUI theme without loading
+ * a remote JavaScript CSS compiler (or any other external executable script).
+ */
+.chrono-local-ui .block { display: block; }
+.chrono-local-ui .inline-block { display: inline-block; }
+.chrono-local-ui .hidden { display: none; }
+.chrono-local-ui .flex { display: flex; }
+.chrono-local-ui .grid { display: grid; }
+.chrono-local-ui .flex-col { flex-direction: column; }
+.chrono-local-ui .flex-wrap { flex-wrap: wrap; }
+.chrono-local-ui .flex-shrink-0, .chrono-local-ui .shrink-0 { flex-shrink: 0; }
+.chrono-local-ui .items-center { align-items: center; }
+.chrono-local-ui .items-start { align-items: start; }
+.chrono-local-ui .justify-between { justify-content: space-between; }
+.chrono-local-ui .justify-center { justify-content: center; }
+.chrono-local-ui .min-w-0 { min-width: 0; }
+.chrono-local-ui .w-full { width: 100%; }
+.chrono-local-ui .w-6 { width: 1.5rem; }
+.chrono-local-ui .w-8 { width: 2rem; }
+.chrono-local-ui .w-10 { width: 2.5rem; }
+.chrono-local-ui .w-12 { width: 3rem; }
+.chrono-local-ui .w-32 { width: 8rem; }
+.chrono-local-ui .w-48 { width: 12rem; }
+.chrono-local-ui .h-8 { height: 2rem; }
+.chrono-local-ui .h-10 { height: 2.5rem; }
+.chrono-local-ui .gap-2 { gap: .5rem; }
+.chrono-local-ui .gap-3 { gap: .75rem; }
+.chrono-local-ui .gap-6 { gap: 1.5rem; }
+.chrono-local-ui .grid-cols-1 { grid-template-columns: minmax(0, 1fr); }
+.chrono-local-ui .mx-auto { margin-left: auto; margin-right: auto; }
+.chrono-local-ui .mt-2 { margin-top: .5rem; }
+.chrono-local-ui .mt-3 { margin-top: .75rem; }
+.chrono-local-ui .mt-4 { margin-top: 1rem; }
+.chrono-local-ui .mt-5 { margin-top: 1.25rem; }
+.chrono-local-ui .mt-6 { margin-top: 1.5rem; }
+.chrono-local-ui .mt-8 { margin-top: 2rem; }
+.chrono-local-ui .mb-0 { margin-bottom: 0; }
+.chrono-local-ui .mb-2 { margin-bottom: .5rem; }
+.chrono-local-ui .mb-3 { margin-bottom: .75rem; }
+.chrono-local-ui .mb-4 { margin-bottom: 1rem; }
+.chrono-local-ui .mb-5 { margin-bottom: 1.25rem; }
+.chrono-local-ui .mb-6 { margin-bottom: 1.5rem; }
+.chrono-local-ui .mr-2 { margin-right: .5rem; }
+.chrono-local-ui .mr-3 { margin-right: .75rem; }
+.chrono-local-ui .mr-4 { margin-right: 1rem; }
+.chrono-local-ui .p-0 { padding: 0; }
+.chrono-local-ui .p-4 { padding: 1rem; }
+.chrono-local-ui .p-6 { padding: 1.5rem; }
+.chrono-local-ui .px-4 { padding-left: 1rem; padding-right: 1rem; }
+.chrono-local-ui .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+.chrono-local-ui .py-3 { padding-top: .75rem; padding-bottom: .75rem; }
+.chrono-local-ui .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+.chrono-local-ui .py-8 { padding-top: 2rem; padding-bottom: 2rem; }
+.chrono-local-ui .pt-5 { padding-top: 1.25rem; }
+.chrono-local-ui .pl-14 { padding-left: 3.5rem; }
+.chrono-local-ui .pr-6 { padding-right: 1.5rem; }
+.chrono-local-ui .space-y-2 > * + * { margin-top: .5rem; }
+.chrono-local-ui .space-y-5 > * + * { margin-top: 1.25rem; }
+.chrono-local-ui .text-sm { font-size: .875rem; line-height: 1.25rem; }
+.chrono-local-ui .text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+.chrono-local-ui .text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+.chrono-local-ui .text-2xl { font-size: 1.5rem; line-height: 2rem; }
+.chrono-local-ui .text-left { text-align: left; }
+.chrono-local-ui .text-center { text-align: center; }
+.chrono-local-ui .font-medium { font-weight: 500; }
+.chrono-local-ui .font-semibold { font-weight: 600; }
+.chrono-local-ui .font-bold { font-weight: 700; }
+.chrono-local-ui .uppercase { text-transform: uppercase; }
+.chrono-local-ui .tracking-wider { letter-spacing: .05em; }
+.chrono-local-ui .opacity-70 { opacity: .7; }
+.chrono-local-ui .whitespace-nowrap { white-space: nowrap; }
+.chrono-local-ui .cursor-pointer { cursor: pointer; }
+.chrono-local-ui .overflow-x-auto { overflow-x: auto; }
+.chrono-local-ui .rounded { border-radius: .25rem; }
+.chrono-local-ui .rounded-lg { border-radius: .5rem; }
+.chrono-local-ui .border { border-width: 1px; border-style: solid; }
+.chrono-local-ui .border-t { border-top-width: 1px; border-top-style: solid; }
+.chrono-local-ui .border-l-4 { border-left-width: 4px; border-left-style: solid; }
+.chrono-local-ui .border-base-200 { border-color: hsl(var(--b2)); }
+.chrono-local-ui .border-base-300 { border-color: hsl(var(--b3)); }
+.chrono-local-ui .border-primary\/10 { border-color: hsl(var(--p) / .1); }
+.chrono-local-ui .bg-base-100 { background-color: hsl(var(--b1)); }
+.chrono-local-ui .bg-base-200 { background-color: hsl(var(--b2)); }
+.chrono-local-ui .bg-base-100\/50 { background-color: hsl(var(--b1) / .5); }
+.chrono-local-ui .bg-base-200\/50 { background-color: hsl(var(--b2) / .5); }
+.chrono-local-ui .text-primary { color: hsl(var(--p)); }
+.chrono-local-ui .text-primary\/75 { color: hsl(var(--p) / .75); }
+.chrono-local-ui .text-success { color: hsl(var(--su)); }
+.chrono-local-ui .text-error { color: hsl(var(--er)); }
+.chrono-local-ui .shadow { box-shadow: 0 1px 3px 0 rgb(0 0 0 / .1), 0 1px 2px -1px rgb(0 0 0 / .1); }
+.chrono-local-ui .shadow-xl { box-shadow: 0 20px 25px -5px rgb(0 0 0 / .1), 0 8px 10px -6px rgb(0 0 0 / .1); }
+.chrono-local-ui .hover\:bg-base-200:hover { background-color: hsl(var(--b2)); }
+.chrono-local-ui .divide-y > * + * { border-top-width: 1px; border-top-style: solid; }
+.chrono-local-ui .divide-base-200 > * + * { border-top-color: hsl(var(--b2)); }
+.chrono-local-ui .divide-base-200\/50 > * + * { border-top-color: hsl(var(--b2) / .5); }
+@media (min-width: 640px) {
+    .chrono-local-ui .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .chrono-local-ui .sm\:p-6 { padding: 1.5rem; }
+    .chrono-local-ui .sm\:inline { display: inline; }
+}
+@media (min-width: 768px) {
+    .chrono-local-ui .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .chrono-local-ui .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .chrono-local-ui .md\:col-span-2 { grid-column: span 2 / span 2; }
+}
+@media (min-width: 1024px) {
+    .chrono-local-ui .lg\:flex { display: flex; }
+    .chrono-local-ui .lg\:inline-block { display: inline-block; }
+}
+@media (max-width: 768px) {
+    .chrono-local-ui #timeRecordsContainer > .flex > .btn { width: auto; }
+}
+.chrono-local-ui .p-3 { padding: .75rem; }
+.chrono-local-ui .h-6 { height: 1.5rem; }
+.chrono-local-ui .fill-current { fill: currentColor; }
+@media (max-width: 768px) {
+    .chrono-local-ui .navbar-center img { width: 1.5rem; height: 1.5rem; }
+}

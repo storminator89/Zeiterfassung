@@ -1,0 +1,120 @@
+/* Shared presentation helpers for the existing Quodara Chrono interface.
+ * Attendance mutations belong exclusively to attendance.js. Historical direct
+ * save/edit/delete and client-clock/localStorage booking handlers are retired.
+ */
+(() => {
+    'use strict';
+    const ready = callback => document.readyState === 'loading'
+        ? document.addEventListener('DOMContentLoaded', callback, {once: true}) : callback();
+    const expandedDates = new Set();
+    let tableRequest = 0;
+
+    function prepareTimeRecords(container) {
+        container.querySelectorAll('.summary-row').forEach(row => {
+            row.tabIndex = 0;
+            row.setAttribute('role', 'button');
+            const details = [...container.querySelectorAll('.details-row')]
+                .find(detail => detail.dataset.date === row.dataset.date);
+            if (!details) return;
+            const expanded = expandedDates.has(row.dataset.date);
+            row.setAttribute('aria-expanded', String(expanded));
+            row.setAttribute('aria-label', `Arbeitszeiten vom ${row.dataset.date} ${expanded ? 'einklappen' : 'anzeigen'}`);
+            details.style.display = expanded ? 'table-row' : 'none';
+            row.querySelector('.fa-chevron-right')?.classList.toggle('rotate-90', expanded);
+        });
+        container.querySelectorAll('.btn-group button').forEach(button => {
+            const text = button.textContent.trim();
+            const labels = {'«': 'Erste Seite', '‹': 'Vorherige Seite', '›': 'Nächste Seite', '»': 'Letzte Seite'};
+            button.setAttribute('aria-label', labels[text] || `Seite ${text}`);
+            if (button.classList.contains('btn-active')) button.setAttribute('aria-current', 'page');
+        });
+    }
+
+    function tableMessage(container, message) {
+        let status = document.getElementById('time-records-message');
+        if (!status) {
+            status = document.createElement('p');
+            status.id = 'time-records-message';
+            status.setAttribute('role', 'status');
+            status.setAttribute('aria-live', 'polite');
+            container.before(status);
+        }
+        status.textContent = message;
+    }
+
+    // Used by the existing server-rendered pagination buttons and attendance.js.
+    window.updateTimeRecordsTable = async function(page) {
+        const container = document.getElementById('timeRecordsContainer');
+        if (!container) return true;
+        const selectedPage = Math.max(1, Number.parseInt(page ?? container.dataset.page ?? '1', 10) || 1);
+        const request = ++tableRequest;
+        container.setAttribute('aria-busy', 'true');
+        try {
+            const response = await fetch(`get_time_records.php?page=${selectedPage}`, {cache: 'no-store', redirect: 'error'});
+            if (!response.ok) throw new Error('Arbeitszeiten konnten nicht geladen werden. Bitte erneut versuchen.');
+            const html = await response.text();
+            if (request !== tableRequest) return true;
+            const restorePaginationFocus = container.contains(document.activeElement)
+                && document.activeElement.matches('.btn-group button');
+            container.innerHTML = html;
+            container.dataset.page = String(selectedPage);
+            prepareTimeRecords(container);
+            if (restorePaginationFocus) container.querySelector('[aria-current="page"]')?.focus();
+            tableMessage(container, '');
+            return true;
+        } catch (error) {
+            if (request === tableRequest) tableMessage(container, error.message || 'Arbeitszeiten konnten nicht geladen werden.');
+            return false;
+        } finally {
+            if (request === tableRequest) container.removeAttribute('aria-busy');
+        }
+    };
+
+    // The download endpoint remains server-authoritative and already CSV-safe.
+    window.exportToCSV = function() { window.location.assign('export_csv.php'); };
+
+    ready(() => {
+        document.querySelectorAll('.main-title').forEach(title => {
+            title.addEventListener('click', () => {
+                const content = title.nextElementSibling;
+                if (!content?.classList.contains('toggle-content')) return;
+                if (window.jQuery) window.jQuery(content).slideToggle();
+                else content.hidden = !content.hidden;
+                const icon = title.querySelector('i.fas');
+                icon?.classList.toggle('fa-chevron-down');
+                icon?.classList.toggle('fa-chevron-up');
+            });
+        });
+
+        document.getElementById('importDbButton')?.addEventListener('click', () => {
+            document.getElementById('importModal')?.showModal();
+        });
+        document.getElementById('importButton')?.addEventListener('click', event => {
+            const file = document.getElementById('dbFile');
+            if (file?.files?.length) return;
+            event.preventDefault();
+            if (window.Swal) window.Swal.fire({icon: 'warning', title: 'Keine Datei ausgewählt', text: 'Bitte wählen Sie eine Datei aus.', confirmButtonText: 'OK'});
+        });
+
+        const container = document.getElementById('timeRecordsContainer');
+        if (container) {
+            container.addEventListener('click', event => {
+                if (event.target.closest('a, button, input, select, textarea')) return;
+                const row = event.target.closest('.summary-row');
+                if (!row) return;
+                const date = row.dataset.date;
+                if (expandedDates.has(date)) expandedDates.delete(date);
+                else expandedDates.add(date);
+                prepareTimeRecords(container);
+            });
+            container.addEventListener('keydown', event => {
+                if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.summary-row')) {
+                    event.preventDefault();
+                    event.target.click();
+                }
+            });
+            if (container.querySelector('table')) prepareTimeRecords(container);
+            else void window.updateTimeRecordsTable(1);
+        }
+    });
+})();
