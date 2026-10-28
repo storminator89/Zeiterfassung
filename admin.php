@@ -332,26 +332,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_department'])) {
     }
 }
 
-function validateUserAssignment(PDO $conn, $role, $supervisor): ?int
-{
-    if (!in_array($role, ['user', 'admin', 'supervisor'], true)) {
-        throw new InvalidArgumentException('Ungültige Benutzerrolle.');
-    }
-    if ($supervisor === '') {
-        return null;
-    }
-    $supervisorId = filter_var($supervisor, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-    if ($supervisorId === false) {
-        throw new InvalidArgumentException('Ungültiger Vorgesetzter.');
-    }
-    $stmt = $conn->prepare("SELECT id FROM users WHERE id = ? AND role IN ('supervisor', 'admin')");
-    $stmt->execute([$supervisorId]);
-    if ($stmt->fetchColumn() === false) {
-        throw new InvalidArgumentException('Ungültiger Vorgesetzter.');
-    }
-    return $supervisorId;
-}
-
 require_once __DIR__ . '/lib/admin_users.php';
 
 // Benutzer hinzufügen
@@ -370,11 +350,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
         $error = ERROR_ALL_FIELDS_REQUIRED;
     } else {
         try {
-            $supervisor = validateUserAssignment($conn, $role, $supervisor);
-            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-            // Statement vorbereiten und ausführen, um den neuen Benutzer einzufügen
-            $stmt = $conn->prepare("INSERT INTO users (username, password, email, role, department_id, supervisor_id, regelarbeitszeit, ueberstunden) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$username, $hashedPassword, $email, $role, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden]);
+            admin_create_user($conn, function () use ($conn, $username, $password, $email, $role, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden): void {
+                $assignment = validateUserAssignment($conn, $role, $supervisor, $department_id);
+                $department_id = $assignment['department_id'];
+                $supervisor = $assignment['supervisor_id'];
+                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+                // Statement vorbereiten und ausführen, um den neuen Benutzer einzufügen
+                $stmt = $conn->prepare("INSERT INTO users (username, password, email, role, department_id, supervisor_id, regelarbeitszeit, ueberstunden) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$username, $hashedPassword, $email, $role, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden]);
+            });
 
             $successMessage = USER_CREATED_SUCCESS;
         } catch (InvalidArgumentException $e) {
@@ -420,8 +404,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_user'])) {
     $ueberstunden = $_POST['ueberstunden'];
 
     try {
-        $supervisor = validateUserAssignment($conn, $role, $supervisor);
+        admin_assignment_role($role); // Keep invalid roles out of the existing typed last-admin boundary.
         admin_mutate_existing_user($conn, $user_id, $role, function (int $targetId) use ($conn, $username, $email, $role, $password, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden): void {
+            $assignment = validateUserAssignment($conn, $role, $supervisor, $department_id, $targetId);
+            $department_id = $assignment['department_id'];
+            $supervisor = $assignment['supervisor_id'];
             if (!empty($password)) {
                 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
                 $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, role = ?, password = ?, department_id = ?, supervisor_id = ?, regelarbeitszeit = ?, ueberstunden = ? WHERE id = ?");
