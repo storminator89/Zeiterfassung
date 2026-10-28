@@ -21,6 +21,17 @@ final readonly class PhpLdapSyncTransport implements LdapSyncTransport
         private int $maxEntries = 1000,
     ) {}
 
+    public function target(): LdapSyncTarget
+    {
+        if ($this->enabled !== true) {
+            throw new RuntimeException('LDAP synchronization transport is not enabled.');
+        }
+
+        // Pure shape metadata from this same immutable profile. No extension,
+        // CA-file, connection or secret resolution before the authorized call.
+        return LdapSyncTarget::fromTrustedUri($this->uri, $this->baseDn);
+    }
+
     public function collect(#[\SensitiveParameter] string $bindDn, #[\SensitiveParameter] string $password): array
     {
         if ($this->enabled !== true) {
@@ -52,20 +63,9 @@ final readonly class PhpLdapSyncTransport implements LdapSyncTransport
 
     private function requireConfiguration(): void
     {
-        $parts = parse_url($this->uri);
-        if (! is_array($parts) || array_diff(array_keys($parts), ['scheme', 'host', 'port']) !== []
-            || ($parts['scheme'] ?? null) !== 'ldap' || ! is_string($parts['host'] ?? null)
-            || ! is_int($parts['port'] ?? null) || $parts['port'] < 1 || $parts['port'] > 65535
-            || $this->uri !== 'ldap://'.$parts['host'].':'.$parts['port']
-            || $this->baseDn === '' || trim($this->baseDn) !== $this->baseDn || str_contains($this->baseDn, "\0")
-            || $this->maxEntries < 1 || $this->maxEntries > 10000) {
-            throw new RuntimeException;
-        }
-        $host = $parts['host'];
-        $validHost = str_starts_with($host, '[') && str_ends_with($host, ']')
-            ? filter_var(substr($host, 1, -1), FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false
-            : filter_var($host, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME) !== false;
-        if (! $validHost || ! extension_loaded('ldap') || ! function_exists('ldap_count_references')) {
+        $this->target();
+        if ($this->maxEntries < 1 || $this->maxEntries > 10000
+            || ! extension_loaded('ldap') || ! function_exists('ldap_count_references')) {
             throw new RuntimeException;
         }
         foreach (['LDAP_OPT_PROTOCOL_VERSION', 'LDAP_OPT_NETWORK_TIMEOUT', 'LDAP_OPT_TIMEOUT',

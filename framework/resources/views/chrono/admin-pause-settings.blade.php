@@ -9,16 +9,43 @@
     @if ($adminPauseSettings->success)
     <div class="alert alert-success shadow-lg mb-4" role="status"><div><i class="fas fa-check-circle"></i><span>{{ $adminPauseSettings->success }}</span></div></div>
     @endif
+    @if ($adminPauseSettings->intakePolicy !== null)
+    <div id="user-intake-policy" class="card bg-base-100 shadow-xl mb-8">
+        <div class="card-body">
+            <h2 class="card-title text-2xl mb-4">Benutzeraufnahme · Laravel V4</h2>
+            <p class="mb-4">Aufnahmewege unabhängig freigeben. Bestehende Konten und Anmeldungen bleiben unverändert; die Erst-Admin-Einrichtung ist davon getrennt. LDAP benötigt zusätzlich einen zugelassenen Connector; Speichern startet keinen Verzeichnislauf.</p>
+            <form method="post" class="space-y-4">
+                @csrf
+                <input type="hidden" name="update_intake_policy" value="1">
+                <input type="hidden" name="revision" value="{{ $adminPauseSettings->intakePolicy['revision'] }}">
+                <fieldset @disabled(! $adminPauseSettings->enabled) class="space-y-4">
+                    @foreach (['manual_enabled' => 'Manuelle Anlage', 'ldap_sync_enabled' => 'LDAP-Synchronisierung', 'registration_enabled' => 'Öffentliche Selbstregistrierung'] as $field => $label)
+                    <div class="form-control">
+                        <label class="label" for="intake-{{ $field }}"><span class="label-text">{{ $label }}</span></label>
+                        <select class="select select-bordered" id="intake-{{ $field }}" name="{{ $field }}">
+                            <option value="0" @selected(! $adminPauseSettings->intakePolicy[$field])>Aus</option>
+                            <option value="1" @selected($adminPauseSettings->intakePolicy[$field])>An</option>
+                        </select>
+                    </div>
+                    @endforeach
+                    <button class="btn btn-primary">Aufnahmewege speichern</button>
+                </fieldset>
+            </form>
+            <p class="text-sm opacity-70 mt-3">Stand: Revision {{ $adminPauseSettings->intakePolicy['revision'] }}. Veraltete Formulare überschreiben keine neuere Auswahl. Alle Wege dürfen aus sein; lokale Administration kann die Auswahl trotzdem wieder ändern.</p>
+        </div>
+    </div>
+    @endif
     <div id="user-management" class="card bg-base-100 shadow-xl mb-8">
         <div class="card-body">
             <h2 class="card-title text-2xl mb-4">{{ $page->copy->text('USER_MANAGEMENT_TITLE') }}</h2>
+            @if ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled'])<p class="alert alert-info mb-4" role="note">Manuelle Benutzeraufnahme ist durch die gespeicherte Auswahl deaktiviert.</p>@endif
             <div id="user-mutations-hold" class="alert alert-info mb-4" role="note">Bestehende Benutzer bleiben nur lesend: Ändern, Löschen und Passwortänderungen sind nicht verbunden.</div>
-            <button type="button" class="btn btn-primary mb-4" id="toggleUserForm" @disabled(! $adminPauseSettings->enabled)><i class="fas fa-plus mr-2"></i>{{ $page->copy->text('BUTTON_CREATE_USER') }}</button>
+            <button type="button" class="btn btn-primary mb-4" id="toggleUserForm" @disabled(! $adminPauseSettings->enabled || ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled']))><i class="fas fa-plus mr-2"></i>{{ $page->copy->text('BUTTON_CREATE_USER') }}</button>
             <div id="userForm" class="hidden mb-6">
                 <form method="post" class="space-y-4">
                     @csrf
                     <input type="hidden" name="add_user" value="1">
-                    <fieldset @disabled(! $adminPauseSettings->enabled) class="space-y-4">
+                    <fieldset @disabled(! $adminPauseSettings->enabled || ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled'])) class="space-y-4">
                     <div class="form-control">
                         <label class="label" for="username"><span class="label-text">{{ $page->copy->text('FORM_USERNAME') }}</span></label>
                         <input type="text" id="username" name="username" class="input input-bordered" required>

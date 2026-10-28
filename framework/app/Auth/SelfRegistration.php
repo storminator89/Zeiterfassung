@@ -3,6 +3,8 @@
 namespace App\Auth;
 
 use App\LegacyDatabase\AttendanceWriter;
+use App\Accounts\IntakePolicyAccess;
+use Illuminate\Auth\Access\AuthorizationException;
 use Closure;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Hashing\Hasher;
@@ -14,13 +16,29 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 final class SelfRegistration
 {
     /** @param Closure(): AttendanceWriter $writer Trusted admitted operation resolver. */
-    public function __construct(private Repository $config, private Hasher $hasher, private Closure $writer) {}
+    public function __construct(private Repository $config, private Hasher $hasher, private Closure $writer,
+        private ?IntakePolicyAccess $intake = null) {}
+
+    public function available(): bool
+    {
+        if ($this->config->get('chrono_registration.enabled', false) !== true) {
+            return false;
+        }
+        try {
+            $this->intake?->registrationRevision();
+            return true;
+        } catch (AuthorizationException) {
+            return false;
+        }
+    }
 
     public function register(#[\SensitiveParameter] array $form): void
     {
         if ($this->config->get('chrono_registration.enabled', false) !== true) {
             throw new NotFoundHttpException;
         }
+        // V4 policy is checked before hashing; the writer rechecks this revision under its lock.
+        $revision = $this->intake?->registrationRevision();
         if (array_diff(array_keys($form), ['username', 'email', 'password', 'password_confirmation']) !== []) {
             throw new InvalidArgumentException('Invalid registration fields.');
         }
@@ -52,6 +70,6 @@ final class SelfRegistration
             throw new LogicException('An admitted operation-scoped writer is required.');
         }
         // Deliberately discard new/duplicate distinction: no availability oracle.
-        $writer->registerLocalUser($username, $email, $hash);
+        $writer->registerLocalUser($username, $email, $hash, expectedPolicyRevision: $revision);
     }
 }

@@ -5,6 +5,8 @@ namespace App\Providers;
 use App\Console\Commands\RehearseLegacyAdoption;
 use App\Console\Commands\OfflineLegacyV2;
 use App\Console\Commands\OfflineUserAuditV3;
+use App\Console\Commands\PrepareFreshApplication;
+use App\Console\Commands\ProvisionFirstAdminSetup;
 use App\LegacyDatabase\AuditContext;
 use App\LegacyDatabase\AuditFunctions;
 use App\LegacyDatabase\MemoryOnly;
@@ -38,7 +40,7 @@ final class LegacyFixtureServiceProvider extends ServiceProvider
         });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([RehearseLegacyAdoption::class, OfflineLegacyV2::class, OfflineUserAuditV3::class]);
+            $this->commands([RehearseLegacyAdoption::class, OfflineLegacyV2::class, OfflineUserAuditV3::class, PrepareFreshApplication::class, ProvisionFirstAdminSetup::class]);
         }
     }
 }

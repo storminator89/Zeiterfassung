@@ -19,5 +19,6 @@ final readonly class AdminPauseSettingsPage
         public array $users = [],
         public array $supervisors = [],
         public ?string $success = null,
+        public ?array $intakePolicy = null,
     ) {}
 }

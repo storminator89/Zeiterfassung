@@ -2,6 +2,7 @@
 
 namespace App\LegacyDatabase;
 
+use App\Accounts\IntakePolicy;
 use LogicException;
 use PDO;
 use Pdo\Sqlite;
@@ -9,6 +10,8 @@ use Pdo\Sqlite;
 /** Trusted operator manifest, not a request DTO or automatic admission claim. */
 final readonly class RuntimeAdmission
 {
+    public const INTAKE_POLICY_SQL = 'SELECT id,manual_enabled,ldap_sync_enabled,registration_enabled,revision,updated_at,updated_by FROM user_intake_policy ORDER BY id LIMIT 2';
+
     private function __construct(
         public string $path,
         public int $device,
@@ -20,6 +23,7 @@ final readonly class RuntimeAdmission
         public int $synchronous,
         public ?string $schemaProfile = null,
         public ?string $baseSchemaSignature = null,
+        public ?string $userAuditSchemaSignature = null,
     ) {}
 
     // Pure configuration validation: no stat, file read, PDO or source bootstrap.
@@ -28,11 +32,22 @@ final readonly class RuntimeAdmission
         $keys = ['path', 'device', 'inode', 'schema_version', 'schema_signature', 'foreign_keys', 'journal_mode', 'synchronous'];
         $profile = null;
         $baseSignature = null;
-        if (array_key_exists('schema_profile', $manifest) || array_key_exists('base_schema_signature', $manifest)) {
+        $userAuditSignature = null;
+        if (array_key_exists('schema_profile', $manifest) || array_key_exists('base_schema_signature', $manifest)
+            || array_key_exists('user_audit_schema_signature', $manifest)) {
             $keys = [...$keys, 'schema_profile', 'base_schema_signature'];
             $profile = $manifest['schema_profile'] ?? null;
             $baseSignature = $manifest['base_schema_signature'] ?? null;
-            if ($profile !== 'user-audit-v3' || ! is_string($baseSignature)
+            if ($profile === 'intake-policy-v4') {
+                $keys[] = 'user_audit_schema_signature';
+                $userAuditSignature = $manifest['user_audit_schema_signature'] ?? null;
+                if (! is_string($baseSignature) || ! preg_match('/^[a-f0-9]{64}$/D', $baseSignature)
+                    || ! is_string($userAuditSignature) || ! preg_match('/^[a-f0-9]{64}$/D', $userAuditSignature)
+                    || $baseSignature === $userAuditSignature || $baseSignature === ($manifest['schema_signature'] ?? null)
+                    || $userAuditSignature === ($manifest['schema_signature'] ?? null)) {
+                    throw new LogicException('The complete distinct V2/V3/V4 signature chain is required.');
+                }
+            } elseif ($profile !== 'user-audit-v3' || ! is_string($baseSignature)
                 || ! preg_match('/^[a-f0-9]{64}$/D', $baseSignature)
                 || $baseSignature === ($manifest['schema_signature'] ?? null)) {
                 throw new LogicException('An explicit complete user-audit-v3 profile and distinct base signature are required.');
@@ -60,15 +75,37 @@ final readonly class RuntimeAdmission
             throw new LogicException('The runtime database identity and approved settings are invalid.');
         }
 
-        return new self($path, $device, $inode, $version, $signature, $foreignKeys, $manifest['journal_mode'], $synchronous, $profile, $baseSignature);
+        return new self($path, $device, $inode, $version, $signature, $foreignKeys, $manifest['journal_mode'], $synchronous, $profile, $baseSignature, $userAuditSignature);
     }
 
     /** Pure exact ledger projection shared by all PDO/SQLite3 admission sites. */
     public function expectedLedgerRows(): array
     {
-        return $this->schemaProfile === 'user-audit-v3'
-            ? self::userAuditV3LedgerRows($this->baseSchemaSignature, $this->schemaSignature)
-            : [['id' => 1, 'migration' => V2Adoption::migrationName($this->schemaSignature), 'batch' => 1]];
+        return match ($this->schemaProfile) {
+            'user-audit-v3' => self::userAuditV3LedgerRows($this->baseSchemaSignature, $this->schemaSignature),
+            'intake-policy-v4' => self::intakePolicyV4LedgerRows($this->baseSchemaSignature, $this->userAuditSchemaSignature, $this->schemaSignature),
+            default => [['id' => 1, 'migration' => V2Adoption::migrationName($this->schemaSignature), 'batch' => 1]],
+        };
+    }
+
+    public static function intakePolicyV4LedgerRows(string $baseSignature, string $userAuditSignature, string $postSignature): array
+    {
+        if (! preg_match('/^[a-f0-9]{64}$/D', $postSignature)
+            || in_array($postSignature, [$baseSignature, $userAuditSignature], true)) {
+            throw new LogicException('A distinct complete intake-policy-v4 signature is required.');
+        }
+
+        return [...self::userAuditV3LedgerRows($baseSignature, $userAuditSignature),
+            ['id' => 3, 'migration' => '2026_10_28_000003_intake_policy_v4_'.$postSignature, 'batch' => 3]];
+    }
+
+    /** Pure row validation shared by PDO and native SQLite snapshot ingress. */
+    public function assertIntakePolicyState(array $versions, array $rows): void
+    {
+        if ($this->schemaProfile !== 'intake-policy-v4' || $versions !== [1, 2, 3, 4] || count($rows) !== 1) {
+            throw new LogicException('The complete admitted intake-policy-v4 state is required.');
+        }
+        IntakePolicy::fromRow($rows[0]);
     }
 
     public static function userAuditV3MigrationName(string $signature): string

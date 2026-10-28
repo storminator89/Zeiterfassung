@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Auth\SelfRegistration;
 use App\Auth\FirstAdminSetup;
+use App\Accounts\IntakePolicyAccess;
+use App\Accounts\IntakePolicyStore;
 use App\Chrono\DatabaseSnapshotExport;
 use App\Chrono\LegacyLocalWebAttendance;
 use App\Chrono\LegacyLocalWebAbsences;
@@ -42,6 +44,16 @@ class AppServiceProvider extends ServiceProvider
                 return $app->make(AttendanceWriter::class);
             },
         ));
+        $this->app->scoped(IntakePolicyAccess::class, fn ($app) => new IntakePolicyAccess(
+            $app->bound(RuntimeDatabase::class) && $app->make(RuntimeDatabase::class)->isIntakePolicyV4(),
+            $app->make('auth'), $app->make('db'), new IntakePolicyStore,
+            function () use ($app): AttendanceWriter {
+                if (! $app->bound(AttendanceWriter::class)) {
+                    throw new LogicException('No admitted operation-scoped intake policy writer is configured.');
+                }
+                return $app->make(AttendanceWriter::class);
+            },
+        ));
         $this->app->scoped(SelfRegistration::class, fn ($app) => new SelfRegistration(
             $app->make('config'), $app->make('hash'),
             function () use ($app): AttendanceWriter {
@@ -49,7 +61,7 @@ class AppServiceProvider extends ServiceProvider
                     throw new LogicException('No admitted operation-scoped registration writer is configured.');
                 }
                 return $app->make(AttendanceWriter::class);
-            },
+            }, $app->make(IntakePolicyAccess::class),
         ));
         $this->app->scoped(DatabaseSnapshotExport::class, function ($app): DatabaseSnapshotExport {
             // No autowired/default/environment source. Construction is pure;
@@ -120,7 +132,7 @@ class AppServiceProvider extends ServiceProvider
                 }
 
                 return $app->make(AttendanceWriter::class);
-            },
+            }, $app->make(IntakePolicyAccess::class),
         ));
         $this->app->scoped(LocalWebCarryIn::class, fn ($app) => new LegacyLocalWebCarryIn(
             $app->make('auth'),

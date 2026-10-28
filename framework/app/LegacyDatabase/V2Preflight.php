@@ -2,6 +2,7 @@
 
 namespace App\LegacyDatabase;
 
+use App\Accounts\IntakePolicy;
 use PDO;
 use RuntimeException;
 
@@ -27,6 +28,28 @@ final class V2Preflight
         }
 
         return $this->inspectProfile($target, $reference, [1, 2, 3]);
+    }
+
+    /** Fixed additive fresh-install profile; original V2/V3 admission stays exact. */
+    public function inspectIntakePolicyV4(PDO $target, PDO $reference): array
+    {
+        MemoryOnly::connection($reference);
+        if ($reference->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN) !== [1, 2, 3, 4]) {
+            throw new RuntimeException('The explicit intake-policy-v4 reference is required.');
+        }
+        $mapping = $this->mapping;
+        if (in_array('user_intake_policy', array_column($mapping['tables'], 'name'), true)) {
+            throw new RuntimeException('The unchanged base inventory is required.');
+        }
+        $mapping['tables'][] = ['name' => 'user_intake_policy', 'presence' => 'required', 'primary_key' => ['id']];
+        $checked = (new self($mapping))->inspectProfile($target, $reference, [1, 2, 3, 4]);
+        $rows = $target->query(RuntimeAdmission::INTAKE_POLICY_SQL)->fetchAll(PDO::FETCH_ASSOC);
+        if (count($rows) !== 1) {
+            throw new RuntimeException('The persisted intake policy is required.');
+        }
+        IntakePolicy::fromRow($rows[0]);
+
+        return $checked;
     }
 
     private function inspectProfile(PDO $target, PDO $reference, array $versions): array
@@ -76,7 +99,8 @@ final class V2Preflight
         }
 
         if ($target->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN) !== $versions) {
-            throw new RuntimeException($versions === [1, 2] ? 'Only a complete source v2 database is supported.' : 'Only a complete user-audit-v3 database is supported.');
+            throw new RuntimeException($versions === [1, 2] ? 'Only a complete source v2 database is supported.'
+                : ($versions === [1, 2, 3] ? 'Only a complete user-audit-v3 database is supported.' : 'Only a complete intake-policy-v4 database is supported.'));
         }
         if ($target->query('PRAGMA foreign_key_check')->fetch() !== false) {
             throw new RuntimeException('Declared relationship preflight failed; no automatic repairs.');
