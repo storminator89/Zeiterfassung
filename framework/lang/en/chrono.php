@@ -197,4 +197,9 @@ return [
     'SETUP_TOKEN_INVALID' => 'Invalid setup authorization. Contact administration.',
     'SETUP_UNCONFIRMED' => 'Initial setup could not be confirmed. Do not retry automatically; check the saved state and try signing in.',
     'SETUP_RESULT' => 'You may try signing in. Initial administration is created only for an empty user database with valid setup authorization.',
+
+    // Exact selected native edit/delete form copy.
+    'USER_UPDATED_SUCCESS' => 'User updated successfully.',
+    'USER_DELETED_SUCCESS' => 'User deleted successfully.',
+    'CONFIRM_DELETE_USER' => 'Are you sure you want to delete this user?',
 ];
