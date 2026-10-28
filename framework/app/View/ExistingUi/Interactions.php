@@ -21,5 +21,6 @@ final readonly class Interactions
         public bool $terminalCredentialRevocations = false,
         public bool $correctionWithdrawals = false,
         public bool $terminalDeviceRevocations = false,
+        public bool $ldapSessionRevocations = false,
     ) {}
 }

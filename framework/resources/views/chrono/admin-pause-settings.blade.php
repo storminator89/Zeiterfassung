@@ -58,6 +58,12 @@
                 </span>
             </h2>
             @if ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled'])<p class="alert alert-info mb-4" role="note">Manuelle Benutzeraufnahme ist durch die gespeicherte Auswahl deaktiviert.</p>@endif
+            @if ($adminPauseSettings->ldapSessionNotice !== null)
+            <p class="alert alert-info mb-4" role="status">{{ $adminPauseSettings->ldapSessionNotice }}</p>
+            @endif
+            @if ($page->interactions->ldapSessionRevocations)
+            <p class="text-sm opacity-70 mb-4" id="ldap-session-revocation-help">„LDAP-Sitzungen beenden“ beendet bestehende Web-Sitzungen und bisherige hashgebundene Tokens beim nächsten autoritativen Check. Es deaktiviert kein Konto: erneute gültige LDAP-Anmeldung bleibt möglich, Terminal-Zugänge bleiben unverändert. Bei unklarer Antwort nicht erneut senden.</p>
+            @endif
             @unless ($managedUsersEnabled)
             <div id="user-mutations-hold" class="alert alert-info mb-4" role="note">Bestehende Benutzer bleiben nur lesend: Ändern, Löschen und Passwortänderungen sind nicht verbunden.</div>
             @endunless
@@ -152,6 +158,16 @@
                                 </form>
                                 @else
                                 <button type="button" class="btn btn-ghost btn-sm" title="{{ $page->copy->text('BUTTON_DELETE') }}" disabled aria-describedby="user-mutations-hold"><i class="fas fa-trash-alt"></i></button>
+                                @endif
+                                @if (isset($adminPauseSettings->ldapSessionConfirmations[$user['id']]))
+                                <form method="post" class="inline" data-revoke-ldap-sessions aria-describedby="ldap-session-revocation-help">
+                                    @csrf
+                                    <input type="hidden" name="revoke_ldap_sessions" value="1">
+                                    <input type="hidden" name="user_id" value="{{ $user['id'] }}">
+                                    <input type="hidden" name="confirmation" value="{{ $adminPauseSettings->ldapSessionConfirmations[$user['id']] }}">
+                                    <label class="label cursor-pointer inline-flex gap-2"><input type="checkbox" class="checkbox checkbox-sm" name="confirm" value="1" required><span class="label-text">Sitzungen für {{ $user['username'] }} beenden</span></label>
+                                    <button type="submit" class="btn btn-ghost btn-sm">LDAP-Sitzungen beenden</button>
+                                </form>
                                 @endif
                             </td>
                         </tr>
@@ -393,6 +409,17 @@
     @endif
     document.querySelectorAll('[data-read-user]').forEach(function (button) {
         button.addEventListener('click', function () { editUser(button.dataset.readUser); });
+    });
+    document.querySelectorAll('[data-revoke-ldap-sessions]').forEach(function (form) {
+        let submitted = false;
+        form.addEventListener('submit', function (event) {
+            if (submitted) { event.preventDefault(); return; }
+            if (!confirm('Bestehende LDAP-Sitzungen für dieses Konto beenden? Das Konto bleibt anmeldbar; Terminal-Zugänge werden nicht gesperrt.')) {
+                event.preventDefault(); return;
+            }
+            submitted = true;
+            form.querySelector('button[type="submit"]').disabled = true;
+        });
     });
     document.querySelectorAll('[data-delete-managed-user]').forEach(function (form) {
         form.addEventListener('submit', function (event) {

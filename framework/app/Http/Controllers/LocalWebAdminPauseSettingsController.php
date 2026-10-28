@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
 use App\Chrono\LocalWebLdapSync;
+use App\Chrono\LocalWebLdapSessionRevocations;
 use App\Http\AdminCredentialDocument;
 use App\View\ExistingUi\LdapSyncForm;
 use App\View\ExistingUi\LdapSyncOutcome;
@@ -44,6 +45,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         private ?Repository $config = null,
         private ?LocalWebAdminUserMutations $userMutations = null,
         private ?LocalSession $sessions = null,
+        private ?LocalWebLdapSessionRevocations $ldapSessions = null,
     ) {}
 
     public function index(Request $request): Response
@@ -91,6 +93,9 @@ final class LocalWebAdminPauseSettingsController extends Controller
             $supported['update_intake_policy'] = ['update_intake_policy', 'revision', 'manual_enabled', 'ldap_sync_enabled', 'registration_enabled'];
             if ($this->ldapHttpEnabled()) { $supported['sync_ldap'] = LocalWebLdapSync::COMMAND_FIELDS; }
         }
+        if ($this->ldapSessionsEnabled()) {
+            $supported['revoke_ldap_sessions'] = LocalWebLdapSessionRevocations::COMMAND_FIELDS;
+        }
         $actions = [];
         foreach ($supported as $flag => $fields) {
             if (isset($form[$flag])) {
@@ -102,6 +107,10 @@ final class LocalWebAdminPauseSettingsController extends Controller
             // Reject all other/mixed Admin actions before reads, writes or preferences.
             return new Response('Diese Verwaltungsaktion ist in der Laravel-Ansicht noch nicht verbunden.', 400,
                 ['Content-Type' => 'text/plain; charset=UTF-8']);
+        }
+
+        if ($actions[0] === 'revoke_ldap_sessions') {
+            return $this->revokeLdapSessions($request, $form);
         }
 
         if ($actions[0] === 'sync_ldap') {
@@ -136,6 +145,39 @@ final class LocalWebAdminPauseSettingsController extends Controller
         } catch (Throwable) {
             return $this->page($request,
                 'Pauseneinstellungen konnten nicht gespeichert werden. Bitte neu laden und den gespeicherten Stand prüfen.');
+        }
+    }
+
+    private function ldapSessionsEnabled(): bool
+    {
+        return $this->intake?->isV4() === true && $this->config?->get('app.debug') === false
+            && $this->config?->get('chrono_ldap_sessions.http_enabled', false) === true
+            && $this->interactions->adminPauseSettings && $this->interactions->ldapSessionRevocations
+            && $this->ldapSessions !== null;
+    }
+
+    private function revokeLdapSessions(Request $request, #[\SensitiveParameter] array $form): Response|RedirectResponse
+    {
+        try {
+            $this->ldapSessions->revoke(array_diff_key($form, array_flip(['_token', 'csrf_token'])));
+        } catch (AuthenticationException|AuthorizationException $error) {
+            throw $error;
+        } catch (\AttendanceError $error) {
+            return $this->userMutationText($error->getMessage(), $error->status);
+        } catch (InvalidArgumentException $error) {
+            return $this->userMutationText($error->getMessage(), 400);
+        } catch (Throwable) {
+            return $this->userMutationText('Sitzungsänderung nicht bestätigt. Bitte den Stand prüfen; nicht automatisch wiederholen.', 503);
+        }
+        // Only after confirmed COMMIT. A lost response or replay cannot rotate
+        // the same version twice; no retry or new ticket is issued on this POST.
+        try {
+            $actor = $this->auth->guard('web')->user();
+            $request->session()->flash('chrono_ldap_sessions_revoked', (int) $actor->getAuthIdentifier());
+            return new RedirectResponse('admin.php#user-management', 303,
+                ['Cache-Control' => 'no-store', 'Referrer-Policy' => 'no-referrer']);
+        } catch (Throwable) {
+            return $this->userMutationText('Sitzungsänderung gespeichert. Die Antwort konnte nicht abgeschlossen werden; nicht erneut senden.', 503);
         }
     }
 
@@ -355,6 +397,24 @@ final class LocalWebAdminPauseSettingsController extends Controller
                 catch (Throwable) { $ldapNotice = 'unconfirmed'; }
             }
         }
+        $ldapSessionConfirmations = [];
+        $ldapSessionNotice = null;
+        if ($this->ldapSessionsEnabled()) {
+            // Preserve a known committed outcome even if a new form cannot be issued.
+            if ($request->session()->pull('chrono_ldap_sessions_revoked') === (int) $actor->getAuthIdentifier()) {
+                $ldapSessionNotice = 'Sitzungswiderruf gespeichert. Bestehende Sitzungen werden beim nächsten autoritativen Check abgewiesen. Erneute LDAP-Anmeldung bleibt möglich; Terminal-Zugänge bleiben unverändert.';
+            }
+            try {
+                // Only server-projected ten-row IDs, never extra request fields.
+                $ldapSessionConfirmations = $this->ldapSessions->confirmations(
+                    array_map(static fn (array $user): int => (int) $user['id'], $users['users']));
+            } catch (AuthenticationException|AuthorizationException $error) {
+                throw $error;
+            } catch (Throwable) {
+                $ldapSessionNotice = ($ldapSessionNotice === null ? '' : $ldapSessionNotice.' ')
+                    .'Neue Bestätigungsformulare sind derzeit nicht verfügbar. Bitte den gespeicherten Stand prüfen; nicht erneut senden.';
+            }
+        }
         $nonce = $v4 ? AdminCredentialDocument::nonce() : null;
         require_once dirname(__DIR__, 4).'/lib/language.php';
         $language = \valid_language($request->query('lang', $request->session()->get('lang', 'de')));
@@ -375,6 +435,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
                 $successKey === null ? null : $copy->text($successKey),
                 intakePolicy: $intakePolicy,
                 ldapSyncForm: $ldapForm, ldapSyncOutcome: $ldapOutcome, ldapSyncNotice: $ldapNotice,
+                ldapSessionConfirmations: $ldapSessionConfirmations, ldapSessionNotice: $ldapSessionNotice,
             ),
         ], 200, ['Cache-Control' => 'no-store']);
         if ($nonce !== null) {

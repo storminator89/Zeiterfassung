@@ -17,6 +17,7 @@ use Throwable;
 final class AttendanceWriter
 {
     use ManagedUserWriterOperations;
+    use LdapSessionWriterOperations;
 
     private readonly SQLiteConnection $connection;
     private bool $unusable = false;
