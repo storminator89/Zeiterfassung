@@ -40,17 +40,20 @@ final class LocalWebCorrectionsController extends Controller
                 'action', 'record_id', 'cancel', 'start', 'end', 'pause', 'reason',
                 'id', 'decision', 'review_reason',
             ]));
+            $selectedRecordId = 0;
             if (($command['action'] ?? null) === 'request') {
                 // Native request-only parser: explicit new entry 0 is valid only in POST.
                 try {
-                    \correction_selection_id($command['record_id'] ?? null, true);
+                    $selectedRecordId = \correction_selection_id($command['record_id'] ?? null, true);
                 } catch (\InvalidArgumentException $selectionError) {
                     return $this->page($request, $selectionError->getMessage());
                 }
             }
             $this->corrections->apply($command);
 
-            return new RedirectResponse('adjustments.php?saved=1');
+            [$status, $requestedPage] = $this->queueFilters($request);
+
+            return new RedirectResponse(CorrectionsPage::queueUrl($status, $requestedPage, $this->queueSelection($request, false, $selectedRecordId)).'&saved=1');
         } catch (AuthenticationException $error) {
             throw $error; // Preserve the registrar's protected-route auth response.
         } catch (\AttendanceError $error) {
@@ -58,6 +61,29 @@ final class LocalWebCorrectionsController extends Controller
         } catch (Throwable) {
             return $this->page($request, 'Antrag konnte nicht verarbeitet werden.');
         }
+    }
+
+    /** Same native fallback rules; query fields select a queue, never a command. */
+    private function queueFilters(Request $request): array
+    {
+        $status = $request->query('request_status');
+        $status = is_string($status) && isset(CorrectionsPage::STATUS_LABELS[$status]) ? $status : 'pending';
+        $page = filter_var($request->query('request_page', 1), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 1;
+
+        return [$status, $page];
+    }
+
+    private function queueSelection(Request $request, bool $invalid, int $selectedId): array
+    {
+        $query = $request->query->all();
+        $selection = array_key_exists('record_id', $query)
+            ? ['record_id' => is_string($query['record_id']) ? $query['record_id'] : 'invalid'] : [];
+        $form = $request->request->all();
+        if ($request->isMethod('POST') && ($form['action'] ?? null) === 'request') {
+            $selection = $invalid ? ['record_id' => 'invalid'] : ($selectedId ? ['record_id' => $selectedId] : []);
+        }
+
+        return $selection;
     }
 
     private function page(Request $request, ?string $error = null): View
@@ -102,6 +128,8 @@ final class LocalWebCorrectionsController extends Controller
         $records = array_map(static fn (array $row): array => [
             'id' => (int) $row['id'], 'start' => $row['startzeit'], 'end' => $row['endzeit'],
         ], $recordOptions);
+        [$requestStatus, $requestedPage] = $this->queueFilters($request);
+        $queue = $this->reads->correctionsPage($requestStatus, $requestedPage);
         $requests = array_map(static function (array $row): array {
             $preview = \chrono_correction_preview($row);
             return [
@@ -116,7 +144,7 @@ final class LocalWebCorrectionsController extends Controller
                 // Selected time fields only; no original snapshot is passed to Blade.
                 'preview' => $preview,
             ];
-        }, $this->reads->corrections());
+        }, $queue['records']);
 
         return view('chrono.corrections', [
             // Reuse the existing shared chrome contract; no legacy header/bootstrap include.
@@ -129,6 +157,9 @@ final class LocalWebCorrectionsController extends Controller
                 $records, $requests, $selectedRecordId, $error,
                 $request->query->has('saved'), $this->interactions->corrections,
                 selectionInvalid: $selectionInvalid,
+                requestCounts: $queue['counts'], requestStatus: $queue['status'],
+                requestTotal: $queue['total'], requestPage: $queue['page'], requestPages: $queue['pages'],
+                queueSelection: $this->queueSelection($request, $selectionInvalid, $selectedRecordId),
             ),
         ]);
     }

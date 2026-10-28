@@ -38,7 +38,23 @@
     <p class="mb-6"><a class="btn btn-outline" href="adjustments.php">Eigene Buchung neu auswählen</a></p>
     @endif
 
-    <h2 class="text-xl font-semibold mb-4">Letzte Anträge</h2>
+    <section class="card bg-base-100 shadow-xl p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">Anträge filtern</h2>
+        <p class="mb-4">Offene Anträge: <strong>{{ $corrections->requestCounts['pending'] }}</strong> · innerhalb Ihrer bisherigen Sichtrechte.</p>
+        <form method="get" action="adjustments.php">
+            @if ($corrections->queueSelection)<input type="hidden" name="record_id" value="{{ $corrections->queueSelection['record_id'] }}">@endif
+            <label class="block text-sm font-semibold mt-4 mb-2" for="request_status">Status</label>
+            <select class="select select-bordered w-full" id="request_status" name="request_status">
+                @foreach ($corrections::STATUS_LABELS as $status => $label)
+                <option value="{{ $status }}" @selected($corrections->requestStatus === $status)>{{ $label }} ({{ $corrections->requestCounts[$status] }})</option>
+                @endforeach
+            </select>
+            <div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary">Filtern</button></div>
+        </form>
+    </section>
+    <h2 class="text-xl font-semibold mb-4">Anträge: {{ $corrections::STATUS_LABELS[$corrections->requestStatus] }}</h2>
+    <p class="text-sm opacity-70 mb-4">{{ $corrections->requestTotal }} Anträge · Seite {{ $corrections->requestPage }} von {{ $corrections->requestPages }}</p>
+    @if (! $corrections->requests)<p class="mb-6" role="status">Keine sichtbaren Anträge für diesen Status.</p>@endif
     @foreach ($corrections->requests as $a)
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <p class="text-sm font-semibold opacity-70 mb-2">#{{ $a['id'] }} · {{ $a['username'] }} · {{ ['pending' => 'Offen', 'approved' => 'Freigegeben', 'rejected' => 'Abgelehnt'][$a['status']] }}</p>
@@ -67,5 +83,11 @@
         @endif
     </section>
     @endforeach
+    @if ($corrections->requestPages > 1)
+    <nav class="flex flex-wrap gap-3 mb-6" aria-label="Antragsseiten">
+        @if ($corrections->requestPage > 1)<a class="btn btn-outline" href="{{ $corrections->pageUrl($corrections->requestPage - 1) }}">Neuere Anträge</a>@endif
+        @if ($corrections->requestPage < $corrections->requestPages)<a class="btn btn-outline" href="{{ $corrections->pageUrl($corrections->requestPage + 1) }}">Ältere Anträge</a>@endif
+    </nav>
+    @endif
 </main>
 @endsection

@@ -17,14 +17,17 @@ Seitenlabels bleiben wie im Bestand deutsch. Keine Kalender-/Stundenneuberechnun
 
 Der dünne Controller verwendet ausschließlich bereits freigegebene Dienste:
 
-- `ChronoReads::reportRows()` liefert eigene Einträge in bestehender Reihenfolge.
+- `ChronoReads::reportRows(chronological: true)` liefert eigene Einträge nach
+  dem bereits übernommenen Instant-/ID-Vertrag aus #17.
   Für den identischen 200-Optionen-Anzeigecap werden die ersten 200 Zeilen
   genommen und nur `id/startzeit/endzeit` dargestellt. Keine neue Query, kein
   fremder Benutzerselector. Der bestehende Reader lädt weiterhin alle eigenen
   Zeilen; keine neue Performanceabnahme für große Bestände wird behauptet.
-- `ChronoReads::corrections()` liefert die vorhandene autorisierte
-  `id DESC LIMIT 100`-Liste. Das Viewmodel enthält nur sichtbare Felder;
-  `original_json` bleibt im Kern/Bestand und wird nicht ins HTML eingebettet.
+- `ChronoReads::correctionsPage()` liefert die bestehende native Statusauswahl
+  mit gescopten Zählern und `id DESC LIMIT 50`/Offset in einem Readsnapshot.
+  Der alte `corrections()`-Vertrag bleibt für andere Verbraucher unverändert.
+  Das Viewmodel enthält nur sichtbare Felder; `original_json` bleibt im
+  Kern/Bestand und wird nicht ins HTML eingebettet.
 - Headeridentität kommt vom nach Middleware aktualisierten `web`-Guard,
   Anwesenheitsstatus vom bestehenden Reader. Zeitpunkte werden nur mit dem
   vorhandenen reinen `attendance_local`-Formatter angezeigt. Explizit geladen
@@ -54,8 +57,9 @@ Transformationen verbleiben im gemeinsamen Kern.
 
 Beide Routen benutzen den bestehenden Stack: Session/`LegacyFormCsrf` →
 `RefreshLocalAccount` → `auth:web` → `auth.session`. CSRF wird nicht deaktiviert;
-die Formulare verwenden `@csrf`. Erfolg ist der native Redirect
-`adjustments.php?saved=1`; `saved` ist wie bisher Parameterpräsenz. Fachfehler
+die Formulare verwenden `@csrf`. Erfolg ist der native Redirect mit
+`request_status`, `request_page`, ggf. `record_id` und `saved=1`;
+`saved` ist wie bisher Parameterpräsenz. Fachfehler
 werden wie im nativen Handler im vorhandenen HTML angezeigt, auch wenn der
 Kern etwa eine 403/409-Exception liefert; der alte HTML-Handler lieferte dann
 keine neue JSON-/422-Antwort. Technischer Formularfehler bleibt generisch
@@ -237,3 +241,78 @@ Keine echten Daten, DB, Antragsmutation, App-/Auth-/Session-/HTTP-/Browser-
 ausführung, neuer CI-Lauf oder Remote-Schreibzugriff. Das schließt die bekannte
 Laravel-Quelllücke, ersetzt aber nicht die weiter offene tatsächliche #14-
 Seiten-/Browserabnahme oder die übrigen Korrektur-/Migrationsgatter.
+
+
+## Ergänzung: vorhandene native Statuswarteschlange und Seiten
+
+Basis dieses getrennten Sechspfadpakets ist Main
+`b5558c36b64c9491ddec26800a0588952d32316a`, Baum
+`be08dfa141e24deef42e0a80e107e9d6e47bbeab`. Es übernimmt die bereits vorhandene
+native Korrekturantragsliste, statt die vorbereitete Laravel-Seite dauerhaft auf
+die letzten 100 Anträge aller Status zu beschränken. Bezug #79 und #50;
+keine neue Fachfunktion oder neue Oberfläche.
+
+Die bestehende Filterkarte, Labels/CSS und Seitenlinks werden in dieselbe Blade-
+Ansicht übernommen: `pending`/Offen ist der Standard, daneben `all`/Alle Status,
+`approved`/Freigegeben und `rejected`/Abgelehnt. Statuszähler, offene Anzahl,
+Antragsgesamtzahl, Seite/von und leerer Zustand entsprechen dem nativen Markup.
+Jede Seite zeigt höchstens 50 Anträge nach absteigender ID. Ungültige oder nicht
+skalare Querywerte fallen wie nativ auf Offen/Seite 1 zurück; positive Seiten
+werden vor dem Offset auf die vorhandene letzte Seite geklammert. Die normalen
+Form-/Kartenfelder und das Vieraugen-Reviewformular bleiben unverändert.
+
+`correctionsPage(status,page)` ergänzt das Readerinterface und den vorhandenen
+Reader. Ausschließlich die aktuelle authentifizierte Identität aus dessen
+unverändertem Snapshot darf den Scope bestimmen:
+`a.user_id=? OR ?='admin' OR (?='supervisor' AND u.supervisor_id=?)`.
+Damit bleiben eigene Anträge, bisheriger Adminrahmen und beim Supervisor das
+aktuell direkt zugeordnete Team erhalten; kein rekursiver Team-, freier
+Benutzer- oder neuer Datumsselector. Gruppierte Statuszähler und gefilterte
+Antragszeilen werden in demselben frischen Snapshot gelesen. Die festen Status-
+werte sind separat geprüft; Seitenzahl/Offset sind begrenzte Integer. Der
+alte `corrections()`-Leser, alle anderen Reader-Methoden sowie die LDAP-/
+Bestandskonto- und Snapshotprüfungen ändern sich nicht.
+
+Filter-/Seitenlinks und Erfolgsredirect bewahren wie nativ die explizite eigene
+Recordauswahl. Ein Antrag-POST überschreibt die Queryauswahl mit seiner
+validierten eigenen Auswahl; explizit0 entfernt sie, ungültige Auswahl bleibt
+als `invalid` markiert. GET-Werte werden wie nativ als Strings oder `invalid`
+weitergetragen und erneut über denselben Auswahlhelper geprüft. Queryfelder
+werden nie in den Writercommand gemischt. Auch Arrays im Raw-Form-Bag werden
+nicht per skalarem Inputzugriff umgedeutet. Das URLziel bleibt fest
+`adjustments.php`; Querywerte werden mit `http_build_query` codiert und im HTML
+zusätzlich escaped.
+
+Nur Controller, CorrectionsPage-DTO, Readerinterface/-methode, bestehende Blade-
+Ansicht und dieses Dokument ändern sich. DTO-Zusätze besitzen inaktive Defaults,
+sodass vorhandene statische Aufrufer weiterhin rendern. Keine Änderungen an
+Registrierung, Onboarding, Auth, Routes/Provider, Writer/Befehlsallowlist,
+CSRF/Middleware, Fachprüfung/Freigabe, Transaktionen/Audit, nativen Dateien,
+Assets, DBschema oder Standardaktivierung. Die gelockten Abhängigkeiten bleiben
+unverändert. Keine Performance- oder Lastabnahme wird behauptet.
+
+### Begrenzter grober Nachweis
+
+Unter PHP **8.5.12**, Laravel **13.38.0** und SQLite **3.46.1** wurde ein einziger
+grober synthetischer Query-/Helper-/Renderablauf geprüft. Eine schreibgesperrte
+anonyme Memory-PDO mit 125 erfundenen Anträgen vergleicht den tatsächlichen
+nativen Queueblock mit dem inneren neuen Readerbody: eigene Statusseiten,
+53 offene Anträge über zwei Seiten, aktuelle direkte Team-/Eigengrenze,
+Adminbereich, leeres Team/leerer Status und Klammerung der letzten Seite stimmen
+überein. Kein Dispatch des Readersnapshots und damit keine neue Rollen-/
+Authabnahme wird daraus abgeleitet.
+
+Die tatsächlich reinen Controllerhelper wurden mit skalaren und Array-Query-/
+Formwerten sowie GET-/POST-Auswahl und codierten URLs geprüft. Drei inaktive
+Bladefälle (zweite offene Seite, leere Liste, alter DTO-Aufruf) kompilieren und
+rendern ohne DBverbindung; Seiten-/Auswahlbeibehaltung, Markup-Escaping und
+fehlende Originalsnapshots wurden geprüft. Native Sessionglobals bleiben
+unverändert. Notwendige PHP-Syntax einschließlich kompilierter Bladeausgabe
+und `git diff --check` sind grün. Keine neue Testsuite oder CI gestartet.
+
+Keine tatsächlichen Konten, echte Datenbank/Datei, Login-/Middleware-/Writer-/
+HTTP-/Browser- oder visuelle Vollabnahme. Insbesondere wird kein neuer
+Antrag-/Freigabe-/Redirect-Gesamtjourney oder Produktionseinsatz behauptet.
+Das frühere Zweipersonenreview wird nicht rückwirkend als Nachweis dieser
+Ergänzung verwendet. #50/#79 bleiben mit ihren übrigen Gates offen;
+kein produktiver Cutover oder Runtime-/Host-/Schlüsselwechsel.
