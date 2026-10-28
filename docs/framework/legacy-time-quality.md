@@ -3,8 +3,14 @@
 Erster Diagnosebaustein auf Main
 `15d8ea5ffacc38596397202fd85c77a51cdc0f37`, Quellbaum
 `12f379a524314c463beae19aa8fbb9c078fce0ff`. **Keine vollständige #55-Abnahme**:
-Überlappungsprüfung, bestätigtes Mapping und Einbindung in die bestehende UI
+Allgemeine Überlappungsprüfung, bestätigtes Mapping und Einbindung in die bestehende UI
 bleiben offen. Kein neuer Runtimeparser, kein Framework-/Auth-/HTTP-Cutover.
+
+**Additiver Quellstand auf Main `8139842bab8fc64f93313e7b1848a16b96b496c2`:**
+Berichtsformat 2 ergänzt ausschließlich die inzwischen vorhandene gemeinsame
+`report_absence_conflicts`-Projektion für eindeutig lesbare, gültige abgeschlossene
+Arbeitszeiten gegen ganztägige Abwesenheiten desselben Nutzers. Allgemeine
+Überlappungsprüfung, Mapping/UI und vollständige #55-Abnahme bleiben offen.
 
 ## Expliziter Aufruf, keine Dateisuche
 
@@ -51,9 +57,15 @@ Reparatur, Eventrekonstruktion, Ledgerübernahme oder Daten-/Schlüsselkopie.
 
 ## Tatsächlich geprüfte Daten und Kategorien
 
-Nur `zeiterfassung.id/startzeit/endzeit/pause` werden für diesen Diagnosebaustein
-gelesen. Kein Export von Namen, Notizen, Originalzeittexten, Hashes, Zugangsdaten
+Für die bisherigen Diagnosen werden `zeiterfassung.id/startzeit/endzeit/pause`
+gelesen. Der neue Teil liest zusätzlich `user_id/absence_kind/beschreibung`
+ausschließlich intern für die unveränderte gemeinsame Eigentümer-/Abwesenheits-
+klassifikation, einschließlich deutscher Legacy-Abwesenheitsmarker.
+Kein Export von Namen, Notizen, Originalzeittexten, Hashes, Zugangsdaten
 oder Pfaden. Befunde enthalten nur Datensatz-ID, Kategorie und ggf. Spaltenname.
+Nur `work_absence_overlap` ergänzt `related_record_id`: `record_id` ist die
+Arbeitszeit, `related_record_id` die Abwesenheit. Jeder Befund zählt ein Paar,
+nicht eine einmalige betroffene Zeile; alte Kategorien behalten ihre Form.
 Die IDs sind trotzdem betriebliche Informationen: reale Berichte privat halten,
 nicht als GitHub-Nachweis hochladen.
 
@@ -67,6 +79,7 @@ nicht als GitHub-Nachweis hochladen.
 | `invalid_pause` | Keine nichtnegative ganzzahlige Minutenzahl. |
 | `pause_exceeds_gross` | Tatsächliche Pause überschreitet die eindeutig prüfbare Bruttozeit. |
 | `multiple_open_records` | Mehrere Null-/Leer-Endmarker desselben Nutzers; alle beteiligten IDs werden gemeldet. |
+| `work_absence_overlap` | Eine eindeutig prüfbare abgeschlossene Arbeitszeit überschneidet den ganzen Berliner Kalendertag einer gültigen abgeschlossenen Abwesenheit desselben Nutzers; Einzelwerte bleiben unverändert. |
 
 Diagnoseformat: `YYYY-MM-DD HH:MM:SS` oder `YYYY-MM-DDTHH:MM:SS`, optional
 `Z` oder numerischer `±HH:MM`-Offset. Freitext, relative Angaben, Zeitzonennamen,
@@ -99,8 +112,12 @@ Historienbehauptungen erzeugt.
 - **64:** fehlende/ungültige/mehrfach angegebene Argumente.
 
 `scope_status` bleibt immer `partial_diagnostic_only`.
-`checks.overlap=deferred_pending_shared_booking_conflict_helper`: dieses Paket
-dupliziert den noch nicht gemergten #35-Konflikthelfer nicht. Weitere
+`checks.overlap=partial_work_whole_day_absence_only` und die separate
+`work_whole_day_absence_overlap`-Angabe begrenzen die neue Teilprüfung.
+Arbeitszeit/Arbeitszeit-, Abwesenheit/Abwesenheit- und offene Überschneidungen
+werden ausdrücklich **nicht geprüft**. Mehrdeutige, nicht unterstützte oder
+ungültige Zeilen werden auch für diesen Teil nicht normalisiert/verwendet.
+Weitere
 Session-/Event-/Pausen-/Projektionsabgleiche sind `not_checked`, Mapping und
 Reparatur `not_performed_requires_separate_confirmation`. Diese offenen Gatter
 bleiben auch bei Exit 0 ausdrücklich sichtbar.
@@ -109,6 +126,18 @@ bleiben auch bei Exit 0 ausdrücklich sichtbar.
 Zeilen werden gestreamt; Kategorie-/Gesamtzähler laufen weiter und
 `findings_truncated` zeigt abgeschnittene Details an. Das ist keine Begrenzung
 der untersuchten Zeilenzahl oder Laufzeit des Offlinechecks.
+
+Für jede geeignete Abwesenheit werden alle geeigneten Arbeitszeilen desselben
+Nutzers erneut gestreamt, in Batches von höchstens 128. Jeder Batch wird mit
+**dieser einen Abwesenheit** an den unveränderten gemeinsamen Helfer übergeben:
+höchstens 129 Eingabezeilen und 128 Ergebnispaare gleichzeitig. Jedes geeignete
+Arbeitszeit/Abwesenheit-Paar erscheint genau einmal, auch über Batchgrenzen
+hinweg; verschiedene Nutzer werden nicht kombiniert. Ganzer lokaler Tag,
+Nachtschicht, DST und halboffene Randberührung bleiben allein Helfersemantik.
+Dies begrenzt Zeilen-/Paarlisten im Anwendungsspeicher, nicht die Bytegröße eines
+einzelnen vorhandenen Textwerts oder den internen SQLite-Speicher. Wiederholte
+Leseabfragen je Abwesenheit können bei großen Beständen teuer sein; keine
+Performance-, Laufzeit- oder vollständige Skalierungsabnahme wird behauptet.
 
 ## Grober synthetischer Nachweis, keine reale Datenabnahme
 
@@ -135,3 +164,24 @@ Browser-/HTTP-/Server-/Deployaktion oder neue GitHub-CI gestartet.
 Originale bleiben unverändert. Ein künftiges bestätigtes Mapping muss getrennt
 die betroffenen Originalwerte/Evidenz reviewbar machen und ausdrücklich
 autorisiert werden; diese Diagnose nimmt kein Mapping und keine Reparatur vor.
+
+### Additiver grober Quellnachweis für Format 2
+
+Auf der genannten unveränderlichen Mainbasis wurde genau eine synthetische
+anonyme In-Memory-PDO-Fixture unter PHP **8.5.12** / SQLite **3.46.1** geprüft:
+139 erfundene Zeilen ergeben genau 262 erwartete Arbeitszeit/Abwesenheit-Paare.
+Beide Abwesenheitskodierungen, mehr als 128 Arbeitszeilen pro Batchfolge,
+Nachtschicht, explizite Herbststundenoffsets, reine Randberührung und ein anderer
+Nutzer sind enthalten. Mehrdeutige/ungültige/offene Zeilen werden nicht in die
+neuen Paare aufgenommen. Die bisherigen Diagnosen und Mappingzähler wurden
+gegen die unveränderte Basisklasse verglichen und bleiben gleich.
+
+Limit 2 begrenzt Details bei weiterhin vollständigen Zählern; Bericht enthält
+keine synthetischen Notizen, Originalzeiten, Abwesenheitstexte oder Nutzer-IDs.
+Query-only-Transaktion und sämtliche Fixturezeilen bleiben unverändert.
+Syntax und `git diff --check` bestehen. Dies ist **kein tatsächlicher Aufruf des
+Dateiscanners**, keine erneute Datei-/Sidecar-/Preflight-Abnahme, kein echter
+Bestandsscan, kein Großbestandsbenchmark und keine HTTP-/Browser-/Betriebsabnahme.
+CLI und Datei-/Schreibzulassung sind in diesem Delta bytegleich erhalten.
+#55 bleibt ausdrücklich offen; keine Daten-, Mapping-, Reparatur-, Aktivierungs-
+oder Rolloutfreigabe wird hieraus abgeleitet.
