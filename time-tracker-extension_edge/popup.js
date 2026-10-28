@@ -1,5 +1,23 @@
 'use strict';
 
+function validStartMetadata(body) {
+    const present = Object.hasOwn(body, 'location') || Object.hasOwn(body, 'note');
+    if (!present) return true; // Exact legacy pending requests remain valid and unchanged.
+    return body.action === 'start'
+        && (!Object.hasOwn(body, 'location') || ['office', 'home_office', 'business_trip'].includes(body.location))
+        && (!Object.hasOwn(body, 'note') || (typeof body.note === 'string'
+            && (body.note === '' || new TextEncoder().encode(body.note).length <= 1000) && !/[\x00-\x1F\x7F]/.test(body.note)
+            && !['Urlaub', 'Krankheit', 'Feiertag'].includes(body.note)));
+}
+function nondefaultStartMetadata(body) {
+    return (body.location ?? 'office') !== 'office' || (body.note ?? '') !== '';
+}
+function acknowledgedStartMetadata(body, data) {
+    return !nondefaultStartMetadata(body) || (data.start_metadata?.location === (body.location ?? 'office')
+        && data.start_metadata?.note === (body.note ?? ''));
+}
+
+
 function escapeHTML(value) {
     const node = document.createElement('span');
     node.textContent = String(value ?? '');
@@ -12,7 +30,7 @@ const sessionKeys = ['authToken', 'authApiUrl', 'authUserId', 'password', 'lates
 const pendingKey = 'attendancePending';
 const allowedActions = {absent: ['start'], working: ['pause_start', 'end'], paused: ['pause_end', 'end']};
 let apiUrl = null, authToken = null, currentUser = null;
-let attendanceState = null, attendanceRecordId = null, statusKnown = false, supportsRecordBinding = false;
+let attendanceState = null, attendanceRecordId = null, statusKnown = false, supportsRecordBinding = false, supportsStartMetadata = false;
 let pendingEvent = null, busy = false, refreshing = null, sessionVersion = 0;
 let storageQueue = Promise.resolve();
 const requests = new Set();
@@ -194,7 +212,9 @@ async function login(username, password) {
 async function clearSession(clearPending) {
     const version = ++sessionVersion;
     for (const controller of requests) controller.abort();
-    authToken = null; currentUser = null; statusKnown = false; attendanceState = null; attendanceRecordId = null; supportsRecordBinding = false;
+    authToken = null; currentUser = null; statusKnown = false; attendanceState = null; attendanceRecordId = null; supportsRecordBinding = false; supportsStartMetadata = false;
+    document.getElementById('standort').value = 'office';
+    document.getElementById('beschreibung').value = '';
     busy = true; refreshing = null; pendingEvent = null;
     document.getElementById('password').value = '';
     document.getElementById('latestEntry').innerHTML = '';
@@ -256,7 +276,8 @@ function validPending(saved) {
             && (recordString(body.id) || (Number.isSafeInteger(body.id) && body.id > 0)) && body.expected_record === undefined
             : saved.endpoint === 'attendance' && body.confirm_end_pause === false && body.id === undefined
                 && (body.expected_record === undefined || (body.action !== 'start' && recordString(body.expected_record))))
-        && Object.keys(body).every(key => ['event_id', 'action', 'confirm_end_pause', 'id', 'expected_record'].includes(key));
+        && validStartMetadata(body)
+        && Object.keys(body).every(key => ['event_id', 'action', 'confirm_end_pause', 'id', 'expected_record', 'location', 'note'].includes(key));
 }
 async function restorePending(context) {
     let saved;
@@ -265,7 +286,8 @@ async function restorePending(context) {
     if (!isCurrent(context)) throw staleError();
     if (saved && validPending(saved)) pendingEvent = saved;
     else if (saved?.apiUrl === apiUrl && saved.userId === currentUser.id && saved.body
-        && (Object.hasOwn(saved.body, 'expected_record') || typeof saved.body.id === 'string')) {
+        && (Object.hasOwn(saved.body, 'expected_record') || typeof saved.body.id === 'string'
+            || Object.hasOwn(saved.body, 'location') || Object.hasOwn(saved.body, 'note'))) {
         pendingEvent = saved; // Preserve malformed NEW binding shapes; do not discard an uncertain event.
     } else await removeSaved([pendingKey]);
     renderAttendance();
@@ -281,6 +303,7 @@ function applyStatus(data) {
     attendanceState = data.state;
     attendanceRecordId = record;
     supportsRecordBinding = Object.hasOwn(data, 'record_id_string');
+    supportsStartMetadata = data.start_metadata_version === 1;
     statusKnown = true;
     renderAttendance();
 }
@@ -296,6 +319,14 @@ function renderAttendance() {
         const button = document.getElementById(id);
         button.disabled = !signedIn || busy || !statusKnown || Boolean(pendingEvent) || !allowedActions[attendanceState]?.includes(action);
     }
+    for (const id of ['standort', 'beschreibung']) {
+        const field = document.getElementById(id);
+        field.disabled = !signedIn || busy || !statusKnown || Boolean(pendingEvent) || attendanceState !== 'absent' || !supportsStartMetadata;
+        if (pendingEvent?.body.action === 'start') field.value = id === 'standort' ? pendingEvent.body.location ?? 'office' : pendingEvent.body.note ?? '';
+    }
+    // Materialize mirrors select.disabled into its own input only at initialization.
+    const locationSelect = document.getElementById('standort');
+    if (M.FormSelect) { M.FormSelect.getInstance(locationSelect)?.destroy(); M.FormSelect.init(locationSelect); }
     document.getElementById('pauseButton').textContent = attendanceState === 'paused' ? 'Pause beenden' : 'Pause beginnen';
     document.getElementById('retryButton').hidden = !pendingEvent;
     document.getElementById('retryButton').disabled = !signedIn || busy || Boolean(pendingEvent && !validPending(pendingEvent));
@@ -356,11 +387,16 @@ async function sendTimeEntry(action) {
         const confirmEndPause = action === 'end' && attendanceState === 'paused';
         if (confirmEndPause && !window.confirm('Pause und Arbeitszeit gemeinsam beenden?')) return;
         if (typeof crypto.randomUUID !== 'function') throw new Error('Sichere Ereignis-ID nicht verfügbar. Bitte Browser aktualisieren.');
+        const metadata = action === 'start' ? {location: document.getElementById('standort').value || 'office', note: document.getElementById('beschreibung').value} : {};
+        if (!validStartMetadata({action, ...metadata})) throw new Error('Arbeitsort oder Notiz ungültig. Maximal 1000 UTF-8-Bytes; keine Steuerzeichen oder reservierten Abwesenheitswerte.');
+        if (nondefaultStartMetadata(metadata) && !supportsStartMetadata) throw new Error('Dieser Server unterstützt Arbeitsort und Notiz noch nicht; keine Buchung gesendet.');
         pendingEvent = {apiUrl, userId: currentUser.id, endpoint: action === 'end' ? 'setendzeit' : 'attendance',
             body: {event_id: crypto.randomUUID(), action, confirm_end_pause: confirmEndPause,
+                ...(action === 'start' && nondefaultStartMetadata(metadata) ? metadata : {}),
                 ...(action === 'end' ? {id: attendanceRecordId}
                     : supportsRecordBinding && action !== 'start' ? {expected_record: attendanceRecordId} : {})}};
     }
+    if (nondefaultStartMetadata(pendingEvent.body) && !supportsStartMetadata) throw new Error('Serverunterstützung für Arbeitsort und Notiz fehlt. Unbestätigten Vorgang unverändert behalten.');
     busy = true; renderAttendance();
     const context = snapshot(), event = pendingEvent;
     let acknowledged = false, rejected = false;
@@ -378,7 +414,7 @@ async function sendTimeEntry(action) {
             }
             throw new Error(data?.message || 'Buchung wurde nicht bestätigt.');
         }
-        if (!data?.success || data.event_id !== event.body.event_id || !Object.hasOwn(allowedActions, data.state)) {
+        if (!data?.success || data.event_id !== event.body.event_id || !Object.hasOwn(allowedActions, data.state) || !acknowledgedStartMetadata(event.body, data)) {
             throw new Error('Keine passende Buchungsbestätigung erhalten.');
         }
         const receiptRecord = responseRecordId(data);
@@ -390,6 +426,7 @@ async function sendTimeEntry(action) {
         statusKnown = false; attendanceRecordId = null; supportsRecordBinding = false;
         await removeSaved([pendingKey]);
         if (!isCurrent(context)) throw staleError();
+        if (event.body.action === 'start') { document.getElementById('standort').value = 'office'; document.getElementById('beschreibung').value = ''; }
         pendingEvent = null; acknowledged = true;
         showSuccess([data.message || 'Buchung bestätigt.', data.local_time].filter(Boolean).join(' '));
     } catch (error) {

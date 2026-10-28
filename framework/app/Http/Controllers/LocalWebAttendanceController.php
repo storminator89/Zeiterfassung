@@ -65,6 +65,7 @@ final class LocalWebAttendanceController extends Controller
                 $request->post('event_id', ''), $request->post('action', ''),
                 $request->post('confirm_end_pause') === '1',
                 \attendance_expected_record($request->request->all()),
+                \attendance_start_metadata($request->request->all()),
             );
         });
     }

@@ -13,6 +13,12 @@
                     <p class="text-lg">Willkommen zurück, {{ $page->username }}!</p>
                     <div id="status" data-attendance-status class="text-2xl font-bold mt-2" role="status">{{ $page->statusLabel() }}</div>
                     <p id="message" class="text-sm opacity-70" role="status" aria-live="polite">Jede Buchung wird mit Serverzeit bestätigt.@if (! $page->interactions->attendance) Laravel-Buchungen sind in dieser Ansicht noch nicht aktiviert.@endif</p>
+                    <fieldset data-start-metadata class="grid sm:grid-cols-2 gap-3 my-4" disabled>
+                        <legend class="text-sm font-semibold">Beim Kommen (optional)</legend>
+                        <div><label for="attendance-location" class="block text-sm mb-1">Arbeitsort</label><select id="attendance-location" class="select select-bordered w-full"><option value="office">Büro</option><option value="home_office">Home Office</option><option value="business_trip">Dienstreise</option></select></div>
+                        <div><label for="attendance-note" class="block text-sm mb-1">Notiz</label><input id="attendance-note" type="text" maxlength="1000" class="input input-bordered w-full" aria-describedby="attendance-metadata-help"></div>
+                        <p id="attendance-metadata-help" class="text-xs opacity-70 sm:col-span-2">Nur für den neuen Start; maximal 1000 UTF-8-Bytes. Keine sensiblen persönlichen Angaben. Bei unbestätigter Buchung bleiben diese Werte unverändert.</p>
+                    </fieldset>
                     <div id="actions" data-state="{{ $page->state }}" class="flex flex-wrap gap-3 mt-3 mb-5" aria-label="Arbeitszeit buchen">
                         <button type="button" disabled data-action="start" class="btn btn-primary" @if ($page->state !== 'absent') hidden @endif><i class="fas fa-sign-in-alt"></i>Kommen</button>
                         <button type="button" disabled data-action="pause_start" class="btn btn-outline" @if ($page->state !== 'working') hidden @endif><i class="fas fa-pause"></i>Pause beginnen</button>

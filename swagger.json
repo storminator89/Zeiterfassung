@@ -138,6 +138,20 @@
                     "pattern": "^[A-Za-z0-9_-]{16,80}$",
                     "minLength": 16,
                     "maxLength": 80
+                  },
+                  "location": {
+                    "type": "string",
+                    "enum": [
+                      "office",
+                      "home_office",
+                      "business_trip"
+                    ],
+                    "default": "office",
+                    "description": "Start only. Canonical stored code; present null or translated labels are refused."
+                  },
+                  "note": {
+                    "type": "string",
+                    "description": "Start only. At most 1000 UTF-8 bytes; no ASCII U+0000-U+001F/U+007F, no exact reserved absence labels Urlaub/Krankheit/Feiertag. No trimming, normalization or truncation. Omission means empty; present null is refused."
                   }
                 }
               },
@@ -234,7 +248,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Compatibility alias for attendance/start, not a historical entry writer. Send an object and stable event_id for safe retries. If event_id is absent/null, a random ID is generated, so retry cannot be correlated. Non-empty endzeit or pause triggers text-409; client startzeit/description/location are not used. Actual start uses server time, empty description and office."
+        "description": "Compatibility alias for attendance/start, not a historical entry writer. Send an object and stable event_id for safe retries. If event_id is absent/null, a random ID is generated, so retry cannot be correlated. Non-empty endzeit or pause triggers text-409; client startzeit and legacy beschreibung/standort are not used. Actual start uses server time; omitted metadata defaults to an empty note and office. Optional start-only location/note are validated and stored per docs/CH45-START-METADATA.md. Nondefault metadata extends the event hash using start-metadata-v1 and requires exact same metadata on replay; defaults preserve the original hash/receipt. Non-start metadata is JSON400."
       }
     },
     "/api.php/setendzeit": {
@@ -350,7 +364,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Compatibility alias for attendance/end. Request id must match the current record; it is integer-coerced by the legacy adapter (missing/null becomes 0 and conflicts). Response uses top-level record_id, not id. Omitted/null event_id generates a random ID: supply a stable ID for retries. Only boolean true confirms an active pause; client timestamps are ignored."
+        "description": "Compatibility alias for attendance/end. Request id must match the current record; it is integer-coerced by the legacy adapter (missing/null becomes 0 and conflicts). Response uses top-level record_id, not id. Omitted/null event_id generates a random ID: supply a stable ID for retries. Only boolean true confirms an active pause; client timestamps are ignored. Start-only location/note are refused with JSON400, not used to update metadata."
       }
     },
     "/api.php/users": {
@@ -599,6 +613,20 @@
                     "pattern": "^[1-9][0-9]*$",
                     "maxLength": 19,
                     "description": "Optional exact active record ID, canonical positive ASCII decimal <= PHP_INT_MAX. Present invalid values are JSON400. Omission retains legacy null semantics; no new required-field or client upgrade. Already committed identical payloads replay before current-record matching."
+                  },
+                  "location": {
+                    "type": "string",
+                    "enum": [
+                      "office",
+                      "home_office",
+                      "business_trip"
+                    ],
+                    "default": "office",
+                    "description": "Start only. Canonical stored code; present null or translated labels are refused."
+                  },
+                  "note": {
+                    "type": "string",
+                    "description": "Start only. At most 1000 UTF-8 bytes; no ASCII U+0000-U+001F/U+007F, no exact reserved absence labels Urlaub/Krankheit/Feiertag. No trimming, normalization or truncation. Omission means empty; present null is refused."
                   }
                 }
               },
@@ -671,11 +699,11 @@
             "$ref": "#/components/responses/UnexpectedFailure"
           }
         },
-        "description": "Own server-time start/pause/end transition. event_id is required; reuse the identical ID and parsed action/confirmation/expected-record semantics after an unconfirmed response. Same-ID payload conflict is 409; stored replay can be stale. Only boolean true confirms ending an active pause. Optional expected_record is a canonical positive decimal string checked before cast and forwarded to the existing record guard; omission remains null for old clients. This route still ignores id; setendzeit keeps its legacy id alias. New popup pause/resume bodies bind only after exact-string status metadata is available. Request timestamps/location/user selectors are not authoritative."
+        "description": "Own server-time start/pause/end transition. event_id is required; reuse the identical ID and parsed action/confirmation/expected-record semantics after an unconfirmed response. Same-ID payload conflict is 409; stored replay can be stale. Only boolean true confirms ending an active pause. Optional expected_record is a canonical positive decimal string checked before cast and forwarded to the existing record guard; omission remains null for old clients. This route still ignores id; setendzeit keeps its legacy id alias. New popup pause/resume bodies bind only after exact-string status metadata is available. Request timestamps and user selectors are not authoritative. Optional start-only location/note are validated and stored per docs/CH45-START-METADATA.md. Nondefault metadata extends the event hash using start-metadata-v1 and requires exact same metadata on replay; defaults preserve the original hash/receipt. Non-start metadata is JSON400."
       },
       "get": {
         "summary": "Read authoritative own attendance status",
-        "description": "Read-only own status snapshot with existing bearer validation. No query/body user selector, booking, event_id, time or local_time. absent -> record_id null; working/paused -> positive integer. A legacy open reporting row can return working without a managed session; multiple legacy open rows are not diagnosed by this read. Additive record_id_string duplicates the same current ID exactly as a decimal string or null; older clients may ignore it. It is metadata from the same snapshot, not a receipt or another query.",
+        "description": "Read-only own status snapshot with existing bearer validation. No query/body user selector, booking, event_id, time or local_time. absent -> record_id null; working/paused -> positive integer. A legacy open reporting row can return working without a managed session; multiple legacy open rows are not diagnosed by this read. Additive record_id_string duplicates the same current ID exactly as a decimal string or null; older clients may ignore it. It is metadata from the same snapshot, not a receipt or another query. Additive start_metadata_version:1 advertises this source contract; it is not authorization or a receipt.",
         "security": [
           {
             "bearerAuth": []
@@ -793,6 +821,13 @@
             "maxLength": 19,
             "nullable": true,
             "description": "Additive exact text of the same record_id, not a replacement numeric field. Null when no current record."
+          },
+          "start_metadata_version": {
+            "type": "integer",
+            "enum": [
+              1
+            ],
+            "description": "Additive start-metadata wire contract version, not a write authority."
           }
         },
         "description": "Read-only status: absent has null record_id; working/paused have a positive integer record_id. No event ID or timestamp is returned. The optional additive record_id_string preserves exact record-ID text for updated clients; malformed present metadata must not be repaired through numeric fallback."
@@ -870,6 +905,30 @@
             "maxLength": 19,
             "nullable": false,
             "description": "Additive exact text of the same record_id, not a replacement numeric field. Affected positive record even after end; projected from the original receipt, never a fresh binding or stored JSON rewrite."
+          },
+          "start_metadata": {
+            "type": "object",
+            "required": [
+              "location",
+              "note"
+            ],
+            "properties": {
+              "location": {
+                "type": "string",
+                "enum": [
+                  "office",
+                  "home_office",
+                  "business_trip"
+                ],
+                "default": "office",
+                "description": "Start only. Canonical stored code; present null or translated labels are refused."
+              },
+              "note": {
+                "type": "string",
+                "description": "Start only. At most 1000 UTF-8 bytes; no ASCII U+0000-U+001F/U+007F, no exact reserved absence labels Urlaub/Krankheit/Feiertag. No trimming, normalization or truncation. Omission means empty; present null is refused."
+              }
+            },
+            "description": "Only new nondefault starts include this exact stored metadata acknowledgement. Old/default/Terminal receipts are not rebuilt or augmented."
           }
         },
         "description": "Stored acknowledgement of this event. A replay can describe an older state: refresh GET /attendance before another action. Since #35, a saved end overlapping all-day absence can include optional overlap_record_ids/overlap_warning and an extended message, still HTTP 200/success true. Genuine refused transitions remain JSON 409/success false. The optional additive record_id_string preserves exact record-ID text for updated clients; malformed present metadata must not be repaired through numeric fallback."

@@ -32,6 +32,7 @@ final class AttendanceWorkflowStatus
         // Allowlist only public wire fields; never forward extra internal values.
         return [
             'success' => true, 'state' => $state,
+            'start_metadata_version' => 1,
             'record_id' => $record, 'record_id_string' => $exact,
             'workflow' => [
                 'version' => 1,

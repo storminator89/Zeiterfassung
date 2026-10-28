@@ -19,7 +19,7 @@ final class LegacyApiAttendance implements ApiAttendance
     public function __construct(private readonly Factory $auth, private readonly Closure $writer,
         private readonly ?AccountLifecycleApiIdentity $lifecycle = null) {}
 
-    public function transition(string $eventId, string $action, bool $confirm = false, ?int $expectedRecord = null): array
+    public function transition(string $eventId, string $action, bool $confirm = false, ?int $expectedRecord = null, ?array $startMetadata = null): array
     {
         // Mandatory RequireLegacyApiToken first: reset request guard and verify
         // JWT/current account/password fingerprint. Never inherit a web identity.
@@ -48,11 +48,11 @@ final class LegacyApiAttendance implements ApiAttendance
         if ($authority !== null) {
             // The fixed V5 operation rechecks the actor UNDER its sole lock,
             // before both receipt replay and domain DML. Old transition stays closed.
-            return $writer->transitionApi($authority, $eventId, $action, $confirm, $expectedRecord);
+            return $writer->transitionApi($authority, $eventId, $action, $confirm, $expectedRecord, $startMetadata);
         }
 
         // Exact shared namespace. Direct /attendance forwards its optional string binding;
         // /setendzeit keeps its existing expected projection, never row CRUD.
-        return $writer->transition($identifier, 'api:'.$identifier, $eventId, $action, $confirm, $expectedRecord);
+        return $writer->transition($identifier, 'api:'.$identifier, $eventId, $action, $confirm, $expectedRecord, false, null, null, $startMetadata);
     }
 }

@@ -18,14 +18,14 @@ if ($_SERVER['REQUEST_METHOD']==='GET' && ($_GET['format']??'')==='status') {
                 'month'=>report_conflicts_in_period($conflicts,$today->format('Y-m-01'),$today->format('Y-m-t')),
                 'year'=>report_conflicts_in_period($conflicts,$today->format('Y-01-01'),$today->format('Y-12-31'))];
             $status=attendance_status($conn,$user);
-            $snapshot=['success'=>true,'records'=>$records,'report_finality'=>$finality,
+            $snapshot=['success'=>true,'start_metadata_version'=>1,'records'=>$records,'report_finality'=>$finality,
                 'expected_record'=>$status['record_id']===null?null:(string)$status['record_id']]+$status;
             $conn->commit();return $snapshot;
         } catch(Throwable $e) { if($conn->inTransaction()) { $conn->rollBack(); } throw $e; }
     });
 }
 if ($_SERVER['REQUEST_METHOD']==='POST') {
-    attendance_json(fn() => attendance_transition($conn,$user,'web:'.$user,$_POST['event_id']??'',$_POST['action']??'',($_POST['confirm_end_pause']??'')==='1',attendance_expected_record($_POST),true));
+    attendance_json(fn() => attendance_transition($conn,$user,'web:'.$user,$_POST['event_id']??'',$_POST['action']??'',($_POST['confirm_end_pause']??'')==='1',attendance_expected_record($_POST),true,attendance_start_metadata($_POST)));
 }
 $strictAppUi = true;
 require __DIR__ . '/header.php';
@@ -43,6 +43,12 @@ $state = $attendanceState;
                     <p class="text-lg">Willkommen zurück, <?= h($_SESSION['username']) ?>!</p>
                     <div id="status" data-attendance-status class="text-2xl font-bold mt-2" role="status"><?= h($attendanceLabels[$state]) ?></div>
                     <p id="message" class="text-sm opacity-70" role="status" aria-live="polite">Jede Buchung wird mit Serverzeit bestätigt.</p>
+                    <fieldset data-start-metadata class="grid sm:grid-cols-2 gap-3 my-4" disabled>
+                        <legend class="text-sm font-semibold">Beim Kommen (optional)</legend>
+                        <div><label for="attendance-location" class="block text-sm mb-1">Arbeitsort</label><select id="attendance-location" class="select select-bordered w-full"><option value="office">Büro</option><option value="home_office">Home Office</option><option value="business_trip">Dienstreise</option></select></div>
+                        <div><label for="attendance-note" class="block text-sm mb-1">Notiz</label><input id="attendance-note" type="text" maxlength="1000" class="input input-bordered w-full" aria-describedby="attendance-metadata-help"></div>
+                        <p id="attendance-metadata-help" class="text-xs opacity-70 sm:col-span-2">Nur für den neuen Start; maximal 1000 UTF-8-Bytes. Keine sensiblen persönlichen Angaben. Bei unbestätigter Buchung bleiben diese Werte unverändert.</p>
+                    </fieldset>
                     <div id="actions" data-state="<?= h($state) ?>" class="flex flex-wrap gap-3 mt-3 mb-5" aria-label="Arbeitszeit buchen">
                         <button type="button" data-action="start" class="btn btn-primary" <?= $state !== 'absent' ? 'hidden' : '' ?>><i class="fas fa-sign-in-alt"></i>Kommen</button>
                         <button type="button" data-action="pause_start" class="btn btn-outline" <?= $state !== 'working' ? 'hidden' : '' ?>><i class="fas fa-pause"></i>Pause beginnen</button>
