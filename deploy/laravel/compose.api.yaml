@@ -1,0 +1,13 @@
+# OPTIONAL overlay, never included by default. Use ONLY with the separately
+# reviewed compose.web.yaml and a stopped NEW instance prepared by chrono:api-key.
+# Existing web entrypoint must confirm closed setup before this profile can start.
+# No listener, dependency, volume, port, TLS, UID or host/security change here.
+services:
+  web:
+    env_file:
+      - path: ${CHRONO_LARAVEL_PRIVATE_PARENT:?Set private parent}/${CHRONO_LARAVEL_INSTANCE:?Set exact creator-returned basename}/framework-api-key.env
+        required: true
+    environment:
+      FRAMEWORK_FRESH_SETUP_ENABLED: "false"
+      FRAMEWORK_SHARED_LOGIN_BUDGET_ENABLED: "true"
+      FRAMEWORK_ADMITTED_LEGACY_API_ENABLED: "true"
