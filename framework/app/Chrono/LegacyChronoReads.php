@@ -391,6 +391,36 @@ final class LegacyChronoReads implements ChronoReads
         );
     }
 
+    public function correctionsPage(string $status = 'pending', int $page = 1): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($status, $page): array {
+            if (! in_array($status, ['pending', 'all', 'approved', 'rejected'], true) || $page < 1) {
+                throw new \InvalidArgumentException('Invalid correction request page.');
+            }
+            // Exact native owner/admin/current-direct-team scope. Counting and
+            // paging share this fresh snapshot; no request supplies an actor.
+            $scope = "(a.user_id=? OR ?='admin' OR (?='supervisor' AND u.supervisor_id=?))";
+            $parameters = [$actor->getKey(), $actor->role, $actor->role, $actor->getKey()];
+            $counts = array_fill_keys(['pending', 'all', 'approved', 'rejected'], 0);
+            foreach ($this->rows($pdo, 'SELECT a.status,COUNT(*) AS total FROM time_adjustments a JOIN users u ON u.id=a.user_id WHERE '.$scope.' GROUP BY a.status', $parameters) as $count) {
+                $counts[$count['status']] = (int) $count['total'];
+                $counts['all'] += (int) $count['total'];
+            }
+            $total = $counts[$status];
+            $pageSize = 50;
+            $pages = max(1, (int) ceil($total / $pageSize));
+            $page = min($page, $pages);
+            $offset = ($page - 1) * $pageSize;
+            if ($status !== 'all') {
+                $scope .= ' AND a.status=?';
+                $parameters[] = $status;
+            }
+            $records = $this->rows($pdo, 'SELECT a.*,u.username FROM time_adjustments a JOIN users u ON u.id=a.user_id WHERE '.$scope.' ORDER BY a.id DESC LIMIT '.$pageSize.' OFFSET '.$offset, $parameters);
+
+            return compact('records', 'counts', 'status', 'total', 'page', 'pages');
+        });
+    }
+
     public function history(int $before = PHP_INT_MAX): array
     {
         return $this->snapshot(fn (PDO $pdo, LegacyUser $actor): array =>

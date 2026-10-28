@@ -35,6 +35,9 @@ interface ChronoReads
     /** Existing adjustments.php list, including final decisions and original snapshots. */
     public function corrections(): array;
 
+    /** Native scoped status counts and fifty-row correction request page, in one snapshot. */
+    public function correctionsPage(string $status = 'pending', int $page = 1): array;
+
     /** Existing history.php cursor/order/scope, not a journal mutation API. */
     public function history(int $before = PHP_INT_MAX): array;
 
