@@ -595,6 +595,29 @@ final class LegacyChronoReads implements ChronoReads
         });
     }
 
+    public function adminTerminalCredentialRevocationTargets(): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
+            if ($actor->role !== 'admin' || $actor->auth_source !== 'local') {
+                throw new AuthorizationException('Nur die lokale Verwaltung darf Terminal-Zugänge sperren.');
+            }
+            // Separate form projection: preserve the original four-field reader.
+            // The target and its labels come from ONE fresh snapshot, never from
+            // index-matching two independently changing lists. No raw secrets.
+            $rows = $this->rows($pdo, "SELECT c.user_id,c.employee_code,c.enabled,
+                CASE WHEN c.card_hash IS NULL OR c.card_hash='' OR c.card_hash='0' THEN 0 ELSE 1 END AS has_card,
+                u.username,s.name AS site
+                FROM employee_credentials c JOIN users u ON u.id=c.user_id JOIN terminal_sites s ON s.id=c.site_id", []);
+
+            return array_map(static fn (array $row): array => [
+                'user_id' => (int) $row['user_id'],
+                'username' => (string) $row['username'], 'employee_code' => (string) $row['employee_code'],
+                'site' => (string) $row['site'],
+                'access_label' => $row['enabled'] ? ($row['has_card'] ? 'PIN + Karte' : 'PIN') : 'Gesperrt',
+            ], $rows);
+        });
+    }
+
     public function adminUsersPage(string $search = '', int $page = 1): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($search, $page): array {

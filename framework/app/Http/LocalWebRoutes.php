@@ -49,7 +49,7 @@ use Symfony\Component\HttpFoundation\Response;
 /** Explicit opt-in registrar. Never called by bootstrap/providers/default routes. */
 final class LocalWebRoutes
 {
-    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false, bool $includeSetup = false, bool $includeLdapSync = false, bool $useSharedLoginBudget = false, bool $includeTerminalSites = false): void
+    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false, bool $includeSetup = false, bool $includeLdapSync = false, bool $useSharedLoginBudget = false, bool $includeTerminalSites = false, bool $includeTerminalCredentialRevocations = false): void
     {
         if ($useSharedLoginBudget !== SharedLoginBudgetServiceProvider::selected($app)) {
             throw new LogicException('Login route and shared budget selection must agree.');
@@ -57,6 +57,13 @@ final class LocalWebRoutes
         if ($includeTerminalSites && ! $includeTerminalDevices) {
             throw new LogicException('Terminal site creation requires its existing device page.');
         }
+        if ($includeTerminalCredentialRevocations && (! $includeTerminalDevices
+            || $app->make('config')->get('app.debug') !== false || ! $app->bound(AttendanceWriter::class))) {
+            throw new LogicException('Terminal credential revocation requires its existing page, non-debug mode and an admitted writer.');
+        }
+        // A server route capability, never inferred from display flags or input.
+        $app->make('config')->set('chrono_terminal_admin.credential_revocations_enabled', $includeTerminalCredentialRevocations);
+        $app->make('config')->set('chrono_terminal_admin.site_creation_enabled', $includeTerminalSites);
         // No opt-in page may be registered against missing or replaced chart bytes.
         if ($includeSupervisor) {
             self::requireSupervisorChartAssets();
@@ -98,11 +105,11 @@ final class LocalWebRoutes
             || ($includeAdminPauseSettings && $request->path() === 'admin.php')
             || ($includeRegistration && $request->path() === 'register.php')
             || ($includeSetup && $request->path() === 'setup.php')
-            || ($includeTerminalSites && $request->path() === 'terminals.php');
+            || (($includeTerminalSites || $includeTerminalCredentialRevocations) && $request->path() === 'terminals.php');
         TrimStrings::skipWhen($nativeFormPath);
         ConvertEmptyStringsToNull::skipWhen($nativeFormPath);
 
-        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeTerminalSites) {
+        $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeTerminalSites, $includeTerminalCredentialRevocations) {
             if ($request->path() === 'get_latest_record.php') {
                 // Explicit unauthorized transport, not the native accidental200.
                 return new Response('Nicht angemeldet.', 401,
@@ -130,7 +137,7 @@ final class LocalWebRoutes
                     : new RedirectResponse('login.php');
             }
 
-            if ($includeTerminalSites && $request->path() === 'terminals.php' && $request->isMethod('POST')) {
+            if (($includeTerminalSites || $includeTerminalCredentialRevocations) && $request->path() === 'terminals.php' && $request->isMethod('POST')) {
                 return new Response('Please sign in again.', 401,
                     ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
             }
@@ -158,7 +165,7 @@ final class LocalWebRoutes
         $router->group(['middleware' => [
             EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class,
             ShareErrorsFromSession::class, LegacyFormCsrf::class, SubstituteBindings::class,
-        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeRegistration, $includeSetup, $includeLdapSync, $useSharedLoginBudget, $includeTerminalSites): void {
+        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeRegistration, $includeSetup, $includeLdapSync, $useSharedLoginBudget, $includeTerminalSites, $includeTerminalCredentialRevocations): void {
             $router->get('login.php', [LocalWebSessionController::class, 'create'])->name('login');
             $login = $router->post('login.php', [LocalWebSessionController::class, 'store']);
             if (! $useSharedLoginBudget) {
@@ -172,7 +179,7 @@ final class LocalWebRoutes
                 $router->get('register.php', [LocalWebRegistrationController::class, 'create']);
                 $router->post('register.php', [LocalWebRegistrationController::class, 'store'])->middleware('throttle:chrono-web-register');
             }
-            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeLdapSync, $includeTerminalSites): void {
+            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeLdapSync, $includeTerminalSites, $includeTerminalCredentialRevocations): void {
                 foreach (['/', 'index.php', 'attendance.php'] as $path) {
                     $router->get($path, [LocalWebAttendanceController::class, 'page']);
                     $router->post($path, [LocalWebAttendanceController::class, 'transition']);
@@ -216,7 +223,7 @@ final class LocalWebRoutes
                 if ($includeTerminalDevices) {
                     $router->get('terminals.php', [LocalWebTerminalDevicesController::class, 'index']);
                 }
-                if ($includeTerminalSites) {
+                if ($includeTerminalSites || $includeTerminalCredentialRevocations) {
                     $router->post('terminals.php', [LocalWebTerminalDevicesController::class, 'store']);
                 }
                 if ($includeDatabaseSnapshot) {

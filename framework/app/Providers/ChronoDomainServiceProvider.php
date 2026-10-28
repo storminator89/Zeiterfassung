@@ -6,6 +6,8 @@ use App\Chrono\ChronoReads;
 use App\Chrono\LegacyChronoReads;
 use App\Chrono\LegacyLocalWebTerminalSites;
 use App\Chrono\LocalWebTerminalSites;
+use App\Chrono\LocalWebTerminalCredentialRevocations;
+use App\Chrono\LegacyLocalWebTerminalCredentialRevocations;
 use App\LegacyDatabase\AttendanceWriter;
 use App\Terminal\AdmittedTerminalKeys;
 use App\Terminal\LegacyTerminalProtocol;
@@ -25,6 +27,17 @@ final class ChronoDomainServiceProvider extends ServiceProvider
             function () use ($app): AttendanceWriter {
                 if (! $app->bound(AttendanceWriter::class)) {
                     throw new LogicException('No admitted operation-scoped terminal site writer is configured.');
+                }
+
+                return $app->make(AttendanceWriter::class);
+            },
+        ));
+        // Construction never opens a writer, reads credentials or resolves keys.
+        $this->app->scoped(LocalWebTerminalCredentialRevocations::class, fn ($app) => new LegacyLocalWebTerminalCredentialRevocations(
+            $app->make('auth'),
+            function () use ($app): AttendanceWriter {
+                if (! $app->bound(AttendanceWriter::class)) {
+                    throw new LogicException('No admitted operation-scoped terminal revocation writer is configured.');
                 }
 
                 return $app->make(AttendanceWriter::class);
