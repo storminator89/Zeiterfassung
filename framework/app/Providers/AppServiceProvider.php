@@ -75,7 +75,7 @@ class AppServiceProvider extends ServiceProvider
             function () use ($app): AttendanceWriter {
                 if (! $app->bound(AttendanceWriter::class)) { throw new LogicException('No admitted LDAP sync writer.'); }
                 return $app->make(AttendanceWriter::class);
-            },
+            }, $app->make(AccountLifecycleWebIdentity::class),
         ));
         $this->app->scoped(IntakePolicyAccess::class, fn ($app) => new IntakePolicyAccess(
             $app->bound(RuntimeDatabase::class) && $app->make(RuntimeDatabase::class)->isIntakePolicyV4(),

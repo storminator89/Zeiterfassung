@@ -17,11 +17,13 @@ use UnexpectedValueException;
  */
 final class IntakePolicyStore
 {
-    public function read(PDO $pdo): IntakePolicy
+    public function read(PDO $pdo, bool $accountLifecycleV5 = false): IntakePolicy
     {
         $this->requireTransaction($pdo);
-        if ($pdo->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN) !== [1, 2, 3, 4]) {
-            throw new UnexpectedValueException('The explicit intake-policy-v4 profile is required.');
+        // Trusted operation composition only, never infer V5 from optional columns.
+        $versions = $accountLifecycleV5 ? [1, 2, 3, 4, 5] : [1, 2, 3, 4];
+        if ($pdo->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN) !== $versions) {
+            throw new UnexpectedValueException('The explicit intake policy profile is required.');
         }
         $rows = $pdo->query('SELECT id,manual_enabled,ldap_sync_enabled,registration_enabled,revision,updated_at,updated_by FROM user_intake_policy ORDER BY id LIMIT 2')->fetchAll(PDO::FETCH_ASSOC);
         if (count($rows) !== 1) {
@@ -32,12 +34,13 @@ final class IntakePolicyStore
     }
 
     /** Recheck after slow transport; a changed revision also refuses still-enabled intake. */
-    public function requireAllowedLocked(PDO $pdo, IntakeMethod $method, ?int $expectedRevision = null): IntakePolicy
+    public function requireAllowedLocked(PDO $pdo, IntakeMethod $method, ?int $expectedRevision = null,
+        bool $accountLifecycleV5 = false): IntakePolicy
     {
         if ($expectedRevision !== null && $expectedRevision < 1) {
             throw new InvalidArgumentException('Ungültige Richtlinienversion.');
         }
-        $policy = $this->read($pdo);
+        $policy = $this->read($pdo, $accountLifecycleV5);
         if ($expectedRevision !== null && $policy->revision !== $expectedRevision) {
             throw new DomainException('Die Aufnahmewege wurden geändert. Bitte neu laden und erneut bewusst wählen.');
         }

@@ -13,6 +13,23 @@ use PDO;
 /** Fixed V5 operations only; AttendanceWriter owns the sole lock and audit UDFs. */
 trait AccountLifecycleWriterOperations
 {
+    /** Fixed API actor/namespace; no target/source/generation supplied by command data. */
+    public function transitionApi(AccountLifecycleAuthority $actor, string $eventId, string $action,
+        bool $confirm = false, ?int $expectedRecord = null): array
+    {
+        if (! $this->accountLifecycleV5) {
+            throw new LogicException('V5 API authority cannot target an older account profile.');
+        }
+        $source = 'api:'.$actor->id;
+
+        return $this->executeLocked(function () use ($actor, $source, $eventId, $action, $confirm, $expectedRecord): array {
+            $this->assertLifecyclePrincipalLocked($actor);
+
+            return attendance_transition_locked($this->pdo, $actor->id, $source, $eventId, $action, $confirm, $expectedRecord);
+        }, fn (Closure $transaction): mixed => $this->context->run($source.':user:'.$actor->id,
+            'Stempelereignis '.$action.' / '.$eventId, $transaction), lifecycleReady: true);
+    }
+
     public function changeAccountLifecycle(AccountLifecycleAuthority $actor,
         AccountLifecycleChange $change): AccountLifecycleTransitionResult
     {
