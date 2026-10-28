@@ -10,7 +10,10 @@ Migration, Transaktion, Uhr aus dem Request oder schreibende Kalenderpflege.
 ## Aktive gemeinsame Bestandslogik
 
 `lib/home_projection.php` lädt nur Definitionen aus `practice.php` und
-`reporting.php`. `functions.php`, `config.php`, Sessions und deren ausführbare
+`reporting.php` sowie dem definitions-only `planning_snapshot.php`.
+[Die begrenzte #56-Optimierung](home-planning-performance.md) nutzt kurzlebige
+Planungsdaten ausschließlich in der bereits vorhandenen Lesetransaktion;
+native Einzelabrufe ohne Transaktion bleiben erhalten. `functions.php`, `config.php`, Sessions und deren ausführbare
 Kalender-/Bootstraplogik werden vom Framework **nicht** includiert.
 
 - `getWorkingDays` und `fetchFeiertageDieseWoche` behalten ihre nativen Signaturen

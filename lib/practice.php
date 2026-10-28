@@ -87,8 +87,13 @@ function planned_minutes(PDO $db,int $user,string $day): int {
     $date=practice_date($day);
     if (att_one($db,'SELECT id FROM Feiertage WHERE datum=?',[$day])) { return 0; }
     $model=att_one($db,'SELECT minutes_json FROM work_models WHERE user_id=? AND valid_from<=? ORDER BY valid_from DESC,id DESC LIMIT 1',[$user,$day]);
-    if ($model) { return (int)json_decode($model['minutes_json'],true)[(int)$date->format('N')-1]; }
+    if ($model) { return planned_minutes_value($date,$model,null); }
     $u=att_one($db,'SELECT regelarbeitszeit FROM users WHERE id=?',[$user]);
+    return planned_minutes_value($date,null,$u);
+}
+/** Same existing formula, also used by an explicit operation-local read snapshot. */
+function planned_minutes_value(DateTimeImmutable $date,?array $model,?array $u): int {
+    if ($model) { return (int)json_decode($model['minutes_json'],true)[(int)$date->format('N')-1]; }
     return (int)$date->format('N')<=5 ? max(0,min(1440,(int)round((float)($u['regelarbeitszeit']??0)*60))) : 0;
 }
 function planned_hours(PDO $db,int $user,string $start,string $end): float {

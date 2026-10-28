@@ -3,8 +3,9 @@
 // Definitions only: no native bootstrap, calendar download, connection or writes.
 require_once __DIR__.'/practice.php';
 require_once __DIR__.'/reporting.php';
+require_once __DIR__.'/planning_snapshot.php';
 
-function home_working_days(PDO $db, int $user, string $startDate, string $endDate): int
+function home_working_days(PDO $db, int $user, string $startDate, string $endDate, ?Closure $planned = null): int
 {
     $begin = new DateTime($startDate);
     $end = new DateTime($endDate);
@@ -13,7 +14,7 @@ function home_working_days(PDO $db, int $user, string $startDate, string $endDat
     $dateRange = new DatePeriod($begin, $interval, $end);
     $workingDays = 0;
     foreach ($dateRange as $date) {
-        if (planned_minutes($db, $user, $date->format('Y-m-d')) > 0) {
+        if (($planned === null ? planned_minutes($db, $user, $date->format('Y-m-d')) : $planned($date->format('Y-m-d'))) > 0) {
             $workingDays++;
         }
     }
@@ -22,11 +23,11 @@ function home_working_days(PDO $db, int $user, string $startDate, string $endDat
 }
 
 /** Native carry-in plus completed report-start-days, not a continuous time account. */
-function home_total_overtime(PDO $db, int $user, array $reportDays, float $previousOvertime): float
+function home_total_overtime(PDO $db, int $user, array $reportDays, float $previousOvertime, ?Closure $planned = null): float
 {
     $totalOverHours = (float) $previousOvertime;
     foreach ($reportDays as $day => $minutes) {
-        $totalOverHours += ($minutes - planned_minutes($db, $user, $day)) / 60;
+        $totalOverHours += ($minutes - ($planned === null ? planned_minutes($db, $user, $day) : $planned($day))) / 60;
     }
 
     return $totalOverHours;
@@ -42,26 +43,39 @@ function home_week_holidays(PDO $db, $currentYear, $currentWeekNumber): array
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function home_daily_hours(PDO $db, int $user, string $day): string
+function home_daily_hours(PDO $db, int $user, string $day, ?Closure $planned = null): string
 {
-    return report_format_hours(planned_minutes($db, $user, $day) / 60);
+    return report_format_hours(($planned === null ? planned_minutes($db, $user, $day) : $planned($day)) / 60);
 }
 
 /** Already-authorized snapshot data in, raw/unescaped presentation fields out. */
 function home_summary(PDO $db, int $user, array $reportDays, float $previousOvertime, DateTimeImmutable $now): array
 {
     $now = $now->setTimezone(new DateTimeZone('Europe/Berlin'));
-    $totalOverHours = home_total_overtime($db, $user, $reportDays, $previousOvertime);
+    $planned = null;
+    if ($db->inTransaction()) {
+        // Laravel's own-reader already owns this stable snapshot. Build once,
+        // use synchronously, then discard. Native callers without a transaction
+        // retain the existing per-day SQL path; never introduce a hidden cache.
+        $firstDay = $now->format('Y-m-01');
+        $lastDay = $now->format('Y-m-t');
+        foreach ($reportDays as $day => $_minutes) {
+            if (strcmp((string) $day, $firstDay) < 0) { $firstDay = (string) $day; }
+            if (strcmp((string) $day, $lastDay) > 0) { $lastDay = (string) $day; }
+        }
+        $planned = planned_minutes_snapshot($db, $user, $firstDay, $lastDay);
+    }
+    $totalOverHours = home_total_overtime($db, $user, $reportDays, $previousOvertime, $planned);
     $holidays = home_week_holidays($db, $now->format('o'), $now->format('W'));
 
     return [
         'current_month' => $now->format('m'),
         'current_date' => $now->format('Y-m-d'),
-        'working_days_this_month' => home_working_days($db, $user, $now->format('Y-m-01'), $now->format('Y-m-t')),
+        'working_days_this_month' => home_working_days($db, $user, $now->format('Y-m-01'), $now->format('Y-m-t'), $planned),
         'total_overtime_hours' => $totalOverHours,
         'total_overtime_formatted' => report_format_hours($totalOverHours),
         'positive_overtime' => $totalOverHours > 0,
-        'daily_hours_formatted' => home_daily_hours($db, $user, $now->format('Y-m-d')),
+        'daily_hours_formatted' => home_daily_hours($db, $user, $now->format('Y-m-d'), $planned),
         'holidays_this_week' => array_map(static fn (array $holiday): array => [
             'date' => $holiday['datum'],
             'formatted_date' => date('d.m.Y', strtotime($holiday['datum'])),
