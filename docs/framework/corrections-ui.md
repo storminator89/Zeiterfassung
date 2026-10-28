@@ -62,10 +62,12 @@ die Formulare verwenden `@csrf`. Erfolg ist der native Redirect mit
 `saved` ist wie bisher Parameterpräsenz. Fachfehler
 werden wie im nativen Handler im vorhandenen HTML angezeigt, auch wenn der
 Kern etwa eine 403/409-Exception liefert; der alte HTML-Handler lieferte dann
-keine neue JSON-/422-Antwort. Technischer Formularfehler bleibt generisch
-`Antrag konnte nicht verarbeitet werden.`. Middleware-Auth/CSRF-Verweigerung
-bleibt davon getrennt. Form-Action, GET-Vorauswahl und die bisher nicht
-automatisch wiederbefüllten Fehlerfelder bleiben wie im Bestand.
+keine neue JSON-/422-Antwort. Technische Formularfehler bleiben generisch;
+die spätere feste Rückmeldung zum unklaren Antragsausgang ist unten beschrieben.
+Middleware-Auth/CSRF-Verweigerung
+bleibt davon getrennt. Form-Action und GET-Vorauswahl bleiben wie im Bestand.
+Die spätere begrenzte Wiederanzeige abgewiesener Antragsfelder ist unten
+gesondert beschrieben; es gibt keine automatische Wiederholung.
 
 Reviewformularsichtbarkeit bleibt lediglich Darstellung: pending + andere
 Person + angezeigte Admin-/Supervisorrolle auf einer bereits gescopten Liste.
@@ -316,3 +318,65 @@ Antrag-/Freigabe-/Redirect-Gesamtjourney oder Produktionseinsatz behauptet.
 Das frühere Zweipersonenreview wird nicht rückwirkend als Nachweis dieser
 Ergänzung verwendet. #50/#79 bleiben mit ihren übrigen Gates offen;
 kein produktiver Cutover oder Runtime-/Host-/Schlüsselwechsel.
+
+## #50 / #79 – abgewiesene Antragsfelder zur Prüfung beibehalten
+
+Getrennter Vierpfad-Slice auf Main
+`a0af8524830b79c1ecaf2b423ac7626c16734a9a`, nach Berlin-Zeithilfe #214 und
+Rücknahme #217. Eine bekannte fachliche Ablehnung löschte bisher die bereits
+eingegebenen Antragszeiten, Pause, Stornoauswahl und Begründung aus der
+Fehleransicht. Der bestehende Controller/DTO und dieselben Formularfelder
+zeigen diese nun ausschließlich in derselben Antwort wieder an.
+
+Nur POST `action=request` mit weiterhin gültiger eigener Buchungsauswahl und
+bekannter fachlicher 400-/409-Ablehnung (`AttendanceError`) kann diesen
+Darstellungsentwurf liefern. Generische `InvalidArgumentException` genügt
+nicht als Aussage über einen Schreibausgang. Nach normaler
+Rückkehr des Befehls wird er auch bei einem späteren Redirectfehler nicht
+angeboten. GET, Erfolg, ungültige/fehlende/fremde Auswahl, 401/403,
+Review/Rücknahme und technische oder unbekannte Schreibausgänge bleiben ohne
+Entwurf. Beim unbekannten Antragsausgang fordert der feste generische Text
+zum Neuladen/Prüfen des gespeicherten Stands statt automatischer Wiederholung
+auf. Es wird kein Erfolg, Rollback oder Idempotenzversprechen aus einem Fehler
+abgeleitet; die tatsächliche Writer-/Commitfehlerabnahme bleibt offen.
+
+Ein reiner DTO-Helfer wählt ausschließlich Stringfelder `start`, `end`, `pause`
+(maximal je 128 Bytes) und `reason` (maximal 4096 Bytes) sowie die exakte
+Stornoauswahl `cancel === '1'`. Nichtstrings und überlange Einzelwerte werden
+weggelassen, niemals gecastet oder still gekürzt; ein kurzer Hinweis im
+bestehenden Formular nennt die mögliche Neueingabe. Es gibt kein serverseitiges
+Trimmen, Zeitparsen oder Offsetnormalisieren für diese Darstellung: etwa
+`02:10:00+02:00` und `02:10:00+01:00` bleiben verschiedene ISO-Eingaben. Die
+üblichen HTML-Control-/Zeilenendennormalisierungen sind keine neue Backendregel.
+Alle Ausgaben einschließlich der Begründung sind escaped Blade. Unbekannte
+Felder, Tokens, Actor-/Rolewerte, Reviewgrund und Originalsnapshot werden nicht
+in den Entwurf übernommen. Die bestehende eigene Recordauswahl bleibt allein
+beim #178-Vertrag und seiner erneuten autorisierten Own-Read-Prüfung.
+
+Der Entwurf bleibt im Antwort-DTO: kein Session-/Flash-/Storage-/URL-/Logeintrag,
+kein neuer Request, kein JS-Submit, keine automatische Wiederholung und kein
+zusätzlicher Reader. Der ursprüngliche Raw-Commandtransport, Serverzeit,
+Backendparser, Vier-Augen-/Team-/Besitzregeln, Audit, single-attempt Writer,
+CSRF/Auth, Route und default-off Composition bleiben unverändert. Berlin-Helfer,
+Queue, Rücknahme und native Seite sind unverändert; kein Redesign oder Cutover.
+
+### Begrenzter Nachweis am 28.10.2026
+
+Ein einziger grober synthetischer Controller-/DTO-/kompilierter-Blade-Ablauf
+unter PHP **8.5.12** / Laravel **13.38.0** mit ausschließlich erfundenen
+Read-/Auth-/Correction-Ports prüfte: 400/409 und gleiche POSTauswahl,
+beide Herbstoffsets unverändert, escaped HTML-Begründung, Stornoanzeige;
+kein Entwurf bei GET/Review/Rücknahme/Erfolg/401/technischem Fehler;
+Grenzen für unbrauchbare Einzelwerte, unveränderter alter DTO-Default,
+kein Session-/Flashentwurf und kein automatischer Service-Mehrfachaufruf.
+Notwendige PHP- und kompilierte-Blade-Syntax sowie `git diff --check` werden
+separat eingefroren. Der unabhängige finale Quellprüfstatus wird außerhalb des
+Quellbaums am exakten Commit/Tree festgehalten.
+
+Dies ist keine tatsächliche Writer-/Rollback-/Commitfehler-, Auth-/CSRF-/HTTP-,
+Browser-/DST-Interaktions-, Konkurrenz- oder Produktionsabnahme. Kein Server,
+DB, reales Konto, echte Betriebsdaten/Zugangsdaten/Keys/Secrets, neuer
+GitHub-CI-Lauf oder Remote-Schreibzugriff. Das erste Prüfharness vergaß den
+reinen AttendanceError-Definitionsinclude; der Harness wurde korrigiert, nicht
+die Anwendung oder Assertions abgeschwächt. Saldo-/Vertretungs-/Eskalationspolicy,
+vollständige #50/#79-Abnahme und Aktivierung bleiben ausdrücklich offen.

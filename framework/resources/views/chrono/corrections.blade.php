@@ -10,6 +10,7 @@
     @if (! $corrections->selectionInvalid)
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">Arbeitszeit korrigieren oder nachtragen</h2>
+        @if ($corrections->requestDraft)<p class="text-sm opacity-70 mb-4" role="status">Antragsfelder zur Prüfung beibehalten. Es wird nichts automatisch erneut gesendet. Ungültige oder überlange Felder gegebenenfalls neu eingeben.</p>@endif
         <details id="correction-time-helper" class="mb-4" hidden>
             <summary class="cursor-pointer font-semibold">Datum und Uhrzeit wählen (Berlin)</summary>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-3">
@@ -38,15 +39,15 @@
                     <option value="{{ $r['id'] }}" @selected($corrections->selectedRecordId === $r['id'])>#{{ $r['id'] }} · {{ $r['start'] }} – {{ $r['end'] }}</option>
                     @endforeach
                 </select>
-                <label class="block text-sm font-semibold mt-4 mb-2"><input class="checkbox checkbox-primary" type="checkbox" name="cancel" value="1"> Bestehende Buchung stornieren (Zeitfelder dann leer lassen)</label>
+                <label class="block text-sm font-semibold mt-4 mb-2"><input class="checkbox checkbox-primary" type="checkbox" name="cancel" value="1" @checked($corrections->requestDraft['cancel'] ?? false)> Bestehende Buchung stornieren (Zeitfelder dann leer lassen)</label>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div><label class="block text-sm font-semibold mt-4 mb-2" for="start">Beginn mit Zeitzone</label><input class="input input-bordered w-full" id="start" name="start" placeholder="2026-10-25T09:00+01:00"></div>
-                    <div><label class="block text-sm font-semibold mt-4 mb-2" for="end">Ende mit Zeitzone</label><input class="input input-bordered w-full" id="end" name="end" placeholder="2026-10-25T17:00+01:00"></div>
-                    <div><label class="block text-sm font-semibold mt-4 mb-2" for="pause">Tatsächliche Pause (Minuten)</label><input class="input input-bordered w-full" id="pause" name="pause" type="number" min="0"></div>
+                    <div><label class="block text-sm font-semibold mt-4 mb-2" for="start">Beginn mit Zeitzone</label><input class="input input-bordered w-full" id="start" name="start" value="{{ $corrections->requestDraft['start'] ?? '' }}" placeholder="2026-10-25T09:00+01:00"></div>
+                    <div><label class="block text-sm font-semibold mt-4 mb-2" for="end">Ende mit Zeitzone</label><input class="input input-bordered w-full" id="end" name="end" value="{{ $corrections->requestDraft['end'] ?? '' }}" placeholder="2026-10-25T17:00+01:00"></div>
+                    <div><label class="block text-sm font-semibold mt-4 mb-2" for="pause">Tatsächliche Pause (Minuten)</label><input class="input input-bordered w-full" id="pause" name="pause" value="{{ $corrections->requestDraft['pause'] ?? '' }}" type="number" min="0"></div>
                 </div>
                 <small class="block opacity-70 mt-3">Deutschland: Winterzeit +01:00, Sommerzeit +02:00. Abwesenheitsgutschriften beginnen um 00:00 Uhr Ortszeit; als Ende 00:00 plus Sollminuten und als Pause 0 eintragen. Arbeitsnachträge dürfen nicht in der Zukunft liegen. Bei Zeitumstellungen den Offset für jeden Zeitpunkt einzeln angeben.</small>
                 <label class="block text-sm font-semibold mt-4 mb-2" for="reason">Begründung</label>
-                <textarea class="textarea textarea-bordered w-full" id="reason" name="reason" minlength="5" maxlength="1000" required></textarea>
+                <textarea class="textarea textarea-bordered w-full" id="reason" name="reason" minlength="5" maxlength="1000" required>{{ $corrections->requestDraft['reason'] ?? '' }}</textarea>
                 <div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary">Antrag stellen</button></div>
             </fieldset>
         </form>
