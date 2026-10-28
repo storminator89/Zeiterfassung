@@ -81,7 +81,7 @@ final class FreshApplicationFiles
             $source = (new SQLiteConnector)->connect(['database' => ':memory:', 'busy_timeout' => 5000]);
             $build = require $root.'/framework/database/fixtures/intake_policy_v4.php';
             $build($source, $mapping);
-            $references->requireFresh($source);
+            $references->requireFreshLoginBudget($source);
             self::sameFile($path, $databaseHandle, $databaseState);
             // This source is a newly constructed EMPTY memory schema, never a
             // read-only runtime/business database or an operator-selected source.
@@ -104,6 +104,7 @@ final class FreshApplicationFiles
             if ($registered['registered'] !== true || $registered['already_registered'] !== false) {
                 throw new RuntimeException;
             }
+            $references->requireFreshLoginBudget($pdo);
             $manifest = [
                 'path' => $path, 'device' => $databaseState['dev'], 'inode' => $databaseState['ino'],
                 'schema_version' => $registered['schema_version'],
@@ -125,7 +126,7 @@ final class FreshApplicationFiles
             $reader = (new RuntimeDatabase($admission, $files))->readConnection($admission->configuration(), 'chrono');
             $read = $reader->getPdo();
             $read->beginTransaction();
-            $references->requireFresh($read);
+            $references->requireFreshLoginBudget($read);
             $read->rollBack();
             $reader->disconnect();
             $reader = $read = null;

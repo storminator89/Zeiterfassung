@@ -22,4 +22,10 @@ return static function (PDO $pdo, array $mapping): void {
         }
         throw $error;
     }
+
+    // NEW anonymous source only: make the already canonical optional table
+    // physically present and empty BEFORE file materialization/ledger/manifest.
+    // No security.php/bootstrap, runtime DDL, existing file, key or account.
+    $tables = array_column($mapping['tables'], null, 'name');
+    $pdo->exec($tables['login_attempts']['create_sql']);
 };

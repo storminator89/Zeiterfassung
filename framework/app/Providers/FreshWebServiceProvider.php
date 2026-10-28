@@ -66,7 +66,8 @@ final class FreshWebServiceProvider extends ServiceProvider
                 LocalWebRoutes::register($this->app, includeHistory: true, includeSupervisor: true, includeDashboard: true,
                     includeCsv: true, includeSettings: true, includeAdminPauseSettings: true,
                     includeRegistration: true, includeSetup: $config->get('chrono_setup.enabled') === true,
-                    includeLdapSync: $profile->ldapSyncProfile() !== null);
+                    includeLdapSync: $profile->ldapSyncProfile() !== null,
+                    useSharedLoginBudget: SharedLoginBudgetServiceProvider::selected($this->app));
             });
         });
     }

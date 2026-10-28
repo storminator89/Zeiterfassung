@@ -7,6 +7,7 @@ use App\Providers\ChronoDomainServiceProvider;
 use App\Providers\LegacyApiServiceProvider;
 use App\Providers\LegacyRuntimeDatabaseServiceProvider;
 use App\Providers\FreshWebServiceProvider;
+use App\Providers\SharedLoginBudgetServiceProvider;
 
 return [
     AppServiceProvider::class,
@@ -16,4 +17,5 @@ return [
     LegacyApiServiceProvider::class,
     FreshWebServiceProvider::class,
     LegacyRuntimeDatabaseServiceProvider::class,
+    SharedLoginBudgetServiceProvider::class,
 ];

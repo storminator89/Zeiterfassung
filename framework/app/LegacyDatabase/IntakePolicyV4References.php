@@ -98,6 +98,46 @@ final class IntakePolicyV4References
         return $checked;
     }
 
+    /** NEW budget-ready producer only; generic absent/empty compatibility stays exact. */
+    public function requireFreshLoginBudget(PDO $target): array
+    {
+        // Includes full canonical structural preflight for a PRESENT table, not
+        // merely the signature that historically normalizes absent vs empty.
+        $checked = $this->requireFresh($target);
+        $statement = null;
+        try {
+            $statement = $target->query("SELECT type FROM main.sqlite_schema WHERE name='login_attempts'");
+            if ($statement === false || $statement->fetchColumn() !== 'table'
+                || $statement->fetchColumn() !== false) {
+                throw new RuntimeException('The physical canonical fresh login-budget table is required.');
+            }
+        } finally {
+            try {
+                if ($statement !== null && $statement !== false && ! $statement->closeCursor()) {
+                    throw new RuntimeException('Fresh login-budget presence cursor was not closed.');
+                }
+            } finally {
+                $statement = null;
+            }
+        }
+        try {
+            $statement = $target->query('SELECT 1 FROM main.login_attempts LIMIT 1');
+            if ($statement === false || $statement->fetchColumn() !== false) {
+                throw new RuntimeException('A fresh login-budget table must be empty.');
+            }
+        } finally {
+            try {
+                if ($statement !== null && $statement !== false && ! $statement->closeCursor()) {
+                    throw new RuntimeException('Fresh login-budget emptiness cursor was not closed.');
+                }
+            } finally {
+                $statement = null;
+            }
+        }
+
+        return $checked;
+    }
+
     /** Hash preservation evidence includes policy metadata but never returns its row. */
     public function preservedSource(PDO $target): array
     {

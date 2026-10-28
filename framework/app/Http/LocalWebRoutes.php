@@ -22,6 +22,7 @@ use App\Http\Middleware\LdapSyncThrottle;
 use App\LegacyDatabase\AttendanceWriter;
 use App\Http\Middleware\RefreshLocalAccount;
 use App\LegacyDatabase\RuntimeDatabase;
+use App\Providers\SharedLoginBudgetServiceProvider;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Cache\FileStore;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
@@ -46,8 +47,11 @@ use Symfony\Component\HttpFoundation\Response;
 /** Explicit opt-in registrar. Never called by bootstrap/providers/default routes. */
 final class LocalWebRoutes
 {
-    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false, bool $includeSetup = false, bool $includeLdapSync = false): void
+    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false, bool $includeSetup = false, bool $includeLdapSync = false, bool $useSharedLoginBudget = false): void
     {
+        if ($useSharedLoginBudget !== SharedLoginBudgetServiceProvider::selected($app)) {
+            throw new LogicException('Login route and shared budget selection must agree.');
+        }
         // No opt-in page may be registered against missing or replaced chart bytes.
         if ($includeSupervisor) {
             self::requireSupervisorChartAssets();
@@ -131,9 +135,12 @@ final class LocalWebRoutes
         $router->group(['middleware' => [
             EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class,
             ShareErrorsFromSession::class, LegacyFormCsrf::class, SubstituteBindings::class,
-        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeRegistration, $includeSetup, $includeLdapSync): void {
+        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeRegistration, $includeSetup, $includeLdapSync, $useSharedLoginBudget): void {
             $router->get('login.php', [LocalWebSessionController::class, 'create'])->name('login');
-            $router->post('login.php', [LocalWebSessionController::class, 'store'])->middleware('throttle:chrono-web-login');
+            $login = $router->post('login.php', [LocalWebSessionController::class, 'store']);
+            if (! $useSharedLoginBudget) {
+                $login->middleware('throttle:chrono-web-login');
+            }
             if ($includeSetup) {
                 $router->get('setup.php', [LocalWebFirstAdminSetupController::class, 'create'])->name('chrono.first-admin-setup');
                 $router->post('setup.php', [LocalWebFirstAdminSetupController::class, 'store'])->middleware('throttle:chrono-web-setup');
