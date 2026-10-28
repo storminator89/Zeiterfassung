@@ -13,6 +13,81 @@ use PDO;
 /** Fixed V5 operations only; AttendanceWriter owns the sole lock and audit UDFs. */
 trait AccountLifecycleWriterOperations
 {
+    /** Fixed Web actor/namespace; generation is checked before replay and DML. */
+    public function transitionWeb(AccountLifecycleAuthority $actor, string $eventId, string $action,
+        bool $confirm = false, ?int $expectedRecord = null): array
+    {
+        $this->requireLifecycleWebProfile();
+        $source = 'web:'.$actor->id;
+
+        return $this->executeLocked(function () use ($actor, $source, $eventId, $action, $confirm, $expectedRecord): array {
+            $this->assertLifecycleWebPrincipalLocked($actor);
+
+            return attendance_transition_locked($this->pdo, $actor->id, $source, $eventId, $action,
+                $confirm, $expectedRecord, null, true);
+        }, fn (Closure $transaction): mixed => $this->context->run($source.':user:'.$actor->id,
+            'Stempelereignis '.$action.' / '.$eventId, $transaction), lifecycleReady: true);
+    }
+
+    public function absenceWeb(AccountLifecycleAuthority $actor, string $start, string $end, string $kind): array
+    {
+        $this->requireLifecycleWebProfile();
+        require_once dirname(__DIR__, 3).'/lib/practice.php';
+        practice_absence_range($start, $end, $kind);
+
+        return $this->executeLocked(function () use ($actor, $start, $end, $kind): array {
+            $this->assertLifecycleWebPrincipalLocked($actor);
+
+            return practice_absence_apply_locked($this->pdo, $actor->id, $start, $end, $kind,
+                fn (string $reason, Closure $operation): mixed => $this->context->run('web:'.$actor->id, $reason, $operation));
+        }, lifecycleReady: true);
+    }
+
+    public function correctionWeb(AccountLifecycleAuthority $actor, array $command): void
+    {
+        $this->requireLifecycleWebProfile();
+        require_once dirname(__DIR__, 3).'/lib/corrections.php';
+        $this->executeLocked(function () use ($actor, $command): void {
+            $this->assertLifecycleWebPrincipalLocked($actor);
+            if ($actor->source === 'ldap' && ($command['action'] ?? null) !== 'request') {
+                throw new \AttendanceError('Keine Freigabeberechtigung.', 403);
+            }
+            correction_apply_locked($this->pdo, $actor->id, $actor->role, $command,
+                fn (string $reason, Closure $operation): mixed => $this->context->run('web:'.$actor->id, $reason, $operation));
+        }, lifecycleReady: true);
+    }
+
+    public function withdrawCorrectionWeb(AccountLifecycleAuthority $actor, #[\SensitiveParameter] string $version,
+        mixed $id, mixed $reason): void
+    {
+        $this->requireLifecycleWebProfile();
+        require_once dirname(__DIR__, 3).'/lib/correction_withdrawal.php';
+        $this->executeLocked(function () use ($actor, $version, $id, $reason): void {
+            $this->assertLifecycleWebPrincipalLocked($actor);
+            if (! $actor->binds($actor->id, 'local', $version, $actor->role)) {
+                throw new \AttendanceError('Sitzung nicht mehr gültig. Bitte neu anmelden.', 401);
+            }
+            correction_withdraw_locked($this->pdo, $actor->id, $actor->role, $version, $id, $reason,
+                fn (string $auditReason, Closure $operation): mixed => $this->context->run('web:'.$actor->id, $auditReason, $operation));
+        }, lifecycleReady: true);
+    }
+
+    private function requireLifecycleWebProfile(): void
+    {
+        if (! $this->accountLifecycleV5) {
+            throw new LogicException('V5 Web authority cannot target an older account profile.');
+        }
+    }
+
+    private function assertLifecycleWebPrincipalLocked(AccountLifecycleAuthority $actor): void
+    {
+        $this->assertLifecyclePrincipalLocked($actor);
+        // Keep the existing Web profile's LDAP eligibility: ordinary users only.
+        if ($actor->source === 'ldap' && $actor->role !== 'user') {
+            throw new \AttendanceError('Sitzung nicht mehr gültig. Bitte neu anmelden.', 401);
+        }
+    }
+
     /** Fixed API actor/namespace; no target/source/generation supplied by command data. */
     public function transitionApi(AccountLifecycleAuthority $actor, string $eventId, string $action,
         bool $confirm = false, ?int $expectedRecord = null): array

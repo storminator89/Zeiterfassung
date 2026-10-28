@@ -1,5 +1,8 @@
 # Existing database snapshot card (default off)
 
+The separate [V5 same-snapshot authority component](account-lifecycle-v5-snapshot.md)
+does not activate V5 Runtime or change this existing older-profile export/HEAD contract.
+
 This opt-in Laravel slice preserves the existing Settings database-snapshot card
 and native `download.php` filename. It does not connect restore/import, copy a
 native login, support LDAP-admin authentication, or activate any default route.

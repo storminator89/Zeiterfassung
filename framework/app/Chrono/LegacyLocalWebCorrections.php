@@ -3,6 +3,7 @@
 namespace App\Chrono;
 
 use App\Auth\LegacyUser;
+use App\Auth\AccountLifecycleWebIdentity;
 use App\Auth\ExistingAccountUserProvider;
 use App\LegacyDatabase\AttendanceWriter;
 use Closure;
@@ -16,7 +17,8 @@ use LogicException;
 final class LegacyLocalWebCorrections implements LocalWebCorrections
 {
     /** @param Closure(): AttendanceWriter $writer Trusted operation-scope resolver. */
-    public function __construct(private readonly Factory $auth, private readonly Closure $writer) {}
+    public function __construct(private readonly Factory $auth, private readonly Closure $writer,
+        private readonly ?AccountLifecycleWebIdentity $lifecycle = null) {}
 
     public function apply(array $command): void
     {
@@ -40,9 +42,17 @@ final class LegacyLocalWebCorrections implements LocalWebCorrections
             throw new AuthorizationException('Diese LDAP-Slice erlaubt nur eigene Korrekturanträge.');
         }
 
+        $authority = $this->lifecycle?->capture($actor);
+
         $writer = ($this->writer)();
         if (! $writer instanceof AttendanceWriter) {
             throw new LogicException('A trusted admitted operation-scoped attendance writer is required.');
+        }
+
+        if ($authority !== null) {
+            $writer->correctionWeb($authority, $command);
+
+            return;
         }
 
         // Only the current trusted guard supplies actor/role. Same assurance as

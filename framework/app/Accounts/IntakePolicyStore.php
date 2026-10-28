@@ -52,17 +52,20 @@ final class IntakePolicyStore
     }
 
     /** Trusted actor ID only; the outer service/CSRF gate is still mandatory. */
-    public function applyLocked(PDO $pdo, int $admin, IntakePolicyChange $change): IntakePolicy
+    public function applyLocked(PDO $pdo, int $admin, IntakePolicyChange $change, bool $accountLifecycleV5 = false): IntakePolicy
     {
         $this->requireTransaction($pdo);
-        $statement = $pdo->prepare('SELECT role,auth_source FROM users WHERE id=?');
+        $statement = $pdo->prepare($accountLifecycleV5
+            ? 'SELECT username,password,role,auth_source,account_status,auth_generation FROM users WHERE id=?'
+            : 'SELECT role,auth_source FROM users WHERE id=?');
         $statement->execute([$admin]);
         $actor = $statement->fetch(PDO::FETCH_ASSOC);
         $statement->closeCursor();
-        if ($admin < 1 || $actor === false || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local') {
+        if ($admin < 1 || $actor === false || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local'
+            || ($accountLifecycleV5 && ! AccountLifecycleAuthority::locallyLoginEligibleAdmin($actor))) {
             throw new AuthorizationException('Nur die lokale Verwaltung darf Aufnahmewege ändern.');
         }
-        $policy = $this->read($pdo);
+        $policy = $this->read($pdo, $accountLifecycleV5);
         if ($policy->revision !== $change->expectedRevision) {
             throw new DomainException('Die Aufnahmewege wurden geändert. Bitte neu laden und erneut bewusst wählen.');
         }
@@ -83,7 +86,7 @@ final class IntakePolicyStore
             throw new DomainException('Die Änderung der Aufnahmewege wurde nicht bestätigt.');
         }
 
-        return $this->read($pdo);
+        return $this->read($pdo, $accountLifecycleV5);
     }
 
     private function requireTransaction(PDO $pdo): void

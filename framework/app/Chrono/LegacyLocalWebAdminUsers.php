@@ -49,6 +49,7 @@ final class LegacyLocalWebAdminUsers implements LocalWebAdminUsers
                 $command['email'] ?? null, $command['role'] ?? null, $command['department'] ?? null,
                 $command['supervisor'] ?? null, $command['regelarbeitszeit'] ?? null, $command['ueberstunden'] ?? null,
                 expectedPolicyRevision: $context['revision'] ?? null, expectedWebVersion: $context['version'] ?? null,
+                lifecycleAuthority: $context['lifecycle_authority'] ?? null,
             );
         } catch (\AttendanceError $error) {
             if ($context !== null && $error->status === 401) {

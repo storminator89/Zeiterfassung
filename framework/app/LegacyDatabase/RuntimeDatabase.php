@@ -3,6 +3,7 @@
 namespace App\LegacyDatabase;
 
 use App\Auth\LegacyUser;
+use App\Accounts\AccountLifecycleAuthority;
 use App\Chrono\DatabaseSnapshotArtifact;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -65,9 +66,13 @@ final class RuntimeDatabase
     }
 
     /** Fixed secret-bearing operation; no source/path selector or raw-handle callback. */
-    public function databaseSnapshot(LegacyUser $authenticated): DatabaseSnapshotArtifact
+    public function databaseSnapshot(#[\SensitiveParameter] LegacyUser $authenticated,
+        #[\SensitiveParameter] ?AccountLifecycleAuthority $lifecycleAuthority = null): DatabaseSnapshotArtifact
     {
         $this->requireImplementedRuntime();
+        if (! $this->isAccountLifecycleV5() && $lifecycleAuthority !== null) {
+            throw new LogicException('V5 snapshot authority cannot target an older account profile.');
+        }
         $identifier = (int) $authenticated->getKey();
         $password = $authenticated->getAuthPassword();
         if ($identifier < 1 || $authenticated->auth_source !== 'local' || ! is_string($password) || $password === '') {
@@ -75,6 +80,10 @@ final class RuntimeDatabase
         }
         if ($authenticated->role !== 'admin') {
             throw new AuthorizationException('Only administrators may export a database snapshot.');
+        }
+        if ($this->isAccountLifecycleV5() && ($lifecycleAuthority === null
+            || ! $lifecycleAuthority->binds($identifier, 'local', hash('sha256', $password), 'admin'))) {
+            throw new AuthenticationException;
         }
 
         $source = null;
@@ -87,29 +96,34 @@ final class RuntimeDatabase
             }
             $transaction = true;
             $this->requireSnapshotSource($source);
-            $statement = $source->prepare('SELECT id,role,auth_source,password FROM users WHERE id=:actor');
-            try {
-                $statement->bindValue(':actor', $identifier, SQLITE3_INTEGER);
-                $result = $statement->execute();
+            if ($this->isAccountLifecycleV5()) {
+                AccountLifecycleSnapshotAuthority::authorize($source, $lifecycleAuthority);
+            } else {
+                $statement = $source->prepare('SELECT id,role,auth_source,password FROM users WHERE id=:actor');
                 try {
-                    $actor = $result->fetchArray(SQLITE3_ASSOC);
-                    if ($result->fetchArray(SQLITE3_ASSOC) !== false) {
-                        throw new RuntimeException;
+                    $statement->bindValue(':actor', $identifier, SQLITE3_INTEGER);
+                    $result = $statement->execute();
+                    try {
+                        $actor = $result->fetchArray(SQLITE3_ASSOC);
+                        if ($result->fetchArray(SQLITE3_ASSOC) !== false) {
+                            throw new RuntimeException;
+                        }
+                    } finally {
+                        $result->finalize();
                     }
                 } finally {
-                    $result->finalize();
+                    $statement->close();
                 }
-            } finally {
-                $statement->close();
+                if ($actor === false || $actor['id'] !== $identifier || $actor['auth_source'] !== 'local'
+                    || ! is_string($actor['password']) || ! hash_equals($password, $actor['password'])) {
+                    throw new AuthenticationException;
+                }
+                if ($actor['role'] !== 'admin') {
+                    throw new AuthorizationException('Only administrators may export a database snapshot.');
+                }
+                unset($actor);
             }
-            if ($actor === false || $actor['id'] !== $identifier || $actor['auth_source'] !== 'local'
-                || ! is_string($actor['password']) || ! hash_equals($password, $actor['password'])) {
-                throw new AuthenticationException;
-            }
-            if ($actor['role'] !== 'admin') {
-                throw new AuthorizationException('Only administrators may export a database snapshot.');
-            }
-            unset($actor, $password);
+            unset($password);
 
             // The destination is allocated only AFTER this same-source fresh check.
             $artifact = DatabaseSnapshotArtifact::capture($source, $this->admission, $this->files);
@@ -208,6 +222,9 @@ final class RuntimeDatabase
         if ($this->admission->schemaProfile === 'intake-policy-v4') {
             $versions = array_column($this->snapshotRows($source, 'SELECT version FROM app_migrations ORDER BY version'), 'version');
             $this->admission->assertIntakePolicyState($versions, $this->snapshotRows($source, RuntimeAdmission::INTAKE_POLICY_SQL));
+        } elseif ($this->admission->schemaProfile === 'account-lifecycle-v5') {
+            $versions = array_column($this->snapshotRows($source, 'SELECT version FROM app_migrations ORDER BY version'), 'version');
+            $this->admission->assertAccountLifecycleState($versions, $this->snapshotRows($source, RuntimeAdmission::INTAKE_POLICY_SQL));
         }
     }
 
