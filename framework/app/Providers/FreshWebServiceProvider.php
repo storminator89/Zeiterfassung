@@ -52,7 +52,7 @@ final class FreshWebServiceProvider extends ServiceProvider
             $router = $this->app->make(Router::class);
             foreach ($router->getRoutes() as $route) {
                 if (in_array($route->uri(), ['/', 'index.php', 'login.php', 'register.php', 'setup.php', 'attendance.php',
-                    'adjustments.php', 'get_time_records.php', 'save.php', 'work_models.php', 'history.php', 'supervisor.php',
+                    'adjustments.php', 'get_time_records.php', 'get_latest_record.php', 'save.php', 'delete.php', 'import.php', 'work_models.php', 'history.php', 'supervisor.php',
                     'dashboard.php', 'export_csv.php', 'settings.php', 'admin.php', 'get_user.php', 'logout.php'], true)) {
                     throw new LogicException('Fresh web must not replace another web route profile.');
                 }

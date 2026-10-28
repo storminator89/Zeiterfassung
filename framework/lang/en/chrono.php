@@ -202,4 +202,11 @@ return [
     'USER_UPDATED_SUCCESS' => 'User updated successfully.',
     'USER_DELETED_SUCCESS' => 'User deleted successfully.',
     'CONFIRM_DELETE_USER' => 'Are you sure you want to delete this user?',
+
+    // Native latest-own-work fragment labels, copied without global constants.
+    'LATEST_TIME_RECORD' => 'Latest Time Entry',
+    'LABEL_MINUTES' => 'Minutes',
+    'LOCATION_OFFICE' => 'Office',
+    'LOCATION_HOME_OFFICE' => 'Home Office',
+    'LOCATION_BUSINESS_TRIP' => 'Business Trip',
 ];

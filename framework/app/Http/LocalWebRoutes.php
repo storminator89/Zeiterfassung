@@ -9,6 +9,8 @@ use App\Http\Controllers\LocalWebCsvExportController;
 use App\Http\Controllers\LocalWebDatabaseSnapshotController;
 use App\Http\Controllers\LocalWebDashboardController;
 use App\Http\Controllers\LocalWebHomeController;
+use App\Http\Controllers\LocalWebLatestRecordController;
+use App\Http\Controllers\LocalWebLegacyMutationDeniedController;
 use App\Http\Controllers\LocalWebHistoryController;
 use App\Http\Controllers\LocalWebSessionController;
 use App\Http\Controllers\LocalWebRegistrationController;
@@ -91,7 +93,7 @@ final class LocalWebRoutes
 
         // Native attendance/correction/model fields were never globally trimmed/coerced.
         // " 1 " must not become either a confirmation or a cancellation flag.
-        $nativeFormPath = fn (Request $request): bool => in_array($request->path(), ['/', 'index.php', 'attendance.php', 'adjustments.php', 'get_time_records.php', 'save.php', 'work_models.php'], true)
+        $nativeFormPath = fn (Request $request): bool => in_array($request->path(), ['/', 'index.php', 'attendance.php', 'adjustments.php', 'get_time_records.php', 'save.php', 'work_models.php', 'get_latest_record.php', 'delete.php', 'import.php'], true)
             || ($includeSettings && $request->path() === 'settings.php')
             || ($includeAdminPauseSettings && $request->path() === 'admin.php')
             || ($includeRegistration && $request->path() === 'register.php')
@@ -101,6 +103,18 @@ final class LocalWebRoutes
         ConvertEmptyStringsToNull::skipWhen($nativeFormPath);
 
         $app->make(ExceptionHandler::class)->renderable(function (AuthenticationException $error, Request $request) use ($includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeTerminalSites) {
+            if ($request->path() === 'get_latest_record.php') {
+                // Explicit unauthorized transport, not the native accidental200.
+                return new Response('Nicht angemeldet.', 401,
+                    ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store', 'X-Content-Type-Options' => 'nosniff']);
+            }
+            // Native compatibility denials are text endpoints, not login pages.
+            // Preserve distinct anonymous delete401 and import403 contracts.
+            if (in_array($request->path(), ['delete.php', 'import.php'], true)) {
+                return new Response($request->path() === 'delete.php' ? 'Nicht angemeldet.' : 'Administrator access required.',
+                    $request->path() === 'delete.php' ? 401 : 403,
+                    ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store', 'X-Content-Type-Options' => 'nosniff']);
+            }
             if ($includeDatabaseSnapshot && $request->path() === 'download.php') {
                 return new Response('Please sign in again.', 401,
                     ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
@@ -166,7 +180,15 @@ final class LocalWebRoutes
                 $router->get('adjustments.php', [LocalWebCorrectionsController::class, 'index']);
                 $router->post('adjustments.php', [LocalWebCorrectionsController::class, 'store']);
                 $router->get('get_time_records.php', [LocalWebHomeController::class, 'records']);
+                // Native fragment has no method guard; unsafe methods retain CSRF.
+                $router->match(array_values(array_unique([...Router::$verbs, 'TRACE', 'CONNECT'])),
+                    'get_latest_record.php', [LocalWebLatestRecordController::class, 'latest']);
                 $router->post('save.php', [LocalWebHomeController::class, 'absence']);
+                // Native stubs have no method guard. Include standard TRACE/CONNECT
+                // as well as router verbs; unsafe methods still require CSRF.
+                $denialMethods = array_values(array_unique([...Router::$verbs, 'TRACE', 'CONNECT']));
+                $router->match($denialMethods, 'delete.php', [LocalWebLegacyMutationDeniedController::class, 'delete']);
+                $router->match($denialMethods, 'import.php', [LocalWebLegacyMutationDeniedController::class, 'import']);
                 $router->get('work_models.php', [LocalWebWorkModelsController::class, 'index']);
                 $router->post('work_models.php', [LocalWebWorkModelsController::class, 'store']);
                 if ($includeHistory) {
