@@ -188,3 +188,52 @@ Nach dem Abschluss wurde auch das Mitglied ausgeloggt, der eigene Browser-/
 Terminaltab geschlossen und ausschließlich der temporäre 18090-Prozess beendet.
 Der fehlende Listener wurde nativ bestätigt; die vorhandene 18083-Anwendung
 und ihre Sitzungen blieben unangetastet.
+
+## #14 – vorhandenen nativen Auswahlschutz auch in Laravel bewahren
+
+Ergänzende Basis: Main `8aa48d23f843b33eb69efa625f177c651388fca2`, Tree
+`a1f3c3a14f59a9d8ae7f74e4cdc1a4e8d5eea224`. Genau vier Pfade ändern sich:
+Korrekturcontroller, angehängtes `CorrectionsPage::selectionInvalid`, bestehende
+Formularvorlage und dieses Dokument. Native Seite und kanonischer
+`lib/correction_selection.php` bleiben unverändert; keine neue Auswahlregel.
+
+Der Controller verwendet denselben bereits vorhandenen **vollständigen eigenen**
+`reportRows()`-Read genau einmal wie zuvor. Die ersten 200 Optionen behalten
+ihre Reihenfolge. Eine ausdrücklich verlinkte gültige ältere eigene Record-ID
+wird aus genau diesem bereits autorisierten Array gefunden und über denselben
+nativen `correction_selection_options()`-Helfer einmalig angehängt. Es gibt
+keinen zweiten Lookup, fremden Benutzerparameter oder erweiterten Teamscope.
+
+`correction_selection_id()` allein besitzt die bestehende IDvalidierung:
+GET mit expliziter ID verlangt eine positive ganze Zahl; nur POST `action=request`
+darf ausdrücklich `record_id=0` für einen Nachtrag wählen. Arrays, Leerstrings,
+Null, negative/gebrochene/überlaufende oder anders ungültige IDs werden nicht
+durch einen Cast in einen Nachtrag verwandelt. In der vorhandenen opt-in Route
+werden Korrekturfelder bereits von Trim-/Leerstring-Normalisierung ausgenommen;
+Registrar, Middleware, Query-/Formparser und Sicherheitskonfiguration ändern sich
+nicht. Ohne ausdrückliche Auswahl bleibt der bewusste normale Nachtragseintrag.
+
+Ungültige, fehlende oder nicht im eigenen Read enthaltene ausgewählte IDs
+liefern den festen escaped nativen Fehler und **kein Antragsformular**, stattdessen
+denselben Link zur erneuten eigenen Auswahl. Nach einem fachlichen POSTfehler
+bleibt die gültige POSTauswahl maßgeblich, nicht eine andere GET-ID; auch der
+ausdrücklich gewählte neue Eintrag 0 bleibt erhalten. Request-only IDvalidierung
+erfolgt vor dem Aufruf des unveränderten Writers; die bestehende Kernprüfung
+besitzt weiterhin allein Besitz-, Freigabe-, Snapshot- und Transaktionsregeln.
+Review-POSTs behalten ihren eigenen bisherigen Vertrag und werden nicht als
+Antrags-/Recordauswahl umgedeutet.
+
+Das neue Flag ist ausschließlich Darstellung, keine Berechtigung. Die #50-
+Dauervorschau, Antragskarten und fremdberechtigten Reviewaktionen bleiben
+bytegleich; ein ungültiger Formularselektor versteckt nicht die bestehenden
+berechtigten Antragskarten. Kein SQL, Readerinterface, Kern/Writer, Datenwert,
+Audit, Route, Auth, Session, sonstiger Sprach-/Kontroll- oder Aktivierungspfad
+ändert sich. Laravel bleibt standardmäßig geschlossen.
+
+Ein grober erfundener eigener Alt-/Fremd-/Fehl-/Ungültig-/POSTauswahlnachweis
+und PHP-/Blade-Syntax bestand am 28.10.2026 unter PHP 8.5.12 und wird getrennt
+eingefroren sowie unabhängig quellengeprüft.
+Keine echten Daten, DB, Antragsmutation, App-/Auth-/Session-/HTTP-/Browser-
+ausführung, neuer CI-Lauf oder Remote-Schreibzugriff. Das schließt die bekannte
+Laravel-Quelllücke, ersetzt aber nicht die weiter offene tatsächliche #14-
+Seiten-/Browserabnahme oder die übrigen Korrektur-/Migrationsgatter.

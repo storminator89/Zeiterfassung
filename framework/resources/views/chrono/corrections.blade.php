@@ -7,6 +7,7 @@
     @if ($corrections->error)<div class="alert alert-error mb-6" role="alert">{{ $corrections->error }}</div>@endif
     @if ($corrections->saved)<div class="alert alert-success mb-6">Gespeichert.</div>@endif
 
+    @if (! $corrections->selectionInvalid)
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">Arbeitszeit korrigieren oder nachtragen</h2>
         <form method="post">
@@ -33,6 +34,9 @@
             </fieldset>
         </form>
     </section>
+    @else
+    <p class="mb-6"><a class="btn btn-outline" href="adjustments.php">Eigene Buchung neu auswählen</a></p>
+    @endif
 
     <h2 class="text-xl font-semibold mb-4">Letzte Anträge</h2>
     @foreach ($corrections->requests as $a)

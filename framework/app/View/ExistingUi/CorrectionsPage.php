@@ -13,5 +13,6 @@ final readonly class CorrectionsPage
         public ?string $error = null,
         public bool $saved = false,
         public bool $enabled = false,
+        public bool $selectionInvalid = false,
     ) {}
 }
