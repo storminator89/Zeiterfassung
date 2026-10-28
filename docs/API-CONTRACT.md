@@ -60,8 +60,8 @@ Auch Administratoren lesen hier nur das eigene Konto, keine Mitarbeiterliste.
 | Methode/Pfad | Eingabe und Erfolg (HTTP 200) |
 |---|---|
 | `POST /login` | JSON-Zeichenketten `username`, `password`; `{success:true,token}`. |
-| `GET /attendance` | Nur eigener Status: `{success:true,state,record_id}`. Kein Event, Zeitstempel oder Schreibvorgang. |
-| `POST /attendance` | `action`: `start`, `pause_start`, `pause_end`, `end`; `event_id` erforderlich; optional `confirm_end_pause` (nur echtes JSON-`true` bestätigt). Liefert die Buchungsquittung unten. |
+| `GET /attendance` | Nur eigener Status: `{success:true,state,record_id,record_id_string}`. Kein Event, Zeitstempel oder Schreibvorgang. |
+| `POST /attendance` | `action`: `start`, `pause_start`, `pause_end`, `end`; `event_id` erforderlich; optional `confirm_end_pause` (nur echtes JSON-`true` bestätigt) und kanonische Stringbindung `expected_record`. Liefert die Buchungsquittung unten. |
 | `POST /workentry` | Legacy-Startalias mit JSON-Objekt; `event_id` dringend mitsenden. Kein historischer Writer. Nichtleere `endzeit`/`pause` werden verweigert; `startzeit`, Beschreibung und Standort bestimmen die Buchung nicht. |
 | `POST /setendzeit` | Legacy-Endalias, `id` muss zur eigenen offenen Buchung passen; `event_id` und `confirm_end_pause` mitsenden. Antwort ist dieselbe Quittung mit **`record_id`**, nicht `id`. |
 | `GET /users` | `{success:true,data:[{id,username,email,role}]}` für das eigene Konto. Normalerweise genau ein Element; bei Kontolöschung zwischen Prüfung und Lesen kann die Liste leer sein. |
@@ -79,7 +79,7 @@ Das sind keine neuen 404-/422-Verträge.
 Aktueller Status, ohne offene Buchung:
 
 ```json
-{"success":true,"state":"absent","record_id":null}
+{"success":true,"state":"absent","record_id":null,"record_id_string":null}
 ```
 
 `working`/`paused` haben eine positive ganzzahlige aktive `record_id`.
@@ -97,6 +97,7 @@ Beispiel einer bestätigten Startbuchung:
   "local_time": "2026-10-27T09:00:00+01:00",
   "event_id": "example-start-000001",
   "record_id": 42,
+  "record_id_string": "42",
   "state": "working"
 }
 ```
@@ -108,6 +109,55 @@ Kein `data.id` in Buchungsquittungen. Bei unterschrittener konfigurierter
 Mindestpause kann `pause_warning` hinzukommen; es wird keine fiktive Pause
 abgezogen. Erfasst werden tatsächliche Pausen. Der Startalias setzt aktuell
 leere Beschreibung und `office`, nicht frei übermittelte Clientfelder.
+
+### Optionaler exakter Record-String und neue Clientbindung (#36)
+
+Nachtrag auf Main `f69fee32c4df9d7be7e24185d1fdc1720103b2c0`: GET-Status und
+alle drei Stempelerfolgstransporte ergänzen `record_id_string` aus demselben
+vorhandenen Status-/Quittungsarray. Der numerische `record_id` bleibt unverändert;
+Status `absent` hat beide null, eine Endquittung dagegen weiterhin die positive
+**betroffene** ID, nun zusätzlich als String. Auch alte gespeicherte Quittungen
+werden nur in der Antwort projiziert: keine Änderung gespeicherter JSONbytes,
+Hashes, Replayentscheidung, Ereignisanzahl oder zweite aktuelle Statusabfrage.
+
+POST `/attendance` akzeptiert optional `expected_record` als kanonischen positiven
+ASCII-Dezimalstring (`[1-9][0-9]*`) innerhalb `PHP_INT_MAX`, vor dem Cast geprüft.
+Ein vorhandenes ungültiges Feld ergibt JSON-400; fehlend bleibt null, ohne neue
+Pflicht für ältere Clients. Das bestehende Record-Mismatch ergibt409 im selben
+Writer; bereits committed gleiche Payloads werden weiterhin zuerst wiederholt.
+API-/Terminal-`requireExpectedRecord` bleibt false; die strengere Webpflicht
+wird nicht übertragen. `/setendzeit` behält seine bestehende Integerkoerzierung
+von `id`; der neue Client kann dafür den zuvor gelieferten exakten String senden.
+
+Die vorhandenen identischen Edge-/Firefoxcontroller verwenden bei neuem Server
+nur für **neue** Pausen-/Fortsetzen-Pendingevents `expected_record`, und für neue
+Endevents die String-`id` auf dem unveränderten Endalias. Start bleibt ungebunden.
+Die Bindung kommt aus dem frischen eigenen Status, nie aus neuester Berichtszeile,
+Kontoauswahl oder einer historischen Replayantwort. Ereignis-ID, Endpoint,
+Bodytypen und gespeicherte alte Pendingpayloads werden beim Retry nicht geändert.
+Matching-Origin/Konto-Pendingobjekte mit fehlerhafter neuer Bindung/String-ID
+bleiben gespeichert und sperren Aktionen/Retry; keine stille Löschung oder Reparatur.
+Die bisherige Bereinigung anderer ungültiger oder fremder Legacyzustände bleibt.
+Erfolgsquittungen bestätigen nur das Event; der nächste andere Schritt bleibt
+bis zum folgenden frischen GET gesperrt. Definitiver Konflikt lädt Status neu,
+keine automatische Aktion auf der anderen Sitzung.
+
+Fehlt das Stringfeld auf einem älteren Server, bleibt der bisherige sichere
+numerische Legacy-Modus (nur `Number.isSafeInteger`), inklusive numerischer
+End-`id` und ungebundener Pausen. Die bestehende Statuszeile benennt diese Grenze.
+Ein **vorhandenes** fehlerhaftes Stringfeld wird nicht numerisch repariert.
+Keine Rundung/Floatkonvertierung der neuen Bindung und keine neue Geschäftsgrenze;
+der String ist durch das vorhandene SQLite/PHP-Integerformat begrenzt.
+
+**Keine falsche #57-Erledigung:** Alte ungebundene Clients oder Pendingevents
+bleiben beim optionalen alten Vertrag. Ein nicht nachweislich committed alter
+Payload erhält nicht nachträglich die heutige ID; seine sichere kanalübergreifende
+Klärung ist hier nicht implementiert. Logout/Ziel-/Kontowechsel und deren bisherige
+Speichergrenzen bleiben unverändert, keine Offline-Queue oder neue Recoveryroute.
+Server-zuerst-Quellkoordination ist empfohlen; reale Erweiterungsinstallation,
+CORS-/HTTP-/Token-/Betriebsabnahme und ein gemischter Versionsrollback bleiben offen.
+Nur grobe erfundene Speicher-/VM-Verträge und Syntax, keine tatsächlichen Requests,
+Konten, Keys, Browser-/Listener-/Deployaktion oder vollständige #36/#77-Abnahme.
 
 ### Akzeptiertes Ende mit Abwesenheitswarnung ist kein 409-Fehler
 
@@ -132,6 +182,7 @@ Beispiel ohne zusätzliche Pausenwarnung:
   "local_time": "2026-10-27T06:00:00+01:00",
   "event_id": "example-end-overlap-0001",
   "record_id": 42,
+  "record_id_string": "42",
   "state": "absent",
   "overlap_record_ids": [43],
   "overlap_warning": "Arbeitsende gespeichert. Arbeitszeit überschneidet sich mit einer ganztägigen Abwesenheit. Betroffene Summen sind bis zur manuellen Klärung nicht abschließend. Bitte Korrekturanträge prüfen."
@@ -163,7 +214,7 @@ Anderer gehashter Inhalt mit derselben ID führt zu JSON-409. Ignorierte
 Zusatzfelder sind keine neue Idempotenzdimension. Eine gespeicherte Quittung
 kann nach weiteren Aktionen einen **älteren** Status enthalten: danach GET lesen.
 
-`/attendance` verlangt die ID und ignoriert ein zusätzliches `id`.
+`/attendance` verlangt die Ereignis-ID; optionales `expected_record` bindet die Aktion an die zuvor gelesene aktive Record-ID. Ein zusätzliches `id` bleibt ignoriert.
 `/setendzeit` bindet `end` an die übermittelte, integer-koerzierte `id`;
 fehlend/null wird `0` und führt zum Datensatzkonflikt. Bei den beiden Aliasen
 wird für fehlende/null `event_id` zufällig eine erzeugt – keine verlässliche

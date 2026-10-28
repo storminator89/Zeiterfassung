@@ -289,7 +289,7 @@ final class LegacyChronoReads implements ChronoReads
     public function apiAttendanceStatus(): array
     {
         return $this->snapshot(
-            fn (PDO $pdo, LegacyUser $actor): array => ['success' => true] + attendance_status($pdo, (int) $actor->getKey()),
+            fn (PDO $pdo, LegacyUser $actor): array => attendance_record_id_string(['success' => true] + attendance_status($pdo, (int) $actor->getKey())),
             false,
         );
     }

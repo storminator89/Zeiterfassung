@@ -36,8 +36,8 @@ final class LegacyApiAttendance implements ApiAttendance
         }
         $identifier = (int) $actor->getKey();
 
-        // Exact shared namespace. Direct /attendance omits expectedRecord (#36);
-        // /setendzeit supplies its expected active projection, never row CRUD.
+        // Exact shared namespace. Direct /attendance forwards its optional string binding;
+        // /setendzeit keeps its existing expected projection, never row CRUD.
         return $writer->transition($identifier, 'api:'.$identifier, $eventId, $action, $confirm, $expectedRecord);
     }
 }

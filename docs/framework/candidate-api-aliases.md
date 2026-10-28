@@ -3,7 +3,9 @@
 Der weiterhin unregistrierte Kandidat ergänzt die vorhandenen POST-Pfade
 `/api.php/workentry` und `/api.php/setendzeit`. Keine neue RESTressource,
 produktive Route, Datenbank-, Schlüssel-, Loginbudget- oder UIänderung.
-`api.php` und alle produktiven Vertragshandler bleiben bytegleich.
+Im ursprünglichen Alias-Vorbereitungspaket blieben `api.php` und die nativen
+Vertragshandler bytegleich. Der spätere ausdrückliche #36-Nachtrag unten ergänzt
+optionale Bindung und exakte Antwortmetadaten in beiden APIpfaden.
 Die [Login-/direkte APIgrenze](candidate-api-actions.md) und deren offene
 Shared-Budget-/Cutovergates gelten unverändert.
 
@@ -35,10 +37,12 @@ Die Aktion ist immer `end`, Bestätigung ausschließlich
 `confirm_end_pause === true`. Fehlende/null-Event-ID wird wie oben erzeugt;
 Client-Endzeiten und fremde Akteur-/Quellfelder werden nicht ausgewertet.
 `ApiAttendance` nimmt dafür einen optionalen `expectedRecord` entgegen und
-leitet ihn unverändert an denselben #75-Writer weiter. Der direkte
-`/attendance`-Controller lässt diesen Parameter weiterhin weg;
-[#36](https://github.com/storminator89/Zeiterfassung/issues/36) wird nicht
-heimlich mitgelöst. Startalias und direkter Start bleiben beim bisherigen null.
+leitet ihn unverändert an denselben #75-Writer weiter. Der ausdrücklich
+abgegrenzte #36-Folgeschritt nimmt beim direkten `/attendance` zusätzlich eine
+optionale exakte Stringbindung an; fehlt sie, bleibt der alte null-Vertrag.
+Die Endalias-Koerzierung wird dadurch nicht verschärft: neue Popupclients können
+die exakte String-`id` verwenden, gespeicherte alte numerische Bodies bleiben
+unverändert. Startalias und neue Client-Startaktionen bleiben beim bisherigen null.
 
 ## Gemeinsame Auth-, Replay- und Antwortgrenze
 
@@ -51,7 +55,13 @@ Der Controller verwendet für alle drei Stempelvarianten einen gemeinsamen
 Wirefehler-/Erfolgsadapter, keine nachgebaute Buchungsantwort.
 
 Erfolg bleibt die vorhandene Buchungsbestätigung mit **`record_id`**, Zustand,
-Event-ID und Serverzeit, **nicht** `{data:{id:…}}`. Ein fehlerhafter Popupclient
+Event-ID und Serverzeit, **nicht** `{data:{id:…}}`. Der #36-Folgeschritt ergänzt
+transportseitig `record_id_string`, ohne gespeicherte Quittungen oder den
+Payloadhash umzuschreiben. Eine Endquittung enthält auch bei `absent` die
+betroffene positive ID; erst frischer GET liefert die nächste aktuelle Bindung.
+Alte Clients bleiben optional kompatibel; neue Pausenbindung und Legacy-/#57-
+Grenzen stehen im [APIvertrag](../API-CONTRACT.md#optionaler-exakter-record-string-und-neue-clientbindung-36).
+Ein fehlerhafter Popupclient
 wird nicht durch einen erfundenen Serververtrag kompensiert. Die
 Erweiterungskorrekturen #22/#23/#25 bleiben gesonderte Arbeiten; reale
 Browserstore-/Verteilungsfunktion ist hier nicht behauptet.

@@ -12,7 +12,7 @@ const sessionKeys = ['authToken', 'authApiUrl', 'authUserId', 'password', 'lates
 const pendingKey = 'attendancePending';
 const allowedActions = {absent: ['start'], working: ['pause_start', 'end'], paused: ['pause_end', 'end']};
 let apiUrl = null, authToken = null, currentUser = null;
-let attendanceState = null, attendanceRecordId = null, statusKnown = false;
+let attendanceState = null, attendanceRecordId = null, statusKnown = false, supportsRecordBinding = false;
 let pendingEvent = null, busy = false, refreshing = null, sessionVersion = 0;
 let storageQueue = Promise.resolve();
 const requests = new Set();
@@ -194,7 +194,7 @@ async function login(username, password) {
 async function clearSession(clearPending) {
     const version = ++sessionVersion;
     for (const controller of requests) controller.abort();
-    authToken = null; currentUser = null; statusKnown = false; attendanceState = null; attendanceRecordId = null;
+    authToken = null; currentUser = null; statusKnown = false; attendanceState = null; attendanceRecordId = null; supportsRecordBinding = false;
     busy = true; refreshing = null; pendingEvent = null;
     document.getElementById('password').value = '';
     document.getElementById('latestEntry').innerHTML = '';
@@ -233,15 +233,30 @@ function updateUserInfoDisplay() {
         <p><strong>Rolle:</strong> ${escapeHTML(currentUser.role)}</p>`
         : '<p>Bitte melden Sie sich an, um Ihre Benutzerinformationen zu sehen.</p>';
 }
+function recordString(value) {
+    return typeof value === 'string' && /^[1-9][0-9]*$/.test(value)
+        && (value.length < 19 || (value.length === 19 && value <= '9223372036854775807'));
+}
+function responseRecordId(data) {
+    if (Object.hasOwn(data, 'record_id_string')) {
+        if (data.record_id_string === null || recordString(data.record_id_string)) return data.record_id_string;
+        throw new Error('Keine gültige exakte Sitzungsbindung erhalten.'); // Never repair a present malformed field.
+    }
+    // Older-server mode remains explicitly weaker; only already-exact numeric IDs are usable.
+    if (data.record_id === null || (Number.isSafeInteger(data.record_id) && data.record_id > 0)) return data.record_id;
+    throw new Error('Keine gültige Anwesenheitsauskunft erhalten.');
+}
 function validPending(saved) {
     const body = saved?.body;
     return saved?.apiUrl === apiUrl && saved.userId === currentUser.id
         && /^[A-Za-z0-9_-]{16,80}$/.test(body?.event_id)
         && ['start', 'pause_start', 'pause_end', 'end'].includes(body.action)
         && typeof body.confirm_end_pause === 'boolean'
-        && (body.action === 'end' ? saved.endpoint === 'setendzeit' && Number.isSafeInteger(body.id) && body.id > 0
-            : saved.endpoint === 'attendance' && body.confirm_end_pause === false && body.id === undefined)
-        && Object.keys(body).every(key => ['event_id', 'action', 'confirm_end_pause', 'id'].includes(key));
+        && (body.action === 'end' ? saved.endpoint === 'setendzeit'
+            && (recordString(body.id) || (Number.isSafeInteger(body.id) && body.id > 0)) && body.expected_record === undefined
+            : saved.endpoint === 'attendance' && body.confirm_end_pause === false && body.id === undefined
+                && (body.expected_record === undefined || (body.action !== 'start' && recordString(body.expected_record))))
+        && Object.keys(body).every(key => ['event_id', 'action', 'confirm_end_pause', 'id', 'expected_record'].includes(key));
 }
 async function restorePending(context) {
     let saved;
@@ -249,16 +264,23 @@ async function restorePending(context) {
     catch (error) { await removeSaved([pendingKey]); return; }
     if (!isCurrent(context)) throw staleError();
     if (saved && validPending(saved)) pendingEvent = saved;
-    else await removeSaved([pendingKey]);
+    else if (saved?.apiUrl === apiUrl && saved.userId === currentUser.id && saved.body
+        && (Object.hasOwn(saved.body, 'expected_record') || typeof saved.body.id === 'string')) {
+        pendingEvent = saved; // Preserve malformed NEW binding shapes; do not discard an uncertain event.
+    } else await removeSaved([pendingKey]);
     renderAttendance();
 }
 function applyStatus(data) {
-    if (!data?.success || !Object.hasOwn(allowedActions, data.state)
-        || (data.state !== 'absent' && (!Number.isSafeInteger(data.record_id) || data.record_id < 1))) {
+    if (!data?.success || !Object.hasOwn(allowedActions, data.state)) {
         throw new Error('Keine gültige Anwesenheitsauskunft erhalten.');
     }
+    const record = responseRecordId(data);
+    if (data.state === 'absent' ? record !== null : record === null) {
+        throw new Error('Anwesenheitsstatus und Sitzungsbindung widersprechen sich.');
+    }
     attendanceState = data.state;
-    attendanceRecordId = data.state === 'absent' ? null : data.record_id;
+    attendanceRecordId = record;
+    supportsRecordBinding = Object.hasOwn(data, 'record_id_string');
     statusKnown = true;
     renderAttendance();
 }
@@ -266,15 +288,17 @@ function renderAttendance() {
     const signedIn = Boolean(authToken && currentUser);
     const labels = {absent: 'Nicht angemeldet', working: 'Arbeitszeit läuft', paused: 'Pause läuft'};
     document.getElementById('attendanceStatus').textContent = pendingEvent
-        ? 'Unbestätigte Buchung: bitte denselben Vorgang erneut versuchen.'
-        : statusKnown ? labels[attendanceState] : 'Serverstatus nicht verfügbar. Bitte aktualisieren oder anmelden.';
+        ? validPending(pendingEvent) ? 'Unbestätigte Buchung: bitte denselben Vorgang erneut versuchen.'
+            : 'Unbestätigte Buchung mit nicht prüfbarer Sitzungsbindung unverändert gespeichert. Bitte ursprünglichen Vorgang klären.'
+        : statusKnown ? labels[attendanceState] + (supportsRecordBinding ? '' : ' (Altserver: Pausen ohne Sitzungsbindung)')
+            : 'Serverstatus nicht verfügbar. Bitte aktualisieren oder anmelden.';
     for (const [id, action] of [['kommButton', 'start'], ['gehenButton', 'end'], ['pauseButton', attendanceState === 'paused' ? 'pause_end' : 'pause_start']]) {
         const button = document.getElementById(id);
         button.disabled = !signedIn || busy || !statusKnown || Boolean(pendingEvent) || !allowedActions[attendanceState]?.includes(action);
     }
     document.getElementById('pauseButton').textContent = attendanceState === 'paused' ? 'Pause beenden' : 'Pause beginnen';
     document.getElementById('retryButton').hidden = !pendingEvent;
-    document.getElementById('retryButton').disabled = !signedIn || busy;
+    document.getElementById('retryButton').disabled = !signedIn || busy || Boolean(pendingEvent && !validPending(pendingEvent));
     document.getElementById('refreshButton').disabled = !signedIn || busy;
     document.getElementById('loginButton').disabled = busy;
 }
@@ -325,6 +349,7 @@ async function retryPending() { if (pendingEvent) await sendTimeEntry(pendingEve
 async function sendTimeEntry(action) {
     if (busy || refreshing) return;
     if (!currentUser || !authToken) throw new Error('Bitte zuerst anmelden.');
+    if (pendingEvent && !validPending(pendingEvent)) throw new Error('Unbestätigte Buchung unverändert gespeichert; Sitzungsbindung zuerst klären.');
     if (pendingEvent && pendingEvent.body.action !== action) throw new Error('Unbestätigte Buchung zuerst erneut versuchen.');
     if (!pendingEvent) {
         if (!statusKnown || !allowedActions[attendanceState]?.includes(action)) throw new Error('Bitte zuerst den aktuellen Serverstatus prüfen.');
@@ -333,7 +358,8 @@ async function sendTimeEntry(action) {
         if (typeof crypto.randomUUID !== 'function') throw new Error('Sichere Ereignis-ID nicht verfügbar. Bitte Browser aktualisieren.');
         pendingEvent = {apiUrl, userId: currentUser.id, endpoint: action === 'end' ? 'setendzeit' : 'attendance',
             body: {event_id: crypto.randomUUID(), action, confirm_end_pause: confirmEndPause,
-                ...(action === 'end' ? {id: attendanceRecordId} : {})}};
+                ...(action === 'end' ? {id: attendanceRecordId}
+                    : supportsRecordBinding && action !== 'start' ? {expected_record: attendanceRecordId} : {})}};
     }
     busy = true; renderAttendance();
     const context = snapshot(), event = pendingEvent;
@@ -348,14 +374,20 @@ async function sendTimeEntry(action) {
             if (status >= 400 && status < 500) {
                 await removeSaved([pendingKey]);
                 if (!isCurrent(context)) throw staleError();
-                pendingEvent = null; rejected = true;
+                pendingEvent = null; rejected = true; statusKnown = false; attendanceRecordId = null; supportsRecordBinding = false;
             }
             throw new Error(data?.message || 'Buchung wurde nicht bestätigt.');
         }
-        if (data?.event_id !== event.body.event_id || !Number.isSafeInteger(data?.record_id) || data.record_id < 1) {
+        if (!data?.success || data.event_id !== event.body.event_id || !Object.hasOwn(allowedActions, data.state)) {
             throw new Error('Keine passende Buchungsbestätigung erhalten.');
         }
-        applyStatus(data);
+        const receiptRecord = responseRecordId(data);
+        const expected = event.body.action === 'end' ? event.body.id : event.body.expected_record;
+        if (receiptRecord === null || (expected !== undefined && String(receiptRecord) !== String(expected))) {
+            throw new Error('Keine passende Buchungsbestätigung erhalten.');
+        }
+        // A stored receipt may describe an old session. Only the following fresh GET can bind another action.
+        statusKnown = false; attendanceRecordId = null; supportsRecordBinding = false;
         await removeSaved([pendingKey]);
         if (!isCurrent(context)) throw staleError();
         pendingEvent = null; acknowledged = true;

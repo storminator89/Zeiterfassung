@@ -3,15 +3,20 @@
 **Additiver CH-16/#22-Statusvertrag:** Der aktive native Pfad und der weiterhin
 unregistrierte Kandidat kennen nun `GET /api.php/attendance`. Hinter der
 unveränderten Bearerprüfung liefert ein eigener Lesesnapshot exakt
-`{success:true,state,record_id}` aus `attendance_status`: `absent`, `working`
-oder `paused`, mit ganzzahliger aktiver `record_id`, sonst `null`. Keine
+`{success:true,state,record_id,record_id_string}` aus demselben `attendance_status`-Ergebnis: `absent`, `working`
+oder `paused`, mit ganzzahliger aktiver `record_id` und deren exaktem String, sonst
+beide `null`. Die spätere #36-Projektion fügt nur Antwortmetadaten hinzu; keine
+Änderung gespeicherter Quittungen, zusätzliche Query oder neue APIpflicht. Keine
 Berichtszeilen, fremde Personenauswahl, neue Rollenfilterung oder Schreibaktion.
 Der Kandidat nutzt `apiAttendanceStatus()` auf derselben Snapshotgrenze;
-GET wird nach dem bestehenden POST-Kandidaten registriert, dessen Parsing,
-Guard und Writer unverändert bleiben. Rohe HEAD-/Override-/Pfadregeln gelten
+GET wird nach dem bestehenden POST-Kandidaten registriert; dessen Guard und
+Writer bleiben erhalten. Das optionale #36-Parsing ist der spätere Nachtrag unten. Rohe HEAD-/Override-/Pfadregeln gelten
 weiter. Der nativen `attendance_json`-Fehlerform entsprechend bleiben
 `AttendanceError`-Status erhalten und unerwartete Fehler JSON-503, nicht der
 JSON-500 der Berichtsleser. Keine Defaultregistrierung oder Runtimeumschaltung.
+Der #36-Folgeschritt akzeptiert zusätzlich optionale Stringbindung im direkten
+POST und nutzt die vorhandene nullable Writerweiterleitung; alter Feldentfall
+bleibt null. Details und Grenzen: [APIvertrag](../API-CONTRACT.md#optionaler-exakter-record-string-und-neue-clientbindung-36).
 Dies ist nur die API-Abhängigkeit der Erweiterungsreparatur, keine vollständige
 Firefox-/Edge-, JWT-, Browser- oder Produktivabnahme.
 
