@@ -1,4 +1,12 @@
 <?php
+// Server-owned terminal transport policy, never selected by request input.
+define('CHRONO_API_JSON_ERRORS', true);
+$chronoTerminalOutputLevel = ob_get_level();
+try {
+    ini_set('display_errors', '0');
+    if (!ob_start()) { throw new RuntimeException('Terminal response buffer unavailable.'); }
+
+// BEGIN native terminal application (kept at global scope).
 require_once __DIR__.'/config.php';
 require_once __DIR__.'/lib/terminal.php';
 attendance_json(function() use ($conn) {
@@ -11,3 +19,13 @@ attendance_json(function() use ($conn) {
     if (!is_array($input)) { throw new AttendanceError('JSON erforderlich.',400); }
     return terminal_handle($conn,$input,$body);
 });
+// END native terminal application.
+
+    ob_end_flush();
+} catch (Throwable $error) {
+    // Keep failure unconfirmed; never expose or newly log request/secret details.
+    while (ob_get_level() > $chronoTerminalOutputLevel) { ob_end_clean(); }
+    http_response_code(503);
+    header('Content-Type: application/json; charset=UTF-8');
+    exit(json_encode(['success'=>false,'message'=>'Buchung nicht bestätigt. Verbindung prüfen und denselben Vorgang erneut versuchen.']));
+}
