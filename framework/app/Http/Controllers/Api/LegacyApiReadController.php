@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Api\LegacyApiResponse;
 use App\Chrono\ApiTimeEntriesQuery;
+use App\Chrono\AttendanceWorkflowStatus;
 use App\Chrono\ChronoReads;
 use AttendanceError;
 use Illuminate\Contracts\Validation\Factory;
@@ -24,10 +25,21 @@ final class LegacyApiReadController
         }
     }
 
-    public function attendance(): Response
+    public function attendance(Request $request): Response
     {
+        // Explicit Laravel-only additive view. Reconstruct the raw PHP query:
+        // trimming/null normalization must not make a malformed opt-in valid.
+        parse_str($request->server('QUERY_STRING', ''), $query);
+        if (array_key_exists('workflow', $query) && $query['workflow'] !== '1') {
+            return LegacyApiResponse::json(['success' => false, 'message' => 'Invalid workflow option.'], 400);
+        }
         try {
-            return LegacyApiResponse::json($this->reads->apiAttendanceStatus());
+            // Exactly the same own authenticated snapshot; no user selector,
+            // additional read, writer resolution or change to the default wire.
+            $status = $this->reads->apiAttendanceStatus();
+
+            return LegacyApiResponse::json(array_key_exists('workflow', $query)
+                ? AttendanceWorkflowStatus::fromStatus($status) : $status);
         } catch (AttendanceError $error) {
             return LegacyApiResponse::json(['success' => false, 'message' => $error->getMessage()], $error->status);
         } catch (Throwable) {
