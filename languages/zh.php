@@ -264,5 +264,11 @@ define('SETTINGS_BACKUP_SNAPSHOT_TITLE', '資料庫快照');
 define('SETTINGS_BACKUP_SNAPSHOT_DESCRIPTION', '整個 SQLite 資料庫的一致性快照。不包含外部 .key 檔案、應用程式碼及維運設定，因此此下載不是完整的系統備份。');
 define('SETTINGS_BACKUP_SNAPSHOT_DOWNLOAD', '下載資料庫快照');
 
+
+// Native supervisor diagnostic fallback; source values are never repaired.
+define('SUPERVISOR_INVALID_RECORDS', '資料品質：%d 筆無效工時紀錄。');
+define('SUPERVISOR_TOTALS_UNAVAILABLE', '此報表不提供最終合計。請由受影響的人員透過現有更正流程釐清原始紀錄，並經雙人審核核准。未刪除或縮短任何工時。');
+define('SUPERVISOR_SOURCE_VALUES', '原始值 – 報表無法提供。此檢視每頁顯示最多 10 筆原始紀錄，而非每日分組。');
+define('SUPERVISOR_INVALID_ROW', '無效工時紀錄');
 ?>
 

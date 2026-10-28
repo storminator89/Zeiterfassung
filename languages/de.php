@@ -279,4 +279,10 @@ define('TABLE_HEADER_TIME_RECORDS', 'Zeiterfassung');
 
 define('BUTTON_EXPORT_CSV', 'CSV Export');
 
+
+// Native supervisor diagnostic fallback; source values are never repaired.
+define('SUPERVISOR_INVALID_RECORDS', 'Datenqualität: %d ungültige Zeiteinträge.');
+define('SUPERVISOR_TOTALS_UNAVAILABLE', 'Diese Auswertung enthält keine abschließenden Summen. Bitte die Originaleinträge durch die betroffene Person mit anschließender Vier-Augen-Freigabe klären. Es wurden keine Zeiten gelöscht oder gekürzt.');
+define('SUPERVISOR_SOURCE_VALUES', 'Originalwerte – Auswertung nicht verfügbar. Hier werden bis zu 10 Originalzeilen pro Seite statt Tagesgruppen angezeigt.');
+define('SUPERVISOR_INVALID_ROW', 'Ungültiger Zeiteintrag');
 ?>

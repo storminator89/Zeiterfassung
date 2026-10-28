@@ -276,4 +276,10 @@ define('TABLE_HEADER_TIME_RECORDS', 'Time Records');
 
 define('BUTTON_EXPORT_CSV', 'CSV Export');
 
+
+// Native supervisor diagnostic fallback; source values are never repaired.
+define('SUPERVISOR_INVALID_RECORDS', 'Data quality: %d invalid time entries.');
+define('SUPERVISOR_TOTALS_UNAVAILABLE', 'This report contains no final totals. The affected person must clarify the original entries through the existing correction process with subsequent four-eyes approval. No times have been deleted or shortened.');
+define('SUPERVISOR_SOURCE_VALUES', 'Source values – report unavailable. This view shows up to 10 source rows per page instead of daily groups.');
+define('SUPERVISOR_INVALID_ROW', 'Invalid time entry');
 ?>
