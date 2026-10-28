@@ -406,6 +406,35 @@ final class AttendanceWriter
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction));
     }
 
+    /** Native new-device enrollment only; no signing-key source or protocol response. */
+    public function createTerminalDevicePairing(int $admin, #[\SensitiveParameter] string $expectedWebVersion,
+        mixed $name, mixed $siteId): \App\Chrono\TerminalDevicePairing
+    {
+        if (! is_string($name) || trim($name) === '' || strlen(trim($name)) > 100
+            || ! is_string($siteId) || preg_match('/\A[1-9][0-9]*\z/', $siteId) !== 1
+            || ($site = filter_var($siteId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])) === false) {
+            throw new \InvalidArgumentException('Name und Standort prüfen.');
+        }
+        $name = trim($name);
+
+        return $this->executeLocked(function () use ($admin, $expectedWebVersion, $name, $site): \App\Chrono\TerminalDevicePairing {
+            $this->assertExpectedWebPrincipal($admin, 'local', $expectedWebVersion, 'admin');
+            attendance_require_enabled($this->pdo);
+            if (att_one($this->pdo, 'SELECT id FROM terminal_sites WHERE id=?', [$site]) === null) {
+                throw new \AttendanceError('Name und Standort prüfen.', 400);
+            }
+            // Match native entropy/hash/600-second validity. These are enrollment
+            // code and invalidation generation, not installation/device signing keys.
+            $code = bin2hex(random_bytes(24));
+            $expires = time() + 600;
+            $statement = $this->pdo->prepare('INSERT INTO terminals(site_id,name,generation,pairing_hash,pairing_expires) VALUES(?,?,?,?,?)');
+            $statement->execute([$site, $name, bin2hex(random_bytes(16)), hash('sha256', $code), $expires]);
+            $statement->closeCursor();
+
+            return new \App\Chrono\TerminalDevicePairing((int) $this->pdo->lastInsertId(), $code, $expires);
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction));
+    }
+
     /** Anonymous self-registration only: fixed ordinary role and no caller actor/privileges. */
     public function registerLocalUser(string $username, string $email, #[\SensitiveParameter] string $passwordHash,
         ?int $expectedPolicyRevision = null): bool

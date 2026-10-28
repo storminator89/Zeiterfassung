@@ -595,6 +595,17 @@ final class LegacyChronoReads implements ChronoReads
         });
     }
 
+    public function adminTerminalPairingSites(): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
+            if ($actor->role !== 'admin' || $actor->auth_source !== 'local') {
+                throw new AuthorizationException('Nur die lokale Verwaltung darf Terminal-Standorte auswählen.');
+            }
+
+            return $this->rows($pdo, 'SELECT id,name FROM terminal_sites ORDER BY name', []);
+        });
+    }
+
     public function adminTerminalModuleSettings(): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {

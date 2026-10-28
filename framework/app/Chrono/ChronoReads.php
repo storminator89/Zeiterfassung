@@ -65,6 +65,9 @@ interface ChronoReads
     /** Read-only native device/site/contact display; fresh local Admin, no credential fields. */
     public function adminTerminalDevices(): array;
 
+    /** Native name-ordered Site options for device enrollment; current local Admin only. */
+    public function adminTerminalPairingSites(): array;
+
     /** Native effective module checkbox and server-gate presence, current local Admin only. */
     public function adminTerminalModuleSettings(): array;
 
