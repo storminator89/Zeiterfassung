@@ -11,6 +11,9 @@ interface ChronoReads
     /** Own raw rows; callers explicitly opt into native instant/id ordering before paging. */
     public function reportRows(bool $chronological = false): array;
 
+    /** Native latest own work row: NULL-open first, then creation ID; UI columns only. */
+    public function latestWorkRecord(): array;
+
     /** Native own Home statistics plus invalid/conflict diagnostics; unresolved totals are not numeric. */
     public function homeSummary(): array;
 

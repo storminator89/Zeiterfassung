@@ -64,6 +64,15 @@ final class LegacyChronoReads implements ChronoReads
         });
     }
 
+    public function latestWorkRecord(): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
+            // Native get_latest_record.php selection, deliberately not report chronology.
+            // No request subject, team selector, absence credit or auth fields are exposed.
+            return $this->rows($pdo, "SELECT id,startzeit,endzeit,pause,standort,beschreibung FROM zeiterfassung WHERE user_id=? AND absence_kind IS NULL AND COALESCE(beschreibung,'') NOT IN ('Urlaub','Krankheit','Feiertag') ORDER BY (endzeit IS NULL) DESC,id DESC LIMIT 1", [$actor->getKey()])[0] ?? [];
+        });
+    }
+
     public function homeSummary(): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {

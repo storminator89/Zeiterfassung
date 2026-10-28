@@ -202,4 +202,11 @@ return [
     'USER_UPDATED_SUCCESS' => 'Benutzer erfolgreich aktualisiert.',
     'USER_DELETED_SUCCESS' => 'Benutzer erfolgreich gelöscht.',
     'CONFIRM_DELETE_USER' => 'Sind Sie sicher, dass Sie diesen Benutzer löschen möchten?',
+
+    // Native latest-own-work fragment labels, copied without global constants.
+    'LATEST_TIME_RECORD' => 'Letzter Zeiteintrag',
+    'LABEL_MINUTES' => 'Minuten',
+    'LOCATION_OFFICE' => 'Büro',
+    'LOCATION_HOME_OFFICE' => 'Home Office',
+    'LOCATION_BUSINESS_TRIP' => 'Dienstreise',
 ];

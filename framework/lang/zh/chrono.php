@@ -199,4 +199,11 @@ return [
     'USER_UPDATED_SUCCESS' => '用戶更新成功。',
     'USER_DELETED_SUCCESS' => '用戶刪除成功。',
     'CONFIRM_DELETE_USER' => '確定要刪除此用戶嗎？',
+
+    // Native latest-own-work fragment labels, copied without global constants.
+    'LATEST_TIME_RECORD' => '最新時間記錄',
+    'LABEL_MINUTES' => '分鐘',
+    'LOCATION_OFFICE' => '辦公室',
+    'LOCATION_HOME_OFFICE' => '居家辦公',
+    'LOCATION_BUSINESS_TRIP' => '出差',
 ];
