@@ -16,6 +16,7 @@ final readonly class HistoryPage
      * @param array<string, string> $entities Native entity labels.
      * @param ?string $newestUrl Same filters without the cursor, when paging.
      * @param ?string $olderUrl Last returned row ID, only for exactly 100 rows.
+     * @param ?string $exportUrl Same existing filters and current cursor, selected page only.
      */
     public function __construct(
         public array $entries,
@@ -24,5 +25,6 @@ final readonly class HistoryPage
         public array $entities,
         public ?string $newestUrl = null,
         public ?string $olderUrl = null,
+        public ?string $exportUrl = null,
     ) {}
 }

@@ -30,6 +30,7 @@
     <p class="mb-6" role="status">Keine sichtbaren Einträge für diese Filter.</p>
     @endif
     @if ($history->newestUrl !== null)<p class="mb-6"><a href="{{ $history->newestUrl }}">Neueste Treffer mit diesen Filtern</a></p>@endif
+    @if ($history->exportUrl !== null)<p class="mb-6"><a class="btn btn-outline" href="{{ $history->exportUrl }}">Aktuelle Treffer dieser Filterseite als ausgewähltes JSON (max. 100)</a></p>@endif
     @foreach ($history->entries as $r)
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <p class="text-sm font-semibold opacity-70 mb-2">#{{ $r['id'] }} · {{ $r['occurred_at'] }}</p>

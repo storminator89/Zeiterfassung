@@ -26,6 +26,27 @@ final class LocalWebHistoryController extends Controller
         // Definitions only: native Berlin display formatting, never its bootstrap.
         require_once dirname(__DIR__, 4).'/lib/attendance.php';
         require_once dirname(__DIR__, 4).'/lib/history_presentation.php';
+        require_once dirname(__DIR__, 4).'/lib/history_export.php';
+        $exportQueryString = (string) $request->server->get('QUERY_STRING', '');
+        parse_str($exportQueryString, $exportParameters);
+        $exportMode = \chrono_history_export_mode($exportParameters);
+        if ($exportMode['requested']) {
+            try {
+                $exportQuery = HistoryQuery::fromQueryString($exportQueryString);
+                if (! $exportMode['valid'] || $exportQuery->errors) {
+                    $export = \chrono_history_export_failure(400);
+                } else {
+                    $export = \chrono_history_export_page($this->reads->historyQuery($exportQuery), $exportQuery->values);
+                }
+            } catch (\Illuminate\Auth\AuthenticationException | \Illuminate\Auth\Access\AuthorizationException $authorizationError) {
+                // Keep the existing protected-route 401/403 behavior, not a generic export 500.
+                throw $authorizationError;
+            } catch (\Throwable $exportError) {
+                $export = \chrono_history_export_failure();
+            }
+
+            return new Response($export['body'], $export['status'], $export['headers']);
+        }
         $actor = $this->auth->guard('web')->user();
         $language = $request->query('lang', $request->session()->get('lang', 'de'));
         $language = is_string($language) && in_array($language, ['de', 'en', 'zh'], true) ? $language : 'de';
@@ -59,6 +80,7 @@ final class LocalWebHistoryController extends Controller
                 $entries, $query->values, $query->errors, $labels,
                 ! $query->errors && $query->hasBefore ? $query->url() : null,
                 count($rows) === 100 ? $query->url((int) $rows[array_key_last($rows)]['id']) : null,
+                ! $query->errors ? \chrono_history_export_url($query->values) : null,
             ),
         ], $query->errors ? 400 : 200);
     }

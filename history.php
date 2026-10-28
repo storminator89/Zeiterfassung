@@ -3,7 +3,22 @@ require_once __DIR__.'/config.php';require_once __DIR__.'/lib/app_ui.php';
 if (!isset($_SESSION['user_id'])) { header('Location: login.php');exit; }
 require_once __DIR__.'/lib/history_filters.php';
 require_once __DIR__.'/lib/history_presentation.php';
+require_once __DIR__.'/lib/history_export.php';
 $user=(int)$_SESSION['user_id'];$role=$_SESSION['role'];$filters=chrono_history_filters($_GET);$values=$filters['values'];$rows=[];
+$exportMode=chrono_history_export_mode($_GET);
+if ($exportMode['requested']) {
+    try {
+        if (!$exportMode['valid'] || $filters['errors']) { $export=chrono_history_export_failure(400); }
+        else {
+            $query=chrono_history_query($filters,$user,$role);$s=$conn->prepare($query['sql']);$s->execute($query['params']);$rows=$s->fetchAll(PDO::FETCH_ASSOC);
+            $export=chrono_history_export_page($rows,$values);
+        }
+    } catch (Throwable $exportError) { $export=chrono_history_export_failure(); }
+    // Materialization/encoding succeeded or produced one fixed failure before these headers/body.
+    http_response_code($export['status']);
+    foreach ($export['headers'] as $name=>$value) { header($name.': '.$value); }
+    echo $export['body'];exit;
+}
 if ($filters['errors']) { http_response_code(400); }
 else { $query=chrono_history_query($filters,$user,$role);$s=$conn->prepare($query['sql']);$s->execute($query['params']);$rows=$s->fetchAll(PDO::FETCH_ASSOC); }
 chrono_page('Änderungshistorie');
@@ -30,6 +45,7 @@ chrono_page('Änderungshistorie');
 <?php if($filters['errors']): ?><div class="alert alert-error mb-6" role="alert"><ul><?php foreach($filters['errors'] as $error): ?><li><?= h($error) ?></li><?php endforeach; ?></ul></div>
 <?php elseif(!$rows): ?><p class="mb-6" role="status">Keine sichtbaren Einträge für diese Filter.</p><?php endif; ?>
 <?php if(!$filters['errors']&&$filters['ids']['before']!==null): ?><p class="mb-6"><a href="<?= h(chrono_history_url($filters)) ?>">Neueste Treffer mit diesen Filtern</a></p><?php endif; ?>
+<?php if(!$filters['errors']): ?><p class="mb-6"><a class="btn btn-outline" href="<?= h(chrono_history_export_url($values)) ?>">Aktuelle Treffer dieser Filterseite als ausgewähltes JSON (max. 100)</a></p><?php endif; ?>
 <?php foreach($rows as $r): $presentation=chrono_history_presentation($r['entity'],$r['before_json']??null,$r['after_json']??null); ?>
 <section class="card bg-base-100 shadow-xl p-6 mb-6"><p class="text-sm font-semibold opacity-70 mb-2">#<?= (int)$r['id'] ?> · <?= h(attendance_local((int)$r['occurred_at'])) ?></p><h2 class="text-xl font-semibold mb-4"><?= h(chrono_history_entities()[$r['entity']]??$r['entity']) ?> #<?= (int)$r['record_id'] ?> · <?= h($r['operation']) ?></h2><p><?= h($r['actor']) ?> · <?= h($r['reason']) ?></p>
 <details><summary>Vorher und nachher ansehen</summary>
