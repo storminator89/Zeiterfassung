@@ -1,6 +1,7 @@
 <?php
 include 'header.php';
 require_once __DIR__ . '/lib/calendar_range.php';
+require_once __DIR__ . '/lib/dashboard_presentation.php';
 
 // Fetch user's regular working hours and previous overtime
 $stmt = $conn->prepare('SELECT regelarbeitszeit, ueberstunden FROM users WHERE id = :user_id');
@@ -42,6 +43,23 @@ $productivityScore=report_percentage($totalHoursThisMonth,$workingHoursThisMonth
 $weeklyExpectedHours=$expectedHoursThisWeek;
 $weeklyProductivityScore=report_percentage($totalHoursThisWeek,$weeklyExpectedHours);
 $userRegularWorkingHours=planned_minutes($conn,(int)$user_id,date('Y-m-d'))/60;
+
+// BEGIN native dashboard presentation: already-authorized rows, no SQL or accounting.
+$nativeDashboardComponents = chrono_dashboard_components($records, $firstDayOfWeek, $lastDayOfWeek, $currentMonthStart, $currentMonthEnd);
+$nativeDashboardPresentation = [];
+foreach (['all' => $reportTotalUnresolved, 'week' => $reportWeekUnresolved,
+    'month' => $reportMonthUnresolved, 'year' => $reportYearUnresolved] as $period => $unresolved) {
+    // Native's existing header declares all report sums incomplete for any bad row.
+    // Keep that conservative boundary; do not invent a date for unreadable starts.
+    $nativeDashboardPresentation[$period] = $unresolved ? 'unresolved' : (!empty($reportInvalidRecords) ? 'incomplete' : 'current');
+}
+$nativeDashboardState = static fn(string $period): string => $nativeDashboardPresentation[$period];
+$nativeDashboardValue = static fn(string|int $value, string $period): string|int => match ($nativeDashboardPresentation[$period]) {
+    'unresolved' => DASHBOARD_REPORT_UNRESOLVED,
+    'incomplete' => DASHBOARD_REPORT_INCOMPLETE,
+    default => $value,
+};
+// END native dashboard presentation.
 
 // Theme Mode aus der Session lesen
 $theme_mode = $_SESSION['theme_mode'] ?? 'light';
@@ -162,6 +180,8 @@ function calculateRemainingHours($workedHours, $expectedHours)
     <div class="container mx-auto px-4 py-8">
         <h2 class="text-4xl font-bold mb-8 text-center"><?= DASHBOARD_TITLE ?></h2>
 
+        <p class="text-sm opacity-70 mb-6"><?= h(sprintf(DASHBOARD_CURRENT_PERIOD_NOTE, $firstDayOfWeek, $lastDayOfWeek, $currentMonthStart, $currentMonthEnd)) ?></p>
+
         <!-- Overall Stats -->
         <div class="mb-8">
             <h3 class="text-2xl font-semibold mb-4"><?= DASHBOARD_OVERALL_STATS ?></h3>
@@ -170,7 +190,7 @@ function calculateRemainingHours($workedHours, $expectedHours)
                     <div class="stat-figure opacity-70">
                         <i class="fas fa-user-clock fa-3x"></i>
                     </div>
-                    <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_REGULAR_HOURS ?></div>
+                    <div class="stat-title text-lg font-semibold opacity-80" style="white-space: normal;"><?= DASHBOARD_REGULAR_HOURS ?></div>
                     <div class="stat-value"><?= formatHoursAsHHMM($userRegularWorkingHours) ?></div>
                     <div class="stat-desc text-sm font-medium opacity-80"><?= DASHBOARD_HOURS_PER_DAY ?></div>
                 </div>
@@ -178,27 +198,27 @@ function calculateRemainingHours($workedHours, $expectedHours)
                     <div class="stat-figure opacity-70">
                         <i class="fas fa-trophy fa-3x"></i>
                     </div>
-                    <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_WEEKS_WORKED ?></div>
-                    <div data-report-period="all" data-report-presentation="<?= $reportTotalUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportTotalUnresolved ? 'Klärung offen' : $weeksCount ?></div>
-                    <div data-report-period="all" data-report-presentation="<?= $reportTotalUnresolved ? 'unresolved' : 'current' ?>" class="stat-desc text-sm font-medium opacity-80">
-                        <?= $reportTotalUnresolved ? 'Buchungen bitte manuell klären.' : ($isFirstWeek ? DASHBOARD_FIRST_WEEK : DASHBOARD_KEEP_GOING) ?>
+                    <div class="stat-title text-lg font-semibold opacity-80" style="white-space: normal;"><?= DASHBOARD_WEEKS_WORKED ?></div>
+                    <div data-report-period="all" data-report-presentation="<?= $nativeDashboardState('all') ?>" class="stat-value"><?= $nativeDashboardValue($weeksCount, 'all') ?></div>
+                    <div data-report-period="all" data-report-presentation="<?= $nativeDashboardState('all') ?>" class="stat-desc text-sm font-medium opacity-80">
+                        <?= $nativeDashboardState('all') !== 'current' ? DASHBOARD_REPORT_REVIEW_HINT : ($isFirstWeek ? DASHBOARD_FIRST_WEEK : DASHBOARD_KEEP_GOING) ?>
                     </div>
                 </div>
                 <div class="stat bg-gradient-to-br from-indigo-400 to-indigo-500 rounded-box shadow-lg">
                     <div class="stat-figure opacity-70">
                         <i class="fas fa-hourglass-half fa-3x"></i>
                     </div>
-                    <div class="stat-title text-lg font-semibold opacity-80">
+                    <div class="stat-title text-lg font-semibold opacity-80" style="white-space: normal;">
                         <?= DASHBOARD_TOTAL_OVERTIME ?>
                         <span class="info-tooltip">
                             <i class="fas fa-info-circle"></i>
                             <span class="tooltiptext"><?= nl2br(DASHBOARD_OVERTIME_INFO) ?></span>
                         </span>
                     </div>
-                    <div data-report-period="all" data-report-presentation="<?= $reportTotalUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportTotalUnresolved ? 'Klärung offen' : formatHoursAsHHMM($totalOverHours) ?></div>
+                    <div data-report-period="all" data-report-presentation="<?= $nativeDashboardState('all') ?>" class="stat-value"><?= $nativeDashboardValue(formatHoursAsHHMM($totalOverHours), 'all') ?></div>
                     <p class="text-sm opacity-70 mt-2" style="white-space: normal;"><?= h(DASHBOARD_OVERTIME_INFO) ?></p>
-                    <div data-report-period="year" data-report-presentation="<?= $reportYearUnresolved ? 'unresolved' : 'current' ?>" class="stat-desc text-sm font-medium opacity-80">
-                        <?= sprintf(DASHBOARD_OVER_HOURS_YEAR, $reportYearUnresolved ? 'Klärung offen' : formatHoursAsHHMM($overHoursThisYear)) ?>
+                    <div data-report-period="year" data-report-presentation="<?= $nativeDashboardState('year') ?>" class="stat-desc text-sm font-medium opacity-80">
+                        <?= sprintf(DASHBOARD_OVER_HOURS_YEAR, $nativeDashboardValue(formatHoursAsHHMM($overHoursThisYear), 'year')) ?>
                     </div>
                 </div>
             </div>
@@ -212,28 +232,32 @@ function calculateRemainingHours($workedHours, $expectedHours)
                     <div class="stat-figure opacity-70">
                         <i class="fas fa-clock fa-3x"></i>
                     </div>
-                    <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_WEEKLY_HOURS ?></div>
-                    <div data-report-period="week" data-report-presentation="<?= $reportWeekUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportWeekUnresolved ? 'Klärung offen' : formatHoursAsHHMM($totalHoursThisWeek) ?></div>
+                    <div class="stat-title text-lg font-semibold opacity-80" style="white-space: normal;"><?= DASHBOARD_WEEKLY_HOURS ?></div>
+                    <div data-report-period="week" data-report-presentation="<?= $nativeDashboardState('week') ?>" class="stat-value"><?= $nativeDashboardValue(formatHoursAsHHMM($totalHoursThisWeek), 'week') ?></div>
+                    <div data-report-period="week" data-report-presentation="<?= $nativeDashboardState('week') ?>" class="stat-desc text-sm font-medium opacity-80" style="white-space: normal;">
+                        <span class="block" data-report-component="work"><?= h(sprintf(DASHBOARD_COMPLETED_WORK, $nativeDashboardValue(formatHoursAsHHMM($nativeDashboardComponents['week_work_minutes'] / 60), 'week'))) ?></span>
+                        <span class="block" data-report-component="absence"><?= h(sprintf(DASHBOARD_ABSENCE_CREDIT, $nativeDashboardValue(formatHoursAsHHMM($nativeDashboardComponents['week_absence_minutes'] / 60), 'week'))) ?></span>
+                    </div>
                 </div>
                 <div class="stat bg-gradient-to-br from-blue-500 to-blue-600 rounded-box shadow-lg">
                     <div class="stat-figure opacity-70">
                         <i class="fas fa-hourglass-half fa-3x"></i>
                     </div>
-                    <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_REMAINING_HOURS_WEEK ?></div>
-                    <div data-report-period="week" data-report-presentation="<?= $reportWeekUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportWeekUnresolved ? 'Klärung offen' : calculateRemainingHours($totalHoursThisWeek, $expectedHoursThisWeek) ?></div>
+                    <div class="stat-title text-lg font-semibold opacity-80" style="white-space: normal;"><?= DASHBOARD_REMAINING_HOURS_WEEK ?></div>
+                    <div data-report-period="week" data-report-presentation="<?= $nativeDashboardState('week') ?>" class="stat-value"><?= $nativeDashboardValue(calculateRemainingHours($totalHoursThisWeek, $expectedHoursThisWeek), 'week') ?></div>
                 </div>
                 <div class="stat bg-gradient-to-br from-blue-400 to-blue-500 rounded-box shadow-lg">
                     <div class="stat-figure opacity-70">
                         <i class="fas fa-tachometer-alt fa-3x"></i>
                     </div>
-                    <div class="stat-title text-lg font-semibold opacity-80">
+                    <div class="stat-title text-lg font-semibold opacity-80" style="white-space: normal;">
                         <?= DASHBOARD_WEEKLY_PRODUCTIVITY ?>
                         <span class="info-tooltip">
                             <i class="fas fa-info-circle"></i>
                             <span class="tooltiptext"><?= nl2br(DASHBOARD_WEEKLY_PRODUCTIVITY_INFO) ?></span>
                         </span>
                     </div>
-                    <div data-report-period="week" data-report-presentation="<?= $reportWeekUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportWeekUnresolved ? 'Klärung offen' : number_format($weeklyProductivityScore, 1) . '%' ?></div>
+                    <div data-report-period="week" data-report-presentation="<?= $nativeDashboardState('week') ?>" class="stat-value"><?= $nativeDashboardValue(number_format($weeklyProductivityScore, 1) . '%', 'week') ?></div>
                 </div>
             </div>
         </div>
@@ -246,34 +270,38 @@ function calculateRemainingHours($workedHours, $expectedHours)
                     <div class="stat-figure opacity-70">
                         <i class="fas fa-calendar fa-3x"></i>
                     </div>
-                    <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_MONTHLY_HOURS ?></div>
-                    <div data-report-period="month" data-report-presentation="<?= $reportMonthUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportMonthUnresolved ? 'Klärung offen' : formatHoursAsHHMM($totalHoursThisMonth) ?></div>
-                    <div data-report-period="month" data-report-presentation="<?= $reportMonthUnresolved ? 'unresolved' : 'current' ?>" class="stat-desc text-sm font-medium opacity-80">
-                        <?= sprintf(DASHBOARD_MONTHLY_HOURS_PROGRESS, $reportMonthUnresolved ? 'Klärung offen' : formatHoursAsHHMM($totalHoursThisMonth), formatHoursAsHHMM($workingHoursThisMonth)) ?>
+                    <div class="stat-title text-lg font-semibold opacity-80" style="white-space: normal;"><?= DASHBOARD_MONTHLY_HOURS ?></div>
+                    <div data-report-period="month" data-report-presentation="<?= $nativeDashboardState('month') ?>" class="stat-value"><?= $nativeDashboardValue(formatHoursAsHHMM($totalHoursThisMonth), 'month') ?></div>
+                    <div data-report-period="month" data-report-presentation="<?= $nativeDashboardState('month') ?>" class="stat-desc text-sm font-medium opacity-80" style="white-space: normal;">
+                        <span class="block" data-report-component="work"><?= h(sprintf(DASHBOARD_COMPLETED_WORK, $nativeDashboardValue(formatHoursAsHHMM($nativeDashboardComponents['month_work_minutes'] / 60), 'month'))) ?></span>
+                        <span class="block" data-report-component="absence"><?= h(sprintf(DASHBOARD_ABSENCE_CREDIT, $nativeDashboardValue(formatHoursAsHHMM($nativeDashboardComponents['month_absence_minutes'] / 60), 'month'))) ?></span>
+                    </div>
+                    <div data-report-period="month" data-report-presentation="<?= $nativeDashboardState('month') ?>" class="stat-desc text-sm font-medium opacity-80">
+                        <?= sprintf(DASHBOARD_MONTHLY_HOURS_PROGRESS, $nativeDashboardValue(formatHoursAsHHMM($totalHoursThisMonth), 'month'), formatHoursAsHHMM($workingHoursThisMonth)) ?>
                     </div>
                 </div>
                 <div class="stat bg-gradient-to-br from-teal-500 to-teal-600 rounded-box shadow-lg">
                     <div class="stat-figure opacity-70">
                         <i class="fas fa-chart-line fa-3x"></i>
                     </div>
-                    <div class="stat-title text-lg font-semibold opacity-80"><?= DASHBOARD_AVERAGE_DAILY_HOURS ?></div>
-                    <div data-report-period="month" data-report-presentation="<?= $reportMonthUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportMonthUnresolved ? 'Klärung offen' : formatHoursAsHHMM($averageDailyHours) ?></div>
-                    <div data-report-period="month" data-report-presentation="<?= $reportMonthUnresolved ? 'unresolved' : 'current' ?>" class="stat-desc text-sm font-medium opacity-80">
-                        <?= $reportMonthUnresolved ? 'Betroffene Buchungstage sind noch nicht abschließend geklärt.' : sprintf(DASHBOARD_WORKED_DAYS_THIS_MONTH, $workedDays) ?>
+                    <div class="stat-title text-lg font-semibold opacity-80" style="white-space: normal;"><?= DASHBOARD_AVERAGE_DAILY_HOURS ?></div>
+                    <div data-report-period="month" data-report-presentation="<?= $nativeDashboardState('month') ?>" class="stat-value"><?= $nativeDashboardValue(formatHoursAsHHMM($averageDailyHours), 'month') ?></div>
+                    <div data-report-period="month" data-report-presentation="<?= $nativeDashboardState('month') ?>" class="stat-desc text-sm font-medium opacity-80">
+                        <?= $nativeDashboardState('month') !== 'current' ? DASHBOARD_REPORT_REVIEW_HINT : sprintf(DASHBOARD_WORKED_DAYS_THIS_MONTH, $workedDays) ?>
                     </div>
                 </div>
                 <div class="stat bg-gradient-to-br from-teal-400 to-teal-500 rounded-box shadow-lg">
                     <div class="stat-figure opacity-70">
                         <i class="fas fa-tachometer-alt fa-3x"></i>
                     </div>
-                    <div class="stat-title text-lg font-semibold opacity-80">
+                    <div class="stat-title text-lg font-semibold opacity-80" style="white-space: normal;">
                         <?= DASHBOARD_PRODUCTIVITY_SCORE ?>
                         <span class="info-tooltip">
                             <i class="fas fa-info-circle"></i>
                             <span class="tooltiptext"><?= nl2br(DASHBOARD_PRODUCTIVITY_SCORE_INFO) ?></span>
                         </span>
                     </div>
-                    <div data-report-period="month" data-report-presentation="<?= $reportMonthUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportMonthUnresolved ? 'Klärung offen' : number_format($productivityScore, 1) . '%' ?></div>
+                    <div data-report-period="month" data-report-presentation="<?= $nativeDashboardState('month') ?>" class="stat-value"><?= $nativeDashboardValue(number_format($productivityScore, 1) . '%', 'month') ?></div>
                 </div>
             </div>
         </div>

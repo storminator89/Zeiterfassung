@@ -98,8 +98,8 @@ define('DASHBOARD_CURRENT_WEEK', 'Current Week %s');
 define('DASHBOARD_HOURS_OF', '%s of %s hours');
 define('DASHBOARD_CALENDAR', 'Calendar');
 define('DASHBOARD_OVERTIME_INFO', 'Carry-in plus differences between completed booking days and their targets. Includes work and absence credits. Not a continuous contractual time account or a balance as of today.');
-define('DASHBOARD_WEEKLY_PRODUCTIVITY_INFO', "Calculated as a percentage of\nactual hours worked compared to\nexpected weekly working hours.");
-define('DASHBOARD_PRODUCTIVITY_SCORE_INFO', "Calculated as a percentage of\nactual hours worked compared to\nexpected monthly working hours.");
+define('DASHBOARD_WEEKLY_PRODUCTIVITY_INFO', 'Work plus absence credits divided by the full weekly target, capped at 0–100%. No positive target: 0%. Not a productivity rating.');
+define('DASHBOARD_PRODUCTIVITY_SCORE_INFO', 'Work plus absence credits divided by the full monthly target, capped at 0–100%. No positive target: 0%. Not a productivity rating.');
 define('BUTTON_PREV_WEEK', 'Previous Week');
 define('BUTTON_NEXT_WEEK', 'Next Week');
 define('BUTTON_TODAY', 'Today');
@@ -121,24 +121,24 @@ define('PAUSE_RULE', 'For %s hours of work: At least %s minutes break');
 // Weekly Overview
 define('DASHBOARD_WEEKLY_OVERVIEW', 'Weekly Overview');
 define('DASHBOARD_WEEKLY_HOURS', 'Weekly Hours');
-define('DASHBOARD_REMAINING_HOURS_WEEK', 'Remaining Hours This Week');
+define('DASHBOARD_REMAINING_HOURS_WEEK', 'Left to weekly target');
 
 // Monthly Overview
 define('DASHBOARD_MONTHLY_OVERVIEW', 'Monthly Overview');
 define('DASHBOARD_MONTHLY_HOURS', 'Monthly Hours');
-define('DASHBOARD_AVERAGE_DAILY_HOURS', 'Average Daily Hours');
-define('DASHBOARD_PRODUCTIVITY_SCORE', 'Productivity Score');
-define('DASHBOARD_WORKED_DAYS_THIS_MONTH', 'Based on %d working days');
-define('DASHBOARD_WEEKLY_PRODUCTIVITY', 'Weekly Productivity');
-define('DASHBOARD_MONTHLY_HOURS_PROGRESS', '%s of %s this month');
+define('DASHBOARD_AVERAGE_DAILY_HOURS', 'Average per booking day');
+define('DASHBOARD_PRODUCTIVITY_SCORE', 'Monthly target coverage');
+define('DASHBOARD_WORKED_DAYS_THIS_MONTH', 'From %d completed booking days');
+define('DASHBOARD_WEEKLY_PRODUCTIVITY', 'Weekly target coverage');
+define('DASHBOARD_MONTHLY_HOURS_PROGRESS', '%s of %s full monthly target');
 
 // Overall Statistics
 define('DASHBOARD_OVERALL_STATS', 'Overall Statistics');
 define('DASHBOARD_REGULAR_HOURS', 'Regular Working Hours');
 define('DASHBOARD_HOURS_PER_DAY', 'Hours per Day');
-define('DASHBOARD_WEEKS_WORKED', 'Weeks Worked');
-define('DASHBOARD_FIRST_WEEK', 'First Week!');
-define('DASHBOARD_KEEP_GOING', 'Keep Going!');
+define('DASHBOARD_WEEKS_WORKED', 'Weeks with bookings');
+define('DASHBOARD_FIRST_WEEK', 'First booking week');
+define('DASHBOARD_KEEP_GOING', 'Completed bookings count.');
 define('DASHBOARD_TOTAL_OVERTIME', 'Total Overtime');
 define('DASHBOARD_OVER_HOURS_YEAR', 'Overtime This Year: %s');
 
@@ -299,4 +299,11 @@ define('TEAM_STATUS_ABSENT', 'Not present');
 define('TEAM_STATUS_UNKNOWN', 'Status unknown');
 define('TEAM_STATUS_EMPTY', 'No assigned team members.');
 define('TEAM_STATUS_UNAVAILABLE', 'Unavailable. Please reload the page.');
+
+define('DASHBOARD_COMPLETED_WORK', 'Work: %s');
+define('DASHBOARD_ABSENCE_CREDIT', 'Absence credits: %s');
+define('DASHBOARD_REPORT_UNRESOLVED', 'Needs review');
+define('DASHBOARD_REPORT_INCOMPLETE', 'Incomplete');
+define('DASHBOARD_REPORT_REVIEW_HINT', 'Please review the bookings manually.');
+define('DASHBOARD_CURRENT_PERIOD_NOTE', 'Week (%s–%s) and month (%s–%s): full current periods, not a to-date balance. Calendar navigation does not change these figures.');
 ?>

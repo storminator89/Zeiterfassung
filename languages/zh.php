@@ -98,8 +98,8 @@ define('DASHBOARD_CURRENT_WEEK', '當前週 %s');
 define('DASHBOARD_HOURS_OF', '%s 小時，共 %s 小時');
 define('DASHBOARD_CALENDAR', '日曆');
 define('DASHBOARD_OVERTIME_INFO', '前期結轉，加上已完成紀錄日的計入時數與當日目標之差。包括工作與缺勤抵算；並非連續契約工時帳戶，也不是截至今日的餘額。');
-define('DASHBOARD_WEEKLY_PRODUCTIVITY_INFO', "計算為實際工作時數\n與預期每週工作時數\n的百分比。");
-define('DASHBOARD_PRODUCTIVITY_SCORE_INFO', "計算為實際工作時數\n與預期每月工作時數\n的百分比。");
+define('DASHBOARD_WEEKLY_PRODUCTIVITY_INFO', '工作時數加缺勤抵算，除以完整週目標；限制為 0–100%。目標不大於零時為 0%。並非生產力評分。');
+define('DASHBOARD_PRODUCTIVITY_SCORE_INFO', '工作時數加缺勤抵算，除以完整月目標；限制為 0–100%。目標不大於零時為 0%。並非生產力評分。');
 define('BUTTON_PREV_WEEK', '上週');
 define('BUTTON_NEXT_WEEK', '下週');
 define('BUTTON_TODAY', '今天');
@@ -121,24 +121,24 @@ define('PAUSE_RULE', '工作 %s 小時：至少休息 %s 分鐘');
 // Weekly Overview
 define('DASHBOARD_WEEKLY_OVERVIEW', '週概覽');
 define('DASHBOARD_WEEKLY_HOURS', '週工時');
-define('DASHBOARD_REMAINING_HOURS_WEEK', '本週剩餘時數');
+define('DASHBOARD_REMAINING_HOURS_WEEK', '距週目標尚差時數');
 
 // Monthly Overview
 define('DASHBOARD_MONTHLY_OVERVIEW', '月概覽');
 define('DASHBOARD_MONTHLY_HOURS', '月工時');
-define('DASHBOARD_AVERAGE_DAILY_HOURS', '平均每日工時');
-define('DASHBOARD_PRODUCTIVITY_SCORE', '生產力得分');
-define('DASHBOARD_WORKED_DAYS_THIS_MONTH', '基於 %d 個工作日');
-define('DASHBOARD_WEEKLY_PRODUCTIVITY', '週生產力');
-define('DASHBOARD_MONTHLY_HOURS_PROGRESS', '本月 %s 小時，共 %s 小時');
+define('DASHBOARD_AVERAGE_DAILY_HOURS', '每個紀錄日平均時數');
+define('DASHBOARD_PRODUCTIVITY_SCORE', '月目標覆蓋率');
+define('DASHBOARD_WORKED_DAYS_THIS_MONTH', '依據 %d 個已完成紀錄日');
+define('DASHBOARD_WEEKLY_PRODUCTIVITY', '週目標覆蓋率');
+define('DASHBOARD_MONTHLY_HOURS_PROGRESS', '%s／完整月目標 %s');
 
 // Overall Statistics
 define('DASHBOARD_OVERALL_STATS', '整體統計');
 define('DASHBOARD_REGULAR_HOURS', '正常工作時數');
 define('DASHBOARD_HOURS_PER_DAY', '每日小時數');
-define('DASHBOARD_WEEKS_WORKED', '已工作週數');
-define('DASHBOARD_FIRST_WEEK', '第一週！');
-define('DASHBOARD_KEEP_GOING', '繼續加油！');
+define('DASHBOARD_WEEKS_WORKED', '有紀錄的週數');
+define('DASHBOARD_FIRST_WEEK', '第一個紀錄週');
+define('DASHBOARD_KEEP_GOING', '僅計入已完成的紀錄。');
 define('DASHBOARD_TOTAL_OVERTIME', '總加班時數');
 define('DASHBOARD_OVER_HOURS_YEAR', '本年加班時數：%s');
 
@@ -287,5 +287,12 @@ define('TEAM_STATUS_ABSENT', '未在崗');
 define('TEAM_STATUS_UNKNOWN', '狀態不明');
 define('TEAM_STATUS_EMPTY', '沒有已指派的團隊成員。');
 define('TEAM_STATUS_UNAVAILABLE', '無法取得。請重新載入頁面。');
+
+define('DASHBOARD_COMPLETED_WORK', '工作時數：%s');
+define('DASHBOARD_ABSENCE_CREDIT', '缺勤抵算：%s');
+define('DASHBOARD_REPORT_UNRESOLVED', '待釐清');
+define('DASHBOARD_REPORT_INCOMPLETE', '資料不完整');
+define('DASHBOARD_REPORT_REVIEW_HINT', '請人工檢查紀錄。');
+define('DASHBOARD_CURRENT_PERIOD_NOTE', '週（%s–%s）與月（%s–%s）數值涵蓋完整當期，並非截至今日的餘額。切換日曆不會改變這些數值。');
 ?>
 
