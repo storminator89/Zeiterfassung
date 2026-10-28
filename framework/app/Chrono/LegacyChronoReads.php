@@ -568,6 +568,18 @@ final class LegacyChronoReads implements ChronoReads
         });
     }
 
+    public function adminSupervisorOptions(): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
+            if ($actor->role !== 'admin' || $actor->auth_source !== 'local') {
+                throw new AuthorizationException('Nur die Verwaltung darf Benutzer einsehen.');
+            }
+
+            // Independent of the search/page; only native select-option fields.
+            return $this->rows($pdo, "SELECT id,username FROM users WHERE role IN ('supervisor', 'admin') ORDER BY username", []);
+        });
+    }
+
     public function adminUserDetail(mixed $identifier): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($identifier): array {

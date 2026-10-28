@@ -165,4 +165,8 @@ return [
     'FORM_REGULAR_WORKING_HOURS' => '正常工作時數',
     'FORM_OVERTIME' => '加班',
     'FORM_NEW_PASSWORD' => '新密碼（留空表示不更改）',
+
+    // Exact selected native create-form copy.
+    'FORM_PASSWORD' => '密碼',
+    'USER_CREATED_SUCCESS' => '用戶創建成功。',
 ];

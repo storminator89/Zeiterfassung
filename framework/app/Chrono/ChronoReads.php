@@ -62,6 +62,9 @@ interface ChronoReads
     /** Native search/order/ten-row paging, current local Admin, UI columns only. */
     public function adminUsersPage(string $search = '', int $page = 1): array;
 
+    /** Complete native create-form supervisor options; current local Admin only. */
+    public function adminSupervisorOptions(): array;
+
     /** Fresh original user-modal fields only; no credentials/tokens/source projection. */
     public function adminUserDetail(mixed $identifier): array;
 

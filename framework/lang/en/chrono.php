@@ -168,4 +168,8 @@ return [
     'FORM_REGULAR_WORKING_HOURS' => 'Regular Working Hours',
     'FORM_OVERTIME' => 'Overtime',
     'FORM_NEW_PASSWORD' => 'New Password (leave blank for no change)',
+
+    // Exact selected native create-form copy.
+    'FORM_PASSWORD' => 'Password',
+    'USER_CREATED_SUCCESS' => 'User created successfully.',
 ];
