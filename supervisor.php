@@ -18,11 +18,13 @@ $userSearch = isset($_GET['user_search']) && is_string($_GET['user_search']) ? t
 $tableQuery = ['lang' => $lang, 'user_search' => $userSearch];
 $pageUrl = static fn (int $page): string => '?' . htmlspecialchars(http_build_query(array_merge($tableQuery, ['page' => $page])), ENT_QUOTES, 'UTF-8');
 if ($user_role === 'admin' || $user_role === 'supervisor') {
+    require_once __DIR__.'/lib/report_ordering.php';
+    report_register_start_order($conn);
     $stmt = $conn->prepare("SELECT z.*, u.username, u.id as user_id, u.regelarbeitszeit, u.ueberstunden as vorherige_ueberstunden, substr(z.startzeit,1,10) AS day, NULL AS weekNumber
                             FROM zeiterfassung z
                             JOIN users u ON z.user_id = u.id
                             WHERE u.supervisor_id = ? OR ?='admin'
-                            ORDER BY z.startzeit DESC");
+                            ORDER BY chrono_report_start_epoch(z.startzeit) DESC, z.id DESC");
     $stmt->execute([$user_id,$user_role]);
     $zeiten = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
