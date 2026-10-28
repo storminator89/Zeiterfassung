@@ -22,7 +22,7 @@ function chrono_history_presentation_fields(string $entity): array {
             'proposed_start'=>['Beantragter Beginn (Unixsekunden)','scalar'], 'proposed_end'=>['Beantragtes Ende (Unixsekunden)','scalar'],
             'proposed_pause'=>['Beantragte Pause (Minuten)','scalar'], 'reason'=>['Antragsbegründung','scalar'],
             'status'=>['Status','scalar'], 'reviewer_id'=>['Entscheidende Person-ID','scalar'],
-            'reviewed_at'=>['Entscheidungszeit (Unixsekunden)','scalar'], 'review_reason'=>['Entscheidungsbegründung','scalar'],
+            'reviewed_at'=>['Entscheidungs-/Rücknahmezeit (Unixsekunden)','scalar'], 'review_reason'=>['Entscheidungs-/Rücknahmebegründung','scalar'],
             'original_json'=>['Ursprüngliche Buchung','booking'], 'created_at'=>['Antragszeit (Unixsekunden)','scalar'],
             'cancel'=>['Storno beantragt','scalar']],
         'work_models'=>['id'=>['Modell-ID','scalar'], 'user_id'=>['Person-ID','scalar'], 'valid_from'=>['Gültig ab','scalar'],

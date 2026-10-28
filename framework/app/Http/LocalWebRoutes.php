@@ -49,7 +49,7 @@ use Symfony\Component\HttpFoundation\Response;
 /** Explicit opt-in registrar. Never called by bootstrap/providers/default routes. */
 final class LocalWebRoutes
 {
-    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false, bool $includeSetup = false, bool $includeLdapSync = false, bool $useSharedLoginBudget = false, bool $includeTerminalSites = false, bool $includeTerminalCredentialRevocations = false): void
+    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false, bool $includeSetup = false, bool $includeLdapSync = false, bool $useSharedLoginBudget = false, bool $includeTerminalSites = false, bool $includeTerminalCredentialRevocations = false, bool $includeCorrectionWithdrawals = false): void
     {
         if ($useSharedLoginBudget !== SharedLoginBudgetServiceProvider::selected($app)) {
             throw new LogicException('Login route and shared budget selection must agree.');
@@ -61,6 +61,12 @@ final class LocalWebRoutes
             || $app->make('config')->get('app.debug') !== false || ! $app->bound(AttendanceWriter::class))) {
             throw new LogicException('Terminal credential revocation requires its existing page, non-debug mode and an admitted writer.');
         }
+        if ($includeCorrectionWithdrawals && ($app->make('config')->get('app.debug') !== false
+            || ! $app->bound(RuntimeDatabase::class) || ! $app->make(RuntimeDatabase::class)->isIntakePolicyV4()
+            || ! $app->bound(AttendanceWriter::class))) {
+            throw new LogicException('Correction withdrawal requires explicit non-debug writable V4 composition.');
+        }
+        $app->make('config')->set('chrono_corrections.withdrawals_enabled', $includeCorrectionWithdrawals);
         // A server route capability, never inferred from display flags or input.
         $app->make('config')->set('chrono_terminal_admin.credential_revocations_enabled', $includeTerminalCredentialRevocations);
         $app->make('config')->set('chrono_terminal_admin.site_creation_enabled', $includeTerminalSites);

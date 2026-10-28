@@ -127,7 +127,7 @@ function chrono_history_correlated_export_page(array $bundle, array $values): ar
             'event_id'=>$row['event_id'],'session_id'=>$session,'kind'=>$row['kind'],'received_at'=>$row['received_at']];
     }
     foreach ($source['requests'] as $row) {
-        if (!array_key_exists('record_id',$row) || !in_array($row['status']??null,['pending','approved','rejected'],true)
+        if (!array_key_exists('record_id',$row) || !in_array($row['status']??null,['pending','approved','rejected','withdrawn'],true)
             || !in_array($row['cancel']??null,[0,1],true)) { throw new LogicException('Invalid selected request relation.'); }
         $selected['requests'][]=['id'=>chrono_history_correlation_export_id($row['id']??null),
             'record_id'=>$row['record_id']===null?null:chrono_history_correlation_export_id($row['record_id']),

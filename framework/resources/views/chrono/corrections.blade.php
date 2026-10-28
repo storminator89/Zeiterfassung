@@ -74,7 +74,7 @@
     @if (! $corrections->requests)<p class="mb-6" role="status">Keine sichtbaren Anträge für diesen Status.</p>@endif
     @foreach ($corrections->requests as $a)
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
-        <p class="text-sm font-semibold opacity-70 mb-2">#{{ $a['id'] }} · {{ $a['username'] }} · {{ ['pending' => 'Offen', 'approved' => 'Freigegeben', 'rejected' => 'Abgelehnt'][$a['status']] }}</p>
+        <p class="text-sm font-semibold opacity-70 mb-2">#{{ $a['id'] }} · {{ $a['username'] }} · {{ ['pending' => 'Offen', 'approved' => 'Freigegeben', 'rejected' => 'Abgelehnt', 'withdrawn' => 'Zurückgenommen'][$a['status']] }}</p>
         @if ($a['cancel'])<p>STORNIERUNG · kein neuer Zeitwert</p>
         @elseif ($a['preview']['proposed_usable'])<p>{{ $a['start'] }} – {{ $a['end'] }} · {{ $a['pause'] }} Minuten Pause</p>
         @else<p>Beantragte Zeitangaben nicht auswertbar.</p>@endif
@@ -85,7 +85,18 @@
             <p class="opacity-70">Nur ausgewählte Zeitfelder des gespeicherten Originals und Antrags. Keine Freigabe- oder Saldozusage; die Entscheidung prüft den aktuellen Datensatz erneut.</p>
         </div>
         <p>{{ $a['reason'] }}</p>
-        @if ($a['review_reason'])<p class="opacity-70">Entscheidung: {{ $a['review_reason'] }}</p>@endif
+        @if ($a['review_reason'])<p class="opacity-70">{{ $a['status'] === 'withdrawn' ? 'Rücknahme' : 'Entscheidung' }}: {{ $a['review_reason'] }}</p>@endif
+        @if ($corrections->withdrawalsEnabled && $a['status'] === 'pending' && $a['user_id'] === $page->userId)
+        <form method="post">
+            @csrf
+            <input type="hidden" name="action" value="withdraw">
+            <input type="hidden" name="id" value="{{ $a['id'] }}">
+            <label class="block text-sm font-semibold mt-4 mb-2" for="withdraw_reason_{{ $a['id'] }}">Begründung der Rücknahme</label>
+            <input class="input input-bordered w-full" id="withdraw_reason_{{ $a['id'] }}" name="withdraw_reason" minlength="5" maxlength="1000" required>
+            <p class="text-sm opacity-70 mt-3">Nur diesen offenen Antrag endgültig zurücknehmen. Buchung und bisherige Historie bleiben erhalten; die Rücknahme wird protokolliert. Bei Bedarf einen neuen Antrag stellen.</p>
+            <div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-outline" type="submit">Antrag endgültig zurücknehmen</button></div>
+        </form>
+        @endif
         @if ($a['status'] === 'pending' && $a['user_id'] !== $page->userId && in_array($page->role, ['admin', 'supervisor'], true))
         <form method="post">
             @csrf

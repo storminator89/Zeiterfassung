@@ -160,6 +160,16 @@ final class AttendanceWriter
         ));
     }
 
+    /** Fixed owner-only terminal transition; uses the existing single-attempt lifecycle. */
+    public function withdrawCorrection(int $user, string $role, #[\SensitiveParameter] string $version, mixed $id, mixed $reason): void
+    {
+        require_once dirname(__DIR__, 3).'/lib/correction_withdrawal.php';
+        $this->executeLocked(function () use ($user, $role, $version, $id, $reason): void {
+            correction_withdraw_locked($this->pdo, $user, $role, $version, $id, $reason,
+                fn (string $auditReason, Closure $operation): mixed => $this->context->run('web:'.$user, $auditReason, $operation));
+        });
+    }
+
     /** Trusted server identity/role only; never supplied by correction command data. */
     public function correction(int $user, string $role, array $command, ?string $expectedWebSource = null, #[\SensitiveParameter] ?string $expectedWebVersion = null): void
     {

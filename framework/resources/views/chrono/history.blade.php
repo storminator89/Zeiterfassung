@@ -89,7 +89,7 @@
         @endif
         @if ($history->relations['requests'])
         <details open><summary>Korrekturanträge</summary><div class="overflow-x-auto"><table class="table w-full"><thead><tr><th scope="col">Antrag</th><th scope="col">Buchung</th><th scope="col">Status / Art</th></tr></thead><tbody>
-            @foreach ($history->relations['requests'] as $row)<tr id="history-request-{{ $row['id'] }}"><th scope="row">#{{ $row['id'] }}</th><td>{{ $row['record_id'] === null ? 'ungeklärt' : '#'.$row['record_id'] }}</td><td>{{ ['pending' => 'Offen', 'approved' => 'Freigegeben', 'rejected' => 'Abgelehnt'][$row['status']] }} · {{ $row['cancel'] ? 'Storno' : 'Korrektur' }}</td></tr>@endforeach
+            @foreach ($history->relations['requests'] as $row)<tr id="history-request-{{ $row['id'] }}"><th scope="row">#{{ $row['id'] }}</th><td>{{ $row['record_id'] === null ? 'ungeklärt' : '#'.$row['record_id'] }}</td><td>{{ ['pending' => 'Offen', 'approved' => 'Freigegeben', 'rejected' => 'Abgelehnt', 'withdrawn' => 'Zurückgenommen'][$row['status']] }} · {{ $row['cancel'] ? 'Storno' : 'Korrektur' }}</td></tr>@endforeach
         </tbody></table></div></details>
         @endif
     </section>

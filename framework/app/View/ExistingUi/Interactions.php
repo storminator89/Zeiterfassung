@@ -19,5 +19,6 @@ final readonly class Interactions
         public bool $adminPauseSettings = false,
         public bool $terminalSites = false,
         public bool $terminalCredentialRevocations = false,
+        public bool $correctionWithdrawals = false,
     ) {}
 }
