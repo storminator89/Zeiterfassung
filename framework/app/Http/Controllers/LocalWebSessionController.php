@@ -7,6 +7,7 @@ use App\View\ExistingUi\Copy;
 use App\View\ExistingUi\Interactions;
 use App\View\ExistingUi\LoginPage;
 use Illuminate\Contracts\View\View;
+use Illuminate\Contracts\Config\Repository;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -15,7 +16,7 @@ use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 /** Existing local login transport only; its registrar must supply session/CSRF/throttle. */
 final class LocalWebSessionController extends Controller
 {
-    public function __construct(private LocalSession $sessions, private Interactions $interactions) {}
+    public function __construct(private LocalSession $sessions, private Interactions $interactions, private Repository $config) {}
 
     public function create(Request $request): View
     {
@@ -50,8 +51,13 @@ final class LocalWebSessionController extends Controller
 
     private function page(Request $request, ?string $error = null): View
     {
+        $copy = $this->copy($request);
+        $registrationEnabled = $this->config->get('chrono_registration.enabled', false) === true;
         return view('chrono.login', ['page' => new LoginPage(
-            $this->copy($request), error: $error, interactions: $this->interactions,
+            $copy, error: $error, interactions: $this->interactions,
+            showRegistration: $registrationEnabled,
+            successMessage: $registrationEnabled && $request->query('registration') === 'complete'
+                ? $copy->text('REGISTRATION_RESULT') : null,
         )]);
     }
 

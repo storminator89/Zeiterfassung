@@ -11,6 +11,7 @@ use App\Http\Controllers\LocalWebDashboardController;
 use App\Http\Controllers\LocalWebHomeController;
 use App\Http\Controllers\LocalWebHistoryController;
 use App\Http\Controllers\LocalWebSessionController;
+use App\Http\Controllers\LocalWebRegistrationController;
 use App\Http\Controllers\LocalWebSettingsController;
 use App\Http\Controllers\LocalWebSupervisorController;
 use App\Http\Controllers\LocalWebTerminalDevicesController;
@@ -42,7 +43,7 @@ use Symfony\Component\HttpFoundation\Response;
 /** Explicit opt-in registrar. Never called by bootstrap/providers/default routes. */
 final class LocalWebRoutes
 {
-    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false): void
+    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false): void
     {
         // No opt-in page may be registered against missing or replaced chart bytes.
         if ($includeSupervisor) {
@@ -53,6 +54,9 @@ final class LocalWebRoutes
         }
         if ($includeDatabaseSnapshot && ! $app->bound(RuntimeDatabase::class)) {
             throw new LogicException('Database snapshots require a separately admitted runtime source.');
+        }
+        if ($includeRegistration && $app->make('config')->get('chrono_registration.enabled', false) !== true) {
+            throw new LogicException('Registration requires an explicit trusted profile.');
         }
         self::requireSessionBlocking($app);
         $router = $app->make(Router::class);
@@ -65,7 +69,8 @@ final class LocalWebRoutes
         // " 1 " must not become either a confirmation or a cancellation flag.
         $nativeFormPath = fn (Request $request): bool => in_array($request->path(), ['/', 'index.php', 'attendance.php', 'adjustments.php', 'get_time_records.php', 'save.php', 'work_models.php'], true)
             || ($includeSettings && $request->path() === 'settings.php')
-            || ($includeAdminPauseSettings && $request->path() === 'admin.php');
+            || ($includeAdminPauseSettings && $request->path() === 'admin.php')
+            || ($includeRegistration && $request->path() === 'register.php');
         TrimStrings::skipWhen($nativeFormPath);
         ConvertEmptyStringsToNull::skipWhen($nativeFormPath);
 
@@ -108,9 +113,13 @@ final class LocalWebRoutes
         $router->group(['middleware' => [
             EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class,
             ShareErrorsFromSession::class, LegacyFormCsrf::class, SubstituteBindings::class,
-        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot): void {
+        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeRegistration): void {
             $router->get('login.php', [LocalWebSessionController::class, 'create'])->name('login');
             $router->post('login.php', [LocalWebSessionController::class, 'store'])->middleware('throttle:chrono-web-login');
+            if ($includeRegistration) {
+                $router->get('register.php', [LocalWebRegistrationController::class, 'create']);
+                $router->post('register.php', [LocalWebRegistrationController::class, 'store'])->middleware('throttle:chrono-web-register');
+            }
             $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot): void {
                 foreach (['/', 'index.php', 'attendance.php'] as $path) {
                     $router->get($path, [LocalWebAttendanceController::class, 'page']);

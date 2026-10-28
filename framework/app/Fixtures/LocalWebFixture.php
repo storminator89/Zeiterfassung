@@ -32,15 +32,19 @@ final class LocalWebFixture
     private const KIND = 'chrono-local-web-fixture-v1';
     private const LDAP_KIND = 'chrono-local-ldap-web-fixture-v2';
     private const LDAP_PROFILE = 'ordinary-ldap-seed3-v2';
+    private const REGISTRATION_KIND = 'chrono-local-registration-web-fixture-v3';
 
     private function __construct(private readonly string $root, private readonly string $directory, private readonly array $manifest) {}
 
     /** No existing database, credential, key, directory or port arguments. */
-    public static function prepare(Application $app, ?string $ldapCaFile = null): array
+    public static function prepare(Application $app, ?string $ldapCaFile = null, bool $registration = false): array
     {
         if (PHP_SAPI !== 'cli' || $app->make('config')->has('database.connections.chrono')
             || $app->make('db')->getConnections() !== [] || $app->bound(AttendanceWriter::class) || $app->bound(RuntimeDatabase::class)) {
             throw new LogicException('Synthetic preparation requires the inactive application.');
+        }
+        if ($registration && $ldapCaFile !== null) {
+            throw new LogicException('Registration requires its own fresh local-only fixture.');
         }
         if ($ldapCaFile !== null && (! str_starts_with($ldapCaFile, '/') || str_contains($ldapCaFile, "\0")
             || realpath($ldapCaFile) !== $ldapCaFile || ! is_file($ldapCaFile) || ! is_readable($ldapCaFile))) {
@@ -56,7 +60,7 @@ final class LocalWebFixture
             throw new RuntimeException('Synthetic support directory must be canonical and unaliased.');
         }
         $instance = bin2hex(random_bytes(12));
-        $directory = $support.'/'.($ldapCaFile === null ? 'local-web-fixture-' : 'local-ldap-web-fixture-').$instance;
+        $directory = $support.'/'.($registration ? 'local-registration-web-fixture-' : ($ldapCaFile === null ? 'local-web-fixture-' : 'local-ldap-web-fixture-')).$instance;
         if (! mkdir($directory, 0700)) {
             throw new RuntimeException('A new private synthetic fixture directory is required.');
         }
@@ -70,11 +74,16 @@ final class LocalWebFixture
         $build = require $root.'/framework/database/fixtures/legacy_v2.php';
         $build($source, $mapping, true);
         $app->make(AuditFunctions::class)->register($source);
-        $app->make(AuditContext::class)->run('fixture:local-web', 'Synthetic local browser accounts', function () use ($source, $ldapCaFile): void {
+        $app->make(AuditContext::class)->run('fixture:local-web', 'Synthetic local browser accounts', function () use ($source, $ldapCaFile, $registration, $app): void {
             $statement = $source->prepare('UPDATE users SET username=?,email=?,password=? WHERE id=?');
             $hash = password_hash(self::PASSWORD, PASSWORD_BCRYPT);
             foreach ([1 => 'fixture.member', 2 => 'fixture.admin'] as $identifier => $username) {
-                $statement->execute([$username, $username.'@example.invalid', $hash, $identifier]);
+                if ($registration) {
+                    $username = $identifier === 1 ? 'registration.seed.member' : 'registration.seed.admin';
+                }
+                // Never expose a publicly known seed-admin password on the signup profile.
+                $seedHash = $registration ? $app->make('hash')->make(bin2hex(random_bytes(32))) : $hash;
+                $statement->execute([$username, $username.'@example.invalid', $seedHash, $identifier]);
             }
             $statement->closeCursor();
             if ($ldapCaFile !== null) {
@@ -96,10 +105,10 @@ final class LocalWebFixture
             throw new RuntimeException('Synthetic cold-copy adoption failed.');
         }
         $manifest = [
-            'kind' => $ldapCaFile === null ? self::KIND : self::LDAP_KIND, 'checkout' => $root, 'instance' => $instance,
+            'kind' => $registration ? self::REGISTRATION_KIND : ($ldapCaFile === null ? self::KIND : self::LDAP_KIND), 'checkout' => $root, 'instance' => $instance,
             'original_sha256' => hash_file('sha256', $directory.'/original.sqlite'),
             'app_key' => 'base64:'.base64_encode(random_bytes(32)),
-            'cookie' => ($ldapCaFile === null ? 'chrono_local_web_' : 'chrono_ldap_web_').$instance, 'port' => self::PORT,
+            'cookie' => ($registration ? 'chrono_registration_web_' : ($ldapCaFile === null ? 'chrono_local_web_' : 'chrono_ldap_web_')).$instance, 'port' => self::PORT,
         ];
         if ($ldapCaFile !== null) {
             $manifest['profile'] = self::LDAP_PROFILE;
@@ -111,7 +120,7 @@ final class LocalWebFixture
             throw new RuntimeException('Private synthetic manifest could not be written.');
         }
 
-        return [
+        $result = [
             'manifest' => $path, 'document_root' => $directory.'/public',
             'username' => 'fixture.member', 'admin_username' => 'fixture.admin',
             'password' => self::PASSWORD, 'url' => 'http://localhost:'.self::PORT.'/login.php',
@@ -120,13 +129,20 @@ final class LocalWebFixture
                 .' '.escapeshellarg($root.'/framework/tools/local-web-fixture-router.php'),
             'synthetic_only' => true, 'server_started' => false,
         ];
+        if ($registration) {
+            unset($result['password'], $result['username'], $result['admin_username']);
+            $result['url'] = 'http://localhost:'.self::PORT.'/register.php';
+            $result['user_chosen_credentials'] = true;
+            $result['seed_admin_login_available'] = false;
+        }
+        return $result;
     }
 
     /** Accept only this checkout's newly generated manifest, never a DB/key path. */
     public static function fromManifest(string $path, string $root): self
     {
         $prefix = preg_quote(self::support($root), '~');
-        if (! preg_match('~^'.$prefix.'/(?:local-web-fixture-|local-ldap-web-fixture-)([a-f0-9]{24})/manifest\.json$~D', $path, $match)) {
+        if (! preg_match('~^'.$prefix.'/(?:local-web-fixture-|local-ldap-web-fixture-|local-registration-web-fixture-)([a-f0-9]{24})/manifest\.json$~D', $path, $match)) {
             throw new RuntimeException('Only a generated synthetic local-web manifest is supported.');
         }
         $files = new OfflineFiles([$root, $root.'/framework/public']);
@@ -146,9 +162,12 @@ final class LocalWebFixture
             ? base64_decode(substr($manifest['app_key'], 7), true) : false;
         $ldapProfile = ($manifest['kind'] ?? null) === self::LDAP_KIND;
         $ldapPath = str_starts_with(basename(dirname($path)), 'local-ldap-web-fixture-');
-        if ($ldapProfile !== $ldapPath || ! in_array($manifest['kind'] ?? null, [self::KIND, self::LDAP_KIND], true) || ($manifest['checkout'] ?? null) !== $root
+        $registrationProfile = ($manifest['kind'] ?? null) === self::REGISTRATION_KIND;
+        $registrationPath = str_starts_with(basename(dirname($path)), 'local-registration-web-fixture-');
+        if ($ldapProfile !== $ldapPath || $registrationProfile !== $registrationPath
+            || ! in_array($manifest['kind'] ?? null, [self::KIND, self::LDAP_KIND, self::REGISTRATION_KIND], true) || ($manifest['checkout'] ?? null) !== $root
             || ($manifest['instance'] ?? null) !== $match[1] || ($manifest['port'] ?? null) !== self::PORT
-            || ($manifest['cookie'] ?? null) !== ($ldapProfile ? 'chrono_ldap_web_' : 'chrono_local_web_').$match[1]
+            || ($manifest['cookie'] ?? null) !== ($registrationProfile ? 'chrono_registration_web_' : ($ldapProfile ? 'chrono_ldap_web_' : 'chrono_local_web_')).$match[1]
             || ! is_string($key) || strlen($key) !== 32
             || ! is_string($manifest['original_sha256'] ?? null)
             || ! preg_match('/^[a-f0-9]{64}$/D', $manifest['original_sha256'])) {
@@ -172,6 +191,10 @@ final class LocalWebFixture
             // No extension/CA-liveness/network check here: local break-glass
             // must remain independent of an unavailable synthetic directory.
         }
+        if ($registrationProfile && (count($manifest) !== 7
+            || array_diff(array_keys($manifest), ['kind', 'checkout', 'instance', 'original_sha256', 'app_key', 'cookie', 'port']) !== [])) {
+            throw new RuntimeException('Unknown synthetic registration metadata.');
+        }
         $directory = dirname($path);
         foreach (['public', 'sessions', 'cache', 'locks', 'compiled'] as $child) {
             $stat = @lstat($directory.'/'.$child);
@@ -185,12 +208,12 @@ final class LocalWebFixture
         }
 
         $fixture = new self($root, $directory, $manifest);
-        if ($ldapProfile) {
-            // The pristine profile MUST contain exactly its three original seeds.
-            // Target-only insertion + v1 retagging is not a fresh-v2 preparation.
+        if ($ldapProfile || $registrationProfile) {
+            // Pristine LDAP has exactly three seeds, registration exactly two
+            // distinct seeds. Target-only writes/old retagging are not preparation.
             $pristine = $files->openReadOnly($directory.'/original.sqlite');
             if (! $fixture->accountsFit($pristine, true)) {
-                throw new RuntimeException('The pristine synthetic LDAP profile does not match.');
+                throw new RuntimeException($registrationProfile ? 'The pristine synthetic registration profile does not match.' : 'The pristine synthetic LDAP profile does not match.');
             }
             $pristine = null;
         }
@@ -279,6 +302,10 @@ final class LocalWebFixture
         // Preserve the registered production limit definition, not the boot-time
         // repository cache directory captured by its first RateLimiter instance.
         $definition = $app->make(RateLimiter::class)->limiter('chrono-web-login');
+        $registrationDefinition = $app->make(RateLimiter::class)->limiter('chrono-web-register');
+        if ($this->registrationProfile() && $registrationDefinition === null) {
+            throw new LogicException('The persistent registration limiter is required.');
+        }
         if ($definition === null) {
             throw new LogicException('The existing local login limiter is required.');
         }
@@ -286,12 +313,16 @@ final class LocalWebFixture
         $app->forgetInstance('cache.store');
         $limiter = new RateLimiter($app->make('cache')->store('file'));
         $limiter->for('chrono-web-login', $definition);
+        if ($this->registrationProfile()) {
+            $limiter->for('chrono-web-register', $registrationDefinition);
+            $config->set('chrono_registration.enabled', true);
+        }
         $app->instance(RateLimiter::class, $limiter);
         $app->instance(Interactions::class, new Interactions(
             login: true, attendance: true, logout: true, corrections: true,
             home: true, absences: true, workModels: true, history: true, supervisor: true, dashboard: true, adminPauseSettings: true,
         ));
-        LocalWebRoutes::register($app, includeHistory: true, includeSupervisor: true, includeDashboard: true, includeCsv: true, includeSettings: true, includeAdminPauseSettings: true, includeTerminalDevices: true, includeDatabaseSnapshot: true);
+        LocalWebRoutes::register($app, includeHistory: true, includeSupervisor: true, includeDashboard: true, includeCsv: true, includeSettings: true, includeAdminPauseSettings: true, includeTerminalDevices: true, includeDatabaseSnapshot: true, includeRegistration: $this->registrationProfile());
     }
 
     private function ldapProfile(): bool
@@ -299,8 +330,16 @@ final class LocalWebFixture
         return $this->manifest['kind'] === self::LDAP_KIND;
     }
 
+    private function registrationProfile(): bool
+    {
+        return $this->manifest['kind'] === self::REGISTRATION_KIND;
+    }
+
     private function accountsFit(PDO $read, bool $pristine = false): bool
     {
+        if ($this->registrationProfile()) {
+            return $this->registrationAccountsFit($read, $pristine);
+        }
         if (! $this->ldapProfile()) {
             // Exact original v1 all-row boundary; never upgraded in place.
             return $read->query('SELECT id,username,email FROM users ORDER BY id')->fetchAll(PDO::FETCH_ASSOC) === [
@@ -342,6 +381,31 @@ final class LocalWebFixture
         // Fresh private-file provenance is NOT proof of the endpoint that made
         // an extra local row. Existing local admin creation must remain usable.
         return $seen === [1, 2, 3];
+    }
+
+    /** Fresh source identity, not proof of which endpoint inserted a later row. */
+    private function registrationAccountsFit(PDO $read, bool $pristine): bool
+    {
+        $rows = $read->query('SELECT id,username,email,role,auth_source,token,department_id,supervisor_id FROM users ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
+        if (count($rows) < 2 || ($pristine && count($rows) !== 2)) {
+            return false;
+        }
+        foreach ($rows as $index => $row) {
+            if (! is_int($row['id']) || $row['id'] < 1 || $row['auth_source'] !== 'local'
+                || $row['token'] !== null || $row['department_id'] !== null || $row['supervisor_id'] !== null) {
+                return false;
+            }
+            if ($index < 2) {
+                $name = $index === 0 ? 'registration.seed.member' : 'registration.seed.admin';
+                if ($row['id'] !== $index + 1 || $row['username'] !== $name
+                    || $row['email'] !== $name.'@example.invalid' || $row['role'] !== ($index === 0 ? 'user' : 'admin')) {
+                    return false;
+                }
+            } elseif ($row['role'] !== 'user') {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static function support(string $root): string

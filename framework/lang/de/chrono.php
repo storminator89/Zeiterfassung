@@ -172,4 +172,15 @@ return [
     // Exact selected native create-form copy.
     'FORM_PASSWORD' => 'Passwort',
     'USER_CREATED_SUCCESS' => 'Benutzer erfolgreich erstellt.',
+
+    // Ordinary local self-registration; no email verification or first-admin claim.
+    'REGISTRATION_TITLE' => 'Registrieren - Quodara Chrono',
+    'REGISTRATION_NOTICE' => 'Du erstellst ein lokales Benutzerkonto ohne Verwaltungs- oder Teamrechte. Die E-Mail-Adresse wird nicht verifiziert; es wird keine E-Mail versendet.',
+    'REGISTRATION_CONFIRM_PASSWORD' => 'Passwort bestätigen',
+    'REGISTRATION_PASSWORD_HINT' => 'Passwort: 12 bis 72 Bytes, keine Steuerzeichen; beide Eingaben müssen übereinstimmen.',
+    'REGISTRATION_BACK_LOGIN' => 'Zur Anmeldung',
+    'REGISTRATION_INVALID' => 'Bitte gültige Angaben und zwei übereinstimmende Passwörter mit 12 bis 72 Bytes eingeben.',
+    'REGISTRATION_UNCONFIRMED' => 'Die Registrierung konnte nicht bestätigt werden. Bitte nicht automatisch wiederholen; später die Anmeldung versuchen.',
+    'REGISTRATION_RESULT' => 'Du kannst die Anmeldung versuchen. Ein neues Konto wird nur bei gültigen, noch verfügbaren Angaben angelegt.',
+    'REGISTRATION_NOT_READY' => 'Registrierung noch nicht verfügbar. Die erste lokale Administration muss separat eingerichtet werden; bitte die Verwaltung kontaktieren.',
 ];
