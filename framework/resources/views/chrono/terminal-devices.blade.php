@@ -3,7 +3,7 @@
 @section('content')
 <main class="container mx-auto px-4 py-8 chrono-page">
     <h1 class="text-2xl font-bold mb-6">Praxis-Terminals</h1>
-    <div class="alert alert-info mb-6" role="note">Nur lesende Geräteübersicht mit Standort und Kontaktstatus. Koppeln, Sperren, Modulfreigabe und das Speichern oder Sperren persönlicher Terminal-Zugänge sind in dieser Laravel-Ansicht nicht verbunden. Die Standortanlage ist nur bei gesonderter Freigabe verfügbar.</div>
+    <div class="alert alert-info mb-6" role="note">Nur lesende Geräteübersicht mit Standort und Kontaktstatus. Koppeln, Sperren, Modulfreigabe und das Speichern persönlicher Terminal-Zugänge sind in dieser Laravel-Ansicht nicht verbunden. Standortanlage und Zugangssperre sind nur bei gesonderter Freigabe verfügbar.</div>
     @if ($terminalDevices->error)<div class="alert alert-error mb-6" role="alert">{{ $terminalDevices->error }}</div>@endif
     @if ($terminalDevices->saved)<div class="alert alert-success mb-6">Änderung gespeichert.</div>@endif
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
@@ -41,14 +41,27 @@
     </section>
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">Terminal-Zugänge</h2>
+        @if ($terminalDevices->credentialRevocationsEnabled)
+        <p class="opacity-70 mb-4">Vorhandene Zugänge können hier gesperrt werden. Zugang speichern / ersetzen ist nicht verbunden. PIN, Kartenwerte und Hashes werden nicht angezeigt.</p>
+        @else
         <p class="opacity-70 mb-4">Nur lesende Übersicht der eingerichteten Zugänge. Zugang speichern / ersetzen und Zugang sperren sind hier nicht verbunden. PIN, Kartenwerte und Hashes werden nicht angezeigt.</p>
+        @endif
         @if (! $terminalDevices->credentials)<p class="mb-4" role="status">Keine sichtbaren Terminal-Zugänge vorhanden.</p>@endif
         <div class="table-responsive">
             <table class="table">
-                <thead><tr><th>Person</th><th>Personalcode</th><th>Standort</th><th>Zugang</th></tr></thead>
+                <thead><tr><th>Person</th><th>Personalcode</th><th>Standort</th><th>Zugang</th>@if ($terminalDevices->credentialRevocationsEnabled)<th></th>@endif</tr></thead>
                 <tbody>
                 @foreach ($terminalDevices->credentials as $credential)
-                    <tr><td>{{ $credential['username'] }}</td><td>{{ $credential['employee_code'] }}</td><td>{{ $credential['site'] }}</td><td>{{ $credential['access_label'] }}</td></tr>
+                    <tr><td>{{ $credential['username'] }}</td><td>{{ $credential['employee_code'] }}</td><td>{{ $credential['site'] }}</td><td>{{ $credential['access_label'] }}</td>
+                        @if ($terminalDevices->credentialRevocationsEnabled)
+                        <td><form method="post">
+                            @csrf
+                            <input type="hidden" name="action" value="revoke_credential">
+                            <input type="hidden" name="user_id" value="{{ $credential['user_id'] }}">
+                            <button class="btn btn-error">Zugang sperren</button>
+                        </form></td>
+                        @endif
+                    </tr>
                 @endforeach
                 </tbody>
             </table>

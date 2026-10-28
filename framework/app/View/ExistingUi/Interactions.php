@@ -18,5 +18,6 @@ final readonly class Interactions
         public bool $dashboard = false,
         public bool $adminPauseSettings = false,
         public bool $terminalSites = false,
+        public bool $terminalCredentialRevocations = false,
     ) {}
 }

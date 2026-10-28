@@ -14,5 +14,6 @@ final readonly class TerminalDevicesPage
         public bool $saved = false,
         /** Selected display fields only; never raw credential rows or hashes. */
         public array $credentials = [],
+        public bool $credentialRevocationsEnabled = false,
     ) {}
 }

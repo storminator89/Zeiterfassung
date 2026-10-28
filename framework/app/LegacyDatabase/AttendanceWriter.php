@@ -329,6 +329,29 @@ final class AttendanceWriter
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'terminals.php', $transaction));
     }
 
+    /** Existing revoke_credential only; no secrets, device/module changes or grant rewrites. */
+    public function revokeTerminalCredential(int $admin, #[\SensitiveParameter] string $expectedWebVersion,
+        mixed $userId): void
+    {
+        // A normal hidden form field is a canonical positive decimal ID. Refuse
+        // arrays/coercions/overflow instead of native accidental casts to zero.
+        if (! is_string($userId) || preg_match('/\A[1-9][0-9]*\z/', $userId) !== 1
+            || ($target = filter_var($userId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])) === false) {
+            throw new \InvalidArgumentException('Ungültiger Terminal-Zugang.');
+        }
+        $this->executeLocked(function () use ($admin, $expectedWebVersion, $target): void {
+            // Reuse the existing lock-bound source/role/password-version guard.
+            // It re-reads this Admin under the SAME IMMEDIATE mutation lock.
+            $this->assertExpectedWebPrincipal($admin, 'local', $expectedWebVersion, 'admin');
+            $statement = $this->pdo->prepare('UPDATE employee_credentials SET enabled=0 WHERE user_id=?');
+            $statement->execute([$target]);
+            $statement->closeCursor();
+            // Exact native UPDATE, including zero-row/already-disabled behavior.
+            // The existing terminal protocol checks enabled on identify/grant use.
+            // No PIN/card value, user field, work row or grant is read or changed.
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction));
+    }
+
     /** Anonymous self-registration only: fixed ordinary role and no caller actor/privileges. */
     public function registerLocalUser(string $username, string $email, #[\SensitiveParameter] string $passwordHash,
         ?int $expectedPolicyRevision = null): bool
