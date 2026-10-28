@@ -178,10 +178,8 @@ final class RuntimeDatabase
                 throw new RuntimeException;
             }
         }
-        // Mechanical SQLite3 equivalent of V2Adoption::ledgerState(PDO).
-        if ($this->snapshotRows($source, 'SELECT id,migration,batch FROM framework_migrations ORDER BY id') !== [[
-            'id' => 1, 'migration' => V2Adoption::migrationName($this->admission->schemaSignature), 'batch' => 1,
-        ]]) {
+        // Same complete profile rows as the PDO and copied-artifact guards.
+        if ($this->snapshotRows($source, 'SELECT id,migration,batch FROM framework_migrations ORDER BY id') !== $this->admission->expectedLedgerRows()) {
             throw new RuntimeException;
         }
     }
@@ -238,7 +236,7 @@ final class RuntimeDatabase
             }
 
             $phase = 'owned adoption ledger';
-            if (V2Adoption::ledgerState($pdo, $this->admission->schemaSignature) !== 'owned') {
+            if ($pdo->query('SELECT id,migration,batch FROM framework_migrations ORDER BY id')->fetchAll(PDO::FETCH_ASSOC) !== $this->admission->expectedLedgerRows()) {
                 throw new RuntimeException;
             }
             $phase = 'final file identity';

@@ -11,7 +11,8 @@ function chrono_history_presentation_fields(string $entity): array {
     return match ($entity) {
         'zeiterfassung'=>$booking,
         'users'=>['id'=>['Person-ID','scalar'], 'username'=>['Benutzername','scalar'],
-            'regelarbeitszeit'=>['Tages-Soll (Stunden)','scalar'], 'ueberstunden'=>['Anfangsguthaben (Stunden)','scalar']],
+            'regelarbeitszeit'=>['Tages-Soll (Stunden)','scalar'], 'ueberstunden'=>['Anfangsguthaben (Stunden)','scalar'],
+            'role'=>['Rolle','scalar'], 'department_id'=>['Abteilungs-ID','scalar'], 'supervisor_id'=>['Vorgesetzten-ID','scalar']],
         'Feiertage'=>['id'=>['Datensatz-ID','scalar'], 'datum'=>['Datum','scalar'], 'name'=>['Bezeichnung','scalar']],
         'work_sessions'=>['id'=>['Intervall-ID','scalar'], 'user_id'=>['Person-ID','scalar'], 'record_id'=>['Buchungs-ID','scalar'],
             'started_at'=>['Beginn (Unixsekunden)','scalar'], 'ended_at'=>['Ende (Unixsekunden)','scalar']],
