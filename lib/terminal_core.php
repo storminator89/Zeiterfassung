@@ -78,6 +78,30 @@ function terminal_dispatch_locked(PDO $db, array $device, array $input, ?Closure
     if (!$current || !hash_equals($current['generation'],$device['generation'])) { throw new AttendanceError('Gerät gesperrt.',403); }
     if ($op==='heartbeat') {
         att_exec($db,'UPDATE terminals SET last_seen=? WHERE id=?',[time(),$device['id']]); $r=['success'=>true,'time'=>gmdate('c')];
+    } elseif ($op==='receipt') {
+        // Historical evidence only: never enter the transition/replay-or-create path.
+        $unresolved='Historische Bestätigung nicht verfügbar. Vorgang bleibt ungeklärt.';
+        $grant=$input['grant']??null; $id=$input['event_id']??null;
+        $action=$input['action']??null; $confirm=$input['confirm_end_pause']??null;
+        if (!is_string($grant) || preg_match('/\A[a-f0-9]{64}\z/',$grant)!==1
+            || !is_string($id) || preg_match('/\A[A-Za-z0-9_-]{16,80}\z/',$id)!==1
+            || !is_string($action) || !in_array($action,['start','pause_start','pause_end','end'],true)
+            || !is_bool($confirm)) { throw new AttendanceError($unresolved,400); }
+        try { $expectedRecord=attendance_expected_record($input); }
+        catch (AttendanceError $e) { throw new AttendanceError($unresolved,400); }
+        $g=att_one($db,'SELECT * FROM terminal_grants WHERE token_hash=? AND terminal_id=?',[hash('sha256',$grant),$device['id']]);
+        if (!$g || $g['used_event']!==$id) { throw new AttendanceError($unresolved,401); }
+        $c=att_one($db,'SELECT * FROM employee_credentials WHERE user_id=?',[$g['user_id']]);
+        if (!$c || !$c['enabled'] || (int)$c['site_id']!==(int)$current['site_id'] || !hash_equals($g['credential_version'],terminal_version($c))) { throw new AttendanceError($unresolved,403); }
+        if (!att_one($db,'SELECT id FROM users WHERE id=?',[(int)$g['user_id']])) { throw new AttendanceError('Konto nicht verfügbar.',403); }
+        $source='terminal:'.$device['id'];
+        $old=att_one($db,'SELECT source,event_id,user_id,kind,payload_hash,received_at FROM attendance_events WHERE source=? AND event_id=?',[$source,$id]);
+        $hash=attendance_event_payload_hash((int)$g['user_id'],$action,$confirm,$expectedRecord);
+        if (!$old || $old['source']!==$source || $old['event_id']!==$id
+            || (string)$old['user_id']!==(string)$g['user_id'] || $old['kind']!==$action
+            || !is_string($old['payload_hash']) || !hash_equals($old['payload_hash'],$hash)
+            || !is_int($old['received_at'])) { throw new AttendanceError($unresolved,409); }
+        $r=['success'=>true,'historical_receipt'=>true,'event_id'=>$id,'received_at'=>$old['received_at']];
     } elseif ($op==='event') {
         $grant=$input['grant']??''; $id=$input['event_id']??'';
         if (!is_string($grant)||!is_string($id)||!is_string($input['action']??null)) { throw new AttendanceError('Ungültige Anfrage.',400); }

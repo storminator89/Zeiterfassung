@@ -1,6 +1,6 @@
 # Optionales Praxis-Terminal – Online-Betrieb
 
-Implementiert: gemeinsame Ereignisbuchung für Web/API/Terminal, tatsächliche Pausen, Geräte-Pairing und Sperrung, Personalcode/PIN sowie NFC-Kennung plus PIN, lokaler Gerätedienst mit Kiosk, Korrekturanträge mit Freigabe. Nur die Gerätefunktion ist standardmäßig deaktiviert; Web-Zeiterfassung, echte Pausen, Arbeitszeitmodelle und Historie sind immer aktiv. Ein konkreter NFC-Leser wurde nicht angeschlossen; die Tastatureingabe eines USB-HID-Lesers wurde im Browser simuliert. Kryptografische NFC-Karten und Offline-Warteschlangen sind nicht implementiert.
+Implementiert: gemeinsame Ereignisbuchung für Web/API/Terminal, tatsächliche Pausen, Geräte-Pairing und Sperrung, Personalcode/PIN sowie NFC-Kennung plus PIN, lokaler Gerätedienst mit Kiosk, Korrekturanträge mit Freigabe. Nur die Gerätefunktion ist standardmäßig deaktiviert; Web-Zeiterfassung, echte Pausen, Arbeitszeitmodelle und Historie sind immer aktiv. Ein konkreter NFC-Leser wurde nicht angeschlossen; die Tastatureingabe eines USB-HID-Lesers wurde im Browser simuliert. Kryptografische NFC-Karten und Offline-Buchungswarteschlangen sind nicht implementiert. Eine getrennte, ausdrücklich optionale lokale Klärungsablage für unbestätigte Online-Vorgänge ist als Quellcode vorbereitet; sie sendet alte Ereignisse niemals automatisch erneut (siehe unten).
 
 ## Server aktivieren
 
@@ -47,7 +47,7 @@ Nur für lokale Entwicklung ist `--allow-http-localhost` erlaubt; es akzeptiert 
 - Chip ins NFC-Feld einlesen oder Personalcode eingeben, anschließend PIN. Eine einfache UID ist kopierbar und genügt allein nicht zur Anmeldung.
 - Kommen, Pause beginnen, Pause beenden oder Gehen wählen. Gehen während einer Pause verlangt eine ausdrückliche Bestätigung und schließt beides atomar.
 - Nur die bestätigte Serverantwort gilt als Buchung. Die Person wird nach Bestätigung sofort bzw. spätestens zehn Sekunden nach Anmeldung ausgeblendet. Eine abgelaufene Identifikation muss wiederholt werden.
-- Bei einer unbestätigten Anfrage behält der Dienst für den aktuellen Vorgang dieselbe Ereignis-ID zum sicheren Wiederholen. Ein Neuanmelden/Timeout verwirft den lokalen Vorgang; bei unklarem Ergebnis den aktuellen Status prüfen oder einen Korrekturantrag stellen. Es gibt bewusst keine dauerhafte Offline-Queue.
+- **Ohne `--pending-dir` (unveränderter Legacy-Modus):** Bei einer unbestätigten Anfrage behält der Dienst für den aktuellen Vorgang dieselbe Ereignis-ID zum sicheren Wiederholen. Neuanmelden/Timeout/Neustart können diesen RAM-Vorgang verwerfen. **Im optionalen Klärungsmodus:** vor dem ersten Versand privat dauerhaft ablegen; unbestätigte Vorgänge bleiben getrennt erhalten, während neue Personen neu anmelden können. Keine Wiederholung alter Events, keine Offline-Buchungen; begrenzte Kapazität kann neue Sendungen vorab verweigern. Bei unklarem Ergebnis den aktuellen Status oder den freigegebenen Korrekturweg nutzen, nicht blind erneut buchen.
 - Geräteanfragen sind einzeln mit HMAC signiert, Zeitfenster und einmaliger Nonce geschützt. Neue Nonce bei Netzwerk-Retry, gleiche Ereignis-ID beim Wiederholen derselben Buchung. Ein anderer Inhalt unter gleicher ID wird abgewiesen. Pro Person kann nur eine Arbeitszeit und eine Pause offen sein.
 - Serverzeit ist maßgeblich. Uhrzeit und Kalendertage werden für `Europe/Berlin` dargestellt; die neue Ereignis-/Intervallablage verwendet UTC-Epochen, Berichtswerte enthalten einen expliziten Offset. Alte Zeitangaben ohne Offset behalten ihren Inhalt und werden als Berliner Ortszeit interpretiert. Dies vor Einführung prüfen, wenn eine bisherige Installation eine andere Zeitzone verwendet hat.
 - Einzelne Pausen werden sekundengenau gespeichert; die bisherige Berichts-Spalte erhält die abgerundete Summe in ganzen Minuten. Es werden keine nicht genommenen Pausen erfunden. Beim Gehen erscheint ein Hinweis, wenn die konfigurierte Mindestpausensumme unterschritten ist; die tatsächliche Pause bleibt unverändert. Die bestehenden Regeln müssen fachlich für die Praxis geprüft werden.
@@ -98,7 +98,7 @@ ein Grant kann schon vor einer späteren Status-/Antwortstörung gespeichert
 sein. Kopplung committet vor der Schlüsselantwort; Heartbeat/Ereignis können
 vor einem Fehler bei der JSON-Ausgabe bereits committed sein. Die neue Grenze
 ändert keine dieser Grenzen und bietet weder Rollback noch automatische
-Wiederholung oder neue Ereignis-ID an. Der unveränderte Agent hält einen
+Wiederholung oder neue Ereignis-ID an. Der Legacy-Modus des Agenten hält einen
 unbestätigten Ereignispayload bei Status >= 500 im Arbeitsspeicher und signiert
 einen vom Benutzer ausgelösten Retry mit frischer Zeit/Nonce, aber identischem
 Pendingpayload. Reset/Neuidentifikation/Neustart und die offenen #57-Grenzen
@@ -172,10 +172,35 @@ Keine realen Personen, Grants, PIN-/Kartenaktionen, Pairings, Daten oder Schlüs
 verwendet; kein Netzwerk, Listener, Browser, keine Uhrverstellung oder neue CI. Hardware-,
 Host-/SAPI- und veröffentlichte Abnahme bleiben offen.
 
-**#57 bleibt offen:** Der Agent hält Pending nur im Arbeitsspeicher. Reset,
-Neuidentifikation und Prozessneustart behalten ihre bisherigen Verlustgrenzen;
-keine dauerhafte Offline-Queue, neue Recoveryroute oder automatische Klärung
-eines unbekannten alten ungebundenen Events wird eingeführt.
+**Historischer Teilstand dieses #36-Schritts:** Der Legacy-Modus hält Pending
+nur im Arbeitsspeicher; seine bisherigen Verlustgrenzen bleiben ohne Opt-in.
+Die folgende optionale #57-Ergänzung bereitet getrennte dauerhafte Klärung vor,
+aber keine Offline-Buchung oder automatische Wiederholung alter Ereignisse.
+
+## Optionale neustartfeste Klärungsablage (#57, nur Quellvorbereitung)
+
+Auf Main `01beb3166408e3fe2a4fdd38d3dfdbb76f8333a6` vorbereitet: explizites
+`--pending-dir` und lokale OS-Owner-CLI. Der Standardstart und das aktive
+systemd-Beispiel bleiben unverändert. **Keine tatsächliche Einrichtung,
+Verzeichnis-/Dienstfreigabe, Gerätekopplung oder Live-Quittungsprüfung ist damit
+freigegeben oder durchgeführt.**
+
+Im Opt-in-Modus werden ursprünglicher Grant und exakte Eventbytes vor Versand
+privat gespeichert. Reset/Neustart/neue Person verwerfen sie nicht. Kein alter
+Vorgang wird automatisch oder durch die Klärungs-CLI als Event gesendet; eine
+neue Anmeldung bekommt niemals den alten Grant. Bestehende Bildschirmflächen
+zeigen die begrenzten Fehler, keine gemeinsame Personen-/Warteschlangenliste.
+1000 offene Vorgänge bzw. 16MiB logische Abrechnung sind endliche Grenzen:
+volle/unsichere Ablage verweigert neue Events **vor Versand**. Ein einzelner
+ungeklärter Mitarbeiter sperrt nicht das Terminal. Netz-/Speichergrenzen bleiben.
+
+Nur der lokale OS-/Dienstspeichereigentümer kann redaktierte Referenzen auflisten,
+mit der ursprünglichen Berechtigung ausschließlich historische Quittungen prüfen
+oder eine externe Klärung lokal begründet dokumentieren. Das ist kein App-Admin-
+Login und erzeugt keine Buchung/Korrektur. Fehlende/gelöschte/gesperrte Grants,
+fehlende oder ungültige Antworten bleiben **ungeklärt**, nicht „nicht gebucht“.
+Details, private Speichergrenze, getrennte Setup-Gates und der erfundene
+Quellnachweis: [terminal-pending-recovery.md](terminal-pending-recovery.md).
 
 ## Korrekturen, Verlust und Berechtigungen
 

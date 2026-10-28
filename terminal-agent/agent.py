@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Chrono online kiosk. Standard-library only. Device secrets never enter the browser."""
 import argparse, getpass, hashlib, hmac, http.server, json, os, pathlib, re, secrets, stat, threading, time, urllib.error, urllib.parse, urllib.request
+from pending_store import PendingStore, StoreError, CapacityError, partition_for, positive_immediate
 ROOT=pathlib.Path(__file__).resolve().parent
 class Remote:
     def __init__(self, config, allow_http=False):
@@ -16,6 +17,9 @@ class Remote:
         self.client=urllib.request.build_opener(NoRedirect())
     def request(self, payload, signed=True):
         raw=json.dumps(payload,separators=(',',':')).encode()
+        return self.request_raw(raw,signed)
+    def request_raw(self, raw, signed=True):
+        # Raw event bytes are encoded/persisted once; never normalize on send.
         headers={'Content-Type':'application/json','Accept':'application/json'}
         if signed:
             device=str(self.config['device_id']); stamp=str(int(time.time())); nonce=secrets.token_hex(16)
@@ -46,8 +50,97 @@ def identify_record_binding(result):
     if state in ('working','paused') and type(record) is int and 0<record<=9223372036854775807:return str(record)
     raise ValueError('Unknown record binding')
 
+
+class DurableKiosk:
+    """One current interaction, many isolated uncertainties; no recovery event sender."""
+    def __init__(self, remote, store):
+        self.remote=remote;self.store=store;self.partition=partition_for(remote.config,remote.url)
+        self.lock=threading.RLock();self.generation=0;self.identifying=None;self.current=None
+    def identify(self,data):
+        request=data.get('identify_request_id')
+        if not isinstance(request,str) or re.fullmatch(r'[a-f0-9]{32}',request) is None:
+            return 400,{'success':False,'message':'Anmeldung bitte in der aktuellen Kioskansicht beginnen.'}
+        with self.lock:
+            self.generation+=1;owner=(self.generation,request);self.identifying=owner;self.current=None
+        status,result=self.remote.request({'op':'identify','employee_code':data.get('employee_code',''),'card':data.get('card',''),'pin':data.get('pin','')})
+        with self.lock:
+            if self.identifying!=owner:
+                return 409,{'success':False,'message':'Diese Anmeldung ist nicht mehr aktuell.'}
+            self.identifying=None
+            try:
+                if status!=200 or not isinstance(result,dict) or result.get('success') is not True:
+                    raise ValueError()
+                record=identify_record_binding(result);grant=result.get('grant');expires=result.get('expires_in');name=result.get('name')
+                if not isinstance(grant,str) or re.fullmatch(r'[a-f0-9]{64}',grant) is None or type(expires) is not int or not 0<expires<=60 or not isinstance(name,str) or len(name.encode())>512:
+                    raise ValueError()
+                token=secrets.token_hex(16)
+                self.current={'token':token,'generation':owner[0],'grant':grant,'record':record,'deadline':time.monotonic()+expires,'claimed':False}
+                return 200,{'success':True,'name':name,'state':result['state'],'interaction_token':token,'durable_pending':True}
+            except (ValueError,TypeError,KeyError):
+                self.current=None
+                return 503,{'success':False,'message':'Keine passende Anmeldung bestätigt. Bitte erneut anmelden.'}
+    def reset(self,data):
+        with self.lock:
+            matched=(self.identifying is not None and data.get('identify_request_id')==self.identifying[1])
+            matched=matched or (self.current is not None and data.get('interaction_token')==self.current['token'])
+            if matched:
+                self.generation+=1;self.identifying=None;self.current=None
+        # Missing/old selectors must never cancel another person's newer interaction.
+        return 200,{'success':True}
+    def event(self,data):
+        action=data.get('action');confirm=data.get('confirm_end_pause',False)
+        if action not in ('start','pause_start','pause_end','end') or type(confirm) is not bool:
+            return 400,{'success':False,'message':'Ungültige Aktion.'}
+        with self.lock:
+            current=self.current
+            if current is None or data.get('interaction_token')!=current['token'] or current['claimed']:
+                return 409,{'success':False,'message':'Diese Aktion gehört nicht mehr zur aktuellen Anmeldung.'}
+            if time.monotonic()>current['deadline']:
+                self.current=None
+                return 401,{'success':False,'message':'Bitte erneut anmelden.'}
+            if self.store is None:
+                self.current=None
+                return 503,{'success':False,'message':'Privater Klärungsspeicher nicht verfügbar; keine neue Buchung gesendet. Anderen freigegebenen Erfassungsweg nutzen.'}
+            if action!='start' and current['record'] is None:
+                self.current=None
+                return 409,{'success':False,'message':'Sitzungsbindung fehlt. Bitte erneut anmelden.'}
+            current['claimed']=True
+            payload={'op':'event','grant':current['grant'],'event_id':secrets.token_hex(16),'action':action,'confirm_end_pause':confirm}
+            if action!='start':payload['expected_record']=current['record']
+            raw=json.dumps(payload,separators=(',',':')).encode()
+            try:
+                entry=self.store.enqueue(self.partition,raw)
+                self.store.claim(entry) # Durable BEFORE network; never claim a stored old entry.
+            except CapacityError:
+                if self.current is current:self.current=None
+                return 503,{'success':False,'message':'Klärungsspeicher voll; keine neue Buchung gesendet. Anderen freigegebenen Erfassungsweg nutzen.'}
+            except (StoreError,OSError):
+                if self.current is current:self.current=None
+                return 503,{'success':False,'message':'Gerätespeicher nicht bestätigt; keine neue Buchung gesendet. Betreiberklärung erforderlich.'}
+        # No interaction/store mutex across network: B may proceed while A is in flight.
+        try:status,result=self.remote.request_raw(raw)
+        except Exception:status,result=503,{}
+        positive=positive_immediate(status,result,raw);local_warning=False
+        try:
+            if positive:self.store.complete_immediate(entry)
+            else:self.store.uncertain(entry)
+        except (StoreError,OSError):local_warning=True
+        with self.lock:
+            if self.current is current:self.current=None
+        if positive:
+            response={'success':True,'message':result['message'],'time':result['time']}
+            if local_warning:response['message']='Server hat bestätigt; lokale Ablage nicht bestätigt. Nicht erneut buchen; Betreiberklärung erforderlich.'
+            return 200,response
+        return 503,{'success':False,'message':'Nicht bestätigt – ursprünglicher Vorgang bleibt privat zur Klärung erhalten. Keine automatische Wiederholung; bitte neu anmelden oder freigegebenen Korrekturweg nutzen.','durable_pending':True}
+    def handle(self,path,data):
+        if path=='/identify':return self.identify(data)
+        if path=='/event':return self.event(data)
+        if path=='/reset':return self.reset(data)
+        return 404,{'success':False}
+
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--config',default=str(pathlib.Path.home()/'.config/chrono-terminal/device.json'))
+    parser.add_argument('--pending-dir',help='Explicit initialized private uncertainty store; no automatic setup')
     parser.add_argument('--pair',action='store_true');parser.add_argument('--url');parser.add_argument('--device-id',type=int);parser.add_argument('--port',type=int,default=8765);parser.add_argument('--allow-http-localhost',action='store_true')
     args=parser.parse_args();path=pathlib.Path(args.config).expanduser()
     if args.pair:
@@ -62,6 +155,11 @@ def main():
         print('Gerät gekoppelt. Gerätedienst ohne --pair starten.');return
     if path.is_symlink() or not stat.S_ISREG(path.stat().st_mode) or path.stat().st_uid != os.getuid() or stat.S_IMODE(path.stat().st_mode)&0o077:raise SystemExit('Configuration must be a private regular file (chmod 600).')
     config=json.loads(path.read_text());remote=Remote(config,args.allow_http_localhost)
+    store=None;durable=None
+    if args.pending_dir is not None:
+        try:store=PendingStore(args.pending_dir,agent=True)
+        except (StoreError,OSError):print('Privater Klärungsspeicher nicht verfügbar; neue Buchungen werden vor Versand verweigert.')
+        durable=DurableKiosk(remote,store)
     origin=f'http://127.0.0.1:{args.port}'; browser_token=secrets.token_hex(32)
     grant=None; grant_record=None; grant_deadline=0; pending=None;lock=threading.Lock(); stopping=threading.Event()
     def heartbeat():
@@ -86,6 +184,10 @@ def main():
                 data=json.loads(self.rfile.read(size))
                 if not isinstance(data,dict):raise ValueError()
             except (ValueError,TypeError):self.send_json(400,{'success':False,'message':'Ungültige Anfrage.'});return
+            if durable is not None:
+                try:status,result=durable.handle(self.path,data)
+                except Exception:status,result=503,{'success':False,'message':'Vorgang nicht bestätigt; Betreiberklärung erforderlich.'}
+                self.send_json(status,result);return
             with lock:
                 if self.path=='/identify':
                     grant=None;grant_record=None;pending=None
@@ -121,5 +223,9 @@ def main():
     print(f'Terminal bereit: {origin} (Online-Buchungen, keine Offline-Warteschlange)')
     try:server.serve_forever()
     except KeyboardInterrupt:pass
-    finally:stopping.set();server.server_close()
+    finally:
+        stopping.set();server.server_close()
+        if store is not None:
+            try:store.close()
+            except Exception:print('Lokaler Speicherabschluss nicht bestätigt; Betreiberklärung erforderlich.')
 if __name__=='__main__':main()

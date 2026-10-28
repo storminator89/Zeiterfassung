@@ -17,3 +17,12 @@ ReadOnlyPaths=/var/lib/chrono-terminal
 
 [Install]
 WantedBy=multi-user.target
+
+# OPTIONAL PREPARATION ONLY, not an executed system configuration:
+# After a separately authorized owner/directory/setup review, an override can add:
+# ReadWritePaths=/var/lib/chrono-terminal-pending
+# ExecStart=
+# ExecStart=/usr/bin/python3 /opt/chrono-terminal/agent.py --config /var/lib/chrono-terminal/device.json --pending-dir /var/lib/chrono-terminal-pending
+# The directory must already exist as owner-only0700 and be explicitly initialized
+# using pending_admin.py init. Keep device.json read-only/private. No auto replay.
+# Root source approval does NOT authorize installing this override or actual use.
