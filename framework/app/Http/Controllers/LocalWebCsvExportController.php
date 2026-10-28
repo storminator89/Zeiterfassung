@@ -27,6 +27,16 @@ final class LocalWebCsvExportController extends Controller
                     'Content-Type' => 'text/plain; charset=UTF-8',
                 ]);
             }
+            // Match the native quality gate on this SAME complete own snapshot,
+            // before dates/serialization/attachment headers. Never omit a row or
+            // turn invalid time into a successful dash/partial CSV. Open is valid.
+            foreach ($records as $record) {
+                if (\report_record_calculation($record)['status'] === 'invalid') {
+                    return new Response('CSV-Export nicht verfügbar: Mindestens ein Zeiteintrag ist ungültig. Bitte die Originalwerte in der eigenen Arbeitszeitliste prüfen und über Korrekturanträge klären. Es wurden keine Zeiten gelöscht oder gekürzt.', 409, [
+                        'Content-Type' => 'text/plain; charset=UTF-8',
+                    ]);
+                }
+            }
             // Native date() runs under config.php's Berlin default. Capture at
             // the same point, before serialization, without mutating global time.
             $date = (new DateTimeImmutable('now', new DateTimeZone('Europe/Berlin')))->format('Y-m-d');
