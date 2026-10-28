@@ -132,7 +132,7 @@
 
     // Theme beim Laden der Seite setzen
     document.addEventListener('DOMContentLoaded', function() {
-        const savedTheme = localStorage.getItem('theme') || 'light';
+        const savedTheme = chronoReadPreference('theme') || 'light';
         updateTheme(savedTheme);
     });
 
