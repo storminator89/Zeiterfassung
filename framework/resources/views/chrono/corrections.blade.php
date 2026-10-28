@@ -10,7 +10,24 @@
     @if (! $corrections->selectionInvalid)
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">Arbeitszeit korrigieren oder nachtragen</h2>
-        <form method="post">
+        <details id="correction-time-helper" class="mb-4" hidden>
+            <summary class="cursor-pointer font-semibold">Datum und Uhrzeit wählen (Berlin)</summary>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-3">
+                @foreach (['start' => 'Beginn', 'end' => 'Ende'] as $field => $label)
+                <div data-correction-time="{{ $field }}">
+                    <label class="block text-sm font-semibold mb-2" for="{{ $field }}-local">{{ $label }} in Berlin</label>
+                    <input class="input input-bordered w-full" id="{{ $field }}-local" type="datetime-local" step="1" aria-describedby="{{ $field }}-time-status">
+                    <div data-time-occurrence hidden>
+                        <label class="block text-sm font-semibold mt-3 mb-2" for="{{ $field }}-occurrence">Welcher Zeitpunkt?</label>
+                        <select class="select select-bordered w-full" id="{{ $field }}-occurrence"></select>
+                    </div>
+                    <p id="{{ $field }}-time-status" class="text-sm opacity-70 mt-2" role="status" aria-live="polite"></p>
+                    <button class="btn btn-outline btn-sm mt-2" type="button" data-time-apply disabled>In ISO-Feld übernehmen</button>
+                </div>
+                @endforeach
+            </div>
+        </details>
+        <form method="post" id="correction-request-form">
             @csrf
             <fieldset @disabled(! $corrections->enabled)>
                 <input class="input input-bordered w-full" type="hidden" name="action" value="request">
@@ -90,4 +107,5 @@
     </nav>
     @endif
 </main>
+@include('chrono.partials.correction-time-helper')
 @endsection
