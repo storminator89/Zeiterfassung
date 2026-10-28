@@ -17,7 +17,8 @@ final class LocalSession
     public const SOURCE_MARKER = 'chrono_web_auth_source';
     public const PASSWORD_MARKER = 'password_hash_web';
 
-    public function __construct(private Factory $auth, private ?WriterLoginBudget $loginBudget = null) {}
+    public function __construct(private Factory $auth, private ?WriterLoginBudget $loginBudget = null,
+        private ?AccountLifecycleWebIdentity $lifecycle = null) {}
 
     public function attempt(#[\SensitiveParameter] Request $request): bool
     {
@@ -39,6 +40,11 @@ final class LocalSession
                     ['Content-Type' => 'text/plain; charset=UTF-8', 'Retry-After' => '600']));
             }
         }
+        if ($this->lifecycle?->requiresGeneration()) {
+            // A failed/interrupted login must never reuse another login's old
+            // generation marker, even if SessionGuard updated its ID/hash first.
+            $request->session()->forget(AccountLifecycleWebIdentity::GENERATION_MARKER);
+        }
         $guard = $this->auth->guard('web');
         $provider = $guard instanceof SessionGuard ? $guard->getProvider() : null;
         if ($provider instanceof ExistingAccountUserProvider) {
@@ -57,6 +63,7 @@ final class LocalSession
                 }
                 // Never derive identity/source from a request-selected field.
                 $request->session()->put(self::SOURCE_MARKER, $provider->context($user)[0]);
+                $this->lifecycle?->establishSession($request, $user);
 
                 return true;
             } catch (Throwable) {
@@ -70,14 +77,35 @@ final class LocalSession
         }
 
         // Unchanged local-only credentials, hasher and remember=false off-path.
-        $accepted = $guard->attempt([
+        $credentials = [
             'username' => trim($username),
             'password' => $password,
             'auth_source' => 'local',
             'role' => ['user', 'supervisor', 'admin'],
-        ], false);
+        ];
+        if ($this->lifecycle?->requiresGeneration()) {
+            if (! $guard instanceof SessionGuard) {
+                throw new ServiceUnavailableHttpException(null, 'Anmeldung derzeit nicht bestätigt.');
+            }
+            // Stock Eloquent local profile must reject inactive/missing-generation
+            // rows too. Keep Laravel credential checking/session fixation handling.
+            $accepted = $guard->attemptWhen($credentials, fn ($user): bool => $this->lifecycle->admits($user), false);
+        } else {
+            $accepted = $guard->attempt($credentials, false);
+        }
         if ($accepted) {
             $request->session()->put(self::SOURCE_MARKER, 'local');
+            if ($this->lifecycle?->requiresGeneration()) {
+                $user = $guard->user();
+                $marker = $request->session()->get(self::PASSWORD_MARKER);
+                if (! $user instanceof LegacyUser || ! $this->lifecycle->admits($user)
+                    || ! $request->session()->exists(self::PASSWORD_MARKER)
+                    || ! is_string($marker) || $marker === '') {
+                    $this->logout($request);
+                    throw new ServiceUnavailableHttpException(null, 'Anmeldung derzeit nicht bestätigt.');
+                }
+                $this->lifecycle->establishSession($request, $user);
+            }
         }
 
         return $accepted;

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Auth\SelfRegistration;
+use App\Auth\AccountLifecycleWebIdentity;
 use App\Auth\FirstAdminSetup;
 use App\Accounts\IntakePolicyAccess;
 use App\Accounts\IntakePolicyStore;
@@ -58,7 +59,7 @@ class AppServiceProvider extends ServiceProvider
                     throw new LogicException('No admitted operation-scoped user-mutation writer is configured.');
                 }
                 return $app->make(AttendanceWriter::class);
-            },
+            }, $app->make(AccountLifecycleWebIdentity::class),
         ));
         // Pure/lazy service only. No default directory, root loader or connection.
         $this->app->scoped(LocalWebLdapSync::class, fn ($app) => new LegacyLocalWebLdapSync(

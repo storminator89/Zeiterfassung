@@ -38,6 +38,19 @@ final class RuntimeDatabase
         return $this->admission->schemaProfile === 'intake-policy-v4';
     }
 
+    /** V5 metadata is recognized, but not aliased into the incomplete V4 runtime. */
+    public function isAccountLifecycleV5(): bool
+    {
+        return $this->admission->schemaProfile === 'account-lifecycle-v5';
+    }
+
+    private function requireImplementedRuntime(): void
+    {
+        if ($this->isAccountLifecycleV5()) {
+            throw new LogicException('Account-lifecycle-v5 runtime is closed until complete cross-channel enforcement and recovery admission.');
+        }
+    }
+
     // Every resolution owns a fresh bare handle, never a manager/read connection.
     public function writer(AuditContext $context, AuditFunctions $functions): AttendanceWriter
     {
@@ -54,6 +67,7 @@ final class RuntimeDatabase
     /** Fixed secret-bearing operation; no source/path selector or raw-handle callback. */
     public function databaseSnapshot(LegacyUser $authenticated): DatabaseSnapshotArtifact
     {
+        $this->requireImplementedRuntime();
         $identifier = (int) $authenticated->getKey();
         $password = $authenticated->getAuthPassword();
         if ($identifier < 1 || $authenticated->auth_source !== 'local' || ! is_string($password) || $password === '') {
@@ -142,6 +156,7 @@ final class RuntimeDatabase
     /** Separate native driver admission; existing PDO reader/writer bodies stay untouched. */
     private function openSnapshotSource(): SQLite3
     {
+        $this->requireImplementedRuntime();
         $source = null;
         try {
             @$this->identity(false);
@@ -213,6 +228,7 @@ final class RuntimeDatabase
 
     private function open(bool $write): PDO
     {
+        $this->requireImplementedRuntime();
         $phase = 'private file identity';
         try {
             $this->identity($write);

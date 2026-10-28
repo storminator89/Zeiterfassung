@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Auth\LegacyUser;
+use App\Auth\AccountLifecycleWebIdentity;
 use App\Auth\ExistingAccountUserProvider;
 use App\Auth\LocalSession;
 use Closure;
@@ -15,7 +16,8 @@ use Symfony\Component\HttpFoundation\Response;
 /** Reload identity/roles before stock auth:web + auth.session and any policy. */
 final class RefreshLocalAccount
 {
-    public function __construct(private Factory $auth, private LocalSession $sessions) {}
+    public function __construct(private Factory $auth, private LocalSession $sessions,
+        private ?AccountLifecycleWebIdentity $lifecycle = null) {}
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -37,7 +39,10 @@ final class RefreshLocalAccount
         $eligible = $user instanceof LegacyUser && $user->auth_source === $source
             && ($source === 'local' ? in_array($user->role, ['user', 'supervisor', 'admin'], true)
                 : ($provider instanceof ExistingAccountUserProvider && $provider->admits($user)));
-        if (! $marked || ! $eligible) {
+        // V5 never adopts an absent/null/string marker, even on the stock
+        // local-only Eloquent profile. Both user ID and integer generation bind it.
+        $generationMatches = $this->lifecycle?->sessionMatches($request, $user) ?? true;
+        if (! $marked || ! $eligible || ! $generationMatches) {
             $this->sessions->logout($request);
             throw new AuthenticationException('Unauthenticated.', ['web']);
         }

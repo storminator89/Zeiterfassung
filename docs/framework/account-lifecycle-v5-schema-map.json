@@ -1,0 +1,87 @@
+{
+  "format_version": 1,
+  "purpose": "Separate static canonical V5 overlay; NEW-only schema/admission foundation, not a migration, runtime activation or full #30 enforcement claim.",
+  "source_commit": "3cdcf90f5cf6331f2d57940e0ee3eb602d5907f7",
+  "profile": "account-lifecycle-v5",
+  "application_versions": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "runtime_enabled": false,
+  "base_mapping": {
+    "path": "docs/framework/schema-map.json",
+    "sha256": "22be852e917f907eae093060130076de604f6b6796814bcc0bb3b84b5a003386"
+  },
+  "source_files": {
+    "framework/app/Accounts/AccountLifecycleSchema.php": {
+      "sha256": "259e4e559bf2b4e2e79be566d5672d8d793f26a92286e806dfb8fb9f23cdd53f"
+    },
+    "framework/database/fixtures/account_lifecycle_v5.php": {
+      "sha256": "0500c2c1429bfaed5a95b048b5453e747a177e5acdc4d60a9b8d17c72e8bd97a"
+    },
+    "framework/app/LegacyDatabase/AccountLifecycleV5References.php": {
+      "sha256": "2159f82cefe162a8ad64d9467f75a11f5184ac0a7e07f343a6a70f5bd4bbcae2"
+    },
+    "framework/app/LegacyDatabase/FreshAccountLifecycleV5Installation.php": {
+      "sha256": "8620324770d2d978f71c977411991f508ff98db53b161e8cdb6ae1782996a0c8"
+    },
+    "framework/app/LegacyDatabase/V2Preflight.php": {
+      "sha256": "eb6ee4333f2adb5afe8d477887527f5af6e4d64d6e9d3480868f1e6cae17497a"
+    },
+    "framework/app/LegacyDatabase/RuntimeAdmission.php": {
+      "sha256": "7018bd5a18f782f321409060b563f763d56203cc4f64d4a3958f0cc55543569f"
+    },
+    "framework/app/LegacyDatabase/RuntimeDatabase.php": {
+      "sha256": "b1bfff43172e71a083f5b711cc02e2cb5f086a1efe7cae013a557ba4ab29db4e"
+    },
+    "framework/config/chrono_runtime.php": {
+      "sha256": "9f51e79e6bd3c7aa99aec28d0e2eeac91eaeeb7ca2f2b4a37dd105b149a078c7"
+    }
+  },
+  "signatures": {
+    "base_schema_signature": "3084a5010337aaf1c52166c11177acaab417bf1181959273b2c5876bcc05ef48",
+    "user_audit_schema_signature": "e5ee2191b0508fac0e4141f4c037efebf116866511425b5a61c9fd663e15a1f3",
+    "intake_policy_schema_signature": "5cbfef1d8acd26be004767c1806b6a6365f856a1bd9c95b2a970f61ecacf2774",
+    "schema_signature": "74a0e7d0534d3961349927ac4159acf50ae2b86ffb87551ccde6a6a64b044055"
+  },
+  "columns": {
+    "users.account_status": "TEXT NOT NULL CHECK(typeof(account_status)='text' AND account_status IN ('active','inactive','departed'))",
+    "users.auth_generation": "INTEGER NOT NULL CHECK(typeof(auth_generation)='integer' AND auth_generation>=1)",
+    "terminal_grants.account_generation": "INTEGER NOT NULL CHECK(typeof(account_generation)='integer' AND account_generation>=1)"
+  },
+  "definitions": {
+    "audit_users_INSERT": "CREATE TRIGGER audit_users_INSERT AFTER INSERT ON users BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'users',NEW.id,NEW.id,'INSERT',NULL,json_object('id',NEW.id,'username',NEW.username,'regelarbeitszeit',NEW.regelarbeitszeit,'ueberstunden',NEW.ueberstunden,'role',NEW.role,'department_id',NEW.department_id,'supervisor_id',NEW.supervisor_id,'account_status',NEW.account_status,'auth_generation',NEW.auth_generation)); END",
+    "audit_users_UPDATE": "CREATE TRIGGER audit_users_UPDATE AFTER UPDATE ON users BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'users',NEW.id,NEW.id,'UPDATE',json_object('id',OLD.id,'username',OLD.username,'regelarbeitszeit',OLD.regelarbeitszeit,'ueberstunden',OLD.ueberstunden,'role',OLD.role,'department_id',OLD.department_id,'supervisor_id',OLD.supervisor_id,'account_status',OLD.account_status,'auth_generation',OLD.auth_generation),json_object('id',NEW.id,'username',NEW.username,'regelarbeitszeit',NEW.regelarbeitszeit,'ueberstunden',NEW.ueberstunden,'role',NEW.role,'department_id',NEW.department_id,'supervisor_id',NEW.supervisor_id,'account_status',NEW.account_status,'auth_generation',NEW.auth_generation)); END",
+    "audit_users_DELETE": "CREATE TRIGGER audit_users_DELETE AFTER DELETE ON users BEGIN INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json) VALUES(unixepoch(),audit_actor(),audit_reason(),'users',OLD.id,OLD.id,'DELETE',json_object('id',OLD.id,'username',OLD.username,'regelarbeitszeit',OLD.regelarbeitszeit,'ueberstunden',OLD.ueberstunden,'role',OLD.role,'department_id',OLD.department_id,'supervisor_id',OLD.supervisor_id,'account_status',OLD.account_status,'auth_generation',OLD.auth_generation),NULL); END",
+    "require_users_initial_authority_INSERT": "CREATE TRIGGER require_users_initial_authority_INSERT BEFORE INSERT ON users WHEN NEW.account_status<>'active' OR NEW.auth_generation<>1 BEGIN SELECT RAISE(ABORT,'New account authority must be explicit'); END",
+    "protect_users_authority_UPDATE": "CREATE TRIGGER protect_users_authority_UPDATE BEFORE UPDATE ON users WHEN (NEW.account_status=OLD.account_status AND NEW.auth_generation<>OLD.auth_generation) OR (NEW.account_status<>OLD.account_status AND (OLD.auth_generation=9223372036854775807 OR NEW.auth_generation<>OLD.auth_generation+1)) BEGIN SELECT RAISE(ABORT,'Account authority transition required'); END",
+    "require_terminal_grants_authority_INSERT": "CREATE TRIGGER require_terminal_grants_authority_INSERT BEFORE INSERT ON terminal_grants WHEN NOT EXISTS(SELECT 1 FROM users WHERE id=NEW.user_id AND account_status='active' AND auth_generation=NEW.account_generation) BEGIN SELECT RAISE(ABORT,'Current account authority required'); END",
+    "protect_terminal_grants_authority_UPDATE": "CREATE TRIGGER protect_terminal_grants_authority_UPDATE BEFORE UPDATE ON terminal_grants WHEN NEW.token_hash IS NOT OLD.token_hash OR NEW.terminal_id IS NOT OLD.terminal_id OR NEW.user_id IS NOT OLD.user_id OR NEW.credential_version IS NOT OLD.credential_version OR NEW.expires IS NOT OLD.expires OR NEW.account_generation IS NOT OLD.account_generation BEGIN SELECT RAISE(ABORT,'Grant authority is immutable'); END"
+  },
+  "new_account_contract": {
+    "explicit_status": "active",
+    "explicit_generation": 1,
+    "implicit_defaults": false
+  },
+  "fresh_source_contract": {
+    "fixture": "anonymous-memory only",
+    "registration": "caller-owned NEW private source, exact empty canonical rows/seeds and physical empty login_attempts; exact four-row Laravel ledger",
+    "existing_data_upgrade": false
+  },
+  "constraints": [
+    "Status changes increment authorization generation exactly once; unchanged status forbids generation reset.",
+    "SQLite storage types and values are constrained; overflow is rejected.",
+    "V5 grants require current active matching generation at INSERT and cannot change their captured authority.",
+    "V5 user audit snapshots add status/generation and exclude password/email/token."
+  ],
+  "runtime_gate": "RuntimeDatabase refuses V5 reader/writer/snapshot before source filesystem access; no V4 capability alias.",
+  "remaining_acceptance": [
+    "Generation-aware session/JWT/read/write/terminal enforcement, including historical receipts and sync.",
+    "Local eligible last-Admin invariant under the sole writer lock, with actual recovery acceptance.",
+    "Full fresh-file/key/setup/composition and intentionally reviewed Native new-V5 refusal.",
+    "HTTP/CSRF/concurrency/commit-failure/restore/filesystem runtime admission gates."
+  ]
+}

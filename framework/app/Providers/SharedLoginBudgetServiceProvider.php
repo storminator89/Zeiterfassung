@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Api\LegacyApiLoginBudget;
 use App\Api\WriterApiLoginBudget;
 use App\Auth\LocalSession;
+use App\Auth\AccountLifecycleWebIdentity;
 use App\Auth\WriterLoginBudget;
 use App\FreshWeb\FreshWebConfiguration;
 use App\LegacyDatabase\AttendanceWriter;
@@ -52,7 +53,7 @@ final class SharedLoginBudgetServiceProvider extends ServiceProvider
         $this->app->instance(WriterLoginBudget::class, $budget);
         $this->app->instance(LegacyApiLoginBudget::class, new WriterApiLoginBudget($budget));
         $this->app->bind(LocalSession::class, static fn ($app): LocalSession =>
-            new LocalSession($app->make('auth'), $budget));
+            new LocalSession($app->make('auth'), $budget, $app->make(AccountLifecycleWebIdentity::class)));
     }
 
     /** Pure route-selection check; never resolves auth, a writer, PDO, key or store. */
