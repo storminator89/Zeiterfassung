@@ -54,9 +54,39 @@ final class LocalWebHistoryController extends Controller
         $language = is_string($language) && in_array($language, ['de', 'en', 'zh'], true) ? $language : 'de';
         $request->session()->put('lang', $language);
 
-        $query = HistoryQuery::fromQueryString((string) $request->server->get('QUERY_STRING', ''));
-        // Invalid native filters render HTTP 400 without querying audit rows.
-        $rows = $query->errors ? [] : $this->reads->historyQuery($query);
+        $query = HistoryQuery::fromQueryString($exportQueryString);
+        $showRelations = ($exportParameters['relations'] ?? null) === '1';
+        $errors = $query->errors;
+        if (array_key_exists('relations', $exportParameters) && ! $showRelations) {
+            $errors[] = 'Ungültige Auswahl der Historienbezüge.';
+        }
+        $relations = null;
+        $rows = [];
+        // The opt-in reuses the existing bounded same-snapshot/owner-checked bundle.
+        // Its public export projection drops internal owners/raw fields before Blade.
+        if (! $errors && $showRelations) {
+            try {
+                $bundle = $this->reads->historyCorrelations($query);
+                $selected = \chrono_history_correlated_export_page($bundle, $query->values);
+                $relations = json_decode($selected['body'], true, 512, JSON_THROW_ON_ERROR)['correlation'];
+                foreach ($relations['events'] as &$event) {
+                    $event['received_label'] = \attendance_local($event['received_at']);
+                    $event['kind_label'] = match ($event['kind']) {
+                        'start' => 'Start', 'pause_start' => 'Pausenbeginn',
+                        'pause_end' => 'Pausenende', 'end' => 'Ende',
+                    };
+                }
+                unset($event);
+                $rows = $bundle['rows'];
+            } catch (\Illuminate\Auth\AuthenticationException | \Illuminate\Auth\Access\AuthorizationException $authorizationError) {
+                throw $authorizationError;
+            } catch (\Throwable) {
+                return new Response('Historienbezüge derzeit nicht verfügbar.', 503,
+                    ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store', 'X-Content-Type-Options' => 'nosniff']);
+            }
+        } elseif (! $errors) {
+            $rows = $this->reads->historyQuery($query);
+        }
         $labels = $query->entities;
         $entries = array_map(static fn (array $row): array => [
             'id' => (int) $row['id'],
@@ -70,6 +100,14 @@ final class LocalWebHistoryController extends Controller
             ),
         ], $rows);
 
+        $byAudit = array_column($relations['anchors'] ?? [], null, 'audit_id');
+        foreach ($entries as &$entry) {
+            $entry['relation'] = $byAudit[(string) $entry['id']] ?? null;
+        }
+        unset($entry);
+        $withRelations = static fn (string $url): string => $url.(str_contains($url, '?') ? '&' : '?').'relations=1';
+        $pageUrl = $query->url($query->hasBefore ? (int) $query->values['before'] : null);
+
         return response()->view('chrono.history', [
             // Deliberate prerequisite: history.php must first join the shared chrome whitelist.
             // Only the separately reviewed protected route may supply this controller's actor.
@@ -79,12 +117,15 @@ final class LocalWebHistoryController extends Controller
                 interactions: $this->interactions, activePage: 'history.php',
             ),
             'history' => new HistoryPage(
-                $entries, $query->values, $query->errors, $labels,
-                ! $query->errors && $query->hasBefore ? $query->url() : null,
-                count($rows) === 100 ? $query->url((int) $rows[array_key_last($rows)]['id']) : null,
-                ! $query->errors ? \chrono_history_export_url($query->values) : null,
-                ! $query->errors ? \chrono_history_correlated_export_url($query->values) : null,
+                $entries, $query->values, $errors, $labels,
+                ! $errors && $query->hasBefore ? ($showRelations ? $withRelations($query->url()) : $query->url()) : null,
+                count($rows) === 100 ? ($showRelations ? $withRelations($query->url((int) $rows[array_key_last($rows)]['id']))
+                    : $query->url((int) $rows[array_key_last($rows)]['id'])) : null,
+                ! $errors ? \chrono_history_export_url($query->values) : null,
+                ! $errors ? \chrono_history_correlated_export_url($query->values) : null,
+                showRelations: $showRelations, relations: $relations,
+                relationsUrl: ! $errors ? ($showRelations ? $pageUrl : $withRelations($pageUrl)) : null,
             ),
-        ], $query->errors ? 400 : 200);
+        ], $errors ? 400 : 200, $showRelations ? ['Cache-Control' => 'no-store', 'X-Content-Type-Options' => 'nosniff'] : []);
     }
 }
