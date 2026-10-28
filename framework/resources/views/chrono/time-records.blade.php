@@ -21,6 +21,7 @@
             <i class="fas fa-clock text-primary"></i>
             Arbeitszeiten und Abwesenheitsgutschriften
         </h3>
+        <p class="text-sm opacity-70 mb-4">Datumszuordnung: Eine abgeschlossene Schicht wird mit ihrer gesamten Nettozeit nach erfasster Pause dem Berliner Startdatum zugerechnet – auch über Mitternacht, Wochen-, Monats- und Jahresgrenzen oder Zeitumstellungen hinweg. Laufende Buchungen sind noch keine abgeschlossene Zeit; es erfolgt keine tagweise Aufteilung.</p>
         <div class="overflow-x-auto rounded-lg border border-base-200">
             <table class="table w-full">
                 <thead class="bg-base-200">
