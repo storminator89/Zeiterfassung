@@ -17,10 +17,24 @@ $detaillierteDaten = [];
 $reportAvailable = false;
 $invalidRecords = [];
 $absenceConflicts = [];
+$teamStatus = null;
+$teamStatusUnavailable = false;
 $userSearch = isset($_GET['user_search']) && is_string($_GET['user_search']) ? trim($_GET['user_search']) : '';
 $tableQuery = ['lang' => $lang, 'user_search' => $userSearch];
 $pageUrl = static fn (int $page): string => '?' . htmlspecialchars(http_build_query(array_merge($tableQuery, ['page' => $page])), ENT_QUOTES, 'UTF-8');
 if ($user_role === 'admin' || $user_role === 'supervisor') {
+    require_once __DIR__.'/lib/team_status.php';
+    $currentTeamRole = null;
+    try {
+        $teamStatus = chrono_native_team_status($conn, (int) $user_id, (string) ($_SESSION['auth_version'] ?? ''), $currentTeamRole);
+    } catch (Throwable) {
+        // Never turn an auth/SQL/snapshot error into absence or an empty team.
+        $teamStatusUnavailable = true;
+    }
+    // Use the role actually checked above, never a now-known stale session role.
+    // NULL means the new read could not establish current authorization.
+    $user_role = $currentTeamRole ?? '';
+    if ($user_role === 'admin' || $user_role === 'supervisor') {
     require_once __DIR__.'/lib/report_ordering.php';
     report_register_start_order($conn);
     $stmt = $conn->prepare("SELECT z.*, u.username, u.id as user_id, u.regelarbeitszeit, u.ueberstunden as vorherige_ueberstunden, substr(z.startzeit,1,10) AS day, NULL AS weekNumber
@@ -108,6 +122,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
             'overtime_minutes' => $totalOverMinutes,
             'ueberstunden' => $formattedOvertime
         ];
+    }
     }
     }
 }
@@ -206,6 +221,35 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                     </div>
                 </div>
             <?php else : ?>
+                <?php if ($teamStatusUnavailable) : ?>
+                    <div class="alert alert-warning mb-4" role="alert"><span><?= h(TEAM_STATUS_TITLE) ?>: <?= h(TEAM_STATUS_UNAVAILABLE) ?></span></div>
+                <?php elseif ($teamStatus !== null) : ?>
+                    <section class="card bg-base-100 shadow-xl mb-8" aria-labelledby="nativeTeamStatusTitle">
+                        <div class="card-body">
+                            <h3 id="nativeTeamStatusTitle" class="card-title"><?= h(TEAM_STATUS_TITLE) ?></h3>
+                            <p class="text-sm opacity-70"><?= h(TEAM_STATUS_SNAPSHOT_NOTE) ?> <time datetime="<?= h($teamStatus['loaded_at']) ?>"><?= h($teamStatus['loaded_at']) ?></time></p>
+                            <div class="overflow-x-auto">
+                                <table class="table table-zebra w-full">
+                                    <thead><tr><th><?= h(TABLE_HEADER_USERNAME) ?></th><th><?= h(TEAM_STATUS_STATE) ?></th></tr></thead>
+                                    <tbody>
+                                    <?php foreach ($teamStatus['people'] as $person) : ?>
+                                        <?php $teamStateLabel = match ($person['state']) {
+                                            'working' => TEAM_STATUS_WORKING,
+                                            'paused' => TEAM_STATUS_PAUSED,
+                                            'absent' => TEAM_STATUS_ABSENT,
+                                            default => TEAM_STATUS_UNKNOWN,
+                                        }; ?>
+                                        <tr><td><?= h($person['username']) ?></td><td><?= h($teamStateLabel) ?></td></tr>
+                                    <?php endforeach; ?>
+                                    <?php if ($teamStatus['people'] === []) : ?>
+                                        <tr><td colspan="2" class="opacity-70"><?= h(TEAM_STATUS_EMPTY) ?></td></tr>
+                                    <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                <?php endif; ?>
                 <?php if (!$reportAvailable) : ?>
                     <?php if ($absenceConflicts !== []) : ?>
                     <div class="alert alert-warning mb-4" role="alert"><span><strong>Klärung offen.</strong> Arbeitszeit und ganztägige Abwesenheit überschneiden sich im freigegebenen Berichtsumfang. Diese Auswertung enthält deshalb keine abschließenden Summen. Bitte die betroffenen Originaleinträge in der <a class="link" href="history.php">Historie</a> prüfen und die Korrektur durch die betroffene Person mit anschließender Vier-Augen-Freigabe klären. Die <a class="link" href="index.php">eigene Arbeitszeitliste</a> und <a class="link" href="adjustments.php">Korrekturanträge</a> bleiben verfügbar; es wurden keine Zeiten gelöscht oder gekürzt.</span></div>
