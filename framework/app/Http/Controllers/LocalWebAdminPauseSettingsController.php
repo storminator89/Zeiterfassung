@@ -11,6 +11,8 @@ use Illuminate\Contracts\Config\Repository;
 use App\Accounts\IntakePolicyAccess;
 use App\Chrono\LocalWebDepartments;
 use App\Chrono\LocalWebAdminUsers;
+use App\Chrono\LocalWebAdminUserMutations;
+use App\Auth\LocalSession;
 use App\Chrono\LocalWebPauseSettings;
 use App\View\ExistingUi\AdminPauseSettingsPage;
 use App\View\ExistingUi\AttendancePage;
@@ -27,7 +29,7 @@ use InvalidArgumentException;
 use DomainException;
 use Throwable;
 
-/** Original Admin cards, bounded create and read-only details; no native dispatch. */
+/** Original Admin cards and fixed reviewed operations; never native dispatch. */
 final class LocalWebAdminPauseSettingsController extends Controller
 {
     public function __construct(
@@ -40,6 +42,8 @@ final class LocalWebAdminPauseSettingsController extends Controller
         private ?IntakePolicyAccess $intake = null,
         private ?LocalWebLdapSync $ldapSync = null,
         private ?Repository $config = null,
+        private ?LocalWebAdminUserMutations $userMutations = null,
+        private ?LocalSession $sessions = null,
     ) {}
 
     public function index(Request $request): Response
@@ -80,6 +84,9 @@ final class LocalWebAdminPauseSettingsController extends Controller
         $form = $request->request->all();
         $supported = ['update_pause_settings' => LocalWebPauseSettings::COMMAND_FIELDS,
             ...LocalWebDepartments::COMMAND_FIELDS, ...LocalWebAdminUsers::COMMAND_FIELDS];
+        if ($this->userMutationsEnabled()) {
+            $supported += LocalWebAdminUserMutations::COMMAND_FIELDS;
+        }
         if ($this->intake?->isV4() === true) {
             $supported['update_intake_policy'] = ['update_intake_policy', 'revision', 'manual_enabled', 'ldap_sync_enabled', 'registration_enabled'];
             if ($this->ldapHttpEnabled()) { $supported['sync_ldap'] = LocalWebLdapSync::COMMAND_FIELDS; }
@@ -109,6 +116,10 @@ final class LocalWebAdminPauseSettingsController extends Controller
             return $this->createUser($request, $form);
         }
 
+        if (in_array($actions[0], ['edit_user', 'delete_user'], true)) {
+            return $this->mutateUser($request, $form, $actions[0]);
+        }
+
         if ($actions[0] !== 'update_pause_settings') {
             return $this->department($request, $form, $actions[0]);
         }
@@ -132,6 +143,56 @@ final class LocalWebAdminPauseSettingsController extends Controller
     {
         return $this->intake?->isV4() === true && $this->ldapSync !== null
             && $this->config?->get('chrono_ldap_sync.http_enabled', false) === true;
+    }
+
+    /** Only the admitted private credential-document branch may expose password editing. */
+    private function userMutationsEnabled(): bool
+    {
+        return $this->intake?->isV4() === true && $this->config?->get('app.debug') === false
+            && $this->interactions->adminPauseSettings && $this->userMutations !== null;
+    }
+
+    private function mutateUser(#[\SensitiveParameter] Request $request,
+        #[\SensitiveParameter] array $form, string $action): Response|RedirectResponse
+    {
+        if (! $this->userMutationsEnabled()) {
+            return $this->userMutationText('Benutzerverwaltung ist in diesem Profil nicht verfügbar.', 503);
+        }
+        try {
+            $result = $this->userMutations->apply(array_diff_key($form, array_flip(['_token', 'csrf_token'])));
+        } catch (AuthenticationException|AuthorizationException $error) {
+            throw $error;
+        } catch (\AttendanceError $error) {
+            return $this->userMutationText($error->getMessage(), $error->status);
+        } catch (InvalidArgumentException $error) {
+            return $this->page($request, $error->getMessage());
+        } catch (Throwable) {
+            return $this->userMutationText('Benutzeränderung nicht bestätigt. Bitte neu laden und den gespeicherten Stand prüfen; nicht automatisch wiederholen.', 503);
+        }
+
+        // The service returned only after COMMIT. Never put logout or a later
+        // privileged page read inside the mutation-failure catch above.
+        if ($result->reauthenticate) {
+            try {
+                if ($this->sessions === null) { throw new \LogicException; }
+                $this->sessions->logout($request);
+            } catch (Throwable) {
+                return $this->userMutationText('Änderung gespeichert. Abmeldung konnte nicht bestätigt werden. Bitte erneut anmelden.', 503);
+            }
+
+            return new RedirectResponse('login.php', 303, ['Cache-Control' => 'no-store', 'Referrer-Policy' => 'no-referrer']);
+        }
+        try {
+            return $this->page($request, successKey: $action === 'delete_user' ? 'USER_DELETED_SUCCESS' : 'USER_UPDATED_SUCCESS');
+        } catch (Throwable) {
+            return $this->userMutationText('Änderung gespeichert. Die Verwaltungsansicht konnte nicht neu geladen werden. Bitte neu laden oder erneut anmelden.', 503);
+        }
+    }
+
+    private function userMutationText(string $text, int $status): Response
+    {
+        return new Response($text, $status, ['Content-Type' => 'text/plain; charset=UTF-8',
+            'Cache-Control' => 'no-store', 'X-Content-Type-Options' => 'nosniff', 'Referrer-Policy' => 'no-referrer']);
     }
 
     private function synchronizeLdap(#[\SensitiveParameter] Request $request, #[\SensitiveParameter] array $form): Response|RedirectResponse
@@ -301,6 +362,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         $copy = new Copy($language);
 
         $response = response()->view('chrono.admin-pause-settings', [
+            'managedUsersEnabled' => $this->userMutationsEnabled(),
             'page' => new AttendancePage(
                 $copy, (int) $actor->getAuthIdentifier(), $actor->username,
                 $actor->role, $this->reads->attendanceStatus(),

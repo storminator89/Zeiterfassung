@@ -1,8 +1,13 @@
 @extends('chrono.layouts.app')
 
 @section('content')
+@php($managedUsersEnabled = $managedUsersEnabled ?? false)
 <main class="container mx-auto px-4 py-8 chrono-page">
+    @if ($managedUsersEnabled)
+    <div class="alert alert-info mb-4" role="note">Die vorhandene Benutzerverwaltung ist in diesem privaten Laravel-V4-Profil verbunden. Historiengeschützte Konten und die letzte lokale Administration bleiben erhalten. API-Token sind nicht angebunden; LDAP benötigt weiterhin die getrennte HTTP- und Aufnahmefreigabe.</div>
+    @else
     <div class="alert alert-info mb-4" role="note">In dieser Laravel-Ansicht sind die vorhandene Pausenregel-, Abteilungsverwaltung und das Erstellen lokaler Benutzer verbunden. Bestehende Benutzerdetails bleiben nur lesend; Änderungen, Löschen, Passwortänderungen, API-Token sind nicht angebunden. LDAP-Synchronisierung erfordert zusätzlich die ausdrücklich zugelassene V4-HTTP-Komposition und gespeicherte Aufnahmefreigabe.</div>
+    @endif
     @if ($adminPauseSettings->error)
     <div class="alert alert-error shadow-lg mb-4" role="alert"><div><i class="fas fa-exclamation-circle"></i><span>{{ $adminPauseSettings->error }}</span></div></div>
     @endif
@@ -42,7 +47,9 @@
         <div class="card-body">
             <h2 class="card-title text-2xl mb-4">{{ $page->copy->text('USER_MANAGEMENT_TITLE') }}</h2>
             @if ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled'])<p class="alert alert-info mb-4" role="note">Manuelle Benutzeraufnahme ist durch die gespeicherte Auswahl deaktiviert.</p>@endif
+            @unless ($managedUsersEnabled)
             <div id="user-mutations-hold" class="alert alert-info mb-4" role="note">Bestehende Benutzer bleiben nur lesend: Ändern, Löschen und Passwortänderungen sind nicht verbunden.</div>
+            @endunless
             <button type="button" class="btn btn-primary mb-4" id="toggleUserForm" @disabled(! $adminPauseSettings->enabled || ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled']))><i class="fas fa-plus mr-2"></i>{{ $page->copy->text('BUTTON_CREATE_USER') }}</button>
             <div id="userForm" class="hidden mb-6">
                 <form method="post" class="space-y-4">
@@ -125,7 +132,16 @@
                             <td>{{ $user['regelarbeitszeit'] }}</td><td>{{ $user['ueberstunden'] }}</td>
                             <td>
                                 <button type="button" class="btn btn-ghost btn-sm" data-read-user="{{ $user['id'] }}" title="{{ $page->copy->text('BUTTON_EDIT') }}"><i class="fas fa-edit"></i></button>
+                                @if ($managedUsersEnabled)
+                                <form method="post" class="inline" data-delete-managed-user>
+                                    @csrf
+                                    <input type="hidden" name="delete_user" value="1">
+                                    <input type="hidden" name="user_id" value="{{ $user['id'] }}">
+                                    <button type="submit" class="btn btn-ghost btn-sm" title="{{ $page->copy->text('BUTTON_DELETE') }}"><i class="fas fa-trash-alt"></i></button>
+                                </form>
+                                @else
                                 <button type="button" class="btn btn-ghost btn-sm" title="{{ $page->copy->text('BUTTON_DELETE') }}" disabled aria-describedby="user-mutations-hold"><i class="fas fa-trash-alt"></i></button>
+                                @endif
                             </td>
                         </tr>
                     @endforeach
@@ -208,29 +224,44 @@
     </div>
 </main>
 <dialog id="editUserModal" class="modal">
+    @if ($managedUsersEnabled)
+    <form method="post" class="modal-box" id="managed-user-form">
+        @csrf
+        <input type="hidden" name="edit_user" value="1">
+    @else
     <div class="modal-box">
+    @endif
         <h3 class="font-bold text-lg mb-4">{{ $page->copy->text('MODAL_TITLE_EDIT_USER') }}</h3>
+        @unless ($managedUsersEnabled)
         <div id="user-detail-hold" class="alert alert-info mb-4" role="note">Nur lesende Benutzerdetails. Änderungen und Passwortaktionen sind nicht verbunden; es gibt hier keine Speicherung.</div>
-        <input type="hidden" id="edit_user_id">
-        <div class="form-control mb-4"><label class="label" for="edit_username"><span class="label-text">{{ $page->copy->text('FORM_USERNAME') }}</span></label><input type="text" id="edit_username" class="input input-bordered" readonly></div>
-        <div class="form-control mb-4"><label class="label" for="edit_email"><span class="label-text">{{ $page->copy->text('FORM_EMAIL') }}</span></label><input type="email" id="edit_email" class="input input-bordered" readonly></div>
+        @endunless
+        <input type="hidden" id="edit_user_id" name="user_id">
+        <div class="form-control mb-4"><label class="label" for="edit_username"><span class="label-text">{{ $page->copy->text('FORM_USERNAME') }}</span></label><input type="text" id="edit_username" name="username" class="input input-bordered" required @readonly(! $managedUsersEnabled)></div>
+        <div class="form-control mb-4"><label class="label" for="edit_email"><span class="label-text">{{ $page->copy->text('FORM_EMAIL') }}</span></label><input type="email" id="edit_email" name="email" class="input input-bordered" required @readonly(! $managedUsersEnabled)></div>
         <div class="form-control mb-4"><label class="label" for="edit_role"><span class="label-text">{{ $page->copy->text('FORM_ROLE') }}</span></label>
-            <select id="edit_role" class="select select-bordered" disabled>
+            <select id="edit_role" name="role" class="select select-bordered" required @disabled(! $managedUsersEnabled)>
                 <option value="user">{{ $page->copy->text('FORM_ROLE_USER') }}</option><option value="admin">{{ $page->copy->text('FORM_ROLE_ADMIN') }}</option><option value="supervisor">{{ $page->copy->text('FORM_ROLE_SUPERVISOR') }}</option>
             </select>
         </div>
-        <div class="form-control mb-4"><label class="label" for="edit_department"><span class="label-text">{{ $page->copy->text('FORM_DEPARTMENT') }}</span></label><select id="edit_department" class="select select-bordered" disabled></select></div>
-        <div class="form-control mb-4"><label class="label" for="edit_supervisor"><span class="label-text">{{ $page->copy->text('FORM_SUPERVISOR') }}</span></label><select id="edit_supervisor" class="select select-bordered" disabled></select></div>
+        <div class="form-control mb-4"><label class="label" for="edit_department"><span class="label-text">{{ $page->copy->text('FORM_DEPARTMENT') }}</span></label><select id="edit_department" name="department" class="select select-bordered" required @disabled(! $managedUsersEnabled)>
+            @if ($managedUsersEnabled) @foreach ($adminPauseSettings->departments as $department)<option value="{{ $department['id'] }}">{{ $department['name'] }}</option>@endforeach @endif
+        </select></div>
+        <div class="form-control mb-4"><label class="label" for="edit_supervisor"><span class="label-text">{{ $page->copy->text('FORM_SUPERVISOR') }}</span></label><select id="edit_supervisor" name="supervisor" class="select select-bordered" @disabled(! $managedUsersEnabled)>
+            @if ($managedUsersEnabled)
+            <option value="">{{ $page->copy->text('FORM_NO_SUPERVISOR') }}</option>
+            @foreach ($adminPauseSettings->supervisors as $supervisor)<option value="{{ $supervisor['id'] }}">{{ $supervisor['username'] }}</option>@endforeach
+            @endif
+        </select></div>
         <div class="form-control mb-4"><label class="label" for="edit_regelarbeitszeit"><span class="label-text">{{ $page->copy->text('FORM_REGULAR_WORKING_HOURS') }}</span></label>
-            <p>Änderungen am Soll bitte unter <a href="work_models.php">Arbeitszeitmodelle</a> mit Gültigkeitsdatum speichern.</p><input readonly type="number" id="edit_regelarbeitszeit" class="input input-bordered" step="0.01">
+            <p>Änderungen am Soll bitte unter <a href="work_models.php">Arbeitszeitmodelle</a> mit Gültigkeitsdatum speichern.</p><input readonly type="number" id="edit_regelarbeitszeit" name="regelarbeitszeit" class="input input-bordered" step="0.01" required>
         </div>
-        <div class="form-control mb-4"><label class="label" for="edit_ueberstunden"><span class="label-text">{{ $page->copy->text('FORM_OVERTIME') }}</span></label><input type="number" id="edit_ueberstunden" class="input input-bordered" step="0.01" readonly></div>
-        <div class="form-control mb-4"><label class="label" for="edit_password"><span class="label-text">{{ $page->copy->text('FORM_NEW_PASSWORD') }}</span></label><input type="password" id="edit_password" class="input input-bordered" value="" disabled aria-describedby="user-detail-hold"></div>
+        <div class="form-control mb-4"><label class="label" for="edit_ueberstunden"><span class="label-text">{{ $page->copy->text('FORM_OVERTIME') }}</span></label><input type="number" id="edit_ueberstunden" name="ueberstunden" class="input input-bordered" step="0.01" required @readonly(! $managedUsersEnabled)></div>
+        <div class="form-control mb-4"><label class="label" for="edit_password"><span class="label-text">{{ $page->copy->text('FORM_NEW_PASSWORD') }}</span></label><input type="password" id="edit_password" name="password" class="input input-bordered" value="" autocomplete="new-password" @disabled(! $managedUsersEnabled) @unless ($managedUsersEnabled) aria-describedby="user-detail-hold" @endunless></div>
         <div class="modal-action">
-            <button type="button" class="btn btn-primary" disabled aria-describedby="user-detail-hold">{{ $page->copy->text('BUTTON_SAVE_CHANGES') }}</button>
+            <button type="{{ $managedUsersEnabled ? 'submit' : 'button' }}" id="save-managed-user" class="btn btn-primary" disabled @unless ($managedUsersEnabled) aria-describedby="user-detail-hold" @endunless>{{ $page->copy->text('BUTTON_SAVE_CHANGES') }}</button>
             <button type="button" class="btn" @if ($page->cspNonce === null) onclick="closeEditUserModal()" @else data-local-close-user @endif>{{ $page->copy->text('BUTTON_CANCEL') }}</button>
         </div>
-    </div>
+    @if ($managedUsersEnabled) </form> @else </div> @endif
 </dialog>
 <dialog id="editDepartmentModal" class="modal">
     <form method="post" class="modal-box">
@@ -307,24 +338,64 @@
     }
 </script>
 <script @if ($page->cspNonce !== null) nonce="{{ $page->cspNonce }}" @endif>
-    // Existing get_user.php fresh-on-open interaction, with UI-only read projection.
+    // Same safe get_user.php projection; no password/source/token is returned.
+    const managedUsersEnabled = {{ $managedUsersEnabled ? 'true' : 'false' }};
+    const userModal = document.getElementById('editUserModal');
+    const saveManagedUser = document.getElementById('save-managed-user');
+    const managedUserForm = document.getElementById('managed-user-form');
+    const departmentOptions = Array.from(document.getElementById('edit_department').options, function (option) { return option.cloneNode(true); });
+    const supervisorOptions = Array.from(document.getElementById('edit_supervisor').options, function (option) { return option.cloneNode(true); });
     let userDetailRequest = 0;
+    let userEditReady = false;
+    let knownUserCloseEvents = 0;
     @if ($page->cspNonce !== null)
     document.querySelectorAll('[data-local-close-user]').forEach(function (button) { button.addEventListener('click', closeEditUserModal); });
     @endif
     document.querySelectorAll('[data-read-user]').forEach(function (button) {
         button.addEventListener('click', function () { editUser(button.dataset.readUser); });
     });
-    async function editUser(userId) {
-        const request = ++userDetailRequest;
-        const modal = document.getElementById('editUserModal');
-        const error = document.getElementById('user-detail-error');
-        if (modal.open) modal.close();
-        error.textContent = '';
-        error.classList.add('hidden');
+    document.querySelectorAll('[data-delete-managed-user]').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (!confirm({!! \Illuminate\Support\Js::from($page->copy->text('CONFIRM_DELETE_USER')) !!})) event.preventDefault();
+        });
+    });
+    if (managedUserForm) {
+        managedUserForm.addEventListener('submit', function (event) {
+            if (!userEditReady || !document.getElementById('edit_user_id').value) {
+                event.preventDefault();
+                return;
+            }
+            // Leave the password field intact for normal browser serialization;
+            // disable only repeat submission, not the submitted form controls.
+            userEditReady = false;
+            saveManagedUser.disabled = true;
+        });
+    }
+    function clearUserDetails() {
+        userEditReady = false;
+        saveManagedUser.disabled = true;
         ['edit_user_id', 'edit_username', 'edit_email', 'edit_role', 'edit_regelarbeitszeit', 'edit_ueberstunden', 'edit_password'].forEach(function (id) { document.getElementById(id).value = ''; });
         document.getElementById('edit_department').replaceChildren();
         document.getElementById('edit_supervisor').replaceChildren();
+    }
+    function selectUserAssignment(id, options, value, label) {
+        const select = document.getElementById(id);
+        const selected = value === null || value === undefined ? '' : String(value);
+        select.replaceChildren(...(managedUsersEnabled ? options.map(function (option) { return option.cloneNode(true); }) : []));
+        if (!Array.from(select.options).some(function (option) { return option.value === selected; })) {
+            select.add(new Option(label, selected));
+        }
+        // Never silently replace a stale/missing assignment with the first option.
+        select.value = selected;
+    }
+    async function editUser(userId) {
+        const request = ++userDetailRequest;
+        const error = document.getElementById('user-detail-error');
+        // Do not close/reopen an existing dialog: its queued close event could
+        // otherwise invalidate this newer fetch. Blank it while loading instead.
+        clearUserDetails();
+        error.textContent = '';
+        error.classList.add('hidden');
         try {
             const response = await fetch('get_user.php?id=' + encodeURIComponent(userId), {headers: {'Accept': 'application/json'}});
             if (!response.ok) throw new Error('Benutzerdetails nicht verfügbar. Bitte neu laden und erneut anmelden.');
@@ -335,20 +406,45 @@
             document.getElementById('edit_username').value = data.username;
             document.getElementById('edit_email').value = data.email;
             document.getElementById('edit_role').value = data.role;
-            document.getElementById('edit_department').replaceChildren(new Option(data.department_name ?? '', data.department_id ?? '', true, true));
-            document.getElementById('edit_supervisor').replaceChildren(new Option(data.supervisor_name ?? (data.supervisor_id ? '' : {!! \Illuminate\Support\Js::from($page->copy->text('FORM_NO_SUPERVISOR')) !!}), data.supervisor_id || '', true, true));
+            selectUserAssignment('edit_department', departmentOptions, data.department_id, data.department_name ?? '');
+            selectUserAssignment('edit_supervisor', supervisorOptions, data.supervisor_id,
+                data.supervisor_name ?? (data.supervisor_id ? '' : {!! \Illuminate\Support\Js::from($page->copy->text('FORM_NO_SUPERVISOR')) !!}));
             document.getElementById('edit_regelarbeitszeit').value = data.regelarbeitszeit;
             document.getElementById('edit_ueberstunden').value = data.ueberstunden;
-            modal.showModal();
+            userEditReady = managedUsersEnabled;
+            saveManagedUser.disabled = !userEditReady;
+            if (!userModal.open) userModal.showModal();
         } catch (failure) {
             if (request !== userDetailRequest) return;
+            clearUserDetails();
             error.textContent = 'Benutzerdetails nicht verfügbar. Bitte neu laden und erneut anmelden.';
             error.classList.remove('hidden');
         }
     }
-    function closeEditUserModal() {
+    function invalidateUserDetails() {
         ++userDetailRequest;
-        document.getElementById('editUserModal').close();
+        clearUserDetails();
     }
+    function closeEditUserModal() {
+        invalidateUserDetails();
+        if (userModal.open) {
+            ++knownUserCloseEvents;
+            userModal.close();
+        }
+    }
+    userModal.addEventListener('cancel', function () {
+        // Escape closes by the browser's normal dialog action after this event.
+        ++knownUserCloseEvents;
+        invalidateUserDetails();
+    });
+    userModal.addEventListener('close', function () {
+        // An earlier known dismissal was already invalidated synchronously.
+        // Its delayed event must not erase a subsequent selection/fetch.
+        if (knownUserCloseEvents > 0) { --knownUserCloseEvents; return; }
+        invalidateUserDetails();
+    });
+    window.addEventListener('pageshow', function (event) {
+        if (event.persisted) closeEditUserModal();
+    });
 </script>
 @endsection

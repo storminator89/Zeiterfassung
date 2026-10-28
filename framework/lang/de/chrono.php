@@ -197,4 +197,9 @@ return [
     'SETUP_TOKEN_INVALID' => 'Setup-Freigabe ungültig. Bitte die Administration kontaktieren.',
     'SETUP_UNCONFIRMED' => 'Die Ersteinrichtung konnte nicht bestätigt werden. Nicht automatisch wiederholen; bitte den gespeicherten Stand und die Anmeldung prüfen.',
     'SETUP_RESULT' => 'Du kannst die Anmeldung versuchen. Eine erste Administration wird nur bei leerem Benutzerbestand und gültiger Setup-Freigabe angelegt.',
+
+    // Exact selected native edit/delete form copy.
+    'USER_UPDATED_SUCCESS' => 'Benutzer erfolgreich aktualisiert.',
+    'USER_DELETED_SUCCESS' => 'Benutzer erfolgreich gelöscht.',
+    'CONFIRM_DELETE_USER' => 'Sind Sie sicher, dass Sie diesen Benutzer löschen möchten?',
 ];

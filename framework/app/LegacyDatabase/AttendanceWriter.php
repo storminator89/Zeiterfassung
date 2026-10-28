@@ -16,6 +16,8 @@ use Throwable;
 /** Opt-in domain bridge, not a path opener, route, or production connection. */
 final class AttendanceWriter
 {
+    use ManagedUserWriterOperations;
+
     private readonly SQLiteConnection $connection;
     private bool $unusable = false;
 

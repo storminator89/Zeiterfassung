@@ -20,6 +20,8 @@ use App\Chrono\LocalWebCorrections;
 use App\Chrono\LocalWebCarryIn;
 use App\Chrono\LocalWebDepartments;
 use App\Chrono\LocalWebAdminUsers;
+use App\Chrono\LocalWebAdminUserMutations;
+use App\Chrono\LegacyLocalWebAdminUserMutations;
 use App\Chrono\LocalWebLdapSync;
 use App\Chrono\LegacyLocalWebLdapSync;
 use App\Ldap\LdapSyncTransport;
@@ -44,6 +46,16 @@ class AppServiceProvider extends ServiceProvider
             function () use ($app): AttendanceWriter {
                 if (! $app->bound(AttendanceWriter::class)) {
                     throw new LogicException('No admitted operation-scoped first-admin writer is configured.');
+                }
+                return $app->make(AttendanceWriter::class);
+            },
+        ));
+        // Construction is pure; resolve a fresh admitted writer only per action.
+        $this->app->scoped(LocalWebAdminUserMutations::class, fn ($app) => new LegacyLocalWebAdminUserMutations(
+            $app->make('auth'),
+            function () use ($app): AttendanceWriter {
+                if (! $app->bound(AttendanceWriter::class)) {
+                    throw new LogicException('No admitted operation-scoped user-mutation writer is configured.');
                 }
                 return $app->make(AttendanceWriter::class);
             },

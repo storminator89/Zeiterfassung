@@ -194,4 +194,9 @@ return [
     'SETUP_TOKEN_INVALID' => '設定授權無效，請聯絡管理人員。',
     'SETUP_UNCONFIRMED' => '無法確認初始設定結果。請勿自動重試；請檢查已儲存的狀態並嘗試登入。',
     'SETUP_RESULT' => '您可以嘗試登入。只有在尚無使用者且設定授權有效時，才會建立初始管理員。',
+
+    // Exact selected native edit/delete form copy.
+    'USER_UPDATED_SUCCESS' => '用戶更新成功。',
+    'USER_DELETED_SUCCESS' => '用戶刪除成功。',
+    'CONFIRM_DELETE_USER' => '確定要刪除此用戶嗎？',
 ];
