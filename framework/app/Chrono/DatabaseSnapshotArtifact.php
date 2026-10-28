@@ -4,7 +4,6 @@ namespace App\Chrono;
 
 use App\LegacyDatabase\OfflineFiles;
 use App\LegacyDatabase\RuntimeAdmission;
-use App\LegacyDatabase\V2Adoption;
 use RuntimeException;
 use SQLite3;
 use Throwable;
@@ -99,9 +98,7 @@ final class DatabaseSnapshotArtifact
                 // Online backup may assign the destination a new schema cookie;
                 // require exact schema SQL, not source cookie equality.
                 || self::rows($check, self::SCHEMA) !== self::rows($source, self::SCHEMA)
-                || self::rows($check, 'SELECT id,migration,batch FROM framework_migrations ORDER BY id') !== [[
-                    'id' => 1, 'migration' => V2Adoption::migrationName($admission->schemaSignature), 'batch' => 1,
-                ]] || ! $check->close()) {
+                || self::rows($check, 'SELECT id,migration,batch FROM framework_migrations ORDER BY id') !== $admission->expectedLedgerRows() || ! $check->close()) {
                 throw new RuntimeException;
             }
             $check = null;

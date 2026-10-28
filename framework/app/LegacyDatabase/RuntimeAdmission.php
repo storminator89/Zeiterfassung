@@ -18,12 +18,26 @@ final readonly class RuntimeAdmission
         public int $foreignKeys,
         public string $journalMode,
         public int $synchronous,
+        public ?string $schemaProfile = null,
+        public ?string $baseSchemaSignature = null,
     ) {}
 
     // Pure configuration validation: no stat, file read, PDO or source bootstrap.
     public static function fromConfiguration(array $manifest): self
     {
         $keys = ['path', 'device', 'inode', 'schema_version', 'schema_signature', 'foreign_keys', 'journal_mode', 'synchronous'];
+        $profile = null;
+        $baseSignature = null;
+        if (array_key_exists('schema_profile', $manifest) || array_key_exists('base_schema_signature', $manifest)) {
+            $keys = [...$keys, 'schema_profile', 'base_schema_signature'];
+            $profile = $manifest['schema_profile'] ?? null;
+            $baseSignature = $manifest['base_schema_signature'] ?? null;
+            if ($profile !== 'user-audit-v3' || ! is_string($baseSignature)
+                || ! preg_match('/^[a-f0-9]{64}$/D', $baseSignature)
+                || $baseSignature === ($manifest['schema_signature'] ?? null)) {
+                throw new LogicException('An explicit complete user-audit-v3 profile and distinct base signature are required.');
+            }
+        }
         if (count($manifest) !== count($keys) || array_diff($keys, array_keys($manifest)) !== []) {
             throw new LogicException('A complete explicit runtime database admission manifest is required.');
         }
@@ -46,7 +60,36 @@ final readonly class RuntimeAdmission
             throw new LogicException('The runtime database identity and approved settings are invalid.');
         }
 
-        return new self($path, $device, $inode, $version, $signature, $foreignKeys, $manifest['journal_mode'], $synchronous);
+        return new self($path, $device, $inode, $version, $signature, $foreignKeys, $manifest['journal_mode'], $synchronous, $profile, $baseSignature);
+    }
+
+    /** Pure exact ledger projection shared by all PDO/SQLite3 admission sites. */
+    public function expectedLedgerRows(): array
+    {
+        return $this->schemaProfile === 'user-audit-v3'
+            ? self::userAuditV3LedgerRows($this->baseSchemaSignature, $this->schemaSignature)
+            : [['id' => 1, 'migration' => V2Adoption::migrationName($this->schemaSignature), 'batch' => 1]];
+    }
+
+    public static function userAuditV3MigrationName(string $signature): string
+    {
+        if (! preg_match('/^[a-f0-9]{64}$/D', $signature)) {
+            throw new LogicException('A complete user-audit-v3 schema signature is required.');
+        }
+
+        return '2026_10_28_000002_user_audit_v3_'.$signature;
+    }
+
+    public static function userAuditV3LedgerRows(string $baseSignature, string $postSignature): array
+    {
+        if (! preg_match('/^[a-f0-9]{64}$/D', $baseSignature) || $baseSignature === $postSignature) {
+            throw new LogicException('A distinct complete original V2 signature is required.');
+        }
+
+        return [
+            ['id' => 1, 'migration' => V2Adoption::migrationName($baseSignature), 'batch' => 1],
+            ['id' => 2, 'migration' => self::userAuditV3MigrationName($postSignature), 'batch' => 2],
+        ];
     }
 
     public function configuration(bool $write = false): array

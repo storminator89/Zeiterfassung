@@ -46,3 +46,36 @@ Normale Rollback-Journal-Sidecars und Konkurrenz gehören dagegen zum normalen S
 Ein grober synthetischer privater Tempdateilauf deckt geschlossene/lazy Provider, nicht erzeugtes fehlendes Ziel, echte Readonly-Schreibverweigerung, Identitäts-/Setting-/Ledgerabweichung, normale Rollback-Journalleser sowie einen neuen bestehenden Writer mit Audit/gespeicherter Replayantwort ab. Quelle und Einzelbelege liegen im Paketnachweis; keine reale Appdaten-/Auth-/Serverausführung, Keys/Accounts oder neue CI.
 
 Das ist keine vollständige #74/#75/#82-Abnahme: Neuinstallation/vor-v2, reale Datenqualität/Restore, WAL, umfassende Konkurrenz-/Crash-/Antwortverlustfälle, Frameworkkey-/Login-/Reauth-/Pendingflow und öffentliches Routing/Cutover bleiben separate Gates. Default und laufende Anwendung bleiben unangetastet.
+
+## Explizites User-Audit-V3-Profil
+
+Der [gesonderte drei-Feld-Schritt](user-audit-v3.md) bietet nur nach einem
+expliziten Offlineupgrade ein zusätzliches Manifestprofil. Das bisherige genaue
+achtteilige V2-Manifest bleibt unverändert. Ohne konfiguriertes Profil werden
+keine zusätzlichen Nullfelder ergänzt; Read-/Write-Defaults bleiben false.
+
+Nur für den bestätigten V3-Bestand zusätzlich:
+
+- `FRAMEWORK_CHRONO_DB_SCHEMA_PROFILE=user-audit-v3`
+- `FRAMEWORK_CHRONO_DB_BASE_SCHEMA_SIGNATURE`: ursprüngliche kanonische V2-Signatur
+- bestehende `FRAMEWORK_CHRONO_DB_SCHEMA_SIGNATURE`: vollständige neue V3-Signatur
+- bestehende `FRAMEWORK_CHRONO_DB_SCHEMA_VERSION`: tatsächlicher neuer SQLite-
+  Schemacookie, **nicht** Applikationsversion3.
+
+Der V3-Manifestparser verlangt genau zehn Keys, exakten Profilstring und zwei
+verschiedene vollständige Signaturen. Unvollständige, unbekannte oder null-extra
+Metadaten werden verweigert, nie durch Dateilesen/Requestwerte ergänzt. Die alte
+Adoptionszeile bleibt mit alter Signatur und Batch1; nur die feste V3-Zeile mit
+neuer Signatur und Batch2 wird angehängt. Ein reiner `expectedLedgerRows()`-
+Projektor ist die gemeinsame genaue Erwartung für PDO-Runtime, native SQLite3-
+Snapshotquelle und kopiertes Snapshotartefakt. Keine Prefix-/Count-Näherung oder
+Entfernung der alten Schema-/Datei-/Readonly-/Settingsprüfungen.
+
+Das Upgrade ändert Schema-Cookie und Ledger; alte Manifeste bleiben geschlossen,
+bis der Operator die neue private Identität/Signatur separat neu zulässt. Keine
+Konfiguration wird automatisch überschrieben. Upgrade-, Echtbestand-, Backup-/
+Restore-/Runtimeaktivierungsfreigabe wird durch die bloße Quellregistrierung
+nicht erteilt. Alte V2-Adoption und V2-Backout bleiben streng V2-only; kein
+Down/Rewrite des Journals oder vermeintlich verlustfreies Restore nach neuen
+Geschäftsschreibvorgängen. V3-fähige Diagnose und echte Betriebsabnahme sind
+weiter eigene Arbeit, keine behauptete vollständige #32/#74/#82-Abnahme.

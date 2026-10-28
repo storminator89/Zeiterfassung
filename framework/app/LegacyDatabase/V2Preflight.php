@@ -15,6 +15,22 @@ final class V2Preflight
     // a path or executes DDL; callers own memory/private-offline file admission.
     public function inspect(PDO $target, PDO $reference): array
     {
+        return $this->inspectProfile($target, $reference, [1, 2]);
+    }
+
+    /** Explicit fixed overlay only; the original V2 entry remains unchanged. */
+    public function inspectUserAuditV3(PDO $target, PDO $reference): array
+    {
+        MemoryOnly::connection($reference);
+        if ($reference->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN) !== [1, 2, 3]) {
+            throw new RuntimeException('The explicit user-audit-v3 reference is required.');
+        }
+
+        return $this->inspectProfile($target, $reference, [1, 2, 3]);
+    }
+
+    private function inspectProfile(PDO $target, PDO $reference, array $versions): array
+    {
         MemoryOnly::connection($reference);
 
         foreach ($target->query('PRAGMA database_list')->fetchAll(PDO::FETCH_ASSOC) as $attached) {
@@ -59,8 +75,8 @@ final class V2Preflight
             }
         }
 
-        if ($target->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN) !== [1, 2]) {
-            throw new RuntimeException('Only a complete source v2 database is supported.');
+        if ($target->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN) !== $versions) {
+            throw new RuntimeException($versions === [1, 2] ? 'Only a complete source v2 database is supported.' : 'Only a complete user-audit-v3 database is supported.');
         }
         if ($target->query('PRAGMA foreign_key_check')->fetch() !== false) {
             throw new RuntimeException('Declared relationship preflight failed; no automatic repairs.');
@@ -96,7 +112,7 @@ final class V2Preflight
 
         return [
             'schema_signature' => hash('sha256', json_encode($schema, JSON_THROW_ON_ERROR)),
-            'application_versions' => [1, 2],
+            'application_versions' => $versions,
             'tables' => $present,
         ];
     }
