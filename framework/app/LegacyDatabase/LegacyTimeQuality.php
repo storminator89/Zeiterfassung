@@ -77,11 +77,12 @@ final class LegacyTimeQuality
         }
         $open->closeCursor();
         $this->absenceConflicts($pdo, $add);
+        $this->workConflicts($pdo, $add);
         ksort($counts);
         $total = array_sum($counts);
 
         return [
-            'report_version' => 2,
+            'report_version' => 3,
             'scope_status' => 'partial_diagnostic_only',
             'read_only' => true,
             'records_checked' => $records,
@@ -89,9 +90,10 @@ final class LegacyTimeQuality
                 'timestamp_shape_calendar_and_berlin_dst' => 'checked',
                 'closed_order_and_pause' => 'checked_only_for_unambiguous_supported_timestamps',
                 'multiple_open_records' => 'checked',
-                'overlap' => 'partial_work_whole_day_absence_only',
+                'overlap' => 'partial_completed_work_work_and_work_whole_day_absence_only',
                 'work_whole_day_absence_overlap' => 'checked_only_for_unambiguous_supported_completed_rows',
-                'work_work_absence_absence_and_open_overlap' => 'not_checked',
+                'work_work_overlap' => 'checked_only_for_unambiguous_supported_completed_positive_intervals',
+                'absence_absence_and_open_overlap' => 'not_checked',
                 'event_session_break_projection_reconciliation' => 'not_checked',
                 'mapping_or_repair' => 'not_performed_requires_separate_confirmation',
             ],
@@ -141,6 +143,40 @@ final class LegacyTimeQuality
             }
         }
         $absences->closeCursor();
+    }
+
+    /** Every eligible same-user work pair exactly once, without collecting pair lists. */
+    private function workConflicts(PDO $pdo, callable $add): void
+    {
+        $columns = 'id,user_id,startzeit,endzeit,pause,absence_kind,beschreibung';
+        $works = $pdo->query('SELECT '.$columns.' FROM zeiterfassung ORDER BY id');
+        $others = $pdo->prepare('SELECT '.$columns.' FROM zeiterfassung WHERE user_id=? AND id>? ORDER BY id');
+        while (($work = $works->fetch(PDO::FETCH_ASSOC)) !== false) {
+            if (\booking_is_absence($work) || ! $this->unambiguousCompleted($work)) {
+                continue;
+            }
+            $span = \report_record_calculation($work);
+            if ($span['end'] <= $span['start']) {
+                continue; // A zero-duration completed row occupies no half-open interval.
+            }
+            // Restrict before streaming: never compare different owners or a
+            // pair with itself, and report each pair only under its smaller ID.
+            $others->execute([$work['user_id'], $work['id']]);
+            while (($other = $others->fetch(PDO::FETCH_ASSOC)) !== false) {
+                if (\booking_is_absence($other) || ! $this->unambiguousCompleted($other)) {
+                    continue;
+                }
+                $otherSpan = \report_record_calculation($other);
+                if ($otherSpan['end'] > $otherSpan['start']
+                    && $span['start'] < $otherSpan['end'] && $otherSpan['start'] < $span['end']) {
+                    // Same half-open gross-interval comparison as booking's
+                    // overlap guard; no guessed pause placement or net repair.
+                    $add((int) $work['id'], 'work_work_overlap', null, (int) $other['id']);
+                }
+            }
+            $others->closeCursor();
+        }
+        $works->closeCursor();
     }
 
     private function unambiguousCompleted(array $row): bool
