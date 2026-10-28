@@ -1,9 +1,12 @@
-# FW-09 / #80 – inaktive LDAP-Providergrenze
+# FW-09 / #80 – bestehende Providergrenze und optionaler realer Verifier
 
-**Teilpaket, keine abgeschlossene LDAP-Migration und keine Loginumschaltung.**
-Basis ist Main `165ce38008c3a4a54bc2b4fca4fa2c63160d8a78` vom 27.10.2026.
-Vier neue Dateien, keine Änderung an nativen Einstiegen, Authkonfiguration,
-Providern, Middleware, Routen, Composerdateien, Konten oder Schlüsseln.
+**Weiterhin keine Loginumschaltung oder abgeschlossene LDAP-Migration.**
+Die ursprüngliche Providergrenze wurde auf Main `165ce38008c3a4a54bc2b4fca4fa2c63160d8a78`
+vorbereitet. Der folgende Vierpfad-Schritt auf Main
+`bdbce814a49077b741839a0804ab98a38b8b355c` ergänzt einen konkreten optionalen
+PHP-LDAP-Verifier und einen echten synthetischen Protokollnachweis. Keine Änderung
+an nativen Einstiegen, Authkonfiguration, Providern, Middleware, Routen,
+Composerdateien, Konten, Schlüsseln oder tatsächlicher Produktionseinrichtung.
 
 ## Unterstützte Grenze, nicht aktivierter Laufweg
 
@@ -17,61 +20,106 @@ bleiben die Integrationsstelle.
 |---|---|
 | Abruf nach Username | Ausschließlich existierende `users` über `LegacyUser`; `auth_source=ldap` und Rolle `user/supervisor/admin` sind feste Providerkriterien. Nur skalare `username/password`-Strings werden angenommen; keine eingereichten Spalten, Arrays oder Querycallbacks. Username wird wie nativ getrimmt, nicht kleingeschrieben. Gültige DB-Abfrage hier **nicht ausgeführt**. |
 | Wiederabruf nach ID | Standard-Eloquent-Abruf mit anschließender Prüfung auf existierendes `LegacyUser`-Modell, LDAPquelle und bekannte Rolle. Kein Identitätsmapping, keine neue ID. Gültiger Wiederabruf hier **nicht ausgeführt**. |
-| Credentialgrenze | Nur passendes existierendes LDAPmodell darf den injizierten `LdapCredentialVerifier` erreichen. Lokale/unbekannte Quelle, unbekannte Rolle, anderes Modell, fehlende ID und noch nicht persistierte Modelle werden verweigert. Ablehnung bleibt `false`; Betriebsfehler propagieren ohne lokalen Passwortfallback. Reiner Fake-Nachweis, kein Bind. |
+| Credentialgrenze | Nur passendes existierendes LDAPmodell darf den injizierten `LdapCredentialVerifier` erreichen. Lokale/unbekannte Quelle, unbekannte Rolle, anderes Modell, fehlende ID und noch nicht persistierte Modelle werden verweigert. Ablehnung bleibt `false`; Betriebsfehler propagieren ohne lokalen Passwortfallback. Der ursprüngliche Provider-Fakenachweis bleibt unverändert; der konkrete Verifier wird unten separat wirklich am synthetischen Directory geprüft. |
 | Schreibgrenze | Keine Änderungen an Hash, ID, Quelle, E-Mail, Rolle, Abteilung oder Supervisor. Erzwungener Rehash ist ebenfalls wirkungslos: kein Directorypasswort als lokaler Hash. Remember-Abruf liefert nichts; Remember-Schreibversuch wird ausdrücklich abgewiesen. |
 | Aktueller lokaler Weg | `config/auth.php`, Standardprovider `chrono_users`, `LocalSession`, `RefreshLocalAccount` und sämtliche Policies bleiben unverändert. Insbesondere akzeptiert die lokale Sessionaktion weiterhin nur lokale Konten; diese Datei erweitert sie **nicht** um LDAP. |
 
 Es gibt **keine** `Auth::provider`-Registrierung, keinen Guardnamen für diese
-Klasse, keine Containerbindung des Verifiers und keine echte Implementierung
-der Directoryschnittstelle. Eine Modell-/Verifierprüfung ist weder eine
+Klasse und keine Containerbindung des Verifiers. Die konkrete optionale
+Implementierung aktiviert diese Bindungen ausdrücklich nicht. Eine Modell-/Verifierprüfung ist weder eine
 Anmeldung noch eine Freigabe, die Grenze als vollständigen Login zu verwenden.
 
-## Gepflegtes Spezialpaket statt eigener LDAPprotokollschicht
+## Konkreter optionaler PHP-8.5-Verifier statt ungeprüftem Paket-Drop-in
 
-Entscheidung für die nächste Connectorstufe: **LdapRecord v4**, nicht eine neue
-Implementierung von Bind, TLS, Filtern oder Suchprotokoll. Am 27.10.2026 anhand
-der offiziellen Tags geprüft:
+`PhpLdapCredentialVerifier` implementiert die vorhandene Schnittstelle mit der
+gepflegten offiziellen PHP-LDAP-Extension/OpenLDAP, **nicht** mit einer eigenen
+LDAP-/TLS-Protokollimplementierung und nicht als Ersatz für Laravel. Keine neue
+Composerabhängigkeit/Autodiscovery oder globale Extensionpflicht für den lokalen
+Frameworkbetrieb. LDAP bleibt optional; ein aktivierter Verifier ohne Extension
+oder erforderliche Optionen wirft einen festen Betriebsfehler.
 
-- [`directorytree/ldaprecord-laravel` v4.0.5, Commit `e52ee08`](https://github.com/DirectoryTree/LdapRecord-Laravel/releases/tag/v4.0.5),
-  veröffentlicht am 10.08.2026. Die
-  [taggebundene Composerdefinition](https://raw.githubusercontent.com/DirectoryTree/LdapRecord-Laravel/v4.0.5/composer.json)
-  deklariert MIT, PHP `>=8.1`, `ext-ldap`, `ext-json`, LdapRecord `^4.0` und
-  Illuminate Support einschließlich `^13.0`; Laravelprovider werden automatisch
-  entdeckt. Das ist Versionskompatibilität laut Paketmetadaten, keine bereits
-  durchgeführte Installation oder Directoryabnahme unter PHP 8.5.
-- [`directorytree/ldaprecord` v4.1.1, Commit `589dddf`](https://github.com/DirectoryTree/LdapRecord/releases/tag/v4.1.1),
-  veröffentlicht am 08.10.2026. Seine
-  [Composerdefinition](https://raw.githubusercontent.com/DirectoryTree/LdapRecord/v4.1.1/composer.json)
-  deklariert MIT, PHP `>=8.1`, LDAP/JSON/iconv und Illuminate Contracts/Collections
-  einschließlich `^13.0`. Die aktuellen Releases belegen aktive Pflege; eine
-  laufende Directoryintegration oder allgemeiner AD-Support ist damit nicht bewiesen.
+Die frühere Auswahl eines LdapRecord-Adapters wird für diesen begrenzten Schritt
+bewusst ersetzt: Die tatsächlich geprüfte **Version v4.1.1** ruft in
+[`Ldap::bind`](https://github.com/DirectoryTree/LdapRecord/blob/v4.1.1/src/Ldap.php#L258-L262)
+`html_entity_decode($password)` auf. Ein wörtliches `&amp;` würde dadurch andere
+Passwortbytes ergeben. Das ist ein versionsgebundener Kompatibilitätsbefund,
+keine pauschale Aussage über das Projekt oder andere Versionen. Seine
+[Composerdefinition](https://github.com/DirectoryTree/LdapRecord/blob/v4.1.1/composer.json)
+verlangt zudem `ext-ldap`; eine ungeprüfte Pflichtinstallation würde den bisher
+LDAPfreien lokalen Frameworkweg koppeln. Ein späterer Paketadapter bleibt separat
+reviewbar. Der Laravel-LdapRecord-Databaseprovider mit automatischem Synchronisieren/
+Speichern ist ebenfalls kein zugelassener Chrono-Lebenszyklus.
 
-Der mitgelieferte
-[`DatabaseUserProvider` v4.0.5](https://raw.githubusercontent.com/DirectoryTree/LdapRecord-Laravel/v4.0.5/src/Auth/DatabaseUserProvider.php)
-ist **kein ungeprüfter Drop-in** für Chrono: Sein Abruf führt den Synchronizer
-aus, seine Validierung speichert das Modell; konfigurierbarer Eloquentfallback
-und Rehash sind weitere Seiteneffekte. Diese automatischen Lebenszykluspfade
-dürfen nicht die Bestandsregeln ersetzen. Das begrenzte Chrono-Providerstück
-liefert nur die bestehende Identität an Laravel und delegiert Directoryprüfung.
+### Explizite Konfiguration, keine automatische Freigabe
 
-Ein gesondert reviewter `LdapRecord`-Adapter soll `LdapCredentialVerifier`
-implementieren: Paket-Connection/Auth und sichere DN-/Filter-APIs verwenden,
-den exakten UID-Benutzerbind mit anschließender erfolgreicher eindeutiger
-UID-Suche prüfen und Ressourcen zuverlässig freigeben. Keine freie
-Username-/UPN-/AD-Umdeutung, lokale Ersatzprüfung, Passwortsynchronisation,
-Provisionierung oder automatische Gruppenzuordnung. Die
-[Paketkonfiguration](https://ldaprecord.com/docs/core/v4/configuration) und
-[Bind-/Rebind-Semantik](https://ldaprecord.com/docs/core/v4/authentication)
-müssen dabei ausdrücklich übersetzt werden: LDAPv3, bestehender 5-Sekunden-
-Timeout, LDAPS oder **zwingendes erfolgreiches StartTLS**; Paketdefaults ohne
-TLS sind nicht zulässig. Zertifikatsprüfung nicht abschalten, keine neuen
-Hosts, Referrals oder Failoverziele einführen. Ein erfolgreiches Bind allein
-ist noch nicht der vollständige bisherige Bind-und-Suche-Vertrag.
+Der Konstruktor nimmt nur vertrauenswürdig explizit übergebene Werte entgegen:
+`enabled=false` als Standard (nur literales `true` aktiviert, keine PHP-Weak-Type-
+Umwandlung von `"false"` oder `1`), eine vollständige kanonische `ldap://host:port`-URI,
+BaseDN und optional eine absolute vorhandene lesbare kanonische CA-Datei. Keine
+Request-/DB-/Environmentquelle, Service-Bind-Credentials, Entschlüsselung,
+Keydatei, persistente Konfiguration oder Netzwerkaktion beim Konstruieren.
+Nur `verify` mit ausdrücklich aktiviertem Objekt darf verbinden. Fehlende/ungültige
+Konfiguration wird nicht durch native Defaults oder andere Hosts repariert.
 
-**Hier keine Installation**, keine Autodiscovery, kein `ext-ldap`-Workaround
-und kein `--ignore-platform-reqs`. Composerlock und Plattformanforderungen
-bleiben unverändert. Ohne Connector kann dieser Teil weder TLS noch Escaping,
-Timeout, Suchergebnis oder Geheimnisübergang tatsächlich prüfen.
+Dieser erste praktisch geprüfte Transport unterstützt **ausschließlich StartTLS**,
+nicht LDAPS, UPN-/AD-Mapping, SASL, anonyme Suche oder Failover. Die URI enthält den
+Port; keine deprecated Zweiargument-`ldap_connect`-Variante, URI-Credentials,
+Pfad/Query/Fragment oder Endpunktliste. Der gebundene DN bleibt die bewusst enge
+Bestandsabbildung `uid=<DN-escaped username>,<baseDN>`; keine automatische OU-Suche.
+
+Vor jedem Bind: LDAPv3, fünf Sekunden Netzwerk-/Operations-/Suchlimit, Referrals aus,
+`TLS_DEMAND` und die optionale CA **auf genau dieser Verbindung**. Effektive
+Zertifikatspflicht und explizite CA werden zurückgelesen; fehlende Unterstützung
+verweigert. Zwingend erfolgreiches `ldap_start_tls`, keine Klartextwiederholung,
+keine Zertifikat-/Namensprüfung abschalten und kein `ldap_set_option(null, ...)`.
+Ohne explizite CA bleibt die Zertifikatspflicht mit dem verwalteten Systemtrust;
+eine tatsächliche Trust-/CA-Einrichtung ist separat freizugeben. Die geprüfte
+PHP-8.5.12-Extension erneuert den Verbindungskontext beim StartTLS, ohne einen
+nicht exponierten `LDAP_OPT_X_TLS_NEWCTX`-Aufruf zu erfinden.
+
+Passwortbytes werden weder getrimmt, HTML-dekodiert, normalisiert, gespeichert
+noch gehasht; leere Passwörter werden vor Verbindung verweigert. Username und
+Passwort sind im konkreten Verifier `SensitiveParameter`. Nur LDAPfehler49
+(ungültige Credentials) ergibt nach Bind `false`; andere Betriebs-/TLS-/Suchfehler
+werfen feste Exceptions ohne Rohdiagnose, DN, Username, Passwort, CA-Pfad oder
+vorherige Exception. Kein lokaler Passwortfallback oder neuer Logger.
+
+Nach dem Bind folgt die getrennt **filter-escaped** UID-Suche: vollständiger
+LDAP-Ergebniscode0, keine Referrals/Teilresultate, genau ein Eintrag mit genau einer
+UID, exakt gleich dem übergebenen Username. Zusätzlich muss eine BASE-Scope-Lesung
+des tatsächlichen Bind-DN dieselbe UID belegen; keine erfundene case-folded
+DN-Äquivalenz. Nur UID wird gelesen, keine Mail-/Manager-/Gruppen-/Rollenattribute.
+Beide Resultate und die Verbindung werden unabhängig auch nach Fehlern freigegeben;
+ein Cleanupfehler bestätigt keine erfolgreiche Prüfung. Keine Account-/Import-/
+Rollen-/Passwort-/Token-/Sessionoperation und kein Aufruf des schreibenden
+`chrono_ldap_import_locked`.
+
+### Tatsächlicher begrenzter synthetischer Protokollnachweis
+
+`framework/tools/prove-ldap-verifier.php` ist ausschließlich eine explizite
+Labprobe mit festem Loopback-Ziel `ldap://127.0.0.1:1389`, BaseDN
+`dc=chrono,dc=test` und privater neuer synthetischer State. Kein frei wählbarer
+Server, echtes Credentialfile, Laravelbootstrap, App-PDO, Provider/Guard oder
+Session-/Loginaufruf. Sie wird nur innerhalb des separat freigegebenen vorhandenen
+Lab-Lifecycles aufgerufen; Server und Client müssen im selben Executor laufen.
+
+Auf PHP **8.5.12** mit der offiziellen ABI-passenden LDAP-Extension und lokal
+verifizierten Debian-OpenLDAP-Artefakten bestand ein zusammenhängender Ablauf:
+validiertes StartTLS, Benutzerbind mit **wörtlichem `&amp;` im Passwort**, eindeutige
+UID und tatsächlicher Bind-DN; verändertes/leeres Passwort und deaktivierter
+Standard verweigert. Eine fremde CA wurde verweigert, anschließend dieselbe richtige
+private CA wieder akzeptiert. Prozessglobale TLS-Optionen blieben vorher/nachher
+unverändert. Das belegt auch die geprüfte verbindungslokale Trust-Isolation,
+nicht LDAPS oder jede mögliche Bibliotheks-/Serverkonfiguration.
+
+Der Runner verweigerte vorhandene State, erzeugte nur neue erfundene Labdaten,
+startete genau seinen eigenen Loopback-Listener und stoppte/awaitete ihn; sämtliche
+neuen Zertifikat-/Credential-/Directorydaten wurden am Ende entfernt. Keine
+Systeminstallation, globale Truständerung, vorhandene Directory-/App-Daten,
+Browser-/Appcredential-Eingabe, Accounts, Sessions, Listenerpersistenz oder
+Produktionseinrichtung. Nur dieser eine grobe echte Protokollablauf plus Syntax/
+Quellerhalt, keine zusätzliche kleinteilige Testmatrix. **Kein Laravel-Weblogin-
+oder vollständiger #80-Nachweis.**
 
 ## Bestandssemantik und ausdrücklich offene Aktivierungsgates
 
@@ -129,12 +177,13 @@ lokale Namen sind kein Enrollmentweg.
    `RefreshLocalAccount` akzeptiert bewusst kein LDAP. Keine native
    Sessionkopie, kein Token-/Sessioneinschleusen und kein Aktivieren dieser
    Klasse allein durch Austausch des Providerdrivers.
-6. **Reales Testdirectory:** Erst nach ausdrücklicher Freigabe tatsächliche
-   TLS-/Bind-/Suchfehler, lokale Wiederherstellung, parallele Browseranmeldung,
-   Rechteentzug und repräsentativen Import abnehmen. Ohne diese Freigabe
-   bleiben #80 und die zugehörigen Laufzeitkriterien offen.
+6. **Abnahmegrenze:** Das ausdrücklich freigegebene neue synthetische Directory
+   hat Transport/Bind/Suche und den konkreten Verifier wie oben belegt. Es
+   belegt weder LDAP-Anmeldung in Laravel noch parallele Browseranmeldung,
+   Rechteentzug, reale Directory-/Hostkonfiguration oder Produktion. Diese
+   Integrations-/Betriebsgates und #80 bleiben offen.
 
-## Tatsächlich ausgeführter kleiner Nachweis
+## Ursprünglicher reiner Provider-Vertragsnachweis (unverändert)
 
 ```sh
 cd framework
