@@ -47,10 +47,15 @@ the writer's current principal/profile/locked-policy checks remain authoritative
 
 A separately supplied valid `FRAMEWORK_APP_KEY` is mandatory (AES-256-CBC, no
 previous keys in this fresh initial profile). This code never generates, saves,
-prints, or reuses a native key. Production environment, debug false, stock local
-Eloquent `LegacyUser` session authentication and bcrypt are required. Existing
-LDAP login is independent of LDAP enrollment, but activating that separate auth
-profile is not included here. Terminal HTTP ingress must remain disabled.
+prints, or reuses a native key. Production environment, debug false, the stock
+`web` SessionGuard and bcrypt
+are required. Initial setup/local-only mode retains exact Eloquent `LegacyUser`
+authentication. The separate default-off [existing LDAP login profile](fresh-ldap-login.md)
+can select the already-reviewed `chrono-existing` wrapper only after setup is
+explicitly closed; it does not enroll users or enable LDAP synchronization.
+Its open session/deactivation and real LDAP/runtime acceptance limits remain
+explicit, not satisfied by this composition switch. Terminal HTTP ingress must
+remain disabled.
 `APP_URL` must be a canonical lowercase ASCII-host HTTPS **root** origin (optional
 nondefault port; no credentials, subpath, query, fragment, alias or HTTP fallback).
 IPv6 origins are outside this initial narrow profile. Request scheme/host/port
@@ -156,7 +161,11 @@ disables only setup; ordinary login remains available.
 Private instance/manifest integrity, closure and expiry are checked again before
 **every** setup request and the existing setup service receives the refreshed
 digest configuration. Setup is not governed by manual/LDAP/registration intake
-flags. Its writer independently enforces the empty first-admin condition under
+flags. It remains strictly Eloquent-local; the optional existing-LDAP login
+profile refuses simultaneous setup mode and requires the monotone closure marker.
+That marker is not proof that an Admin exists; the operator must verify ordinary
+local-Admin login before closing and switching, with workers stopped/drained.
+Its writer independently enforces the empty first-admin condition under
 the existing operation lock. No new credentials, LDAP keys, native sessions or
 API authentication methods are introduced.
 

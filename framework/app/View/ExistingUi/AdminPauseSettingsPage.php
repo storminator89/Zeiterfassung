@@ -20,5 +20,8 @@ final readonly class AdminPauseSettingsPage
         public array $supervisors = [],
         public ?string $success = null,
         public ?array $intakePolicy = null,
+        public ?LdapSyncForm $ldapSyncForm = null,
+        public ?LdapSyncOutcome $ldapSyncOutcome = null,
+        public ?string $ldapSyncNotice = null,
     ) {}
 }

@@ -28,6 +28,8 @@ final readonly class FreshWebConfiguration
         private array $manifestState,
         private array $databaseState,
         private bool $setupOptIn,
+        private bool $ldapLogin,
+        private ?FreshWebLdapSyncProfile $ldapSync,
         private array $overrides,
     ) {}
 
@@ -68,6 +70,10 @@ final readonly class FreshWebConfiguration
         $origin = self::origin($config->get('app.url'));
         $setup = $config->get('chrono_fresh_web.setup_enabled', false);
         if (! is_bool($setup)) { throw new LogicException('Fresh setup requires a separate boolean opt-in.'); }
+        $ldap = self::ldapSettings($config->get('chrono_ldap'));
+        if ($ldap['enabled'] && $setup) {
+            throw new LogicException('Existing LDAP login requires the separate closed setup mode.');
+        }
         $lock = self::seconds($config->get('chrono_fresh_web.session_lock_seconds'));
         $wait = self::seconds($config->get('chrono_fresh_web.session_wait_seconds'));
         if ($wait > $lock) {
@@ -99,10 +105,18 @@ final readonly class FreshWebConfiguration
             if ($databaseState['dev'] !== $admission->device || $databaseState['ino'] !== $admission->inode) {
                 throw new RuntimeException;
             }
+            $sync = FreshWebLdapSyncProfile::fromConfiguration($config->get('chrono_ldap_sync.fresh'), $admission,
+                [$app->basePath(), dirname($app->basePath()), $app->publicPath()]);
+            if ($sync !== null && $setup) { throw new RuntimeException; }
+            if (($ldap['enabled'] || $sync !== null) && ! self::setupClosed($directory)) { throw new RuntimeException; }
             self::assets($app->publicPath());
             $namespace = 'chrono_fresh_'.substr(hash('sha256', $directory.'\0'.$admission->device.':'.$admission->inode), 0, 24);
             $overrides = [
                 'chrono_runtime.admission' => $manifest,
+                // Only this reviewed wrapper admits local Admin + existing ordinary LDAP users.
+                'auth.providers.chrono_users' => ['driver' => $ldap['enabled'] ? 'chrono-existing' : 'eloquent', 'model' => LegacyUser::class],
+                'chrono_ldap' => $ldap,
+                'chrono_ldap_sync.fresh' => $sync?->configuration() ?? ['enabled' => false],
                 'session.driver' => 'file', 'session.files' => $directory.'/sessions',
                 'session.cookie' => $namespace, 'session.secure' => true, 'session.http_only' => true,
                 'session.same_site' => 'lax', 'session.domain' => null, 'session.path' => '/',
@@ -117,7 +131,7 @@ final readonly class FreshWebConfiguration
                 'chrono_registration.enabled' => true,
             ];
             $profile = new self($origin, $directory, $directories, $manifest, $manifestHash, $manifestState,
-                $databaseState, $setup, $overrides);
+                $databaseState, $setup, $ldap['enabled'], $sync, $overrides);
             $profile->assertCurrent($config, false);
             return $profile;
         } catch (Throwable) {
@@ -147,6 +161,7 @@ final readonly class FreshWebConfiguration
         foreach ($this->directories as $path => $expected) {
             if (self::directory($path) !== $expected) { throw new RuntimeException; }
         }
+        if (($this->ldapLogin || $this->ldapSync !== null) && ! self::setupClosed($this->directory)) { throw new RuntimeException; }
         if ($checkConfiguration) {
             if ($config->get('chrono_fresh_web.enabled') !== true || self::origin($config->get('app.url')) !== $this->origin
                 || $config->get('chrono_runtime.read_enabled') !== true || $config->get('chrono_runtime.write_enabled') !== true) {
@@ -158,6 +173,9 @@ final readonly class FreshWebConfiguration
         }
     }
 
+    /** Pure admitted metadata; does not resolve files, keys or a directory. */
+    public function ldapSyncProfile(): ?FreshWebLdapSyncProfile { return $this->ldapSync; }
+
     /** Closed/expired/malformed setup disables ONLY setup, not ordinary login. */
     public function setupConfiguration(): array
     {
@@ -165,17 +183,61 @@ final readonly class FreshWebConfiguration
         if (! $this->setupOptIn) { return $disabled; }
         try {
             if (self::directory($this->directory) !== $this->directories[$this->directory]) { return $disabled; }
-            clearstatcache(true, $this->directory.'/'.FirstAdminSetupFiles::CLOSED);
-            if (@lstat($this->directory.'/'.FirstAdminSetupFiles::CLOSED) !== false) {
+            if (self::setupClosed($this->directory)) {
                 return $disabled; // Any existence wins BEFORE profile read, including symlink/wrong type.
             }
             [$profile] = self::json($this->directory.'/'.FirstAdminSetupFiles::PROFILE);
             $configuration = FirstAdminSetupFiles::configuration($profile, $this->manifestHash, false, time());
-            clearstatcache(true, $this->directory.'/'.FirstAdminSetupFiles::CLOSED);
-            if (@lstat($this->directory.'/'.FirstAdminSetupFiles::CLOSED) !== false
+            if (self::setupClosed($this->directory)
                 || self::directory($this->directory) !== $this->directories[$this->directory]) { return $disabled; }
             return $configuration;
         } catch (Throwable) { return $disabled; }
+    }
+
+    /** Pure operator metadata, not directory discovery, bind credentials, a CA read or a network probe. */
+    private static function ldapSettings(mixed $settings): array
+    {
+        if (! is_array($settings) || ! is_bool($settings['enabled'] ?? null)) {
+            throw new LogicException('Explicit existing LDAP login settings are required.');
+        }
+        if (! $settings['enabled']) {
+            // Disabled metadata never makes local break-glass depend on LDAP configuration/files.
+            return ['enabled' => false, 'uri' => null, 'base_dn' => null, 'ca_file' => null];
+        }
+        $keys = ['enabled', 'uri', 'base_dn', 'ca_file'];
+        if (count($settings) !== count($keys) || array_diff($keys, array_keys($settings)) !== []) {
+            throw new LogicException('Complete login-only LDAP metadata is required.');
+        }
+        foreach (['uri', 'base_dn', 'ca_file'] as $key) {
+            if (! is_string($settings[$key]) || $settings[$key] === '' || trim($settings[$key]) !== $settings[$key]
+                || str_contains($settings[$key], "\0")) {
+                throw new LogicException('Complete login-only LDAP metadata is required.');
+            }
+        }
+        try { $parts = @parse_url($settings['uri']); } catch (Throwable) { $parts = false; }
+        if (! is_array($parts) || array_diff(array_keys($parts), ['scheme', 'host', 'port']) !== []
+            || ($parts['scheme'] ?? null) !== 'ldap' || ! is_string($parts['host'] ?? null)
+            || ! is_int($parts['port'] ?? null) || $parts['port'] < 1 || $parts['port'] > 65535
+            || $settings['uri'] !== 'ldap://'.$parts['host'].':'.$parts['port']) {
+            throw new LogicException('A single explicit StartTLS login URI is required.');
+        }
+        $host = $parts['host'];
+        $valid = str_starts_with($host, '[') && str_ends_with($host, ']')
+            ? filter_var(substr($host, 1, -1), FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false
+            : filter_var($host, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME) !== false;
+        if (! $valid || $settings['ca_file'][0] !== '/'
+            || array_intersect(explode('/', substr($settings['ca_file'], 1)), ['', '.', '..']) !== []) {
+            throw new LogicException('Explicit login host and canonical absolute CA metadata are required.');
+        }
+        // Do not stat/open the CA, test extension availability, or contact LDAP here.
+        // The unchanged verifier does that only for an actual LDAP user's credential check.
+        return $settings;
+    }
+
+    private static function setupClosed(string $directory): bool
+    {
+        clearstatcache(true, $directory.'/'.FirstAdminSetupFiles::CLOSED);
+        return @lstat($directory.'/'.FirstAdminSetupFiles::CLOSED) !== false;
     }
 
     private static function key(Repository $config): void

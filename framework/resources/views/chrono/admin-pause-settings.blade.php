@@ -2,7 +2,7 @@
 
 @section('content')
 <main class="container mx-auto px-4 py-8 chrono-page">
-    <div class="alert alert-info mb-4" role="note">In dieser Laravel-Ansicht sind die vorhandene Pausenregel-, Abteilungsverwaltung und das Erstellen lokaler Benutzer verbunden. Bestehende Benutzerdetails bleiben nur lesend; Änderungen, Löschen, Passwortänderungen, LDAP und API-Token sind nicht angebunden.</div>
+    <div class="alert alert-info mb-4" role="note">In dieser Laravel-Ansicht sind die vorhandene Pausenregel-, Abteilungsverwaltung und das Erstellen lokaler Benutzer verbunden. Bestehende Benutzerdetails bleiben nur lesend; Änderungen, Löschen, Passwortänderungen, API-Token sind nicht angebunden. LDAP-Synchronisierung erfordert zusätzlich die ausdrücklich zugelassene V4-HTTP-Komposition und gespeicherte Aufnahmefreigabe.</div>
     @if ($adminPauseSettings->error)
     <div class="alert alert-error shadow-lg mb-4" role="alert"><div><i class="fas fa-exclamation-circle"></i><span>{{ $adminPauseSettings->error }}</span></div></div>
     @endif
@@ -34,6 +34,9 @@
             <p class="text-sm opacity-70 mt-3">Stand: Revision {{ $adminPauseSettings->intakePolicy['revision'] }}. Veraltete Formulare überschreiben keine neuere Auswahl. Alle Wege dürfen aus sein; lokale Administration kann die Auswahl trotzdem wieder ändern.</p>
         </div>
     </div>
+    @endif
+    @if ($adminPauseSettings->intakePolicy !== null)
+        @include('chrono.partials.ldap-sync', ['ldap' => $adminPauseSettings])
     @endif
     <div id="user-management" class="card bg-base-100 shadow-xl mb-8">
         <div class="card-body">
@@ -225,7 +228,7 @@
         <div class="form-control mb-4"><label class="label" for="edit_password"><span class="label-text">{{ $page->copy->text('FORM_NEW_PASSWORD') }}</span></label><input type="password" id="edit_password" class="input input-bordered" value="" disabled aria-describedby="user-detail-hold"></div>
         <div class="modal-action">
             <button type="button" class="btn btn-primary" disabled aria-describedby="user-detail-hold">{{ $page->copy->text('BUTTON_SAVE_CHANGES') }}</button>
-            <button type="button" class="btn" onclick="closeEditUserModal()">{{ $page->copy->text('BUTTON_CANCEL') }}</button>
+            <button type="button" class="btn" @if ($page->cspNonce === null) onclick="closeEditUserModal()" @else data-local-close-user @endif>{{ $page->copy->text('BUTTON_CANCEL') }}</button>
         </div>
     </div>
 </dialog>
@@ -241,11 +244,11 @@
         </div>
         <div class="modal-action">
             <button type="submit" class="btn btn-primary" @disabled(! $adminPauseSettings->enabled)>{{ $page->copy->text('BUTTON_SAVE_CHANGES') }}</button>
-            <button type="button" class="btn" onclick="closeEditDepartmentModal()">{{ $page->copy->text('BUTTON_CANCEL') }}</button>
+            <button type="button" class="btn" @if ($page->cspNonce === null) onclick="closeEditDepartmentModal()" @else data-local-close-department @endif>{{ $page->copy->text('BUTTON_CANCEL') }}</button>
         </div>
     </form>
 </dialog>
-<script>
+<script @if ($page->cspNonce !== null) nonce="{{ $page->cspNonce }}" @endif>
     // Only the original pause table's add/remove enhancement; no other Admin JS.
     document.addEventListener('DOMContentLoaded', function () {
         const addRowButton = document.getElementById('addRow');
@@ -267,9 +270,12 @@
         });
     });
 </script>
-<script>
+<script @if ($page->cspNonce !== null) nonce="{{ $page->cspNonce }}" @endif>
     // Original create toggle and department behavior; no edit/delete/LDAP actions.
     document.addEventListener('DOMContentLoaded', function () {
+        @if ($page->cspNonce !== null)
+        document.querySelectorAll('[data-local-close-department]').forEach(function (button) { button.addEventListener('click', closeEditDepartmentModal); });
+        @endif
         document.getElementById('toggleUserForm').addEventListener('click', function () {
             document.getElementById('userForm').classList.toggle('hidden');
         });
@@ -300,9 +306,12 @@
         document.getElementById('editDepartmentModal').close();
     }
 </script>
-<script>
+<script @if ($page->cspNonce !== null) nonce="{{ $page->cspNonce }}" @endif>
     // Existing get_user.php fresh-on-open interaction, with UI-only read projection.
     let userDetailRequest = 0;
+    @if ($page->cspNonce !== null)
+    document.querySelectorAll('[data-local-close-user]').forEach(function (button) { button.addEventListener('click', closeEditUserModal); });
+    @endif
     document.querySelectorAll('[data-read-user]').forEach(function (button) {
         button.addEventListener('click', function () { editUser(button.dataset.readUser); });
     });

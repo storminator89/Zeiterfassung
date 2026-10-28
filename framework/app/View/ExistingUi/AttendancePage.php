@@ -34,10 +34,12 @@ final readonly class AttendancePage
         public string $activePage = 'index.php',
         public int $reportInvalidCount = 0,
         bool $reportUnresolved = false,
+        public ?string $cspNonce = null,
     ) {
         if ($userId < 1 || ! in_array($role, ['user', 'supervisor', 'admin'], true)
             || ! in_array($theme, ['light', 'dark'], true)
             || ! in_array($activePage, ['index.php', 'attendance.php', 'adjustments.php', 'work_models.php', 'history.php', 'supervisor.php', 'dashboard.php', 'settings.php', 'admin.php', 'terminals.php'], true)
+            || ($cspNonce !== null && preg_match('~\A[A-Za-z0-9+/]{24}\z~', $cspNonce) !== 1)
             || ($status['success'] ?? null) !== true
             || ! in_array($status['state'] ?? null, ['absent', 'working', 'paused'], true)) {
             throw new \InvalidArgumentException('Invalid existing attendance display data.');
