@@ -25,7 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->dontFlash([
             'current_password', 'password', 'password_confirmation',
-            'token', 'secret', 'pin', 'ldap_pass', 'nfc_identifier',
+            'token', 'secret', 'pin', 'ldap_pass', 'nfc_identifier', 'setup_token',
         ]);
 
         // Do not log exception messages, SQL/bindings, URLs, headers or bodies.

@@ -12,6 +12,7 @@ use App\Http\Controllers\LocalWebHomeController;
 use App\Http\Controllers\LocalWebHistoryController;
 use App\Http\Controllers\LocalWebSessionController;
 use App\Http\Controllers\LocalWebRegistrationController;
+use App\Http\Controllers\LocalWebFirstAdminSetupController;
 use App\Http\Controllers\LocalWebSettingsController;
 use App\Http\Controllers\LocalWebSupervisorController;
 use App\Http\Controllers\LocalWebTerminalDevicesController;
@@ -43,7 +44,7 @@ use Symfony\Component\HttpFoundation\Response;
 /** Explicit opt-in registrar. Never called by bootstrap/providers/default routes. */
 final class LocalWebRoutes
 {
-    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false): void
+    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false, bool $includeSetup = false): void
     {
         // No opt-in page may be registered against missing or replaced chart bytes.
         if ($includeSupervisor) {
@@ -58,6 +59,12 @@ final class LocalWebRoutes
         if ($includeRegistration && $app->make('config')->get('chrono_registration.enabled', false) !== true) {
             throw new LogicException('Registration requires an explicit trusted profile.');
         }
+        if ($includeSetup) {
+            $app->make(\App\Auth\FirstAdminSetup::class)->assertConfigured();
+            if (! $app->bound(\App\LegacyDatabase\AttendanceWriter::class)) {
+                throw new LogicException('First-admin setup requires an explicitly admitted writer.');
+            }
+        }
         self::requireSessionBlocking($app);
         $router = $app->make(Router::class);
         // Keep Laravel's middleware sorter from moving identity ahead of CSRF.
@@ -70,7 +77,8 @@ final class LocalWebRoutes
         $nativeFormPath = fn (Request $request): bool => in_array($request->path(), ['/', 'index.php', 'attendance.php', 'adjustments.php', 'get_time_records.php', 'save.php', 'work_models.php'], true)
             || ($includeSettings && $request->path() === 'settings.php')
             || ($includeAdminPauseSettings && $request->path() === 'admin.php')
-            || ($includeRegistration && $request->path() === 'register.php');
+            || ($includeRegistration && $request->path() === 'register.php')
+            || ($includeSetup && $request->path() === 'setup.php');
         TrimStrings::skipWhen($nativeFormPath);
         ConvertEmptyStringsToNull::skipWhen($nativeFormPath);
 
@@ -113,9 +121,13 @@ final class LocalWebRoutes
         $router->group(['middleware' => [
             EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class,
             ShareErrorsFromSession::class, LegacyFormCsrf::class, SubstituteBindings::class,
-        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeRegistration): void {
+        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeRegistration, $includeSetup): void {
             $router->get('login.php', [LocalWebSessionController::class, 'create'])->name('login');
             $router->post('login.php', [LocalWebSessionController::class, 'store'])->middleware('throttle:chrono-web-login');
+            if ($includeSetup) {
+                $router->get('setup.php', [LocalWebFirstAdminSetupController::class, 'create'])->name('chrono.first-admin-setup');
+                $router->post('setup.php', [LocalWebFirstAdminSetupController::class, 'store'])->middleware('throttle:chrono-web-setup');
+            }
             if ($includeRegistration) {
                 $router->get('register.php', [LocalWebRegistrationController::class, 'create']);
                 $router->post('register.php', [LocalWebRegistrationController::class, 'store'])->middleware('throttle:chrono-web-register');

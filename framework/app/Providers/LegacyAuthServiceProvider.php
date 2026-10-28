@@ -69,6 +69,17 @@ final class LegacyAuthServiceProvider extends ServiceProvider
             ];
         });
 
+        RateLimiter::for('chrono-web-setup', function (Request $request): array {
+            $response = fn (Request $request, array $headers) => new Response(
+                'Too many setup attempts. Try again later.', 429,
+                array_merge($headers, ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']),
+            );
+            return [
+                Limit::perMinutes(15, 5)->by('setup-ip:'.hash('sha256', $request->ip() ?? 'unknown'))->response($response),
+                Limit::perMinutes(60, 20)->by('setup-total')->response($response),
+            ];
+        });
+
         if ($this->app->runningInConsole()) {
             $this->commands([RehearseLocalAuthentication::class]);
         }

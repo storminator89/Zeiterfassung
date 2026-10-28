@@ -183,4 +183,18 @@ return [
     'REGISTRATION_UNCONFIRMED' => 'Die Registrierung konnte nicht bestätigt werden. Bitte nicht automatisch wiederholen; später die Anmeldung versuchen.',
     'REGISTRATION_RESULT' => 'Du kannst die Anmeldung versuchen. Ein neues Konto wird nur bei gültigen, noch verfügbaren Angaben angelegt.',
     'REGISTRATION_NOT_READY' => 'Registrierung noch nicht verfügbar. Die erste lokale Administration muss separat eingerichtet werden; bitte die Verwaltung kontaktieren.',
+
+    // Explicit operator-token first-admin setup, separate from public registration.
+    'SETUP_TITLE' => 'Erste Administration - Quodara Chrono',
+    'SETUP_LINK' => 'Ersten Administrator einrichten',
+    'SETUP_NOTICE' => 'Nur für die erste lokale Administration einer leeren Installation. Die geheime Setup-Freigabe muss der Betreiber separat bereitstellen. Es wird kein vorhandenes Konto geändert und keine automatische Anmeldung ausgeführt.',
+    'SETUP_TOKEN_LABEL' => 'Geheime Setup-Freigabe',
+    'SETUP_CONFIRM_PASSWORD' => 'Passwort bestätigen',
+    'SETUP_PASSWORD_HINT' => 'Passwort: 12 bis 72 Bytes, keine Steuerzeichen; beide Eingaben müssen übereinstimmen.',
+    'SETUP_CREATE_ADMIN' => 'Ersten lokalen Administrator anlegen',
+    'SETUP_BACK_LOGIN' => 'Zur Anmeldung',
+    'SETUP_INVALID' => 'Bitte gültige Angaben und zwei übereinstimmende Passwörter mit 12 bis 72 Bytes eingeben.',
+    'SETUP_TOKEN_INVALID' => 'Setup-Freigabe ungültig. Bitte die Administration kontaktieren.',
+    'SETUP_UNCONFIRMED' => 'Die Ersteinrichtung konnte nicht bestätigt werden. Nicht automatisch wiederholen; bitte den gespeicherten Stand und die Anmeldung prüfen.',
+    'SETUP_RESULT' => 'Du kannst die Anmeldung versuchen. Eine erste Administration wird nur bei leerem Benutzerbestand und gültiger Setup-Freigabe angelegt.',
 ];

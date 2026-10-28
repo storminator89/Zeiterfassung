@@ -11,6 +11,7 @@ use Illuminate\Contracts\Config\Repository;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 
 /** Existing local login transport only; its registrar must supply session/CSRF/throttle. */
@@ -53,11 +54,15 @@ final class LocalWebSessionController extends Controller
     {
         $copy = $this->copy($request);
         $registrationEnabled = $this->config->get('chrono_registration.enabled', false) === true;
+        $setupEnabled = $this->config->get('chrono_setup.enabled', false) === true
+            && Route::has('chrono.first-admin-setup');
         return view('chrono.login', ['page' => new LoginPage(
             $copy, error: $error, interactions: $this->interactions,
             showRegistration: $registrationEnabled,
-            successMessage: $registrationEnabled && $request->query('registration') === 'complete'
-                ? $copy->text('REGISTRATION_RESULT') : null,
+            showSetup: $setupEnabled,
+            successMessage: $setupEnabled && $request->query('setup') === 'complete'
+                ? $copy->text('SETUP_RESULT') : ($registrationEnabled && $request->query('registration') === 'complete'
+                ? $copy->text('REGISTRATION_RESULT') : null),
         )]);
     }
 

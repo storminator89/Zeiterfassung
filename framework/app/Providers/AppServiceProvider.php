@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Auth\SelfRegistration;
+use App\Auth\FirstAdminSetup;
 use App\Chrono\DatabaseSnapshotExport;
 use App\Chrono\LegacyLocalWebAttendance;
 use App\Chrono\LegacyLocalWebAbsences;
@@ -32,6 +33,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->scoped(FirstAdminSetup::class, fn ($app) => new FirstAdminSetup(
+            $app->make('config'), $app->make('hash'),
+            function () use ($app): AttendanceWriter {
+                if (! $app->bound(AttendanceWriter::class)) {
+                    throw new LogicException('No admitted operation-scoped first-admin writer is configured.');
+                }
+                return $app->make(AttendanceWriter::class);
+            },
+        ));
         $this->app->scoped(SelfRegistration::class, fn ($app) => new SelfRegistration(
             $app->make('config'), $app->make('hash'),
             function () use ($app): AttendanceWriter {
