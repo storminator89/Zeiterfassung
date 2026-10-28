@@ -400,9 +400,9 @@ final class LegacyChronoReads implements ChronoReads
         );
     }
 
-    public function correctionsPage(string $status = 'pending', int $page = 1): array
+    public function correctionsPage(string $status = 'pending', int $page = 1, ?int $previewRequestId = null): array
     {
-        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($status, $page): array {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($status, $page, $previewRequestId): array {
             if (! in_array($status, ['pending', 'all', 'approved', 'rejected', 'withdrawn'], true) || $page < 1) {
                 throw new \InvalidArgumentException('Invalid correction request page.');
             }
@@ -426,7 +426,28 @@ final class LegacyChronoReads implements ChronoReads
             }
             $records = $this->rows($pdo, 'SELECT a.*,u.username FROM time_adjustments a JOIN users u ON u.id=a.user_id WHERE '.$scope.' ORDER BY a.id DESC LIMIT '.$pageSize.' OFFSET '.$offset, $parameters);
 
-            return compact('records', 'counts', 'status', 'total', 'page', 'pages');
+            // At most ONE explicit own pending request from this visible page.
+            // Never load another person's balance or recompute fifty histories.
+            $balancePreview = [];
+            if ($previewRequestId !== null && $previewRequestId > 0) {
+                foreach ($records as $request) {
+                    if ((int) $request['id'] !== $previewRequestId
+                        || (int) $request['user_id'] !== (int) $actor->getKey()
+                        || $request['status'] !== 'pending') {
+                        continue;
+                    }
+                    require_once dirname(__DIR__, 3).'/lib/correction_balance_preview.php';
+                    $balancePreview = ['available' => false, 'before' => null, 'after' => null, 'difference' => null];
+                    $carryIn = $this->rows($pdo, 'SELECT ueberstunden FROM users WHERE id=?', [$actor->getKey()])[0]['ueberstunden'] ?? null;
+                    if ((is_int($carryIn) || is_float($carryIn) || is_string($carryIn)) && is_numeric($carryIn)) {
+                        $ownRecords = $this->rows($pdo, 'SELECT * FROM zeiterfassung WHERE user_id=? ORDER BY startzeit DESC', [$actor->getKey()]);
+                        $balancePreview = \chrono_correction_balance_preview($pdo, (int) $actor->getKey(), $ownRecords, (float) $carryIn, $request, time());
+                    }
+                    break;
+                }
+            }
+
+            return compact('records', 'counts', 'status', 'total', 'page', 'pages', 'balancePreview');
         });
     }
 

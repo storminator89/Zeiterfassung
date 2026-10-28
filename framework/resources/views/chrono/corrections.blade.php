@@ -85,6 +85,21 @@
             <p>{{ $a['preview']['difference'] === null ? 'Keine verlässliche Dauer-Differenz verfügbar.' : 'Dauer-Differenz: ' . $a['preview']['difference'] }}</p>
             <p class="opacity-70">Nur ausgewählte Zeitfelder des gespeicherten Originals und Antrags. Keine Freigabe- oder Saldozusage; die Entscheidung prüft den aktuellen Datensatz erneut.</p>
         </div>
+        @if ($a['status'] === 'pending' && $a['user_id'] === $page->userId)
+        <div class="text-sm my-3" id="balance-preview-{{ $a['id'] }}">
+            @if ($corrections->balancePreviewRequestId === $a['id'] && $corrections->balancePreview)
+            <p class="font-semibold">Eigener Home-Stand · Vorschau</p>
+                @if ($corrections->balancePreview['available'])
+                <p>Jetzt: {{ $corrections->balancePreview['before'] }} · Mit diesem Antrag: {{ $corrections->balancePreview['after'] }} · Änderung: {{ $corrections->balancePreview['difference'] }}</p>
+                @else
+                <p role="status">Keine verlässliche Vorschau verfügbar. Aktuellen Eintrag und Datenhinweise prüfen.</p>
+                @endif
+            <p class="opacity-70">Nur dieser Antrag auf dem aktuell gelesenen Stand: Startguthaben plus abgeschlossene Buchungstage minus deren Soll, wie Home. Kein vollständiges Vertragszeitkonto, keine Freigabezusage. Andere offene Anträge sind nicht eingerechnet; vor der Entscheidung wird erneut geprüft.</p>
+            @else
+            <a class="btn btn-outline btn-sm mt-2" href="{{ $corrections->balancePreviewUrl($a['id']) }}">Home-Stand mit Antrag prüfen</a>
+            @endif
+        </div>
+        @endif
         <p>{{ $a['reason'] }}</p>
         @if ($a['review_reason'])<p class="opacity-70">{{ $a['status'] === 'withdrawn' ? 'Rücknahme' : 'Entscheidung' }}: {{ $a['review_reason'] }}</p>@endif
         @if ($corrections->withdrawalsEnabled && $a['status'] === 'pending' && $a['user_id'] === $page->userId)

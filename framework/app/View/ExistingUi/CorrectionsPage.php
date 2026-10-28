@@ -24,6 +24,8 @@ final readonly class CorrectionsPage
         public array $queueSelection = [],
         public bool $withdrawalsEnabled = false,
         public array $requestDraft = [],
+        public ?int $balancePreviewRequestId = null,
+        public array $balancePreview = [],
     ) {}
 
     /** Display only after a known request rejection; never a command or stored/flash input. */
@@ -48,6 +50,11 @@ final readonly class CorrectionsPage
     public static function queueUrl(string $status, int $page, array $selection = []): string
     {
         return 'adjustments.php?'.http_build_query(array_merge(['request_status' => $status, 'request_page' => $page], $selection));
+    }
+
+    public function balancePreviewUrl(int $requestId): string
+    {
+        return self::queueUrl($this->requestStatus, $this->requestPage, $this->queueSelection).'&balance_preview='.$requestId.'#balance-preview-'.$requestId;
     }
 
     public function pageUrl(int $page): string
