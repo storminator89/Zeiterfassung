@@ -71,9 +71,9 @@ final class LocalWebCorrectionsController extends Controller
         $language = is_string($language) && in_array($language, ['de', 'en', 'zh'], true) ? $language : 'de';
         $request->session()->put('lang', $language);
 
-        // Same existing all-own read and first-200 order; only an explicit own
-        // older selection may add one option. Never fall back to new entry 0.
-        $allOwnRecords = $this->reads->reportRows();
+        // Order own rows by instant/id before taking the newest 200 options.
+        // Explicit older own selection may add one; never fall back to new entry 0.
+        $allOwnRecords = $this->reads->reportRows(chronological: true);
         $recordOptions = array_slice($allOwnRecords, 0, 200);
         $selectedRecordId = 0;
         $selectionInvalid = false;

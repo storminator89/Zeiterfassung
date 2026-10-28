@@ -8,7 +8,7 @@ interface ChronoReads
     /** Existing attendance.php?format=status shape; always the authenticated user. */
     public function attendanceStatus(): array;
 
-    /** Own raw rows; preserve legacy lexical order unless Home requests native instant/id ordering. */
+    /** Own raw rows; callers explicitly opt into native instant/id ordering before paging. */
     public function reportRows(bool $chronological = false): array;
 
     /** Native own Home statistics plus invalid/conflict diagnostics; unresolved totals are not numeric. */

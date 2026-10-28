@@ -51,8 +51,8 @@ final class LegacyChronoReads implements ChronoReads
     public function reportRows(bool $chronological = false): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($chronological): array {
-            // Corrections retain their native lexical first-200 options. Only
-            // Home opts into the reviewed native instant/id ordering before paging.
+            // Preserve the default query; Home, CSV and Corrections explicitly
+            // opt into native instant/id ordering before their existing paging.
             $order = 'startzeit DESC';
             if ($chronological) {
                 require_once dirname(__DIR__, 3).'/lib/report_ordering.php';

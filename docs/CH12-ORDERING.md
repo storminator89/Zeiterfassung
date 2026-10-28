@@ -145,3 +145,63 @@ Dispatch, Berichtsvollrechnung, Login, Session, echte Daten/DB, HTTP oder Browse
 kein neuer CI-Lauf, Remote-Schreibzugriff oder Deployment. Der Fortschritt ist
 Team-Quellparität, keine geschützte Rollen-/Browserabnahme, kein #16-Nachweis und
 kein flächendeckender Abschluss von #17 oder Lastnachweis großer Historien.
+
+## Ergänzung: eigene Korrekturauswahl vor der 200-Zeilen-Grenze
+
+Basis dieses getrennten Fünfpfadpakets: Main
+`eb454f86728d548a7cf1d882acb24663017962bb`, Tree
+`03e011892a50de9e0831afdc6a2085b56b92f107`. Die native eigene
+Korrekturauswahl in `adjustments.php` registriert den unveränderten festen
+`lib/report_ordering.php`-Helfer auf ihrer vorhandenen PDO und sortiert nach
+`chrono_report_start_epoch(startzeit) DESC,id DESC` **vor** dem bestehenden
+`LIMIT 200`. Der vorbereitete Laravel-Korrekturcontroller ruft denselben bereits
+vorhandenen `reportRows(chronological: true)`-Zweig auf, bevor er unverändert die
+ersten 200 eigenen Zeilen nimmt. Dazu ändern sich nur zwei erläuternde Kommentare
+im Reader und dessen Interface sowie dieses Dokument. Der Standardwert
+`chronological: false` und alle anderen Reader-Methoden bleiben unverändert;
+das aktuelle LDAP-/Bestandskontoprofil und seine frischen Prüfgrenzen bleiben
+erhalten.
+
+Keine neue Verbindung, Datenkopie, Abfrageart, Migration oder Zeitprojektion.
+Der zusätzliche Datumsparse je eigener Kandidatenzeile vor der Sortierung ist
+keine Performanceverbesserung; der bestehende Laravel-Leser lädt weiterhin alle
+eigenen Zeilen. Große Historien bleiben #56. Parser-, Berlin-/DST-, NULL- und
+Registrierungsfehlergrenzen des bestehenden Helfers gelten unverändert: kein
+rekonstruierter Altinstant, keine Zeittextänderung, kein stiller Textsortierungs-
+Fallback und keine Ersatzverbindung. Unlesbare Zeittexte sortieren hinter
+lesbaren Instants und können deshalb außerhalb der 200 Optionen liegen;
+eine eigene explizit verlinkte Altzeile bleibt weiterhin unabhängig davon
+ladbar. Dies ist keine Behebung oder vollständige sichtbare Qualitätsdiagnose
+ungültiger Bestandszeilen (#16/#55).
+
+Die Auswahl- und Schreibverträge bleiben gleich: GET erlaubt ausschließlich
+positive kanonische IDs; beim Antrag-POST bedeutet nur ausdrücklich `record_id=0`
+einen Nachtrag. Native explizite Altbuchungen werden weiterhin zusätzlich mit
+`id=? AND user_id=?` geladen und durch denselben unveränderten
+`correction_selection_options()`-Helfer angehängt. Laravel sucht sie weiterhin
+im bereits eigengescope-ten Gesamtbestand und verwendet denselben Helfer.
+Fehlende, fremde oder syntaktisch ungültige IDs fallen nicht auf einen Nachtrag
+zurück. Auswahl einer schon sichtbaren ID erzeugt kein Duplikat; eine gültige
+explizite eigene Altbuchung kann die Liste wie bisher auf 201 Optionen erweitern.
+Rollen, Filter, Status-/Antragslisten, Anzeige-/Formfelder, CSRF, Aktionen,
+Freigabe, Transaktionen und Audit bleiben unverändert.
+
+Ein grober synthetischer Query-only-Nachweis und PHP-Syntax bestanden am
+28.10.2026 unter PHP 8.5.12. Eine einzige `sqlite::memory:`-PDO enthält nur
+erfundene Zeilen, wird danach schreibgesperrt und verwendet die tatsächliche
+native SELECT-Anweisung, den inneren `reportRows()`-Lesebody und die unveränderten
+nativen/Controller-Auswahlfragmente. Nur der feste Include-Pfad wird für die
+Fragmentausführung angepasst. Geprüft wurden doppelte Herbststunde, gemischte
+Offset-/Legacyformen, IDgleichstand, separater Berliner Tag, NULL-Reihenfolge,
+Grenze vor 200, Standardreader-Erhaltung, eigene Altzeile/201, POST-Nachtrag0
+sowie fehlende/fremde/ungültige GET-/POST-Auswahl. Der unveränderte
+Registrierungsfehler wird mit einem verbindungslosen PDO-Testdouble betrachtet.
+Die unveränderte Basis liefert im selben Nachweis eine falsche neueste
+200-Auswahl; der korrigierte Quellstand besteht. Keine neue Testsuite oder CI.
+
+Das ist ausschließlich Quellen-/Query-/Auswahlparität: keine Ausführung des
+Einstiegsskripts, Reader-Snapshots oder Controllers, keine Auth-/Middleware-/
+Sitzungs-, vollständige Formular-/HTTP-/Browser- oder produktive Abnahme, keine
+reale Datenbank, Konten-/Laufzeitaktivierung oder Deployment. #14 und #17 bleiben
+bis zu ihren übrigen Abnahmen offen; kein flächendeckender #17-Abschluss oder
+Leistungsnachweis wird behauptet.

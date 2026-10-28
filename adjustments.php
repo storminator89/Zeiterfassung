@@ -5,10 +5,12 @@ $user=(int)$_SESSION['user_id'];$role=$_SESSION['role'];$error='';
 require_once __DIR__.'/lib/corrections.php';
 require_once __DIR__.'/lib/correction_selection.php';
 require_once __DIR__.'/lib/correction_presentation.php';
+require_once __DIR__.'/lib/report_ordering.php';
+report_register_start_order($conn);
 $requestStatusLabels=['pending'=>'Offen','all'=>'Alle Status','approved'=>'Freigegeben','rejected'=>'Abgelehnt'];
 $requestStatus=is_string($_GET['request_status']??null)&&isset($requestStatusLabels[$_GET['request_status']])?$_GET['request_status']:'pending';
 $requestedPage=filter_var($_GET['request_page']??1,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]])?:1;
-$records=$conn->prepare('SELECT id,startzeit,endzeit FROM zeiterfassung WHERE user_id=? ORDER BY startzeit DESC LIMIT 200');$records->execute([$user]);$records=$records->fetchAll(PDO::FETCH_ASSOC);
+$records=$conn->prepare('SELECT id,startzeit,endzeit FROM zeiterfassung WHERE user_id=? ORDER BY chrono_report_start_epoch(startzeit) DESC,id DESC LIMIT 200');$records->execute([$user]);$records=$records->fetchAll(PDO::FETCH_ASSOC);
 $selectedRecordId=0;$selectionError='';
 try {
     if ($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['action']??'')==='request') {
