@@ -244,3 +244,120 @@ GitHub-CI-Läufe, Runtime-/Konfigurations-/Konten-/Standort-/Geräte-/Schlüssel
 Abnahmegrenzen bleiben unverändert. Eine unabhängige Prüfung bezieht sich
 ausschließlich auf den finalen neuen Baum; Browser-/HTTP-/CSRF-/Hardware-
 und Betriebsabnahme bleiben offen. #79/#81 bleiben teilweise offen.
+
+
+## Ergänzung: vorhandene konfigurierte Terminal-Zugänge, nur lesend
+
+Basis des getrennten Sechspfadpakets ist der tatsächliche Main
+`b7c0fcbbbd9df783db88734dfab4eaa0e1f8da30`, Baum
+`5ce4b85d88490ed4223960ce5fabe91a899553fd`. Bezug #79/#81. Die vorhandene native
+Karte **Terminal-Zugänge** wird als reine Übersicht mit denselben Karten-/
+Tabellenklassen und Spalten **Person**, **Personalcode**, **Standort**, **Zugang**
+in die bestehende Blade-Seite übernommen. Keine neue Oberfläche, Suche,
+Sortierung oder Seitengrenze. Ohne sichtbare Zeilen erklärt ein leerer Zustand
+die leere Tabelle. Die nicht angeschlossenen Mutationen werden ausdrücklich
+benannt; die native Aktionsspalte und Sperrformulare werden nicht imitiert.
+
+`ChronoReads::adminTerminalCredentials()` ergänzt das Readerinterface und genau
+eine Methode im vorhandenen Reader. Die unveränderte Snapshotgrenze lädt den
+Akteur aktuell aus der Datenbank; erst danach verlangt die Methode **lokale
+Adminrolle**, bevor sie Zugangsdatenmetadaten abfragt. Ein gecachter Admin beim
+heute nichtadministrativen Konto, LDAP-Admin, Nichtadmin oder gelöschtes Konto
+erhält keine Zeilen. Kein Personen-/Standortselector aus der Anfrage, keine
+rekursive oder neue Teamsicht, kein Writer. Die bisherige Geräte-/Kontakt-
+Projektion und alle anderen Reader-Methoden bleiben unverändert.
+
+Der native Umfang bleibt ausschließlich die konfigurierten Zeilen aus
+`employee_credentials JOIN users JOIN terminal_sites`. Beide bestehenden
+INNER JOINs bleiben erhalten: fehlende Personen/Standorte werden nicht durch
+neue Platzhalter/LEFT JOINs sichtbar gemacht oder automatisch repariert.
+Es gibt keine zusätzliche Sortierung, Paginierung oder neue Vollbenutzerliste.
+
+Die feste Abfrage liest nur Username, Personalcode, Standortname und vorübergehend
+Freigabewert plus nichtgeheime Kartenhash-**Präsenz**. Letztere wird unmittelbar
+in SQL als Boolean abgeleitet; NULL, leer und String `"0"` bleiben gemäß nativer
+PHP-Wahrheit false. Der rohe Kartenhash wird nicht über PDO selektiert,
+PINhashes werden überhaupt nicht ausgewählt. Die interne Zuordnung benötigt
+User-/Standort-IDs nur für die JOINs, nicht in der Ergebnisliste.
+
+Nur vier fertige Anzeigefelder verlassen den Reader:
+`username`, `employee_code`, `site`, `access_label`. Das Label bleibt nativ:
+freigegeben ohne Kartenpräsenz **PIN**, mit Präsenz **PIN + Karte**, andernfalls
+**Gesperrt**. Das sind Methoden-/Freigabelabels, keine angezeigten PIN- oder
+Kartenwerte und kein physischer Funktionstest. Interne Freigabe-/Präsenzwerte,
+Hash-/PIN-/NFCwerte, Geräte-/Credential-IDs, Kontopasswörter/-tokens, Grants,
+Generationen, Schlüssel und Bindkonfiguration werden nicht an das DTO gegeben.
+
+Person, Personalcode und Standort sind trotzdem betriebliche Informationen.
+Die Ansicht gehört ausschließlich in den bereits geschützten Adminbereich;
+reale Inhalte nicht in GitHub/Prüfnachweise kopieren. Blade escaped alle Werte,
+auch fehlerhafte oder HTML-haltige Altwerte. Keine neue Credentialsession,
+Schlüsselauflösung, Native-Bootstrap-/Terminaldatei, Provider oder Route.
+
+Controller und DTO transportieren nur diese ausgewählten Felder. Der neue
+optionale DTO-Parameter `credentials` hat einen leeren Default, damit vorhandene
+statische Zweiargument-Aufrufer weiter rendern. Der Controller verwendet ein
+**benanntes** Argument. Bei serieller Integration mit der separaten Standortanlage
+muss `credentials` hinter deren vorhandene optionale DTO-Parameter ergänzt und
+der named-Argument-Aufruf erhalten werden; beide Blade-Karten werden getrennt
+übernommen und der tatsächliche gemeinsame Baum erneut geprüft. Es wird keine
+bereits erfolgte gemeinsame Integration oder Aktivierung behauptet.
+
+### Grober synthetischer Nachweis und Grenzen
+
+PHP **8.5.12** / Laravel **13.38.0**: Ein einziger anonymer MemoryOnly-
+`chrono_fixture`-Bestand mit erfundenen Konten/Standorten/Zugangsmarkern prüfte
+den tatsächlichen Reader einschließlich seiner Snapshot-/frischen Rollengrenze.
+Ein verbindungslokaler Lese-Spy blieb bei allen nicht zugelassenen Identitäten
+auf 0; erst der aktuelle lokale Admin las Zugangsdatenmetadaten. Der geschlossene
+Standard ohne benannte `chrono`-Konfiguration verweigerte zuvor ohne Verbindung.
+Die Guardidentitäten waren synthetisch gesetzt: kein tatsächlicher Login oder
+Browser-/Cookie-/Middleware-/LDAP-Lauf wird daraus abgeleitet.
+
+Sechs konfigurierte sichtbare Zeilen liefern genau die vier UI-Felder und die
+drei erwarteten Labels; leere/NULL/`"0"`-Kartenpräsenz sowie zwei orphan-JOINfälle
+sind enthalten. Synthetische PIN-/Kartenmarker und zusätzliche Credentialspalten
+fehlen im Ergebnis. Query-only-Daten, SQL-Transaktionslevel und native Globals
+bleiben unverändert. Zwei inaktive Bladefälle (konfigurierte und leere Liste /
+alter DTO-Aufruf) rendern ohne DBverbindung: Escaping, keine Credentialmutations-
+form und leere Defaults wurden geprüft. PHP-Syntax einschließlich kompilierter
+Bladeausgabe sowie `git diff --check` sind grün; keine neue Testsuite/CI.
+
+Keine tatsächlichen Konten, PINs, Karten, Hashes, Schlüssel, Standorte oder
+Einstellungen gelesen/geändert. Kein HTTP-/Browser-/visueller-/Hardware- oder
+Produktivnachweis, kein Test echter Terminalzugänge. Keine Reparatur verwaister
+Beziehungen und keine Behauptung einer vollständigen Terminalverwaltung oder
+Laravel-Umstellung; #79/#81 bleiben mit ihren übrigen Gates offen.
+
+
+### Additive Quellunion auf Main `7fd329ee`
+
+Das oben genannte Sechspfadpaket
+`e5ff725f74e43966ce13a212add841ee0bec2067` wird mit unveränderter reiner
+Readerlogik auf Main `7fd329eecf5716da5823a6308a164ffcaa2ef785` (Baum
+`588b2fcf95a2b347685410ac420d202c7d858504`) neu verankert. Die oben stehende
+synthetische Abnahme gehört zum historischen Quellpaket und wird nicht erneut
+ausgeführt oder zur Betriebsfreigabe erklärt.
+
+Die gemeinsame Controller-/DTO-/Bladeunion erhält die komplette bereits
+gemergte Standortanlage: Dienstinjektion, festes Sitekommando, Fehlerbehandlung,
+Redirect, die fünf vorhandenen DTO-Argumente, Defaults und beide bisherigen
+Geräte-/Standortkarten bleiben unverändert. Der leere optionale `credentials`-
+Parameter steht ausschließlich **danach**; der Controller übergibt ihn benannt.
+Die neue read-only Zugangskarte wird bytegleich aus dem geprüften Paket
+angehängt, ohne Sperr-/Speicheraktionen oder zusätzliche Formulare. Geräte- und
+Zugangsprojektion bleiben getrennt; die neue Methode reautorisiert im vorhandenen
+Snapshot, bevor nur vier nichtgeheime Anzeigefelder zurückgegeben werden.
+
+Jede der sechs Main-Dateien wird durch Rücknahme ausschließlich ihrer
+additiven Integrationshunks bytegenau auf den aktuellen Stand zurückgerechnet.
+Routes, Writer, Provider, Terminal-/Budget-/LDAP-/Setupschalter, native Dateien,
+Auth und alle übrigen Main-Einträge bleiben unverändert. Kein neues Profil,
+keine Route, kein bestehender Laufzeitbestand und keine tatsächlichen Personen-,
+PIN-, Karten-, Hash- oder Schlüsselwerte werden gelesen oder geändert.
+
+Aktuelle Nachweise beschränken sich auf notwendige PHP-/kompilierte-Blade-
+Syntax und statische Hash-/Objekt-/Patch-/Baum-/Methodenprojektionen. Keine
+lokalen Funktionstests oder neuen GitHub-CI-Läufe; keine echte DB-, Login-,
+HTTP-, Browser-, CSRF-, Hardware- oder Runtimeabnahme. Die unabhängige Prüfung
+gilt nur für den finalen neuen Quellbaum. #79/#81 bleiben teilweise offen.

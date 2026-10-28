@@ -3,7 +3,7 @@
 @section('content')
 <main class="container mx-auto px-4 py-8 chrono-page">
     <h1 class="text-2xl font-bold mb-6">Praxis-Terminals</h1>
-    <div class="alert alert-info mb-6" role="note">Nur lesende Geräteübersicht mit Standort und Kontaktstatus. Koppeln, Sperren, Modulfreigabe und persönliche Terminal-Zugänge sind in dieser Laravel-Ansicht nicht verbunden. Die Standortanlage ist nur bei gesonderter Freigabe verfügbar.</div>
+    <div class="alert alert-info mb-6" role="note">Nur lesende Geräteübersicht mit Standort und Kontaktstatus. Koppeln, Sperren, Modulfreigabe und das Speichern oder Sperren persönlicher Terminal-Zugänge sind in dieser Laravel-Ansicht nicht verbunden. Die Standortanlage ist nur bei gesonderter Freigabe verfügbar.</div>
     @if ($terminalDevices->error)<div class="alert alert-error mb-6" role="alert">{{ $terminalDevices->error }}</div>@endif
     @if ($terminalDevices->saved)<div class="alert alert-success mb-6">Änderung gespeichert.</div>@endif
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
@@ -38,6 +38,21 @@
                 <div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary">Standort anlegen</button></div>
             </fieldset>
         </form>
+    </section>
+    <section class="card bg-base-100 shadow-xl p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">Terminal-Zugänge</h2>
+        <p class="opacity-70 mb-4">Nur lesende Übersicht der eingerichteten Zugänge. Zugang speichern / ersetzen und Zugang sperren sind hier nicht verbunden. PIN, Kartenwerte und Hashes werden nicht angezeigt.</p>
+        @if (! $terminalDevices->credentials)<p class="mb-4" role="status">Keine sichtbaren Terminal-Zugänge vorhanden.</p>@endif
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th>Person</th><th>Personalcode</th><th>Standort</th><th>Zugang</th></tr></thead>
+                <tbody>
+                @foreach ($terminalDevices->credentials as $credential)
+                    <tr><td>{{ $credential['username'] }}</td><td>{{ $credential['employee_code'] }}</td><td>{{ $credential['site'] }}</td><td>{{ $credential['access_label'] }}</td></tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
     </section>
 </main>
 @endsection
