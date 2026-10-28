@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
+use App\Chrono\CsvExportPeriod;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Http\Request;
+use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -14,13 +17,21 @@ final class LocalWebCsvExportController extends Controller
 {
     public function __construct(private ChronoReads $reads) {}
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        try {
+            $period = CsvExportPeriod::fromQueryString((string) $request->server->get('QUERY_STRING', ''));
+        } catch (InvalidArgumentException) {
+            return new Response('Ungültiger CSV-Zeitraum. Bitte Von/Bis als gültige Berliner Daten (JJJJ-MM-TT) wählen; Von darf nicht nach Bis liegen.', 400, [
+                'Content-Type' => 'text/plain; charset=UTF-8',
+            ]);
+        }
         try {
             // Definitions only; never security.php/config.php/functions.php.
             require_once dirname(__DIR__, 4).'/lib/csv_export.php';
             // One complete authorized own snapshot, even for administrators.
-            // Search/page/user_id parameters cannot enter this parameterless path.
+            // Search/page/user_id cannot choose another person or narrow these gates.
+            // Even period exports validate this COMPLETE own snapshot before filtering.
             $records = $this->reads->reportRows(chronological: true);
             if (\report_absence_conflicts($records) !== []) {
                 return new Response('CSV-Export nicht abschließend verfügbar: Arbeitszeit und ganztägige Abwesenheit überschneiden sich. Bitte zuerst über die Arbeitszeitliste und Korrekturanträge manuell klären. Es wurden keine Zeiten gelöscht oder gekürzt.', 409, [
@@ -40,12 +51,14 @@ final class LocalWebCsvExportController extends Controller
             // Native date() runs under config.php's Berlin default. Capture at
             // the same point, before serialization, without mutating global time.
             $date = (new DateTimeImmutable('now', new DateTimeZone('Europe/Berlin')))->format('Y-m-d');
-            $document = \report_csv_document($records);
+            $document = \report_csv_document($period === null ? $records : $period->select($records));
+            $filename = $period === null ? 'Arbeitszeiterfassung_'.$date.'.csv'
+                : 'Arbeitszeiterfassung_'.$period->from.'_'.$period->to.'.csv';
 
             // Materialization can fail; only COMPLETE bytes become an attachment.
             return new Response($document, 200, [
                 'Content-Type' => 'text/csv; charset=UTF-8',
-                'Content-Disposition' => 'attachment; filename="Arbeitszeiterfassung_'.$date.'.csv"',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
             ]);
         } catch (AuthenticationException $error) {
             throw $error;
