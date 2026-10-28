@@ -144,6 +144,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
     $ldapConn = null;
     $result = false;
     $ldapFailureMessage = LDAP_SETTINGS_INVALID;
+    $ldapImport = null;
+    $ldapTransactionStarted = false;
 
     try {
         // Leere Bind-Daten dürfen nicht versehentlich als anonymer Test gelten.
@@ -190,113 +192,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
                     // Nur den erfolgreich geprüften Stand verschlüsselt übernehmen.
                     $ldapFailureMessage = LDAP_SYNC_FAILED;
                     $encryptedLdapPass = encryptData($ldapPass, ENCRYPTION_KEY, ENCRYPTION_METHOD);
-                    $stmt = $conn->prepare("SELECT COUNT(*) FROM ldap_settings");
-                    $stmt->execute();
-                    $count = $stmt->fetchColumn();
-
-                    if ($count > 0) {
-                        $stmt = $conn->prepare("UPDATE ldap_settings SET ldap_host = ?, ldap_port = ?, ldap_user = ?, ldap_pass = ?, ldap_base_dn = ? WHERE id = (SELECT id FROM ldap_settings ORDER BY id DESC LIMIT 1)");
-                        $stmt->execute([$ldapHost, $ldapPort, $ldapUser, $encryptedLdapPass, $ldapBaseDN]);
-                    } else {
-                        $stmt = $conn->prepare("INSERT INTO ldap_settings (ldap_host, ldap_port, ldap_user, ldap_pass, ldap_base_dn) VALUES (?, ?, ?, ?, ?)");
-                        $stmt->execute([$ldapHost, $ldapPort, $ldapUser, $encryptedLdapPass, $ldapBaseDN]);
-                    }
-
-                    require_once __DIR__ . '/lib/ldap_manager_mapping.php';
-                    $ldapIdentities = [];
-                    // Pass 1: Identitäten importieren, bestehende Beziehungen nicht anfassen.
-                    foreach ($entries as $entry) {
-                        if (isset($entry["uid"][0]) && isset($entry["mail"][0])) {
-                            $username = $entry["uid"][0];
-                            $email = $entry["mail"][0];
-                            $cn = isset($entry["cn"][0]) ? $entry["cn"][0] : '';
-                            $sn = isset($entry["sn"][0]) ? $entry["sn"][0] : '';
-                            $department = isset($entry["ou"][0]) ? $entry["ou"][0] : '';
-                            $managerDn = isset($entry["manager"][0]) ? $entry["manager"][0] : '';
-
-                            // Prüfen, ob der Benutzer bereits in der SQLite-Datenbank existiert
-                            $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username");
-                            $stmt->bindParam(':username', $username);
-                            $stmt->execute();
-                            $user = $stmt->fetch(PDO::FETCH_OBJ);
-
-                            // Abteilungs-ID aus der Datenbank abrufen oder erstellen
-                            $stmt = $conn->prepare("SELECT id FROM departments WHERE name = :name");
-                            $stmt->bindParam(':name', $department);
-                            $stmt->execute();
-                            $dept = $stmt->fetch(PDO::FETCH_OBJ);
-                            $departmentId = $dept ? $dept->id : null;
-
-                            if (!$departmentId && $department) {
-                                // Abteilung einfügen, falls nicht vorhanden
-                                $stmt = $conn->prepare("INSERT INTO departments (name) VALUES (:name)");
-                                $stmt->bindParam(':name', $department);
-                                $stmt->execute();
-                                $departmentId = $conn->lastInsertId();
-                            }
-
-                            if ($user) {
-                                // Benutzerinformationen aktualisieren
-                                $updateSql = "UPDATE users SET auth_source = 'ldap', email = :email, department_id = :department_id WHERE username = :username";
-                                $stmt = $conn->prepare($updateSql);
-                                $stmt->bindParam(':email', $email);
-                                $stmt->bindParam(':department_id', $departmentId);
-                                $stmt->bindParam(':username', $username);
-                                $stmt->execute();
-                                $ldapUserId = (int)$user->id;
-                            } else {
-                                // Neuen Benutzer einfügen
-                                $insertSql = "INSERT INTO users (username, password, email, role, department_id, auth_source) VALUES (:username, :password, :email, 'user', :department_id, 'ldap')";
-                                $stmt = $conn->prepare($insertSql);
-                                $passwordHash = password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT);
-                                $stmt->bindParam(':username', $username);
-                                $stmt->bindParam(':password', $passwordHash);
-                                $stmt->bindParam(':email', $email);
-                                $stmt->bindParam(':department_id', $departmentId);
-                                $stmt->execute();
-                                $ldapUserId = (int)$conn->lastInsertId();
-                            }
-                            $ldapIdentities[] = ['id' => $ldapUserId, 'dn' => $entry['dn'] ?? '', 'manager_dn' => $managerDn];
-                        }
-                    }
-
-                    // Pass 2: Alle importierten Identitäten sind jetzt vorhanden.
-                    $conn->beginTransaction();
-                    try {
-                        $currentSupervisors = [];
-                        foreach ($conn->query("SELECT id, supervisor_id FROM users")->fetchAll(PDO::FETCH_ASSOC) as $row) {
-                            $currentSupervisors[(int)$row['id']] = $row['supervisor_id'] === null ? null : (int)$row['supervisor_id'];
-                        }
-                        $managerPlan = chrono_ldap_manager_plan($ldapIdentities, $currentSupervisors);
-                        $stmt = $conn->prepare("UPDATE users SET supervisor_id = ? WHERE id = ?");
-                        foreach ($managerPlan['assignments'] as $ldapUserId => $supervisorId) {
-                            if ($currentSupervisors[$ldapUserId] !== $supervisorId) {
-                                $stmt->execute([$supervisorId, $ldapUserId]);
-                            }
-                        }
-                        $conn->commit();
-                    } catch (Throwable $e) {
-                        if ($conn->inTransaction()) { $conn->rollBack(); }
-                        throw $e;
-                    }
-                    if ($managerPlan['conflicts']) {
-                        $reasons = [
-                            'ambiguous_identity' => 'mehrdeutige LDAP-Identität',
-                            'invalid_identity_dn' => 'ungültiger Identitäts-DN oder DN-Parser nicht verfügbar',
-                            'invalid_manager_dn' => 'ungültiger Manager-DN oder DN-Parser nicht verfügbar',
-                            'unknown_manager' => 'Manager nicht eindeutig im aktuellen Import vorhanden',
-                            'ambiguous_manager' => 'mehrdeutiger Manager',
-                            'self_manager' => 'Selbstzuordnung',
-                            'cyclic_manager' => 'zyklische Managerbeziehung',
-                        ];
-                        $details = [];
-                        foreach ($managerPlan['conflicts'] as $ldapUserId => $reason) {
-                            $details[] = 'Konto #' . $ldapUserId . ': ' . $reasons[$reason];
-                        }
-                        $error = 'LDAP-Identitäten synchronisiert. Managerkonflikte: Die bisherigen Beziehungen dieser Konten bleiben unverändert. ' . implode('; ', $details);
-                    } else {
-                        $successMessage = LDAP_SYNC_SUCCESS;
-                    }
+                    // Fixed materialized stage only: no live result/callback or raw bind password.
+                    $ldapImport = ['entries' => $entries, 'host' => $ldapHost, 'port' => $ldapPort,
+                        'bind_user' => $ldapUser, 'ciphertext' => $encryptedLdapPass, 'base_dn' => $ldapBaseDN];
                 } else {
                     $error = LDAP_SEARCH_FAILED;
                 }
@@ -310,11 +208,75 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sync_ldap'])) {
         // Keine Serverdiagnosen oder eingereichten Zugangsdaten in die UI übernehmen.
         $error = $ldapFailureMessage;
     } finally {
-        // Ein Fehler beim Freigeben des Ergebnisses darf das Unbind nicht überspringen.
-        try { if ($result) { @ldap_free_result($result); } }
-        catch (Throwable $e) { $error = $error ?: LDAP_SYNC_FAILED; $successMessage = ''; }
-        try { if ($ldapConn) { @ldap_unbind($ldapConn); } }
-        catch (Throwable $e) { $error = $error ?: LDAP_SYNC_FAILED; $successMessage = ''; }
+        // Finish transport BEFORE opening the database transaction. Always try
+        // unbind even if free fails; no cleanup error may follow a DB commit.
+        $ldapCleanupFailed = false;
+        try { if ($result && !@ldap_free_result($result)) { $ldapCleanupFailed = true; } }
+        catch (Throwable $e) { $ldapCleanupFailed = true; }
+        try { if ($ldapConn && !@ldap_unbind($ldapConn)) { $ldapCleanupFailed = true; } }
+        catch (Throwable $e) { $ldapCleanupFailed = true; }
+        $result = false;
+        $ldapConn = null;
+        if ($ldapCleanupFailed) {
+            $ldapImport = null;
+            $error = $error ?: LDAP_SYNC_FAILED;
+            $successMessage = '';
+        }
+    }
+
+    // A valid empty directory is still a materialized stage, not a falsey skip.
+    if ($ldapImport !== null) {
+        try {
+            if ($conn->inTransaction()) {
+                abort_request(503, LDAP_SYNC_FAILED); // Never join or roll back another owner.
+            }
+            require_once __DIR__ . '/lib/ldap_import.php';
+            if (!$conn->beginTransaction()) { throw new RuntimeException(); }
+            $ldapTransactionStarted = true;
+            $managerPlan = chrono_ldap_import_locked($conn, $ldapImport['entries'], $ldapImport['host'],
+                $ldapImport['port'], $ldapImport['bind_user'], $ldapImport['ciphertext'], $ldapImport['base_dn']);
+            $importError = '';
+            $importSuccess = '';
+            if ($managerPlan['conflicts']) {
+                $reasons = [
+                    'ambiguous_identity' => 'mehrdeutige LDAP-Identität',
+                    'invalid_identity_dn' => 'ungültiger Identitäts-DN oder DN-Parser nicht verfügbar',
+                    'invalid_manager_dn' => 'ungültiger Manager-DN oder DN-Parser nicht verfügbar',
+                    'unknown_manager' => 'Manager nicht eindeutig im aktuellen Import vorhanden',
+                    'ambiguous_manager' => 'mehrdeutiger Manager',
+                    'self_manager' => 'Selbstzuordnung',
+                    'cyclic_manager' => 'zyklische Managerbeziehung',
+                ];
+                $details = [];
+                foreach ($managerPlan['conflicts'] as $ldapUserId => $reason) {
+                    $details[] = 'Konto #' . $ldapUserId . ': ' . $reasons[$reason];
+                }
+                $importError = 'LDAP-Identitäten synchronisiert. Managerkonflikte: Die bisherigen Beziehungen dieser Konten bleiben unverändert. ' . implode('; ', $details);
+            } else {
+                $importSuccess = LDAP_SYNC_SUCCESS;
+            }
+            // Prepare presentation before COMMIT; publish it only after success.
+            if (!$conn->commit()) { throw new RuntimeException(); }
+            $ldapTransactionStarted = false;
+            $error = $importError;
+            $successMessage = $importSuccess;
+        } catch (Throwable $e) {
+            $successMessage = '';
+            if ($ldapTransactionStarted) {
+                try {
+                    if (!$conn->inTransaction() || !$conn->rollBack() || $conn->inTransaction()) {
+                        abort_request(503, LDAP_SYNC_FAILED);
+                    }
+                } catch (Throwable $rollbackError) {
+                    // Unknown commit/rollback outcome: stop, never claim rollback
+                    // or continue other handlers/automatically retry this import.
+                    abort_request(503, LDAP_SYNC_FAILED);
+                }
+            } elseif ($conn->inTransaction()) {
+                abort_request(503, LDAP_SYNC_FAILED);
+            }
+            $error = LDAP_SYNC_FAILED;
+        }
     }
 }
 
