@@ -288,4 +288,15 @@ define('SUPERVISOR_INVALID_RECORDS', 'Data quality: %d invalid time entries.');
 define('SUPERVISOR_TOTALS_UNAVAILABLE', 'This report contains no final totals. The affected person must clarify the original entries through the existing correction process with subsequent four-eyes approval. No times have been deleted or shortened.');
 define('SUPERVISOR_SOURCE_VALUES', 'Source values – report unavailable. This view shows up to 10 source rows per page instead of daily groups.');
 define('SUPERVISOR_INVALID_ROW', 'Invalid time entry');
+
+// Same selected team-status labels as the existing Laravel supervisor card.
+define('TEAM_STATUS_TITLE', 'Current team clocking status');
+define('TEAM_STATUS_SNAPSHOT_NOTE', 'Server snapshot; not a live or online-presence signal:');
+define('TEAM_STATUS_STATE', 'Clocking status');
+define('TEAM_STATUS_WORKING', 'Working');
+define('TEAM_STATUS_PAUSED', 'On break');
+define('TEAM_STATUS_ABSENT', 'Not present');
+define('TEAM_STATUS_UNKNOWN', 'Status unknown');
+define('TEAM_STATUS_EMPTY', 'No assigned team members.');
+define('TEAM_STATUS_UNAVAILABLE', 'Unavailable. Please reload the page.');
 ?>

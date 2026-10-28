@@ -109,3 +109,14 @@ Konkurrenz-, Datenschutzbetriebs- oder veröffentlichte UIabnahme.
 Keine reale DB, Nutzer, Credentials, Datenkopie, Browser-/HTTP-/Netzwerk-/Server-
 oder Deploymentaktion; keine neue CI gestartet. #52-Historiediff, Carry-in,
 Backupadmission, ICS/Integrationen und sonstige Lanes werden nicht verändert.
+
+## Gemeinsame Definitionen und nativer Anschluss (#54)
+
+Der spätere [native Teamstatusanschluss](../native-team-status.md) verschiebt den
+bestehenden reinen Zustandskern und die Name-/Statusaufbereitung nach
+`lib/team_status.php`. `currentTeamStatus()` delegiert innerhalb derselben
+vorhandenen autorisierten Laravel-Lesetransaktion an diesen gemeinsamen Helfer;
+Vertrag, Rollen-/V5-Gates und bestehende View bleiben erhalten. Der zusätzliche
+native Snapshotwrapper wird von Laravel **nicht** aufgerufen. Der ursprüngliche
+Sieben-Dateien-Umfang oben beschreibt das historische Paket, nicht diesen späteren
+klar abgegrenzten Anschluss. Keine neue Laravel-Aktivierung oder -Abnahme.

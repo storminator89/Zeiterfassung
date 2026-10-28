@@ -291,4 +291,15 @@ define('SUPERVISOR_INVALID_RECORDS', 'Datenqualität: %d ungültige Zeiteinträg
 define('SUPERVISOR_TOTALS_UNAVAILABLE', 'Diese Auswertung enthält keine abschließenden Summen. Bitte die Originaleinträge durch die betroffene Person mit anschließender Vier-Augen-Freigabe klären. Es wurden keine Zeiten gelöscht oder gekürzt.');
 define('SUPERVISOR_SOURCE_VALUES', 'Originalwerte – Auswertung nicht verfügbar. Hier werden bis zu 10 Originalzeilen pro Seite statt Tagesgruppen angezeigt.');
 define('SUPERVISOR_INVALID_ROW', 'Ungültiger Zeiteintrag');
+
+// Same selected team-status labels as the existing Laravel supervisor card.
+define('TEAM_STATUS_TITLE', 'Aktueller Team-Stempelstatus');
+define('TEAM_STATUS_SNAPSHOT_NOTE', 'Stand beim Serverabruf; kein Echtzeit- oder Online-Nachweis:');
+define('TEAM_STATUS_STATE', 'Stempelstatus');
+define('TEAM_STATUS_WORKING', 'Arbeitet');
+define('TEAM_STATUS_PAUSED', 'Pause');
+define('TEAM_STATUS_ABSENT', 'Nicht anwesend');
+define('TEAM_STATUS_UNKNOWN', 'Status unklar');
+define('TEAM_STATUS_EMPTY', 'Keine zugeordneten Teammitglieder.');
+define('TEAM_STATUS_UNAVAILABLE', 'Nicht verfügbar. Bitte die Seite erneut laden.');
 ?>

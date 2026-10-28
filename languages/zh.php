@@ -276,5 +276,16 @@ define('SUPERVISOR_INVALID_RECORDS', '資料品質：%d 筆無效工時紀錄。
 define('SUPERVISOR_TOTALS_UNAVAILABLE', '此報表不提供最終合計。請由受影響的人員透過現有更正流程釐清原始紀錄，並經雙人審核核准。未刪除或縮短任何工時。');
 define('SUPERVISOR_SOURCE_VALUES', '原始值 – 報表無法提供。此檢視每頁顯示最多 10 筆原始紀錄，而非每日分組。');
 define('SUPERVISOR_INVALID_ROW', '無效工時紀錄');
+
+// Same selected team-status labels as the existing Laravel supervisor card.
+define('TEAM_STATUS_TITLE', '團隊目前打卡狀態');
+define('TEAM_STATUS_SNAPSHOT_NOTE', '伺服器讀取時間；並非即時或在線狀態證明：');
+define('TEAM_STATUS_STATE', '打卡狀態');
+define('TEAM_STATUS_WORKING', '工作中');
+define('TEAM_STATUS_PAUSED', '休息中');
+define('TEAM_STATUS_ABSENT', '未在崗');
+define('TEAM_STATUS_UNKNOWN', '狀態不明');
+define('TEAM_STATUS_EMPTY', '沒有已指派的團隊成員。');
+define('TEAM_STATUS_UNAVAILABLE', '無法取得。請重新載入頁面。');
 ?>
 
