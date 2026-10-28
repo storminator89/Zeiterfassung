@@ -113,6 +113,8 @@ Located in the `time-tracker-extension_edge` folder.
 ## Installation
 
 Use the Docker setup and migration steps in [SECURITY.md](SECURITY.md). Do not expose a fresh setup publicly.
+
+For the **separate Laravel candidate** (no native cutover), see the [Laravel Docker installation/operator contract](docs/framework/installation-docker.md). It remains a separately gated installation, not an already activated or production-accepted deployment.
 The Docker build uses the official `php:8.5.12-apache-trixie` image; the existing integration workflow uses the matching `php:8.5.12-cli-trixie` runtime.
 For the runtime upgrade and rollback checklist, see [PHP 8.5 upgrade](docs/PHP85.md).
 
