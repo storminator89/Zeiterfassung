@@ -35,6 +35,8 @@ final class LocalWebHistoryController extends Controller
                 $exportQuery = HistoryQuery::fromQueryString($exportQueryString);
                 if (! $exportMode['valid'] || $exportQuery->errors) {
                     $export = \chrono_history_export_failure(400);
+                } elseif (\chrono_history_correlated_requested($exportParameters)) {
+                    $export = \chrono_history_correlated_export_page($this->reads->historyCorrelations($exportQuery), $exportQuery->values);
                 } else {
                     $export = \chrono_history_export_page($this->reads->historyQuery($exportQuery), $exportQuery->values);
                 }
@@ -81,6 +83,7 @@ final class LocalWebHistoryController extends Controller
                 ! $query->errors && $query->hasBefore ? $query->url() : null,
                 count($rows) === 100 ? $query->url((int) $rows[array_key_last($rows)]['id']) : null,
                 ! $query->errors ? \chrono_history_export_url($query->values) : null,
+                ! $query->errors ? \chrono_history_correlated_export_url($query->values) : null,
             ),
         ], $query->errors ? 400 : 200);
     }

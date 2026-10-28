@@ -411,6 +411,23 @@ final class LegacyChronoReads implements ChronoReads
         });
     }
 
+    public function historyCorrelations(HistoryQuery $query): array
+    {
+        if ($query->errors) {
+            throw new \InvalidArgumentException('Ungültige Historienfilter.');
+        }
+
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($query): array {
+            require_once dirname(__DIR__, 3).'/lib/history_correlation.php';
+            $statement = $query->statementFor((int) $actor->getKey(), $actor->role);
+            $rows = $this->rows($pdo, $statement['sql'], $statement['params']);
+
+            return ['rows' => $rows, 'correlation' => \chrono_history_correlations(
+                $pdo, $rows, (int) $actor->getKey(), $actor->role,
+            )];
+        });
+    }
+
     public function workModels(): array
     {
         return $this->snapshot(fn (PDO $pdo, LegacyUser $actor): array =>

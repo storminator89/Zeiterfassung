@@ -17,6 +17,7 @@ final readonly class HistoryPage
      * @param ?string $newestUrl Same filters without the cursor, when paging.
      * @param ?string $olderUrl Last returned row ID, only for exactly 100 rows.
      * @param ?string $exportUrl Same existing filters and current cursor, selected page only.
+     * @param ?string $correlatedExportUrl Explicit bounded references, not implicit filter expansion.
      */
     public function __construct(
         public array $entries,
@@ -26,5 +27,6 @@ final readonly class HistoryPage
         public ?string $newestUrl = null,
         public ?string $olderUrl = null,
         public ?string $exportUrl = null,
+        public ?string $correlatedExportUrl = null,
     ) {}
 }

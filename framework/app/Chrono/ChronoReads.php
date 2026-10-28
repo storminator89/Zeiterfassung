@@ -41,6 +41,9 @@ interface ChronoReads
     /** Native validated filters narrow the same history scope; invalid means no audit query. */
     public function historyQuery(HistoryQuery $query): array;
 
+    /** Same anchor page plus bounded allowlisted structural references in one fresh snapshot. */
+    public function historyCorrelations(HistoryQuery $query): array;
+
     /** Existing work_models.php list: own models, or all for current admins. */
     public function workModels(): array;
 
