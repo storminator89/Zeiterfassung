@@ -32,12 +32,19 @@ final class RuntimeDatabase
         return new SQLiteConnection($this->open(false), $this->admission->path, '', $configuration);
     }
 
+    /** Pure immutable manifest capability, never request/config inference at point of use. */
+    public function isIntakePolicyV4(): bool
+    {
+        return $this->admission->schemaProfile === 'intake-policy-v4';
+    }
+
     // Every resolution owns a fresh bare handle, never a manager/read connection.
     public function writer(AuditContext $context, AuditFunctions $functions): AttendanceWriter
     {
         $pdo = $this->open(true);
         try {
-            return new AttendanceWriter($pdo, $this->admission->configuration(true), $context, $functions);
+            return new AttendanceWriter($pdo, $this->admission->configuration(true), $context, $functions,
+                intakePolicyV4: $this->isIntakePolicyV4());
         } catch (Throwable) {
             throw new RuntimeException('Runtime database writer admission refused.');
         }
@@ -182,6 +189,10 @@ final class RuntimeDatabase
         if ($this->snapshotRows($source, 'SELECT id,migration,batch FROM framework_migrations ORDER BY id') !== $this->admission->expectedLedgerRows()) {
             throw new RuntimeException;
         }
+        if ($this->admission->schemaProfile === 'intake-policy-v4') {
+            $versions = array_column($this->snapshotRows($source, 'SELECT version FROM app_migrations ORDER BY version'), 'version');
+            $this->admission->assertIntakePolicyState($versions, $this->snapshotRows($source, RuntimeAdmission::INTAKE_POLICY_SQL));
+        }
     }
 
     private function snapshotRows(SQLite3 $source, string $sql): array
@@ -238,6 +249,13 @@ final class RuntimeDatabase
             $phase = 'owned adoption ledger';
             if ($pdo->query('SELECT id,migration,batch FROM framework_migrations ORDER BY id')->fetchAll(PDO::FETCH_ASSOC) !== $this->admission->expectedLedgerRows()) {
                 throw new RuntimeException;
+            }
+            if ($this->admission->schemaProfile === 'intake-policy-v4') {
+                $phase = 'intake policy profile';
+                $this->admission->assertIntakePolicyState(
+                    $pdo->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN),
+                    $pdo->query(RuntimeAdmission::INTAKE_POLICY_SQL)->fetchAll(PDO::FETCH_ASSOC),
+                );
             }
             $phase = 'final file identity';
             $this->identity($write);

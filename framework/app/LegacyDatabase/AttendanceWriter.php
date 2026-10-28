@@ -27,6 +27,7 @@ final class AttendanceWriter
         array $configuration,
         private readonly AuditContext $context,
         AuditFunctions $functions,
+        private readonly bool $intakePolicyV4 = false,
     ) {
         if (! $pdo instanceof Sqlite || $pdo->inTransaction()
             || ($configuration['driver'] ?? null) !== 'sqlite'
@@ -48,6 +49,7 @@ final class AttendanceWriter
         $this->connection = new SQLiteConnection($pdo, $configuration['database'], '', $configuration);
         $this->connection->setReconnector(static fn () => throw new RuntimeException('A writer must never reconnect; admit a fresh operation scope instead.'));
         require_once dirname(__DIR__, 3).'/lib/attendance.php';
+        $this->assertIntakeProfile();
     }
 
     public function transition(int $user, string $source, string $eventId, string $action, bool $confirm = false, ?int $expectedRecord = null, bool $requireExpectedRecord = false, ?string $expectedWebSource = null, #[\SensitiveParameter] ?string $expectedWebVersion = null): array
@@ -201,7 +203,8 @@ final class AttendanceWriter
 
     /** Existing create only; no request actor, auth source, token or SQL callback. */
     public function createLocalUser(int $user, mixed $username, mixed $password, mixed $email, mixed $role,
-        mixed $department, mixed $supervisor, mixed $regularHours, mixed $carryIn): bool
+        mixed $department, mixed $supervisor, mixed $regularHours, mixed $carryIn,
+        ?int $expectedPolicyRevision = null, #[\SensitiveParameter] ?string $expectedWebVersion = null): bool
     {
         // Exact native required-field semantics, without trim/default/coercion.
         if (empty($username) || empty($password) || empty($email) || empty($role)
@@ -218,7 +221,8 @@ final class AttendanceWriter
         require_once dirname(__DIR__, 3).'/lib/admin_users.php';
 
         return $this->executeLocked(function () use ($user, $username, $password, $email, $role,
-            $department, $supervisor, $regularHours, $carryIn): bool {
+            $department, $supervisor, $regularHours, $carryIn, $expectedPolicyRevision, $expectedWebVersion): bool {
+            $this->requireIntakeLocked(\App\Accounts\IntakeMethod::Manual, $expectedPolicyRevision, $user, $expectedWebVersion);
             $actor = att_one($this->pdo, 'SELECT role,auth_source FROM users WHERE id=?', [$user]);
             if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local') {
                 throw new AuthorizationException('Nur die Verwaltung darf Benutzer erstellen.');
@@ -256,12 +260,14 @@ final class AttendanceWriter
     }
 
     /** Anonymous self-registration only: fixed ordinary role and no caller actor/privileges. */
-    public function registerLocalUser(string $username, string $email, #[\SensitiveParameter] string $passwordHash): bool
+    public function registerLocalUser(string $username, string $email, #[\SensitiveParameter] string $passwordHash,
+        ?int $expectedPolicyRevision = null): bool
     {
         if ((password_get_info($passwordHash)['algoName'] ?? 'unknown') !== 'bcrypt') {
             throw new \InvalidArgumentException('A configured bcrypt registration hash is required.');
         }
-        return $this->executeLocked(function () use ($username, $email, $passwordHash): bool {
+        return $this->executeLocked(function () use ($username, $email, $passwordHash, $expectedPolicyRevision): bool {
+            $this->requireIntakeLocked(\App\Accounts\IntakeMethod::Registration, $expectedPolicyRevision);
             // Do not strand first-admin bootstrap or trust an earlier page/count.
             if (att_one($this->pdo, "SELECT id FROM users WHERE role='admin' AND auth_source='local' LIMIT 1") === null) {
                 throw new AuthorizationException('Ordinary registration requires existing local administration.');
@@ -283,6 +289,10 @@ final class AttendanceWriter
         require_once dirname(__DIR__, 3).'/lib/ldap_import.php';
 
         return $this->executeLocked(function () use ($user, $stage): array {
+            $this->assertIntakeProfileLocked();
+            if ($this->intakePolicyV4) {
+                throw new LogicException('V4 LDAP intake requires the policy-bound operation.');
+            }
             $actor = att_one($this->pdo, 'SELECT role,auth_source FROM users WHERE id=?', [$user]);
             if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local') {
                 throw new AuthorizationException('Only current local administration may import LDAP users.');
@@ -294,6 +304,35 @@ final class AttendanceWriter
             return \chrono_ldap_import_locked($this->pdo, $stage->entries, $stage->host, $stage->port,
                 $stage->bindUser, $stage->ciphertext, $stage->baseDn);
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'LDAP synchronization', $transaction));
+    }
+
+    /** Guard-derived ID/hash context and snapshot revision only, never request identity. */
+    public function importLdapUsersWithIntakePolicy(int $user, #[\SensitiveParameter] string $expectedWebVersion,
+        int $expectedPolicyRevision, #[\SensitiveParameter] \App\Ldap\MaterializedLdapImport $stage): array
+    {
+        require_once dirname(__DIR__, 3).'/lib/ldap_import.php';
+
+        return $this->executeLocked(function () use ($user, $expectedWebVersion, $expectedPolicyRevision, $stage): array {
+            $this->assertIntakeProfileLocked(true);
+            $this->assertExpectedWebPrincipal($user, 'local', $expectedWebVersion, 'admin');
+            (new \App\Accounts\IntakePolicyStore)->requireAllowedLocked($this->pdo,
+                \App\Accounts\IntakeMethod::LdapSync, $expectedPolicyRevision);
+            $stage->refuseLocalAccountCollisions($this->pdo);
+
+            return \chrono_ldap_import_locked($this->pdo, $stage->entries, $stage->host, $stage->port,
+                $stage->bindUser, $stage->ciphertext, $stage->baseDn);
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'LDAP synchronization', $transaction));
+    }
+
+    /** Strict persisted V4 policy CAS only; not an intake path or arbitrary account command. */
+    public function changeIntakePolicy(int $user, #[\SensitiveParameter] string $expectedWebVersion,
+        \App\Accounts\IntakePolicyChange $change): void
+    {
+        $this->executeLocked(function () use ($user, $expectedWebVersion, $change): void {
+            $this->assertIntakeProfileLocked(true);
+            $this->assertExpectedWebPrincipal($user, 'local', $expectedWebVersion, 'admin');
+            (new \App\Accounts\IntakePolicyStore)->applyLocked($this->pdo, $user, $change);
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'Aufnahmewege ändern', $transaction));
     }
 
     /** Own Admin identity only; no request target/role/reason or general account mutation. */
@@ -344,6 +383,51 @@ final class AttendanceWriter
                 fn (string $reason, Closure $operation): mixed => $this->context->run('web:'.$user, $reason, $operation),
             );
         });
+    }
+
+    /** The explicit composition must agree with the actual database, never a request flag. */
+    private function assertIntakeProfile(): void
+    {
+        $versions = $this->pdo->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN);
+        $policyType = $this->pdo->query("SELECT type FROM sqlite_schema WHERE type IN ('table','view') AND lower(name)='user_intake_policy'")->fetchColumn();
+        $matches = $this->intakePolicyV4
+            ? $versions === [1, 2, 3, 4] && $policyType === 'table'
+            : in_array($versions, [[1, 2], [1, 2, 3]], true) && $policyType === false;
+        if (! $matches) {
+            throw new LogicException('The admitted intake profile does not match the database.');
+        }
+    }
+
+    private function assertIntakeProfileLocked(bool $requireV4 = false): void
+    {
+        $this->assertActive();
+        $this->assertIntakeProfile();
+        if ($requireV4 && ! $this->intakePolicyV4) {
+            throw new LogicException('An explicit intake-policy-v4 writer is required.');
+        }
+    }
+
+    /** Legacy profiles retain their contract; V4 never accepts an absent/stale server context. */
+    private function requireIntakeLocked(\App\Accounts\IntakeMethod $method, ?int $revision,
+        ?int $admin = null, #[\SensitiveParameter] ?string $version = null): void
+    {
+        $this->assertIntakeProfileLocked();
+        if (! $this->intakePolicyV4) {
+            if ($revision !== null || $version !== null) {
+                throw new LogicException('A V4 intake context cannot target a legacy profile.');
+            }
+            return;
+        }
+        if ($revision === null || $revision < 1) {
+            throw new LogicException('A fresh server-derived V4 intake revision is required.');
+        }
+        if ($method === \App\Accounts\IntakeMethod::Manual) {
+            if ($admin === null || $version === null) {
+                throw new LogicException('A fresh local Admin intake context is required.');
+            }
+            $this->assertExpectedWebPrincipal($admin, 'local', $version, 'admin');
+        }
+        (new \App\Accounts\IntakePolicyStore)->requireAllowedLocked($this->pdo, $method, $revision);
     }
 
     /** Trusted guard-derived pair only; never accepted from command/request data. */

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
+use App\Accounts\IntakePolicyAccess;
 use App\Chrono\LocalWebDepartments;
 use App\Chrono\LocalWebAdminUsers;
 use App\Chrono\LocalWebPauseSettings;
@@ -31,6 +32,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         private LocalWebAdminUsers $adminUsers,
         private Factory $auth,
         private Interactions $interactions,
+        private ?IntakePolicyAccess $intake = null,
     ) {}
 
     public function index(Request $request): Response
@@ -71,6 +73,9 @@ final class LocalWebAdminPauseSettingsController extends Controller
         $form = $request->request->all();
         $supported = ['update_pause_settings' => LocalWebPauseSettings::COMMAND_FIELDS,
             ...LocalWebDepartments::COMMAND_FIELDS, ...LocalWebAdminUsers::COMMAND_FIELDS];
+        if ($this->intake?->isV4() === true) {
+            $supported['update_intake_policy'] = ['update_intake_policy', 'revision', 'manual_enabled', 'ldap_sync_enabled', 'registration_enabled'];
+        }
         $actions = [];
         foreach ($supported as $flag => $fields) {
             if (isset($form[$flag])) {
@@ -82,6 +87,10 @@ final class LocalWebAdminPauseSettingsController extends Controller
             // Reject all other/mixed Admin actions before reads, writes or preferences.
             return new Response('Diese Verwaltungsaktion ist in der Laravel-Ansicht noch nicht verbunden.', 400,
                 ['Content-Type' => 'text/plain; charset=UTF-8']);
+        }
+
+        if ($actions[0] === 'update_intake_policy') {
+            return $this->intakePolicy($request, $form);
         }
 
         if ($actions[0] === 'add_user') {
@@ -107,6 +116,25 @@ final class LocalWebAdminPauseSettingsController extends Controller
         }
     }
 
+    private function intakePolicy(Request $request, array $form): Response|RedirectResponse
+    {
+        if (($form['update_intake_policy'] ?? null) !== '1') {
+            return new Response('Ungültige Auswahl der Aufnahmewege.', 400,
+                ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
+        }
+        try {
+            $this->intake->change(array_diff_key($form, array_flip(['_token', 'csrf_token', 'update_intake_policy'])));
+
+            return new RedirectResponse('admin.php#user-intake-policy');
+        } catch (AuthenticationException|AuthorizationException $error) {
+            throw $error;
+        } catch (InvalidArgumentException|DomainException $error) {
+            return $this->page($request, $error->getMessage());
+        } catch (Throwable) {
+            return $this->page($request, 'Die Aufnahmewege konnten nicht bestätigt werden. Bitte neu laden und den gespeicherten Stand prüfen.');
+        }
+    }
+
     private function createUser(Request $request, array $form): Response
     {
         try {
@@ -118,7 +146,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
             return $this->page($request, successKey: 'USER_CREATED_SUCCESS');
         } catch (AuthenticationException|AuthorizationException $error) {
             throw $error;
-        } catch (InvalidArgumentException $error) {
+        } catch (InvalidArgumentException|DomainException $error) {
             return $this->page($request, $error->getMessage());
         } catch (Throwable) {
             // Never expose PDO/constraint/account/path details or claim rollback.
@@ -165,6 +193,11 @@ final class LocalWebAdminPauseSettingsController extends Controller
         }
         // Native scalar cast, including zero/negative/out-of-range pages; no new clamping.
         $users = $this->reads->adminUsersPage($search, (int) $requestedPage);
+        $policy = $this->intake?->current();
+        $intakePolicy = $policy === null ? null : [
+            'revision' => $policy->revision, 'manual_enabled' => $policy->manualEnabled,
+            'ldap_sync_enabled' => $policy->ldapSyncEnabled, 'registration_enabled' => $policy->registrationEnabled,
+        ];
         $actor = $this->auth->guard('web')->user();
         require_once dirname(__DIR__, 4).'/lib/language.php';
         $language = \valid_language($request->query('lang', $request->session()->get('lang', 'de')));
@@ -181,6 +214,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
                 $rules, $errorKey === null ? $error : $copy->text($errorKey),
                 $this->interactions->adminPauseSettings, $departments, $users, $supervisors,
                 $successKey === null ? null : $copy->text($successKey),
+                intakePolicy: $intakePolicy,
             ),
         ], 200, ['Cache-Control' => 'no-store']);
     }

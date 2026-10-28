@@ -3,6 +3,7 @@
 namespace App\Chrono;
 
 use App\Auth\LegacyUser;
+use App\Accounts\IntakePolicyAccess;
 use App\LegacyDatabase\AttendanceWriter;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -15,7 +16,8 @@ use LogicException;
 final class LegacyLocalWebAdminUsers implements LocalWebAdminUsers
 {
     /** @param Closure(): AttendanceWriter $writer Trusted operation-scope resolver. */
-    public function __construct(private readonly Factory $auth, private readonly Closure $writer) {}
+    public function __construct(private readonly Factory $auth, private readonly Closure $writer,
+        private readonly ?IntakePolicyAccess $intake = null) {}
 
     public function create(array $command): bool
     {
@@ -33,16 +35,26 @@ final class LegacyLocalWebAdminUsers implements LocalWebAdminUsers
             throw new InvalidArgumentException('Diese Verwaltungsaktion ist in der Laravel-Ansicht noch nicht verbunden.');
         }
 
+        // V4 reads and closes its fresh current policy/Admin snapshot before writer resolution.
+        $context = $this->intake?->manualContext();
         // Never resolve a writer for nonadmins or mixed/unsupported commands.
         $writer = ($this->writer)();
         if (! $writer instanceof AttendanceWriter) {
             throw new LogicException('A trusted admitted operation-scoped attendance writer is required.');
         }
 
-        return $writer->createLocalUser(
-            (int) $actor->getKey(), $command['username'] ?? null, $command['password'] ?? null,
-            $command['email'] ?? null, $command['role'] ?? null, $command['department'] ?? null,
-            $command['supervisor'] ?? null, $command['regelarbeitszeit'] ?? null, $command['ueberstunden'] ?? null,
-        );
+        try {
+            return $writer->createLocalUser(
+                $context['user'] ?? (int) $actor->getKey(), $command['username'] ?? null, $command['password'] ?? null,
+                $command['email'] ?? null, $command['role'] ?? null, $command['department'] ?? null,
+                $command['supervisor'] ?? null, $command['regelarbeitszeit'] ?? null, $command['ueberstunden'] ?? null,
+                expectedPolicyRevision: $context['revision'] ?? null, expectedWebVersion: $context['version'] ?? null,
+            );
+        } catch (\AttendanceError $error) {
+            if ($context !== null && $error->status === 401) {
+                throw new AuthenticationException('Unauthenticated.', ['web']);
+            }
+            throw $error;
+        }
     }
 }

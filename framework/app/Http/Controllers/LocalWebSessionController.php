@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Auth\LocalSession;
+use App\Auth\SelfRegistration;
+use Throwable;
 use App\View\ExistingUi\Copy;
 use App\View\ExistingUi\Interactions;
 use App\View\ExistingUi\LoginPage;
@@ -17,7 +19,8 @@ use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 /** Existing local login transport only; its registrar must supply session/CSRF/throttle. */
 final class LocalWebSessionController extends Controller
 {
-    public function __construct(private LocalSession $sessions, private Interactions $interactions, private Repository $config) {}
+    public function __construct(private LocalSession $sessions, private Interactions $interactions, private Repository $config,
+        private ?SelfRegistration $registration = null) {}
 
     public function create(Request $request): View
     {
@@ -53,7 +56,13 @@ final class LocalWebSessionController extends Controller
     private function page(Request $request, ?string $error = null): View
     {
         $copy = $this->copy($request);
-        $registrationEnabled = $this->config->get('chrono_registration.enabled', false) === true;
+        try {
+            $registrationEnabled = $this->registration?->available()
+                ?? ($this->config->get('chrono_registration.enabled', false) === true);
+        } catch (Throwable) {
+            // Intake availability must close the link, not block existing account login.
+            $registrationEnabled = false;
+        }
         $setupEnabled = $this->config->get('chrono_setup.enabled', false) === true
             && Route::has('chrono.first-admin-setup');
         return view('chrono.login', ['page' => new LoginPage(

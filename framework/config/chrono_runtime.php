@@ -21,6 +21,11 @@ if ($profile !== $absent || $baseSignature !== $absent) {
     $admission['schema_profile'] = $profile === $absent ? null : $profile;
     $admission['base_schema_signature'] = $baseSignature === $absent ? null : $baseSignature;
 }
+$userAuditSignature = env('FRAMEWORK_CHRONO_DB_USER_AUDIT_SCHEMA_SIGNATURE', $absent);
+if ($userAuditSignature !== $absent) {
+    // V4 only: an extra/missing/null field on other profiles fails pure validation.
+    $admission['user_audit_schema_signature'] = $userAuditSignature;
+}
 
 return [
     'read_enabled' => env('FRAMEWORK_CHRONO_READ_ENABLED', false),

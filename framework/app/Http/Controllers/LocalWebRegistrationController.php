@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use InvalidArgumentException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 use Throwable;
 
 /** Existing UI card; ordinary registration is separate from native first-admin setup. */
@@ -63,6 +64,15 @@ final class LocalWebRegistrationController extends Controller
     {
         if ($this->config->get('chrono_registration.enabled', false) !== true) {
             throw new NotFoundHttpException;
+        }
+        try {
+            if (! $this->registration->available()) {
+                throw new NotFoundHttpException;
+            }
+        } catch (NotFoundHttpException $error) {
+            throw $error;
+        } catch (Throwable) {
+            throw new ServiceUnavailableHttpException(null, 'Registrierung derzeit nicht verfügbar.');
         }
     }
 }
