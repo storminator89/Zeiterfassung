@@ -38,6 +38,7 @@ final class LocalWebCorrectionsController extends Controller
     // Only the POST route calls this method; GET/method override never dispatches a command.
     public function store(Request $request): View|RedirectResponse
     {
+        $commandCompleted = false;
         try {
             require_once dirname(__DIR__, 4).'/lib/correction_selection.php';
             // Raw form bag only. No actor, role, source, audit, date or boolean normalization.
@@ -65,6 +66,7 @@ final class LocalWebCorrectionsController extends Controller
                 }
             }
             $this->corrections->apply($command);
+            $commandCompleted = true;
 
             [$status, $requestedPage] = $this->queueFilters($request);
 
@@ -72,11 +74,16 @@ final class LocalWebCorrectionsController extends Controller
         } catch (AuthenticationException $error) {
             throw $error; // Preserve the registrar's protected-route auth response.
         } catch (\AttendanceError|InvalidArgumentException $error) {
-            return $this->page($request, $error->getMessage());
+            // Only known domain rejections can retain a request draft.
+            // Never offer it after a returned command or an unknown write outcome.
+            return $this->page($request, $error->getMessage(), ! $commandCompleted
+                && $error instanceof \AttendanceError && in_array($error->status, [400, 409], true));
         } catch (Throwable) {
             return $this->page($request, ($command['action'] ?? null) === 'withdraw'
                 ? 'Rücknahme konnte nicht bestätigt werden. Bitte neu laden und gespeicherten Stand prüfen; nicht automatisch wiederholen.'
-                : 'Antrag konnte nicht verarbeitet werden.');
+                : (($command['action'] ?? null) === 'request'
+                    ? 'Antrag konnte nicht bestätigt werden. Bitte neu laden und gespeicherten Stand prüfen; nicht automatisch wiederholen.'
+                    : 'Antrag konnte nicht verarbeitet werden.'));
         }
     }
 
@@ -109,7 +116,7 @@ final class LocalWebCorrectionsController extends Controller
         return $selection;
     }
 
-    private function page(Request $request, ?string $error = null): View
+    private function page(Request $request, ?string $error = null, bool $retainRequestDraft = false): View
     {
         // Definitions only: reuse the native pure display formatter, never its bootstrap.
         require_once dirname(__DIR__, 4).'/lib/attendance.php';
@@ -185,6 +192,8 @@ final class LocalWebCorrectionsController extends Controller
                 queueSelection: $this->queueSelection($request, $selectionInvalid, $selectedRecordId),
                 withdrawalsEnabled: $this->withdrawalsEnabled() && $this->interactions->corrections
                     && $this->interactions->correctionWithdrawals && $actor->auth_source === 'local',
+                requestDraft: $retainRequestDraft && ! $selectionInvalid && $request->isMethod('POST')
+                    ? CorrectionsPage::rejectedRequestDraft($form) : [],
             ),
         ]);
     }
