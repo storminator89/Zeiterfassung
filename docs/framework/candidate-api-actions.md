@@ -20,11 +20,17 @@ den bisherigen Login-/Versuchsvertrag, fremde Felder werden ignoriert. Ungültig
 Form bleibt HTTP 400 mit JSON-`{success:false,message}` und der Meldung
 `Username and password required.` wie im aktuellen nativen APIvertrag.
 
-`LegacyApiLogin` nutzt den vorhandenen Laravel-`chrono_users`-Eloquentprovider
-und dessen stock Passwortprüfung. Abgerufen wird der **exakte**, ungetrimmte
-Username; `auth_source` muss `local` sein, `defaultpassword` wird ausdrücklich
-verweigert. Es gibt **keine Rollenallowlist**, keine LDAPbindung/-fallback und
-keine lokale Websession als Ersatz. Die bereits vorhandene, unveränderte
+`LegacyApiLogin` konstruiert einen festen stock `EloquentUserProvider` für
+`LegacyUser` aus dem bereits konfigurierten Laravel-Hasher, weiterhin erst nach
+dem zugelassenen Budgetverbrauch. Der optionale
+`chrono-existing`-**Web**provider wird absichtlich nicht gewählt: Er verlangt
+vollständige Username/Passwort-Paare, trimmt Username und begrenzt Rollen/Quellen;
+diese Webregeln wären keine kompatible APIanmeldung. Auch bei aktiviertem
+bestehenden LDAP-Webprofil bleibt der APIprovider strikt lokal und unabhängig.
+Abgerufen wird der **exakte**, ungetrimmte Username; `auth_source` muss `local`
+sein, `defaultpassword` wird ausdrücklich verweigert. Es gibt **keine
+Rollenallowlist**, keine LDAPbindung/-fallback und keine lokale Websession als
+Ersatz. Die bereits vorhandene, unveränderte
 `config/hashing.php` setzt `bcrypt.verify=false` und `rehash_on_login=false`:
 PHP-`password_verify`-kompatible vorhandene Hashalgorithmen werden nicht auf
 einen neuen Algorithmus beschränkt. Der Adapter ruft nur Providerprüfung,
@@ -39,6 +45,31 @@ vertrag; die Ausgabe wird vom vorhandenen produktiven Verifier akzeptiert.
 `AdmittedApiSigningKey` vereinigt lediglich die vorherige unveränderte
 Admissionprüfung für Guard und Issuer. `LegacyApiTokenKey` bleibt ungebunden:
 kein Loader, Keygen, `APP_KEY`-Fallback, Hexdekodieren oder Schlüsselwechsel.
+
+## Begrenzte Providerentkopplung, keine APIaktivierung
+
+Der feste stock APIprovider ändert weder Username/Passwortnormalisierung,
+`LegacyApiLoginBudget::consume` samt Reihenfolge/rohen Argumenten, Login-400/401,
+JWTclaims/HS256/ASCII-Secret noch Bearerstatus/Antworten oder den synchronen Writer.
+Nur die vorherige Abhängigkeit vom gemeinsamen Webprovider wird entfernt. Der
+Hasher wird wie zuvor durch denselben Laravel-`hash`-Dienst und erst nach
+dem Budgetverbrauch geliefert; keine zweite Passwortprüfung,
+Hash-/Accountmutation, eigene Authengine oder globale Guardauswahl wird eingeführt.
+
+Ein grober direkter Source-Vertrag mit erfundenen Modell-/Select-/Hasherfakes
+kann die alte Teilcredential-Verweigerung des Webwrappers und den neuen
+ungetrimmten lokalen Lookup zeigen. Ein immer werfender Secretvertrag stoppt vor
+jeder Tokenausgabe; kein HTTPrequest, echter Account/Hash, DB/PDO, LDAP, Schlüssel
+oder Login wird dadurch ausgeführt. Das ist kein geschützter Browser-/API-
+Abnahmeersatz. Syntax/ganzer Rückpatch und Native-/API-Wire-/Budget-/Writererhalt
+bleiben eng geprüft; keine Mikrotestsuite oder neuer CI-Lauf.
+
+**Weiterhin keine praktische öffentliche APIkomposition:** Key-/persistente
+Budgetadmission und gesonderte Routen-/Fehler-/Profilbindung bleiben offen. Das
+neue lokale Providerobjekt ist kein Key-/Budget-/Runtime-Freigabeschalter. Kein
+`APP_KEY` als JWTsecret, kein Rootsecurityinclude, keine kopierten/leeren Budgets,
+keine zusätzlichen Quell-/Rollenfilter für vorhandene Bearertokens und kein
+Routen-/Web-/LDAP-/Admin-/Native-/#197-Cutover wird mit diesem Slice freigegeben.
 
 ## Loginbudget: echte Sperre, aber keine heimliche Speicheraktivierung
 

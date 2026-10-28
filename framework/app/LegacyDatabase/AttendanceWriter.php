@@ -30,6 +30,7 @@ final class AttendanceWriter
         private readonly AuditContext $context,
         AuditFunctions $functions,
         private readonly bool $intakePolicyV4 = false,
+        private readonly ?int $loginBudgetSchemaVersion = null,
     ) {
         if (! $pdo instanceof Sqlite || $pdo->inTransaction()
             || ($configuration['driver'] ?? null) !== 'sqlite'
@@ -52,6 +53,50 @@ final class AttendanceWriter
         $this->connection->setReconnector(static fn () => throw new RuntimeException('A writer must never reconnect; admit a fresh operation scope instead.'));
         require_once dirname(__DIR__, 3).'/lib/attendance.php';
         $this->assertIntakeProfile();
+    }
+
+    /** Anonymous fixed quota operation; returns limited only AFTER confirmed COMMIT. */
+    public function consumeLoginBudget(string $username, string $remoteAddress): bool
+    {
+        try {
+            return $this->executeLocked(function () use ($username, $remoteAddress): bool {
+                $this->assertIntakeProfileLocked(requireV4: true);
+                $this->assertLoginBudgetSchemaCookie();
+                $limited = (new \App\Api\SharedSqliteLoginBudgetStore)->consumeLocked(
+                    $this->pdo, $username, $remoteAddress, time(),
+                )->limited;
+                $this->assertLoginBudgetSchemaCookie();
+                $this->assertIntakeProfileLocked(requireV4: true);
+
+                return $limited;
+            });
+        } catch (Throwable) {
+            // Never a confirmed 429/allow result, auth failure, retry or fallback.
+            throw new RuntimeException('Login budget commit was not confirmed.');
+        }
+    }
+
+    private function assertLoginBudgetSchemaCookie(): void
+    {
+        // Only RuntimeDatabase supplies this immutable admitted cookie. The
+        // active PDO's current value alone is not an admission capability.
+        if ($this->loginBudgetSchemaVersion === null || $this->loginBudgetSchemaVersion < 1) {
+            throw new LogicException('An admitted login-budget schema cookie is required.');
+        }
+        $statement = $this->pdo->query('PRAGMA main.schema_version');
+        if ($statement === false) {
+            throw new RuntimeException;
+        }
+        try {
+            if ($statement->fetchColumn() !== $this->loginBudgetSchemaVersion
+                || $statement->fetchColumn() !== false) {
+                throw new RuntimeException;
+            }
+        } finally {
+            if (! $statement->closeCursor()) {
+                throw new RuntimeException;
+            }
+        }
     }
 
     public function transition(int $user, string $source, string $eventId, string $action, bool $confirm = false, ?int $expectedRecord = null, bool $requireExpectedRecord = false, ?string $expectedWebSource = null, #[\SensitiveParameter] ?string $expectedWebVersion = null): array

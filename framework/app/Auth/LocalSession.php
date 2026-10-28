@@ -4,8 +4,10 @@ namespace App\Auth;
 
 use Illuminate\Auth\SessionGuard;
 use Illuminate\Contracts\Auth\Factory;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 use Throwable;
 
@@ -15,7 +17,7 @@ final class LocalSession
     public const SOURCE_MARKER = 'chrono_web_auth_source';
     public const PASSWORD_MARKER = 'password_hash_web';
 
-    public function __construct(private Factory $auth) {}
+    public function __construct(private Factory $auth, private ?WriterLoginBudget $loginBudget = null) {}
 
     public function attempt(#[\SensitiveParameter] Request $request): bool
     {
@@ -24,6 +26,18 @@ final class LocalSession
         if (! is_string($username) || ! is_string($password)
             || trim($username) === '' || $password === '') {
             return false;
+        }
+        if ($this->loginBudget !== null) {
+            try {
+                $limited = $this->loginBudget->limited(trim($username), (string) ($request->server('REMOTE_ADDR') ?? 'local'));
+            } catch (Throwable) {
+                throw new ServiceUnavailableHttpException(null, 'Anmeldung derzeit nicht bestätigt.');
+            }
+            if ($limited) {
+                // The operation has already confirmed COMMIT and idle state.
+                throw new HttpResponseException(new Response('Too many login attempts. Try again later.', 429,
+                    ['Content-Type' => 'text/plain; charset=UTF-8', 'Retry-After' => '600']));
+            }
         }
         $guard = $this->auth->guard('web');
         $provider = $guard instanceof SessionGuard ? $guard->getProvider() : null;

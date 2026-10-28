@@ -4,7 +4,6 @@ namespace App\Api;
 
 use App\Auth\LegacyUser;
 use Firebase\JWT\JWT;
-use Illuminate\Auth\AuthManager;
 use Illuminate\Auth\EloquentUserProvider;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Container\Container;
@@ -14,7 +13,6 @@ use LogicException;
 final class LegacyApiLogin
 {
     public function __construct(
-        private AuthManager $auth,
         private Container $container,
         private Repository $config,
         private AdmittedApiSigningKey $key,
@@ -27,10 +25,10 @@ final class LegacyApiLogin
             throw new LogicException('An explicitly admitted shared login budget and chrono connection are required.');
         }
         $this->container->make(LegacyApiLoginBudget::class)->consume($username, $remoteAddress);
-        $provider = $this->auth->createUserProvider('chrono_users');
-        if (! $provider instanceof EloquentUserProvider) {
-            throw new LogicException('The existing legacy account provider is required.');
-        }
+        // API credentials stay exactly local/raw, independent of the optional
+        // chrono-existing WEB provider (which trims/narrows and requires both fields).
+        // Standard Eloquent+configured hasher only: no LDAP, guard/session or rehash.
+        $provider = new EloquentUserProvider($this->container->make('hash'), LegacyUser::class);
         // No trimming or role allowlist. The existing stock hasher configuration
         // already has verify=false and rehash_on_login=false; do not change it.
         $user = $provider->retrieveByCredentials(['username' => $username]);

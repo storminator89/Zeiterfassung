@@ -44,7 +44,8 @@ final class RuntimeDatabase
         $pdo = $this->open(true);
         try {
             return new AttendanceWriter($pdo, $this->admission->configuration(true), $context, $functions,
-                intakePolicyV4: $this->isIntakePolicyV4());
+                intakePolicyV4: $this->isIntakePolicyV4(),
+                loginBudgetSchemaVersion: $this->admission->schemaVersion);
         } catch (Throwable) {
             throw new RuntimeException('Runtime database writer admission refused.');
         }
