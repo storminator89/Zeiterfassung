@@ -57,3 +57,48 @@ Instants mit verschiedenen IDs, Berlin-Tageswechsel und Seitengrenzen.
 Die unveränderten nativen SELECTs werden dabei ohne ihre Einstiegsskripte
 ausgeführt. Keine App-Konfiguration, HTTP-/Browser-/Login-/Middleware-Abnahme,
 keine reale Datenbank, Zugangsdaten, Server oder Deployment. Keine neue CI-Suite.
+
+## Ergänzung: native und vorbereitete Laravel-API
+
+Basis dieses getrennten Dreipfadpakets: Main
+`7ececc05556f6fb26532e078ee3988c9651f583e`, Tree
+`2a3eb9ddaefe77157d8ef119e311b28b3899e4c5`. Ausschließlich native
+`getTimeEntries()` in `api.php`, `LegacyChronoReads::apiTimeEntries()` und dieses
+Dokument ändern sich. Die beiden Lesewege registrieren denselben unveränderten
+`report_ordering.php`-Helfer auf der **bereits zugelassenen vorhandenen PDO** und
+sortieren vor LIMIT/OFFSET nach `chrono_report_start_epoch(startzeit) DESC,
+id DESC`. Keine neue Verbindung, Datenkopie, Migration oder Zeitprojektion.
+
+Person-/Datumsfilter, eigenes Berliner Buchungsdatum, COUNT, Bindings,
+Paginierungsvalidierung/-Metadaten und rohe Zeilenfelder bleiben unverändert.
+Auch der neue erwartete Sitzungsbindungsvertrag aus #36 wird nicht berührt:
+keine Änderung an Status, Aktionen, Authentifizierung, JWT, Rollen, Routen,
+Fehlertransport oder Schreibpfaden. Ungültige Filter werden wie zuvor vor dem
+eigentlichen Lesen verworfen; ohne Datenreparatur bleibt der Raw-Wire-Vertrag.
+
+Die bestehende UDFregistrierung ersetzt auf derselben Verbindung denselben
+Callback und kann vor mehreren nacheinander vollständig abgeschlossenen
+Abfragen erneut erfolgen. Wenn die Registrierung nicht verfügbar ist, wirft
+der unveränderte Helfer einen Fehler; es gibt weder stillen Textsortierungs-
+Fallback noch eine Ersatzverbindung. Vorhandene Fehleradapter bleiben zuständig.
+Ein fehlender fester Helferpfad ist ebenso wie bei bestehenden Nutzern ein
+fehlgeschlagenes Require, keine heruntergeladene oder dynamisch gewählte Quelle.
+
+Die oben dokumentierte Berlin-/DST-/Legacy-Auflösung des vorhandenen Helfers
+bleibt bewusst gleich. Insbesondere wird in diesem Paket kein neuer Parser,
+Mapping oder strengeres Datenannahmemodell eingeführt. Relative/unvollständige
+Altwerte und die Qualitätsgrenzen anderer Berichtspfade bleiben gesonderter
+Prüfbedarf; keine Rekonstruktion eines historisch unbestimmten Instants.
+
+Der grobe erfundene Query-only-Nachweis vergleicht die beiden reinen Lesebodies
+für gemischte Offset-/Legacyformen und die doppelte Herbststunde, IDgleichstand,
+Scope/Filter sowie Paging und Metadaten. Wiederholte Registrierung und der
+feste Registrierungsfehler werden ohne neue Verbindung im Anwendungscode
+betrachtet, dazu PHP-Syntax und vollständige Quellen-Erhaltung. Der grobe
+synthetische Nachweis und PHP-Syntax bestanden am 28.10.2026 unter PHP 8.5.12;
+ein einziges Query-only-In-Memory-PDO enthält ausschließlich erfundene Zeilen,
+der Fehlerfall verwendet ein verbindungsloses PDO-Testdouble. Kein Bootstrap,
+Token/Login, Session, echte Daten/DB, HTTP, Browser, Deployment oder neue CI.
+Dies ist keine geschützte/API-HTTP-/Exportabnahme und keine Performanceaussage.
+Teamreihenfolge, weitere Berichtspfade, große Historien und vollständiges #17
+bleiben offen; der bis hier eingefrorene Fortschritt ist nur API-Quellparität.

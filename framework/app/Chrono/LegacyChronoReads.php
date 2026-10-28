@@ -309,6 +309,8 @@ final class LegacyChronoReads implements ChronoReads
                 require_once dirname(__DIR__, 3).'/lib/api_booking_day.php';
                 api_register_booking_day($pdo);
             }
+            require_once dirname(__DIR__, 3).'/lib/report_ordering.php';
+            report_register_start_order($pdo);
             $predicate = implode(' AND ', $where);
             $statement = $pdo->prepare('SELECT COUNT(*) FROM zeiterfassung WHERE '.$predicate);
             foreach ($parameters as $name => $value) {
@@ -318,7 +320,7 @@ final class LegacyChronoReads implements ChronoReads
             $total = $statement->fetchColumn();
             $statement->closeCursor();
 
-            $sql = 'SELECT * FROM zeiterfassung WHERE '.$predicate.' ORDER BY startzeit DESC';
+            $sql = 'SELECT * FROM zeiterfassung WHERE '.$predicate.' ORDER BY chrono_report_start_epoch(startzeit) DESC, id DESC';
             if ($query->limit !== null) {
                 $sql .= ' LIMIT :limit';
                 $parameters[':limit'] = $query->limit;
