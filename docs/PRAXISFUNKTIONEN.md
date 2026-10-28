@@ -83,3 +83,25 @@ Die CI führt diese Prüfungen mit PHP 8.3 und vier HTTP-Workern aus. Physischer
 - Nach bestätigten Webbuchungen aktualisieren sich Status und letzte Buchungen. Ein veralteter Tab kann nach einem Zustandskonflikt wieder die tatsächlich zulässigen Aktionen anbieten. Die Liste zeigt die zuletzt angelegten Einträge; geplante Abwesenheiten verdrängen keine danach neu gestempelte Buchung. Die Kachel „letzter Zeiteintrag“ bevorzugt offene Arbeitszeit und behandelt zukünftige Gutschriften nicht als letzte Arbeitszeit.
 
 Zusätzliche Regressionen: `tests/booking_logic.php` (32 Prüfungen) und `tests/booking_http.py` (13 Prüfungen). Zusammen mit den bisherigen Suites sind es 221 serverseitige Prüfungen. Die Playwright-Prüfung deckt zusätzlich aktuelle Buchungszeilen und konkurrierende Browser-Tabs ab. Keine Datenmigration ist für diese Fehlerkorrekturen nötig; vorhandene Journal- und Originalereignisse bleiben unverändert.
+
+
+## Sichtbare Startdatumszuordnung in der Arbeitszeitliste (#46)
+
+Die vorhandene eigene Arbeitszeitliste (`get_time_records.php` und die optionale
+Laravel-Vorlage `chrono.time-records`) erläutert jetzt direkt über derselben
+Tabelle die unveränderte Berichtsregel: Eine abgeschlossene Schicht gehört mit
+vollständiger Nettozeit nach erfasster Pause zum Berliner Startdatum – auch über
+Mitternacht, Wochen-, Monats- und Jahresgrenzen sowie Zeitumstellungen hinweg.
+Offene Buchungen sind weiterhin keine abgeschlossenen Zeiten. Der Hinweis ist
+ständig lesbarer Text, nicht nur ein versteckter Tooltip; die vorhandenen
+Datenqualitäts-/Konflikthinweise bleiben unverändert.
+
+Dies ist ausschließlich eine sichtbare Erklärung der bereits bestehenden
+`report_days()`-/Gruppierungsregel. Kein Zeitraumfilter, CSV, Parser, Soll,
+Saldo, Nachtzuschlag, Pausenwert oder historischer Datensatz ändert sich. Eine
+optionale tagweise segmentierte Berichtssicht ist nicht umgesetzt und erfordert
+weiterhin eine gesonderte fachliche Entscheidung; keine automatische Umstellung.
+Native und Laravel-Karten, Tabellen, Aufklappen und Paging bleiben bestehen.
+Der getrennte grobe Quellen-/Kompilierungsnachweis ist keine visuelle oder
+geschützte Browserabnahme. Keine DB-/App-/Session-/Authausführung, Aktivierung,
+Remote-Schreibzugriffe oder neue CI-Läufe gehören zu diesem Textpaket.
