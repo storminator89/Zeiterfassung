@@ -91,7 +91,7 @@ define('DASHBOARD_PROGRESS', 'Progress');
 define('DASHBOARD_CURRENT_WEEK', 'Current Week %s');
 define('DASHBOARD_HOURS_OF', '%s of %s hours');
 define('DASHBOARD_CALENDAR', 'Calendar');
-define('DASHBOARD_OVERTIME_INFO', "Total overtime, including hours\ncarried over from previous periods.");
+define('DASHBOARD_OVERTIME_INFO', 'Carry-in plus differences between completed booking days and their targets. Includes work and absence credits. Not a continuous contractual time account or a balance as of today.');
 define('DASHBOARD_WEEKLY_PRODUCTIVITY_INFO', "Calculated as a percentage of\nactual hours worked compared to\nexpected weekly working hours.");
 define('DASHBOARD_PRODUCTIVITY_SCORE_INFO', "Calculated as a percentage of\nactual hours worked compared to\nexpected monthly working hours.");
 define('BUTTON_PREV_WEEK', 'Previous Week');

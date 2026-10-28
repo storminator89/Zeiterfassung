@@ -196,6 +196,7 @@ function calculateRemainingHours($workedHours, $expectedHours)
                         </span>
                     </div>
                     <div data-report-period="all" data-report-presentation="<?= $reportTotalUnresolved ? 'unresolved' : 'current' ?>" class="stat-value"><?= $reportTotalUnresolved ? 'Klärung offen' : formatHoursAsHHMM($totalOverHours) ?></div>
+                    <p class="text-sm opacity-70 mt-2" style="white-space: normal;"><?= h(DASHBOARD_OVERTIME_INFO) ?></p>
                     <div data-report-period="year" data-report-presentation="<?= $reportYearUnresolved ? 'unresolved' : 'current' ?>" class="stat-desc text-sm font-medium opacity-80">
                         <?= sprintf(DASHBOARD_OVER_HOURS_YEAR, $reportYearUnresolved ? 'Klärung offen' : formatHoursAsHHMM($overHoursThisYear)) ?>
                     </div>

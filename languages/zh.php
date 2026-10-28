@@ -91,7 +91,7 @@ define('DASHBOARD_PROGRESS', '進度');
 define('DASHBOARD_CURRENT_WEEK', '當前週 %s');
 define('DASHBOARD_HOURS_OF', '%s 小時，共 %s 小時');
 define('DASHBOARD_CALENDAR', '日曆');
-define('DASHBOARD_OVERTIME_INFO', "總加班時數，包括從\n前期結轉的時數。");
+define('DASHBOARD_OVERTIME_INFO', '前期結轉，加上已完成紀錄日的計入時數與當日目標之差。包括工作與缺勤抵算；並非連續契約工時帳戶，也不是截至今日的餘額。');
 define('DASHBOARD_WEEKLY_PRODUCTIVITY_INFO', "計算為實際工作時數\n與預期每週工作時數\n的百分比。");
 define('DASHBOARD_PRODUCTIVITY_SCORE_INFO', "計算為實際工作時數\n與預期每月工作時數\n的百分比。");
 define('BUTTON_PREV_WEEK', '上週');

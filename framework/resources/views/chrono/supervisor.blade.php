@@ -160,6 +160,7 @@
                         <div class="card bg-base-100 shadow-xl">
                             <div class="card-body">
                                 <h3 class="card-title">Überstunden Übersicht</h3>
+                                <p class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p>
                                 <div class="chart-container">
                                     <canvas id="overtimeChart"></canvas>
                                 </div>
@@ -181,6 +182,7 @@
                     <h3 class="text-2xl font-semibold mb-6">
                         <i class="fas fa-hourglass mr-2"></i>{{ $supervisor->text('TOTAL_OVERTIME_TITLE') }}
                     </h3>
+                    <p class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="overtimeCards">
                         @if ($supervisor->report['overtime'] !== [])
                             @foreach ($supervisor->report['overtime'] as $userId => $data)
@@ -335,6 +337,7 @@
                     <button class="btn btn-circle btn-ghost">✕</button>
                 </form>
             </div>
+            <p class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p>
             <div id="modal_content" class="space-y-6">
                 <!-- Content will be dynamically inserted here -->
             </div>
