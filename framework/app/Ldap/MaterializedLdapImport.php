@@ -74,12 +74,14 @@ final readonly class MaterializedLdapImport
     }
 
     /** Caller owns the same IMMEDIATE writer transaction used for the import. */
-    public function refuseLocalAccountCollisions(PDO $pdo): void
+    public function refuseLocalAccountCollisions(PDO $pdo, bool $accountLifecycleV5 = false): void
     {
         if (! $pdo->inTransaction()) {
             throw new LogicException('LDAP collision checks require the caller writer transaction.');
         }
-        $statement = $pdo->prepare('SELECT auth_source FROM users WHERE username=?');
+        $statement = $pdo->prepare($accountLifecycleV5
+            ? 'SELECT auth_source,account_status,auth_generation FROM users WHERE username=?'
+            : 'SELECT auth_source FROM users WHERE username=?');
         for ($index = 0; $index < $this->entries['count']; ++$index) {
             $entry = $this->entries[$index];
             if (! isset($entry['uid'][0], $entry['mail'][0])) {
@@ -94,6 +96,11 @@ final readonly class MaterializedLdapImport
                 // Refuse the WHOLE stage before settings, departments or users.
                 // Unknown sources fail closed; do not export names, IDs or DNs.
                 throw new DomainException('LDAP import refused: a username belongs to a non-directory account.');
+            }
+            if ($accountLifecycleV5 && $existing !== false
+                && (! in_array($existing['account_status'], ['active', 'inactive', 'departed'], true)
+                    || ! is_int($existing['auth_generation']) || $existing['auth_generation'] < 1)) {
+                throw new DomainException('LDAP import refused: retained account lifecycle is invalid.');
             }
         }
     }

@@ -92,6 +92,7 @@ final class LocalWebRoutes
                 fn ($app) => new \App\Chrono\LegacyLocalWebLdapSessionRevocations(
                     $app->make('auth'), $app->make('db'), $app->make(\Illuminate\Contracts\Encryption\Encrypter::class),
                     fn (): AttendanceWriter => $app->make(AttendanceWriter::class),
+                    $app->make(\App\Auth\AccountLifecycleWebIdentity::class),
                 ));
         }
         $app->make('config')->set('chrono_corrections.withdrawals_enabled', $includeCorrectionWithdrawals);

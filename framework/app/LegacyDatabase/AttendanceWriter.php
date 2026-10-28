@@ -19,6 +19,7 @@ final class AttendanceWriter
     use ManagedUserWriterOperations;
     use LdapSessionWriterOperations;
     use AccountLifecycleWriterOperations;
+    use AccountLifecycleTerminalWriterOperations;
 
     private readonly SQLiteConnection $connection;
     private bool $unusable = false;
@@ -127,9 +128,7 @@ final class AttendanceWriter
     public function terminal(LegacyTerminalRequest $request, AdmittedTerminalKeys $keys): array
     {
         if ($this->accountLifecycleV5) {
-            // Native identify/auth persists nonces/limits outside executeLocked.
-            // Refuse BEFORE those side effects until its V5 grant path exists.
-            throw new LogicException('Terminal ingress is not yet bound to V5 account authority.');
+            return $this->terminalV5($request, $keys);
         }
         // Match terminal_handle's repeated module check. Never wrap the entire
         // request: native nonce, limits and identify writes must autocommit first.
@@ -491,20 +490,22 @@ final class AttendanceWriter
 
     /** Guard-derived ID/hash context and snapshot revision only, never request identity. */
     public function importLdapUsersWithIntakePolicy(int $user, #[\SensitiveParameter] string $expectedWebVersion,
-        int $expectedPolicyRevision, #[\SensitiveParameter] \App\Ldap\MaterializedLdapImport $stage): array
+        int $expectedPolicyRevision, #[\SensitiveParameter] \App\Ldap\MaterializedLdapImport $stage,
+        ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): array
     {
         require_once dirname(__DIR__, 3).'/lib/ldap_import.php';
 
-        return $this->executeLocked(function () use ($user, $expectedWebVersion, $expectedPolicyRevision, $stage): array {
+        return $this->executeLocked(function () use ($user, $expectedWebVersion, $expectedPolicyRevision, $stage, $lifecycleAuthority): array {
             $this->assertIntakeProfileLocked(true);
-            $this->assertExpectedWebPrincipal($user, 'local', $expectedWebVersion, 'admin');
+            $this->assertExpectedWebPrincipal($user, 'local', $expectedWebVersion, 'admin', $lifecycleAuthority);
             (new \App\Accounts\IntakePolicyStore)->requireAllowedLocked($this->pdo,
-                \App\Accounts\IntakeMethod::LdapSync, $expectedPolicyRevision);
-            $stage->refuseLocalAccountCollisions($this->pdo);
+                \App\Accounts\IntakeMethod::LdapSync, $expectedPolicyRevision, $this->accountLifecycleV5);
+            $stage->refuseLocalAccountCollisions($this->pdo, $this->accountLifecycleV5);
 
             return \chrono_ldap_import_locked($this->pdo, $stage->entries, $stage->host, $stage->port,
-                $stage->bindUser, $stage->ciphertext, $stage->baseDn);
-        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'LDAP synchronization', $transaction));
+                $stage->bindUser, $stage->ciphertext, $stage->baseDn, $this->accountLifecycleV5);
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'LDAP synchronization', $transaction),
+            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
     }
 
     /** Strict persisted V4 policy CAS only; not an intake path or arbitrary account command. */

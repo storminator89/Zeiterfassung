@@ -5,6 +5,8 @@ namespace App\Chrono;
 use App\Accounts\IntakeMethod;
 use App\Accounts\IntakePolicyStore;
 use App\Auth\LegacyUser;
+use App\Auth\AccountLifecycleWebIdentity;
+use App\Accounts\AccountLifecycleAuthority;
 use App\Ldap\AdmittedLdapSettingsCipher;
 use App\Ldap\LdapSyncTarget;
 use App\Ldap\LdapSyncTransport;
@@ -38,6 +40,7 @@ final readonly class LegacyLocalWebLdapSync implements LocalWebLdapSync
         private Closure $transport,
         private Closure $cipher,
         private Closure $writer,
+        private ?AccountLifecycleWebIdentity $lifecycle = null,
     ) {}
 
     public function targetForForm(): LdapSyncTarget
@@ -80,7 +83,7 @@ final readonly class LegacyLocalWebLdapSync implements LocalWebLdapSync
         }
 
         try {
-            [$user, $version, $revision] = $this->authorizeSnapshot($authenticated);
+            [$user, $version, $revision, $authority] = $this->authorizeSnapshot($authenticated);
             // The read transaction is CLOSED before factories, network or keys.
             $transport = $this->resolve($this->transport, LdapSyncTransport::class);
             try {
@@ -108,7 +111,7 @@ final readonly class LegacyLocalWebLdapSync implements LocalWebLdapSync
             unset($command['ldap_pass'], $entries);
             $writer = $this->resolve($this->writer, AttendanceWriter::class);
 
-            return $writer->importLdapUsersWithIntakePolicy($user, $version, $revision, $stage);
+            return $writer->importLdapUsersWithIntakePolicy($user, $version, $revision, $stage, $authority);
         } catch (AuthenticationException|AuthorizationException|InvalidArgumentException|DomainException $error) {
             throw $error;
         } catch (\AttendanceError $error) {
@@ -142,6 +145,7 @@ final readonly class LegacyLocalWebLdapSync implements LocalWebLdapSync
     /** Fixed read snapshot, never a public PDO/callback or transaction around LDAP. */
     private function authorizeSnapshot(#[\SensitiveParameter] LegacyUser $authenticated): array
     {
+        $authority = $this->lifecycle?->capture($authenticated);
         try {
             $connection = $this->database->connection('chrono');
             if (! $connection instanceof SQLiteConnection || $connection->transactionLevel() !== 0) {
@@ -157,22 +161,26 @@ final readonly class LegacyLocalWebLdapSync implements LocalWebLdapSync
         $user = (int) $authenticated->getKey();
         $version = hash('sha256', $authenticated->getAuthPassword());
 
-        return $connection->transaction(function () use ($connection, $pdo, $user, $version): array {
+        return $connection->transaction(function () use ($connection, $pdo, $user, $version, $authority): array {
             if ($connection->getRawPdo() !== $pdo) {
                 throw new LogicException;
             }
-            $statement = $pdo->prepare('SELECT role,auth_source,password FROM users WHERE id=?');
+            $statement = $pdo->prepare($authority !== null
+                ? 'SELECT id,username,role,auth_source,password,account_status,auth_generation FROM users WHERE id=?'
+                : 'SELECT role,auth_source,password FROM users WHERE id=?');
             $statement->execute([$user]);
             $actor = $statement->fetch(PDO::FETCH_ASSOC);
             $statement->closeCursor();
-            if ($actor === false || $actor['auth_source'] !== 'local' || ! is_string($actor['password'])
+            if ($actor === false || ($authority !== null
+                && (! $authority->matches($actor) || ! AccountLifecycleAuthority::locallyLoginEligibleAdmin($actor)))
+                || $actor['auth_source'] !== 'local' || ! is_string($actor['password'])
                 || ! $actor['password'] || ! hash_equals($version, hash('sha256', $actor['password']))) {
                 throw new AuthenticationException('Unauthenticated.', ['web']);
             }
             if ($actor['role'] !== 'admin') {
                 throw new AuthorizationException('Only current local administration may synchronize LDAP.');
             }
-            $policy = $this->policies->read($pdo);
+            $policy = $this->policies->read($pdo, $authority !== null);
             if (! $policy->allows(IntakeMethod::LdapSync)) {
                 throw new AuthorizationException('LDAP synchronization intake is disabled.');
             }
@@ -180,7 +188,7 @@ final readonly class LegacyLocalWebLdapSync implements LocalWebLdapSync
                 throw new LogicException;
             }
 
-            return [$user, $version, $policy->revision];
+            return [$user, $version, $policy->revision, $authority];
         }, 1);
     }
 

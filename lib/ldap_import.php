@@ -5,10 +5,29 @@
 require_once __DIR__.'/ldap_manager_mapping.php';
 
 /** Exact legacy import policy, including local-name conversion and nonfatal manager conflicts. */
-function chrono_ldap_import_locked(PDO $conn, array $entries, string $ldapHost, string $ldapPort, string $ldapUser, string $encryptedLdapPass, string $ldapBaseDN): array
+function chrono_ldap_import_locked(PDO $conn, array $entries, string $ldapHost, string $ldapPort, string $ldapUser, string $encryptedLdapPass, string $ldapBaseDN, bool $accountLifecycleV5 = false): array
 {
     if (!$conn->inTransaction()) {
         throw new LogicException('LDAP import requires an owned transaction.');
+    }
+    if ($accountLifecycleV5) {
+        // Separate trusted Laravel V5 operation only. Preflight the WHOLE stage
+        // before settings/departments; Native/default predecessors stay exact.
+        if ($conn->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN) !== [1, 2, 3, 4, 5]) {
+            throw new LogicException('The explicit V5 LDAP import profile is required.');
+        }
+        $check = $conn->prepare('SELECT auth_source,account_status,auth_generation FROM users WHERE username=?');
+        foreach ($entries as $entry) {
+            if (!isset($entry['uid'][0], $entry['mail'][0])) { continue; }
+            $check->execute([$entry['uid'][0]]);
+            $existing = $check->fetch(PDO::FETCH_ASSOC);
+            $check->closeCursor();
+            if ($existing !== false && ($existing['auth_source'] !== 'ldap'
+                || !in_array($existing['account_status'], ['active', 'inactive', 'departed'], true)
+                || !is_int($existing['auth_generation']) || $existing['auth_generation'] < 1)) {
+                throw new DomainException('LDAP import refused: retained identity or lifecycle conflicts.');
+            }
+        }
     }
     $stmt = $conn->prepare("SELECT COUNT(*) FROM ldap_settings");
     $stmt->execute();
@@ -55,7 +74,11 @@ function chrono_ldap_import_locked(PDO $conn, array $entries, string $ldapHost, 
 
             if ($user) {
                 // Benutzerinformationen aktualisieren
-                $updateSql = "UPDATE users SET auth_source = 'ldap', email = :email, department_id = :department_id WHERE username = :username";
+                $updateSql = $accountLifecycleV5
+                    ? "UPDATE users SET email = :email, department_id = :department_id WHERE username = :username AND auth_source = 'ldap'"
+                    : "UPDATE users SET auth_source = 'ldap', email = :email, department_id = :department_id WHERE username = :username";
+                // V5 retains the row, source, role, placeholder and lifecycle.
+                // No presence/absence in this search activates or departs anyone.
                 $stmt = $conn->prepare($updateSql);
                 $stmt->bindParam(':email', $email);
                 $stmt->bindParam(':department_id', $departmentId);
@@ -64,7 +87,9 @@ function chrono_ldap_import_locked(PDO $conn, array $entries, string $ldapHost, 
                 $ldapUserId = (int)$user->id;
             } else {
                 // Neuen Benutzer einfügen
-                $insertSql = "INSERT INTO users (username, password, email, role, department_id, auth_source) VALUES (:username, :password, :email, 'user', :department_id, 'ldap')";
+                $insertSql = $accountLifecycleV5
+                    ? "INSERT INTO users (username, password, email, role, department_id, auth_source, account_status, auth_generation) VALUES (:username, :password, :email, 'user', :department_id, 'ldap', 'active', 1)"
+                    : "INSERT INTO users (username, password, email, role, department_id, auth_source) VALUES (:username, :password, :email, 'user', :department_id, 'ldap')";
                 $stmt = $conn->prepare($insertSql);
                 $passwordHash = password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT);
                 $stmt->bindParam(':username', $username);

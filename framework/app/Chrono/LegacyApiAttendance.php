@@ -3,18 +3,21 @@
 namespace App\Chrono;
 
 use App\Auth\LegacyUser;
+use App\Api\AccountLifecycleApiIdentity;
 use App\LegacyDatabase\AttendanceWriter;
 use Closure;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\RequestGuard;
 use Illuminate\Contracts\Auth\Factory;
 use LogicException;
+use InvalidArgumentException;
 
 /** Verified bearer identity/source boundary; all booking/replay rules stay in #75. */
 final class LegacyApiAttendance implements ApiAttendance
 {
     /** @param Closure(): AttendanceWriter $writer Trusted fresh operation-scope resolver. */
-    public function __construct(private readonly Factory $auth, private readonly Closure $writer) {}
+    public function __construct(private readonly Factory $auth, private readonly Closure $writer,
+        private readonly ?AccountLifecycleApiIdentity $lifecycle = null) {}
 
     public function transition(string $eventId, string $action, bool $confirm = false, ?int $expectedRecord = null): array
     {
@@ -28,13 +31,25 @@ final class LegacyApiAttendance implements ApiAttendance
         if (! $actor instanceof LegacyUser || (int) $actor->getKey() < 1) {
             throw new AuthenticationException('Unauthenticated.', ['chrono_api']);
         }
-        // Existing valid JWTs may identify LDAP accounts or legacy role values.
-        // No new local-source/role allowlist, query, or lock-time auth mechanism.
+        // Older profiles keep their JWT account/role behavior. Explicit V5
+        // captures only the verified bearer model, never client actor/generation.
+        try {
+            $authority = $this->lifecycle?->capture($actor);
+        } catch (InvalidArgumentException) {
+            require_once dirname(__DIR__, 3).'/lib/attendance.php';
+            throw new \AttendanceError('Account deleted or credentials changed.', 401);
+        }
         $writer = ($this->writer)();
         if (! $writer instanceof AttendanceWriter) {
             throw new LogicException('A trusted admitted operation-scoped attendance writer is required.');
         }
         $identifier = (int) $actor->getKey();
+
+        if ($authority !== null) {
+            // The fixed V5 operation rechecks the actor UNDER its sole lock,
+            // before both receipt replay and domain DML. Old transition stays closed.
+            return $writer->transitionApi($authority, $eventId, $action, $confirm, $expectedRecord);
+        }
 
         // Exact shared namespace. Direct /attendance forwards its optional string binding;
         // /setendzeit keeps its existing expected projection, never row CRUD.

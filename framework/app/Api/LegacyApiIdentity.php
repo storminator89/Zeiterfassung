@@ -15,6 +15,7 @@ final class LegacyApiIdentity
         private AdmittedApiSigningKey $key,
         private Repository $config,
         private LegacyIssuedTokenVerifier $tokens,
+        private ?AccountLifecycleApiIdentity $lifecycle = null,
     ) {}
 
     public function authenticate(Request $request): LegacyUser
@@ -37,7 +38,8 @@ final class LegacyApiIdentity
         }
         $user = LegacyUser::query()->find($payload['user_id']);
         if (! $user instanceof LegacyUser || ! $user->password
-            || ! hash_equals(hash('sha256', $user->password), $payload['ver'])) {
+            || ! hash_equals(hash('sha256', $user->password), $payload['ver'])
+            || ($this->lifecycle !== null && ! $this->lifecycle->accepts($user, $payload))) {
             throw new HttpResponseException(LegacyApiResponse::text('Account deleted or credentials changed.', 401));
         }
 
