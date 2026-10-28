@@ -260,11 +260,15 @@ function getTimeEntries($conn, $user_id) {
             api_register_booking_day($conn);
         }
 
+        // Same admitted connection/helper as the own list/CSV, before paging.
+        require_once __DIR__.'/lib/report_ordering.php';
+        report_register_start_order($conn);
+
         // Build the base query
         $query = "SELECT * FROM zeiterfassung WHERE " . implode(' AND ', $whereConditions);
 
         // Add ORDER BY
-        $query .= " ORDER BY startzeit DESC";
+        $query .= " ORDER BY chrono_report_start_epoch(startzeit) DESC, id DESC";
 
         // Only validated integers reach SQL; omitted limit has a bounded default.
         if ($pagination['limit'] !== null) {
