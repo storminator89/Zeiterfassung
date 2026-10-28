@@ -351,7 +351,7 @@ final readonly class FreshWebConfiguration
             'assets/css/main.css' => 'd293dcf9d31e0adfc0c6cda1c2f03f4c57afe325c79e223794460dc9f94c4e6f',
             'assets/css/app_ui.css' => '4f8bf76f83a5c5d3ea3807818a792aa2b4c12ec83aaf46a33342d1aadf4adc1e',
             'assets/js/main.js' => 'd5786e6ebe049297ef5c38499a598104e2edf0e2b97960401daf21c604879365',
-            'assets/js/attendance.js' => '4e5f763c32b9fe903cb63d28c05ca916ec833ca6de76ad4ee8c8e157ef53480b',
+            'assets/js/attendance.js' => '7779dab0587914880a51561fd999306b17198b648a7ee9f76d3fc505441b9697',
             'assets/js/chrono-local-web.js' => '9940b5723b21a2fa21f39db9471523ff5818bc6946a480607c2e5cac20516b3b',
         ] as $name => $hash) {
             $path = $public.'/'.$name;
