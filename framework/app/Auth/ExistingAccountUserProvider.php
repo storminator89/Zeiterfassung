@@ -14,7 +14,8 @@ final class ExistingAccountUserProvider extends EloquentUserProvider
 {
     private const ROLES = ['user', 'supervisor', 'admin'];
 
-    public function __construct(Hasher $hasher, private ExistingLdapUserProvider $directory)
+    public function __construct(Hasher $hasher, private ExistingLdapUserProvider $directory,
+        private ?AccountLifecycleWebIdentity $lifecycle = null)
     {
         parent::__construct($hasher, LegacyUser::class);
     }
@@ -22,7 +23,8 @@ final class ExistingAccountUserProvider extends EloquentUserProvider
     public function admits(#[SensitiveParameter] ?Authenticatable $user): bool
     {
         if (! $user instanceof LegacyUser || ! $user->exists || (int) $user->getKey() < 1
-            || ! is_string($user->getAuthPassword()) || ! $user->getAuthPassword()) {
+            || ! is_string($user->getAuthPassword()) || ! $user->getAuthPassword()
+            || ($this->lifecycle !== null && ! $this->lifecycle->admits($user))) {
             return false;
         }
 

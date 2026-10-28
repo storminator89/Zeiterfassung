@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Auth\ExistingAccountUserProvider;
+use App\Auth\AccountLifecycleWebIdentity;
+use App\LegacyDatabase\RuntimeDatabase;
 use App\Auth\ExistingLdapUserProvider;
 use App\Auth\LegacyUser;
 use App\Auth\PhpLdapCredentialVerifier;
@@ -18,6 +20,15 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class LegacyAuthServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        // Lazy immutable profile metadata only: resolving this service never
+        // opens a source or makes the still-closed V5 runtime operational.
+        $this->app->scoped(AccountLifecycleWebIdentity::class, fn ($app) =>
+            AccountLifecycleWebIdentity::fromRuntime($app->bound(RuntimeDatabase::class)
+                ? $app->make(RuntimeDatabase::class) : null));
+    }
+
     public function boot(): void
     {
         $this->app->make('auth')->provider('chrono-existing', function ($app, array $config): ExistingAccountUserProvider {
@@ -37,7 +48,9 @@ final class LegacyAuthServiceProvider extends ServiceProvider
             $hasher = $app->make('hash');
             $verifier = new PhpLdapCredentialVerifier(true, $settings['uri'], $settings['base_dn'], $settings['ca_file']);
 
-            return new ExistingAccountUserProvider($hasher, new ExistingLdapUserProvider($hasher, $verifier));
+            $lifecycle = $app->make(AccountLifecycleWebIdentity::class);
+
+            return new ExistingAccountUserProvider($hasher, new ExistingLdapUserProvider($hasher, $verifier, $lifecycle), $lifecycle);
         });
 
         // Registration is lazy: no user query, connection or session at boot.

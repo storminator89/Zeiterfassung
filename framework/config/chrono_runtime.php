@@ -23,8 +23,14 @@ if ($profile !== $absent || $baseSignature !== $absent) {
 }
 $userAuditSignature = env('FRAMEWORK_CHRONO_DB_USER_AUDIT_SCHEMA_SIGNATURE', $absent);
 if ($userAuditSignature !== $absent) {
-    // V4 only: an extra/missing/null field on other profiles fails pure validation.
+    // V4/V5 only: an extra/missing/null field on other profiles fails pure validation.
     $admission['user_audit_schema_signature'] = $userAuditSignature;
+}
+
+$intakePolicySignature = env('FRAMEWORK_CHRONO_DB_INTAKE_POLICY_SCHEMA_SIGNATURE', $absent);
+if ($intakePolicySignature !== $absent) {
+    // V5 only; the earlier V4 signature is an explicit separate predecessor.
+    $admission['intake_policy_schema_signature'] = $intakePolicySignature;
 }
 
 return [

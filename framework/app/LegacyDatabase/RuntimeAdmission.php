@@ -24,6 +24,7 @@ final readonly class RuntimeAdmission
         public ?string $schemaProfile = null,
         public ?string $baseSchemaSignature = null,
         public ?string $userAuditSchemaSignature = null,
+        public ?string $intakePolicySchemaSignature = null,
     ) {}
 
     // Pure configuration validation: no stat, file read, PDO or source bootstrap.
@@ -33,12 +34,23 @@ final readonly class RuntimeAdmission
         $profile = null;
         $baseSignature = null;
         $userAuditSignature = null;
+        $intakePolicySignature = null;
         if (array_key_exists('schema_profile', $manifest) || array_key_exists('base_schema_signature', $manifest)
-            || array_key_exists('user_audit_schema_signature', $manifest)) {
+            || array_key_exists('user_audit_schema_signature', $manifest)
+            || array_key_exists('intake_policy_schema_signature', $manifest)) {
             $keys = [...$keys, 'schema_profile', 'base_schema_signature'];
             $profile = $manifest['schema_profile'] ?? null;
             $baseSignature = $manifest['base_schema_signature'] ?? null;
-            if ($profile === 'intake-policy-v4') {
+            if ($profile === 'account-lifecycle-v5') {
+                $keys = [...$keys, 'user_audit_schema_signature', 'intake_policy_schema_signature'];
+                $userAuditSignature = $manifest['user_audit_schema_signature'] ?? null;
+                $intakePolicySignature = $manifest['intake_policy_schema_signature'] ?? null;
+                if (! is_string($baseSignature) || ! is_string($userAuditSignature)
+                    || ! is_string($intakePolicySignature) || ! is_string($manifest['schema_signature'] ?? null)) {
+                    throw new LogicException('The complete distinct V2/V3/V4/V5 signature chain is required.');
+                }
+                self::accountLifecycleV5LedgerRows($baseSignature, $userAuditSignature, $intakePolicySignature, $manifest['schema_signature']);
+            } elseif ($profile === 'intake-policy-v4') {
                 $keys[] = 'user_audit_schema_signature';
                 $userAuditSignature = $manifest['user_audit_schema_signature'] ?? null;
                 if (! is_string($baseSignature) || ! preg_match('/^[a-f0-9]{64}$/D', $baseSignature)
@@ -75,17 +87,43 @@ final readonly class RuntimeAdmission
             throw new LogicException('The runtime database identity and approved settings are invalid.');
         }
 
-        return new self($path, $device, $inode, $version, $signature, $foreignKeys, $manifest['journal_mode'], $synchronous, $profile, $baseSignature, $userAuditSignature);
+        return new self($path, $device, $inode, $version, $signature, $foreignKeys, $manifest['journal_mode'], $synchronous, $profile, $baseSignature, $userAuditSignature, $intakePolicySignature);
     }
 
     /** Pure exact ledger projection shared by all PDO/SQLite3 admission sites. */
     public function expectedLedgerRows(): array
     {
         return match ($this->schemaProfile) {
+            'account-lifecycle-v5' => self::accountLifecycleV5LedgerRows($this->baseSchemaSignature, $this->userAuditSchemaSignature, $this->intakePolicySchemaSignature, $this->schemaSignature),
             'user-audit-v3' => self::userAuditV3LedgerRows($this->baseSchemaSignature, $this->schemaSignature),
             'intake-policy-v4' => self::intakePolicyV4LedgerRows($this->baseSchemaSignature, $this->userAuditSchemaSignature, $this->schemaSignature),
             default => [['id' => 1, 'migration' => V2Adoption::migrationName($this->schemaSignature), 'batch' => 1]],
         };
+    }
+
+    public static function accountLifecycleV5LedgerRows(string $baseSignature, string $userAuditSignature, string $intakePolicySignature, string $postSignature): array
+    {
+        $signatures = [$baseSignature, $userAuditSignature, $intakePolicySignature, $postSignature];
+        foreach ($signatures as $signature) {
+            if (! preg_match('/^[a-f0-9]{64}$/D', $signature)) {
+                throw new LogicException('Four complete distinct account-lifecycle-v5 signatures are required.');
+            }
+        }
+        if (count(array_unique($signatures)) !== 4) {
+            throw new LogicException('Four complete distinct account-lifecycle-v5 signatures are required.');
+        }
+
+        return [...self::intakePolicyV4LedgerRows($baseSignature, $userAuditSignature, $intakePolicySignature),
+            ['id' => 4, 'migration' => '2026_10_28_000004_account_lifecycle_v5_'.$postSignature, 'batch' => 4]];
+    }
+
+    /** Pure exact V5 application/policy rows; V4 validation remains unchanged. */
+    public function assertAccountLifecycleState(array $versions, array $rows): void
+    {
+        if ($this->schemaProfile !== 'account-lifecycle-v5' || $versions !== [1, 2, 3, 4, 5] || count($rows) !== 1) {
+            throw new LogicException('The complete admitted account-lifecycle-v5 state is required.');
+        }
+        IntakePolicy::fromRow($rows[0]);
     }
 
     public static function intakePolicyV4LedgerRows(string $baseSignature, string $userAuditSignature, string $postSignature): array

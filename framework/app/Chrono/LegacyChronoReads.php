@@ -3,6 +3,7 @@
 namespace App\Chrono;
 
 use App\Auth\LegacyUser;
+use App\Auth\AccountLifecycleWebIdentity;
 use App\Auth\ExistingAccountUserProvider;
 use Closure;
 use Illuminate\Auth\SessionGuard;
@@ -24,6 +25,7 @@ final class LegacyChronoReads implements ChronoReads
         private readonly Repository $config,
         private readonly Factory $auth,
         private readonly Gate $gate,
+        private readonly ?AccountLifecycleWebIdentity $lifecycle = null,
     ) {}
 
     public function attendanceStatus(): array
@@ -781,6 +783,7 @@ final class LegacyChronoReads implements ChronoReads
         }
         $provider = $guard instanceof SessionGuard ? $guard->getProvider() : null;
         $webContext = $provider instanceof ExistingAccountUserProvider ? $provider->context($authenticated) : null;
+        $lifecycleAuthority = $this->lifecycle?->capture($authenticated);
 
         $connection = $this->database->connection('chrono');
         if (! $connection instanceof SQLiteConnection || $connection->transactionLevel() !== 0) {
@@ -798,13 +801,22 @@ final class LegacyChronoReads implements ChronoReads
         require_once dirname(__DIR__, 3).'/lib/reporting.php';
         require_once dirname(__DIR__, 3).'/lib/home_projection.php';
 
-        return $connection->transaction(function () use ($connection, $pdo, $authenticated, $read, $requireKnownRole, $webContext): array {
+        return $connection->transaction(function () use ($connection, $pdo, $authenticated, $read, $requireKnownRole, $webContext, $lifecycleAuthority): array {
             if ($connection->getRawPdo() !== $pdo) {
                 throw new LogicException('The read snapshot connection changed.');
             }
             // Only the guard supplies identity. Role/team are reloaded in this
             // same snapshot, never accepted from a request or cached session.
             $actor = $this->account($pdo, (int) $authenticated->getKey(), $requireKnownRole);
+            if ($lifecycleAuthority !== null) {
+                // ACTOR only: retained history of inactive subjects stays visible
+                // to an authorized active reader. Never attach secrets to a DTO.
+                $current = att_one($pdo, 'SELECT id,role,auth_source,password,account_status,auth_generation FROM users WHERE id=?', [(int) $authenticated->getKey()]);
+                if ($current === null || ! $lifecycleAuthority->matches($current)) {
+                    throw new AuthenticationException('Unauthenticated.', ['web']);
+                }
+                unset($current);
+            }
             if ($webContext !== null) {
                 // ACTOR only, never period subjects/API. Private version data is
                 // not attached to the actor model, DTO or returned projection.

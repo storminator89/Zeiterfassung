@@ -16,7 +16,8 @@ final class ExistingLdapUserProvider extends EloquentUserProvider
 {
     private const ROLES = ['user', 'supervisor', 'admin'];
 
-    public function __construct(Hasher $hasher, private LdapCredentialVerifier $directory)
+    public function __construct(Hasher $hasher, private LdapCredentialVerifier $directory,
+        private ?AccountLifecycleWebIdentity $lifecycle = null)
     {
         parent::__construct($hasher, LegacyUser::class);
     }
@@ -77,7 +78,8 @@ final class ExistingLdapUserProvider extends EloquentUserProvider
     private function eligible(?Authenticatable $user): bool
     {
         return $user instanceof LegacyUser && $user->exists && $user->getKey() !== null
-            && $user->auth_source === 'ldap' && in_array($user->role, self::ROLES, true);
+            && $user->auth_source === 'ldap' && in_array($user->role, self::ROLES, true)
+            && ($this->lifecycle === null || $this->lifecycle->admits($user));
     }
 
     private function loginCredentials(#[\SensitiveParameter] array $credentials): ?array

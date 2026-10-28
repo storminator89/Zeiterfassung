@@ -18,6 +18,7 @@ final class AttendanceWriter
 {
     use ManagedUserWriterOperations;
     use LdapSessionWriterOperations;
+    use AccountLifecycleWriterOperations;
 
     private readonly SQLiteConnection $connection;
     private bool $unusable = false;
@@ -32,6 +33,7 @@ final class AttendanceWriter
         AuditFunctions $functions,
         private readonly bool $intakePolicyV4 = false,
         private readonly ?int $loginBudgetSchemaVersion = null,
+        private readonly bool $accountLifecycleV5 = false,
     ) {
         if (! $pdo instanceof Sqlite || $pdo->inTransaction()
             || ($configuration['driver'] ?? null) !== 'sqlite'
@@ -124,6 +126,11 @@ final class AttendanceWriter
     /** Native device/grant identity only; no web session, actor or SQL callback. */
     public function terminal(LegacyTerminalRequest $request, AdmittedTerminalKeys $keys): array
     {
+        if ($this->accountLifecycleV5) {
+            // Native identify/auth persists nonces/limits outside executeLocked.
+            // Refuse BEFORE those side effects until its V5 grant path exists.
+            throw new LogicException('Terminal ingress is not yet bound to V5 account authority.');
+        }
         // Match terminal_handle's repeated module check. Never wrap the entire
         // request: native nonce, limits and identify writes must autocommit first.
         $this->terminalRequireEnabled();
@@ -566,9 +573,11 @@ final class AttendanceWriter
     {
         $versions = $this->pdo->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN);
         $policyType = $this->pdo->query("SELECT type FROM sqlite_schema WHERE type IN ('table','view') AND lower(name)='user_intake_policy'")->fetchColumn();
-        $matches = $this->intakePolicyV4
+        $matches = $this->accountLifecycleV5
+            ? $this->intakePolicyV4 && $versions === [1, 2, 3, 4, 5] && $policyType === 'table'
+            : ($this->intakePolicyV4
             ? $versions === [1, 2, 3, 4] && $policyType === 'table'
-            : in_array($versions, [[1, 2], [1, 2, 3]], true) && $policyType === false;
+            : in_array($versions, [[1, 2], [1, 2, 3]], true) && $policyType === false);
         if (! $matches) {
             throw new LogicException('The admitted intake profile does not match the database.');
         }
@@ -607,8 +616,21 @@ final class AttendanceWriter
     }
 
     /** Trusted guard-derived pair only; never accepted from command/request data. */
-    private function assertExpectedWebPrincipal(int $user, ?string $source, #[\SensitiveParameter] ?string $version, ?string $role = null): void
+    private function assertExpectedWebPrincipal(int $user, ?string $source, #[\SensitiveParameter] ?string $version,
+        ?string $role = null, ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): void
     {
+        if ($this->accountLifecycleV5) {
+            if ($lifecycleAuthority === null || ! $lifecycleAuthority->binds($user, $source, $version, $role)) {
+                throw new \AttendanceError('Sitzung nicht mehr gültig. Bitte neu anmelden.', 401);
+            }
+            $this->assertLifecyclePrincipalLocked($lifecycleAuthority,
+                localAdmin: $source === 'local' && $role === 'admin');
+
+            return;
+        }
+        if ($lifecycleAuthority !== null) {
+            throw new LogicException('A V5 authority cannot target an older account profile.');
+        }
         if ($source === null && $version === null) {
             return; // Existing local/API/terminal methods do not gain new rules.
         }
@@ -629,9 +651,15 @@ final class AttendanceWriter
 
     // The single existing #75 transaction/guard/failure lifecycle, shared only
     // internally. No public arbitrary-write API or second transaction manager.
-    private function executeLocked(Closure $body, ?Closure $auditScope = null): mixed
+    private function executeLocked(Closure $body, ?Closure $auditScope = null, bool $lifecycleReady = false): mixed
     {
         $this->assertIdle();
+        // V5 is not globally active. Until every facade/channel carries a
+        // captured generation, old operations (including API null/null) must
+        // refuse V5 before BEGIN, rather than silently applying V4 rules.
+        if ($this->accountLifecycleV5 && ! $lifecycleReady) {
+            throw new LogicException('This operation is not yet bound to V5 account authority.');
+        }
         // The legacy operation still sets globals. Framework UDFs use scoped
         // context instead; nevertheless restore even pre-existing null values.
         $globals = array_intersect_key($GLOBALS, array_flip(['audit_actor', 'audit_reason']));

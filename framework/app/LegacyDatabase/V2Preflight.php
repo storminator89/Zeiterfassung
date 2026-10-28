@@ -52,6 +52,32 @@ final class V2Preflight
         return $checked;
     }
 
+    /** Separate NEW-only V5 profile; never normalizes V5 into V4 eligibility. */
+    public function inspectAccountLifecycleV5(PDO $target, PDO $reference): array
+    {
+        MemoryOnly::connection($reference);
+        if ($reference->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN) !== [1, 2, 3, 4, 5]) {
+            throw new RuntimeException('The explicit account-lifecycle-v5 reference is required.');
+        }
+        $mapping = $this->mapping;
+        if (in_array('user_intake_policy', array_column($mapping['tables'], 'name'), true)) {
+            throw new RuntimeException('The unchanged base inventory is required.');
+        }
+        $mapping['tables'][] = ['name' => 'user_intake_policy', 'presence' => 'required', 'primary_key' => ['id']];
+        $checked = (new self($mapping))->inspectProfile($target, $reference, [1, 2, 3, 4, 5]);
+        $rows = $target->query(RuntimeAdmission::INTAKE_POLICY_SQL)->fetchAll(PDO::FETCH_ASSOC);
+        if (count($rows) !== 1) {
+            throw new RuntimeException('The persisted V5 intake policy is required.');
+        }
+        IntakePolicy::fromRow($rows[0]);
+        if ((int) $target->query("SELECT COUNT(*) FROM users WHERE account_status IS NULL OR typeof(account_status)<>'text' OR account_status NOT IN ('active','inactive','departed') OR typeof(auth_generation)<>'integer' OR auth_generation<1")->fetchColumn() !== 0
+            || (int) $target->query("SELECT COUNT(*) FROM terminal_grants WHERE typeof(account_generation)<>'integer' OR account_generation<1")->fetchColumn() !== 0) {
+            throw new RuntimeException('The complete constrained V5 authority state is required.');
+        }
+
+        return $checked;
+    }
+
     private function inspectProfile(PDO $target, PDO $reference, array $versions): array
     {
         MemoryOnly::connection($reference);
@@ -100,7 +126,7 @@ final class V2Preflight
 
         if ($target->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN) !== $versions) {
             throw new RuntimeException($versions === [1, 2] ? 'Only a complete source v2 database is supported.'
-                : ($versions === [1, 2, 3] ? 'Only a complete user-audit-v3 database is supported.' : 'Only a complete intake-policy-v4 database is supported.'));
+                : ($versions === [1, 2, 3] ? 'Only a complete user-audit-v3 database is supported.' : ($versions === [1, 2, 3, 4] ? 'Only a complete intake-policy-v4 database is supported.' : 'Only a complete account-lifecycle-v5 database is supported.')));
         }
         if ($target->query('PRAGMA foreign_key_check')->fetch() !== false) {
             throw new RuntimeException('Declared relationship preflight failed; no automatic repairs.');
