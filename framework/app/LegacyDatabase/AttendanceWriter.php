@@ -20,6 +20,7 @@ final class AttendanceWriter
     use LdapSessionWriterOperations;
     use AccountLifecycleWriterOperations;
     use AccountLifecycleTerminalWriterOperations;
+    use OwnPasswordWriterOperations;
 
     private readonly SQLiteConnection $connection;
     private bool $unusable = false;
