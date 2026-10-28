@@ -1,6 +1,8 @@
 /* Minimal startup gate around the EXISTING attendance client. Not a new booking engine. */
 (() => {
     'use strict';
+    // A later storage repair must not silently unblock this document.
+    if (['ready', 'blocked'].includes(document.documentElement.dataset.attendanceController)) return;
     const token = document.querySelector('meta[name="csrf-token"]')?.content;
     const userId = Number(document.body.dataset.attendanceUser);
     let blocked = false;
@@ -21,11 +23,12 @@
         blocked = true; // Malformed/inaccessible storage is not permission to lose an uncertain event.
     }
     if (blocked) {
+        document.documentElement.dataset.attendanceController = 'blocked';
         document.querySelectorAll('[data-attendance-action], #actions [data-action]').forEach(button => { button.disabled = true; });
         document.querySelectorAll('#message, #attendance-message').forEach(element => {
-            element.textContent = 'Unbestätigte Buchung aus einer anderen oder nicht prüfbaren Sitzung unverändert gespeichert. Keine automatische Wiederholung. Bitte Anmeldung und ursprüngliche Buchung zuerst klären.';
+            element.textContent = 'Buchungen bleiben gesperrt: Ein vorhandener oder nicht prüfbarer Vorgang darf nicht überschrieben oder einer anderen Anmeldung zugeordnet werden. Bitte Browserspeicher und ursprüngliche Buchung klären; danach bewusst neu laden. Keine automatische Wiederholung.';
         });
-        return; // Never load the old client, which would otherwise discard mismatched pending storage.
+        return; // Never load the booking client when pending cannot safely be adopted.
     }
     const script = document.createElement('script');
     script.src = 'assets/js/attendance.js';

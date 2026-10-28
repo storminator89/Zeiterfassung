@@ -92,6 +92,76 @@ produktiver sicherer Klärungs-/Wiederanmeldepfad ist noch gesondert erforderlic
 Kein automatisches Löschen zur Freigabe der Oberfläche und kein Abschluss des
 übergeordneten Pending-Themas durch diesen begrenzten Fix.
 
+### #57: kein POST ohne bestätigte Ablage derselben Ereignis-ID
+
+Der begrenzte Folgeschritt auf Main `619ef50a689cc70fca4aaa667aae83fcf80b1ea5`
+ändert den gemeinsamen bestehenden Anwesenheitsclient, den vorhandenen
+Laravel-Startupadapter und ihre bytegleichen öffentlichen Kopien. `rememberPending()` bestätigt jetzt
+Schreiben **und identisches Zurücklesen** desselben bestehenden Sessionstorage-
+Envelopes. Die Prüfung erfolgt vor jedem neuen Buchungs-POST und jeder bewusst
+ausgelösten Wiederholung, nicht nur vor der ersten Vergabe einer ID.
+
+Zuvor muss bereits das initiale Lesen und Prüfen des vorhandenen Pendingwertes
+erfolgreich sein. Nicht lesbarer Speicher, fremde Konto-/Tokenbindung oder
+ungültige vorhandene Werte sperren dieses Dokument **vor einer neuen ID oder
+einem Schreibversuch**. Der rohe Wert bleibt unverändert; auch eine spätere
+Speicherreparatur oder ein zweites Scripttag hebt diese Sperre nicht auf. Die
+bestehende Feedbackzeile fordert zum Klären des Browserspeichers und der
+ursprünglichen Buchung und **danach zum bewussten Neuladen** auf. Erst das neue
+Dokument darf wieder einen nun lesbaren leeren Slot verwenden oder einen
+gültigen Vorgang desselben Kontos und Tokens übernehmen. Fremdes oder ungültiges
+Pending bleibt auch dort gesperrt, nie automatisch gelöscht oder neu zugeordnet.
+Damit übernimmt der gemeinsame Client auch die Erhaltungsregel des bestehenden
+Laravel-Startupgates. Dieser Adapter markiert seine eigene frühere Prüfung nun
+ebenfalls dauerhaft für dieses Dokument als gesperrt und zeigt denselben
+Klärungs-/Reloadhinweis, bevor er ohne Nachladen des Buchungsclients zurückkehrt.
+
+Scheitert Schreiben/Lesen durch Sperre, Quota oder fehlende Wiederlesbarkeit,
+wird **dieser Versuch nicht gesendet**. Die vorhandene Feedbackzeile erklärt
+den Speicherfehler; die einmal erzeugte In-page-ID und ein zuvor gespeicherter
+ungeklärter Vorgang bleiben erhalten. Nach behobenem Speicherfehler verwendet
+derselbe Klick denselben Vorgang, keine neue ID. Die Prüfung ändert weder
+Account-/CSRF- noch exakte String-Recordbindung oder alte zulässige Feldomission.
+Sie löscht keinen unsicheren Vorgang und löst keine automatische Wiederholung
+aus. Bereits vorher gesendete Vorgänge werden dadurch nicht rückwirkend zu
+ungesendeten Vorgängen; der Hinweis beschreibt ausdrücklich den aktuellen Versuch.
+
+**Bewusste Änderung gegenüber der bisherigen Fehlerbehandlung:** Der Client
+darf bei nicht sicherbarer Ablage nicht länger trotzdem buchen und nur auf
+In-page-Retry hoffen. Bei Antwortverlust plus anschließendem Reload fehlte
+sonst gerade die für sichere Wiederholung benötigte ID. Theme, Navigation und
+die HTML-/Formularstruktur werden nicht verändert. Das dokumentfeste
+Pendinggate verhindert Stempel-POSTs und ein Entsperren durch Statusrefresh;
+der vorhandene native Abwesenheits-Submithandler bleibt davon unabhängig
+registriert und liefert weiterhin seine Inlinebestätigung statt einer
+Navigation zur JSON-Antwort. Das Laravel-Startupgate gibt wie bisher sein
+Abwesenheitsfeldset nur bei bereitem Client frei. Eine bestätigte Antwort darf weiterhin
+ihren In-page-Vorgang abschließen; ein fehlgeschlagenes Entfernen der gespeicherten
+bereits bestätigten ID wird nicht als Erlaubnis für einen ungesicherten neuen
+POST verwendet, denn auch dieser muss die gleiche Vorabprüfung bestehen.
+
+Ein grober synthetischer Node-24-DOM-/Storage-/Transportjourney prüft verlorenen
+Reply nach einem erfundenen Effekt und Dokumentneustart mit identischer ID,
+Quota-Verweigerung ohne POST, bewusste Wiederholung nach Speicherreparatur mit
+derselben ID/exakten großen Stringbindung, gesperrtes Lesen, fehlende
+Wiederlesbarkeit und bytegleichen Erhalt eines vorhandenen ungeklärten Vorgangs.
+Außerdem prüft er die Sperre nach initialem Lesefehler trotz Reparatur und
+doppeltem Script, den bewussten Reload mit derselben alten ID sowie unveränderte
+fremde Konto-/Sitzungswerte, kaputtes JSON und nicht-stringförmige Ereignis-IDs.
+Die Adapterkomposition prüft darüber hinaus ihre eigene vorgeschaltete Sperre,
+Duplicate-Adapter nach Reparatur, den zweiten Lesefehler erst im nachgeladenen
+Client, das nur bei bereitem Client freigegebene Laravel-Abwesenheitsfeldset
+sowie die weiterhin inline funktionierende native Abwesenheit bei gesperrtem
+Attendance-Pending.
+Die Baseline scheitert am trotzdem gesendeten Quota-Fall. Das simulierte
+Receiptmodell belegt keine Backend-Idempotenz; reale Browser-/Storageengine-/
+Reload-/Netz-/Login-/CSRF-/Cookie-/Mehrtababnahme bleibt offen.
+
+Kein neuer Speicherkey, keine Queue/Offlineverarbeitung, Klärungsroute, UI,
+Abhängigkeit, Server-/Schema-/Writer-/Runtimefreigabe. #57 bleibt insbesondere
+für konto-/sitzungsübergreifende Klärung offen. Die beiden öffentlichen Assetpins
+werden nur auf die separat bytegleich geprüften neuen Dateien aktualisiert.
+
 `main.js`, historische AJAXeditoren und HTML-Fragmente werden nicht geladen.
 Abwesenheit bleibt gesperrt. Dashboard/Settings/Admin/Team/Korrekturen/Modelle/
 Historie/Terminals/CSV/Setup/API/Terminal gehören nicht zu dieser Welle; der

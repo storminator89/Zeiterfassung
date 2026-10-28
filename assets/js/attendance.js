@@ -7,7 +7,7 @@
         ? document.addEventListener('DOMContentLoaded', callback, {once: true}) : callback();
     ready(() => {
         // A second script tag must not register a second booking handler.
-        if (document.documentElement.dataset.attendanceController === 'ready') return;
+        if (['ready', 'blocked'].includes(document.documentElement.dataset.attendanceController)) return;
         const initial = document.querySelector('[data-attendance-state], #actions[data-state]');
         const token = document.querySelector('meta[name="csrf-token"]')?.content;
         const userId = Number(document.body?.dataset.attendanceUser);
@@ -24,31 +24,51 @@
         let expectedRecord = state !== 'absent' && recordString(document.body.dataset.attendanceRecord)
             ? document.body.dataset.attendanceRecord : null;
         let busy = false, refreshing = null, revision = 0, pending = null;
+        let pendingVerified = true;
         const actionOf = button => button.dataset.attendanceAction || button.dataset.action;
         const buttons = () => [...document.querySelectorAll(buttonSelector)];
 
         // Preserve this exact event for a safe retry after an interrupted request
         // or same-tab navigation. Reuse requires both the server-rendered account
         // ID and the CSRF token to match; login can retain an existing token.
+        function blockUnverifiedPending() {
+            pendingVerified = false;
+            document.documentElement.dataset.attendanceController = 'blocked';
+            buttons().forEach(button => { button.disabled = true; });
+            message('Buchungen bleiben gesperrt: Ein vorhandener oder nicht prüfbarer Vorgang darf nicht überschrieben oder einer anderen Anmeldung zugeordnet werden. Bitte Browserspeicher und ursprüngliche Buchung klären; danach bewusst neu laden. Keine automatische Wiederholung.');
+        }
         try {
-            const stored = JSON.parse(sessionStorage.getItem(pendingKey) || 'null');
-            if (stored?.userId === userId && stored.session === token && /^[A-Za-z0-9_-]{16,80}$/.test(stored.event?.event_id)
-                && ['start', 'pause_start', 'pause_end', 'end'].includes(stored.event?.action)
-                && ['0', '1'].includes(stored.event?.confirm_end_pause)) {
-                if (Object.hasOwn(stored.event, 'expected_record') && !recordString(stored.event.expected_record)) {
-                    buttons().forEach(button => { button.disabled = true; });
-                    message('Unbestätigte Buchung mit nicht prüfbarer Sitzungsbindung unverändert gespeichert. Bitte ursprüngliche Buchung zuerst klären.');
-                    return;
+            const raw = sessionStorage.getItem(pendingKey);
+            const stored = raw === null ? null : JSON.parse(raw);
+            if (raw !== null) {
+                if (stored?.userId !== userId || stored.session !== token
+                    || typeof stored.event?.event_id !== 'string' || !/^[A-Za-z0-9_-]{16,80}$/.test(stored.event.event_id)
+                    || !['start', 'pause_start', 'pause_end', 'end'].includes(stored.event?.action)
+                    || !['0', '1'].includes(stored.event?.confirm_end_pause)
+                    || (Object.hasOwn(stored.event, 'expected_record') && !recordString(stored.event.expected_record))) {
+                    blockUnverifiedPending();
+                    // Preserve foreign/malformed values, never delete to unblock.
+                } else {
+                    pending = stored.event; // Legacy omission must replay unchanged, never bind to a new record.
                 }
-                pending = stored.event; // Legacy omission must replay unchanged, never bind to a new record.
             }
-            else sessionStorage.removeItem(pendingKey);
-        } catch (ignored) { /* Private browsing may disable storage; in-page retries still work. */ }
+        } catch (ignored) {
+            // Even if storage becomes readable later, a new event must not
+            // overwrite an older uncertain event that this document never saw.
+            blockUnverifiedPending();
+        }
         function rememberPending() {
             try {
-                if (pending) sessionStorage.setItem(pendingKey, JSON.stringify({userId, session: token, event: pending}));
-                else sessionStorage.removeItem(pendingKey);
-            } catch (ignored) { /* Do not block bookings on unavailable browser storage. */ }
+                if (pending) {
+                    const value = JSON.stringify({userId, session: token, event: pending});
+                    sessionStorage.setItem(pendingKey, value);
+                    // A successful in-page assignment is not proof that Reload
+                    // can recover this exact event. Never POST without readback.
+                    return sessionStorage.getItem(pendingKey) === value;
+                }
+                sessionStorage.removeItem(pendingKey);
+                return true;
+            } catch (ignored) { return false; }
         }
         async function request(url, options = {}) {
             const controller = new AbortController();
@@ -113,6 +133,7 @@
             reportNotice();
         }
         function render(nextState = state, nextRecord = expectedRecord) {
+            if (!pendingVerified) return; // An absence refresh must not unlock attendance.
             if (!Object.hasOwn(allowed, nextState)) throw new Error('Unbekannter Anwesenheitsstatus. Bitte Seite neu laden.');
             state = nextState;
             expectedRecord = state !== 'absent' && recordString(nextRecord) ? nextRecord : null;
@@ -179,7 +200,7 @@
 
         document.addEventListener('click', async event => {
             const button = event.target.closest(buttonSelector);
-            if (!button || button.hidden || button.disabled || busy) return;
+            if (!pendingVerified || !button || button.hidden || button.disabled || busy) return;
             event.preventDefault();
             const action = actionOf(button);
             if (pending && pending.action !== action) {
@@ -200,7 +221,13 @@
                 }
                 pending = {event_id: crypto.randomUUID(), action, confirm_end_pause: endPause ? '1' : '0',
                     ...(action === 'start' ? {} : {expected_record: expectedRecord})};
-                rememberPending();
+            }
+            // Applies to new events AND retries. Failure keeps the same in-page
+            // identity and any stored uncertain event, but sends no mutation.
+            if (!rememberPending()) {
+                render();
+                message('Dieser Buchungsversuch wurde nicht gesendet: Der Vorgang kann im Browserspeicher nicht unverändert gesichert werden. Er bleibt auf dieser Seite erhalten. Bereits unbestätigte Vorgänge nicht löschen; bitte Browserspeicher und Anmeldung prüfen und dieselbe Aktion erneut versuchen.');
+                return;
             }
             busy = true; revision++; render();
             let confirmed = false;
@@ -258,6 +285,9 @@
             }
         });
 
+        // The independent native absence form retains its existing inline handler.
+        // Only attendance stays blocked until deliberate reload after clarification.
+        if (!pendingVerified) return;
         render();
         if (pending) {
             if (pending.action === 'end') invalidateReportValues();
