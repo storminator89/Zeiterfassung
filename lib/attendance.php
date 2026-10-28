@@ -56,6 +56,9 @@ function attendance_assert_unmanaged(PDO $db, array $ids): void {
         }
     }
 }
+function attendance_event_payload_hash(int $user, string $action, bool $confirm, ?int $expectedRecord): string {
+    return hash('sha256',json_encode([$user,$action,$confirm,$expectedRecord]));
+}
 /**
  * Caller owns the active transaction. A trusted optional runner receives only
  * the derived actor/reason and this fixed mutation continuation, after native
@@ -65,7 +68,7 @@ function attendance_transition_locked(PDO $db, int $user, string $source, string
     if (!preg_match('/^[A-Za-z0-9_-]{16,80}$/D',$eventId)) { throw new AttendanceError('Ungültige Ereignis-ID.',400); }
     if (!in_array($action,['start','pause_start','pause_end','end'],true)) { throw new AttendanceError('Ungültige Aktion.',400); }
     if (!att_one($db,'SELECT id FROM users WHERE id=?',[$user])) { throw new AttendanceError('Konto nicht verfügbar.',403); }
-    $hash=hash('sha256',json_encode([$user,$action,$confirm,$expectedRecord]));
+    $hash=attendance_event_payload_hash($user,$action,$confirm,$expectedRecord);
     $old=att_one($db,'SELECT * FROM attendance_events WHERE source=? AND event_id=?',[$source,$eventId]);
     if ($old) {
         if (!hash_equals($old['payload_hash'],$hash)) { throw new AttendanceError('Ereignis-ID bereits anders verwendet.'); }
