@@ -117,7 +117,7 @@ function chrono_history_correlations(PDO $pdo,array $authorizedAnchorRows,int $a
             $record=$row['record_id']===null?null:chrono_history_correlation_integer($row['record_id']);
             $cancel=chrono_history_correlation_integer($row['cancel'],0);
             if ($id===null || $owner===null) { continue; }
-            if (($row['record_id']!==null && $record===null) || !in_array($row['status'],['pending','approved','rejected'],true) || !in_array($cancel,[0,1],true)) {
+            if (($row['record_id']!==null && $record===null) || !in_array($row['status'],['pending','approved','rejected','withdrawn'],true) || !in_array($cancel,[0,1],true)) {
                 $badRequests[$owner.':'.$id]=true;continue;
             }
             $directRequests[$owner.':'.$id]=['id'=>$id,'owner'=>$owner,'record_id'=>$record,'status'=>$row['status'],'cancel'=>$cancel];
@@ -161,7 +161,7 @@ function chrono_history_correlations(PDO $pdo,array $authorizedAnchorRows,int $a
         $rows=chrono_history_correlation_rows($pdo,"SELECT r.id,r.user_id,r.record_id,r.status,r.cancel FROM time_adjustments r LEFT JOIN users u ON u.id=r.user_id WHERE $pairs AND $scope ORDER BY r.id LIMIT 101",[...$params,...$scopeParams],$result['truncated']['requests']);
         foreach ($rows as $row) {
             $id=chrono_history_correlation_integer($row['id']);$owner=chrono_history_correlation_integer($row['user_id']);$record=chrono_history_correlation_integer($row['record_id']);$cancel=chrono_history_correlation_integer($row['cancel'],0);
-            if ($id===null || $owner===null || $record===null || !in_array($row['status'],['pending','approved','rejected'],true) || !in_array($cancel,[0,1],true)) { continue; }
+            if ($id===null || $owner===null || $record===null || !in_array($row['status'],['pending','approved','rejected','withdrawn'],true) || !in_array($cancel,[0,1],true)) { continue; }
             $requests[$owner.':'.$id]=['id'=>$id,'owner'=>$owner,'record_id'=>$record,'status'=>$row['status'],'cancel'=>$cancel];
         }
     }

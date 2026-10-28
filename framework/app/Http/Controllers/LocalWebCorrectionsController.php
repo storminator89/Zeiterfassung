@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
 use App\Chrono\LocalWebCorrections;
+use App\Chrono\LocalWebCorrectionWithdrawals;
+use Illuminate\Contracts\Config\Repository;
+use InvalidArgumentException;
 use App\View\ExistingUi\AttendancePage;
 use App\View\ExistingUi\Copy;
 use App\View\ExistingUi\CorrectionsPage;
@@ -23,6 +26,8 @@ final class LocalWebCorrectionsController extends Controller
         private LocalWebCorrections $corrections,
         private Factory $auth,
         private Interactions $interactions,
+        private ?LocalWebCorrectionWithdrawals $withdrawals = null,
+        private ?Repository $config = null,
     ) {}
 
     public function index(Request $request): View
@@ -40,6 +45,16 @@ final class LocalWebCorrectionsController extends Controller
                 'action', 'record_id', 'cancel', 'start', 'end', 'pause', 'reason',
                 'id', 'decision', 'review_reason',
             ]));
+            if (($command['action'] ?? null) === 'withdraw') {
+                if (! $this->withdrawalsEnabled()) {
+                    return $this->page($request, 'Rücknahme ist in diesem Profil nicht verbunden.');
+                }
+                $withdrawal = array_diff_key($request->request->all(), array_flip(['_token', 'csrf_token']));
+                $this->withdrawals->withdraw($withdrawal);
+                [$status, $requestedPage] = $this->queueFilters($request);
+
+                return new RedirectResponse(CorrectionsPage::queueUrl($status, $requestedPage, $this->queueSelection($request, false, 0)).'&saved=1');
+            }
             $selectedRecordId = 0;
             if (($command['action'] ?? null) === 'request') {
                 // Native request-only parser: explicit new entry 0 is valid only in POST.
@@ -56,11 +71,19 @@ final class LocalWebCorrectionsController extends Controller
             return new RedirectResponse(CorrectionsPage::queueUrl($status, $requestedPage, $this->queueSelection($request, false, $selectedRecordId)).'&saved=1');
         } catch (AuthenticationException $error) {
             throw $error; // Preserve the registrar's protected-route auth response.
-        } catch (\AttendanceError $error) {
+        } catch (\AttendanceError|InvalidArgumentException $error) {
             return $this->page($request, $error->getMessage());
         } catch (Throwable) {
-            return $this->page($request, 'Antrag konnte nicht verarbeitet werden.');
+            return $this->page($request, ($command['action'] ?? null) === 'withdraw'
+                ? 'Rücknahme konnte nicht bestätigt werden. Bitte neu laden und gespeicherten Stand prüfen; nicht automatisch wiederholen.'
+                : 'Antrag konnte nicht verarbeitet werden.');
         }
+    }
+
+    private function withdrawalsEnabled(): bool
+    {
+        return $this->withdrawals !== null
+            && $this->config?->get('chrono_corrections.withdrawals_enabled', false) === true;
     }
 
     /** Same native fallback rules; query fields select a queue, never a command. */
@@ -160,6 +183,8 @@ final class LocalWebCorrectionsController extends Controller
                 requestCounts: $queue['counts'], requestStatus: $queue['status'],
                 requestTotal: $queue['total'], requestPage: $queue['page'], requestPages: $queue['pages'],
                 queueSelection: $this->queueSelection($request, $selectionInvalid, $selectedRecordId),
+                withdrawalsEnabled: $this->withdrawalsEnabled() && $this->interactions->corrections
+                    && $this->interactions->correctionWithdrawals && $actor->auth_source === 'local',
             ),
         ]);
     }
