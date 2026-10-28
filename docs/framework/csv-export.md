@@ -213,3 +213,37 @@ Keine echte CSV, Buchung, Konten-/Saldoaktion, DB, Credentials, Header-/SAPI-/HT
 Browser-/Downloadabnahme oder neue CI. Laravel behält seinen bisherigen
 Materialisierungs-/generischen500-Vertrag unverändert; dieser Nachtrag erklärt
 keine vollständige #16-/#79-/Cutover- oder Produktivabnahme für bestanden.
+
+## Begrenzter Laravel-#16-Nachtrag: gleiche vollständige Qualitätsverweigerung
+
+Basis: Main `83717e8e56484b45a93c55d2901f054bfdcabdb9`, Baum
+`c177eba798eef8e77f23a0500eb843da6c78dfa6`. Nur
+`LocalWebCsvExportController` und dieses Dokument ändern sich. Keine zusätzliche
+Infrastruktur, Route, Aktivierung, Fachformel, UI oder Bestandskorrektur.
+
+Nach der unveränderten Konfliktprüfung prüft nun auch Laravel jede Zeile des
+bereits materialisierten **selben vollständigen eigenen** Snapshots mit
+`report_record_calculation()`. Ungültige Start-/Endwerte, Pausen und rückläufige
+Zeiträume liefern den exakten festen nativen `409 text/plain`-Qualitätshinweis
+ohne IDs, Quelldaten, Attachmentheader oder CSV-Rest. Weder können ältere
+Negativintervalle als erfolgreicher Dauerstrich exportiert werden, noch muss
+ein erkennbarer Datenqualitätsfall erst als technischer500 enden. Gültige offene
+Zeilen bleiben exportierbar; keine Endzeit, Nullsumme oder Gutschrift wird erfunden.
+
+Eigener Scope auch für Admins, Autorisierung, Reihenfolge, Konfliktvorrang,
+Serializerbytes/Formelschutz, Berlin-Dateiname und technischer500-Vertrag bleiben
+unverändert. Keine zweite Abfrage oder Verarbeitung eines engeren Seitenfilters.
+Die Nichtfreigabe korrupter Daten ist keine automatische Reparatur.
+
+Ein grober PHP-8.5.12-Komponentenjourney mit wirklichem Reader und Controller,
+kanonischer anonymer Memory-SQLite und erfundenen Accounts/Zeilen prüft gültige
+geschlossene/offene/Gutschrift-/Formeltextzeilen, eine späte ungültige Zeile,
+malformed Zeit, ungültige Pause, unveränderten Konfliktvorrang und Ownscope.
+Gültige CSV bleibt zum bestehenden Serializer bytegleich; ungültige Ausgabe
+bleibt vollständig Text ohne Attachment oder Rohwerte. Baseline liefert für
+einen erkennbar ungültigen Negativnettofall noch erfolgreiches CSV statt409.
+Syntax und exakte Preservation aller übrigen Quellen werden separat geprüft.
+
+Keine reale DB-/Header-/SAPI-/HTTP-/Cookie-/CSRF-/Browserdownload- oder
+Mehrprozessabnahme, keine neue CI/Remoteaktion/Keys/Konten/Runtimefreigabe.
+Dieser Nachtrag schließt #16/#79 nicht vollständig.
