@@ -75,6 +75,22 @@
                 </div>
             </form>
 
+            @if ($settings->passwordAvailable)
+                <div class="divider my-8">{{ $settings->passwordText('title') }}</div>
+                <section aria-labelledby="own-password-title">
+                    <h3 id="own-password-title" class="text-xl font-semibold mb-3">{{ $settings->passwordText('title') }}</h3>
+                    <p id="own-password-contract" class="text-sm opacity-70 mb-4">{{ $settings->passwordText('contract') }}</p>
+                    <form method="post" action="settings.php" class="space-y-6" aria-describedby="own-password-contract">
+                        @csrf
+                        <input type="hidden" name="password_action" value="change">
+                        <div class="form-control"><label class="label" for="current_password">{{ $settings->passwordText('current') }}</label><input class="input input-bordered w-full" type="password" id="current_password" name="current_password" autocomplete="current-password" maxlength="4096" required></div>
+                        <div class="form-control"><label class="label" for="own_new_password">{{ $settings->passwordText('new') }}</label><input class="input input-bordered w-full" type="password" id="own_new_password" name="password" autocomplete="new-password" maxlength="72" required></div>
+                        <div class="form-control"><label class="label" for="own_password_confirmation">{{ $settings->passwordText('confirm') }}</label><input class="input input-bordered w-full" type="password" id="own_password_confirmation" name="password_confirmation" autocomplete="new-password" maxlength="72" required></div>
+                        <button class="btn btn-primary" type="submit">{{ $settings->passwordText('submit') }}</button>
+                    </form>
+                </section>
+            @endif
+
             @if ($page->role === 'admin')
                 <div class="divider my-8">{{ $page->copy->text('SETTINGS_BACKUP_OPERATIONS_TITLE') }}</div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">

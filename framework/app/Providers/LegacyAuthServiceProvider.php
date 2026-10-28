@@ -22,6 +22,14 @@ final class LegacyAuthServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->scoped(\App\Auth\OwnPasswordChange::class, fn ($app) => new \App\Auth\OwnPasswordChange(
+            $app->make('auth'), $app->make('hash'), $app->make('config'), $app->make('cache')->store('file'),
+            function () use ($app): \App\LegacyDatabase\AttendanceWriter {
+                if (! $app->bound(\App\LegacyDatabase\AttendanceWriter::class)) { throw new LogicException('No admitted own-password writer.'); }
+                return $app->make(\App\LegacyDatabase\AttendanceWriter::class);
+            },
+            fn (): bool => $app->bound(RuntimeDatabase::class) && $app->make(RuntimeDatabase::class)->isAccountLifecycleV5(),
+        ));
         // Lazy immutable profile metadata only: resolving this service never
         // opens a source or makes the still-closed V5 runtime operational.
         $this->app->scoped(AccountLifecycleWebIdentity::class, fn ($app) =>

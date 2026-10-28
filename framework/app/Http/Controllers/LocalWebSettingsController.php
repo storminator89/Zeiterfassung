@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use App\Chrono\ChronoReads;
 use App\Chrono\LocalWebCarryIn;
 use App\Auth\LegacyUser;
+use App\Auth\OwnPasswordChange;
+use App\Auth\LocalSession;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use App\View\ExistingUi\AttendancePage;
 use App\View\ExistingUi\Copy;
 use App\View\ExistingUi\Interactions;
@@ -25,6 +29,8 @@ final class LocalWebSettingsController extends Controller
         private Factory $auth,
         private Interactions $interactions,
         private LocalWebCarryIn $carryIn,
+        private OwnPasswordChange $passwords,
+        private LocalSession $sessions,
     ) {}
 
     public function index(Request $request): Response
@@ -32,10 +38,33 @@ final class LocalWebSettingsController extends Controller
         return $this->page($request);
     }
 
-    public function store(Request $request): Response
+    public function store(Request $request): Response|RedirectResponse
     {
         require_once dirname(__DIR__, 4).'/lib/language.php';
         $form = $request->request->all();
+        if (array_key_exists('password_action', $form)) {
+            try {
+                // Strict separate payload; no preference is applied or secret flashed.
+                $this->passwords->change($form, (string) ($request->server('REMOTE_ADDR') ?? 'local'));
+            } catch (AuthenticationException|AuthorizationException|HttpResponseException $error) {
+                throw $error;
+            } catch (InvalidArgumentException $error) {
+                return $this->page($request, $error->getMessage(), status: 400, allowQueryPreference: false);
+            } catch (Throwable) {
+                // The writer's COMMIT outcome may be unknown. No automatic retry,
+                // success notice or continuation with an old cached identity.
+                try { $this->sessions->logout($request); } catch (Throwable) {}
+                return new Response('Passwortänderung nicht bestätigt. Nicht automatisch wiederholen. Bitte den Anmeldestand prüfen.', 503,
+                    ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
+            }
+            // Only a confirmed COMMIT reaches the existing full session logout.
+            try { $this->sessions->logout($request); }
+            catch (Throwable) {
+                return new Response('Passwort geändert; Abmeldung nicht vollständig bestätigt. Bitte erneut anmelden.', 503,
+                    ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
+            }
+            return (new RedirectResponse('login.php', 303))->header('Cache-Control', 'no-store');
+        }
         $hasCarryIn = array_key_exists('ueberstunden', $form);
         if ($hasCarryIn) {
             $actor = $this->auth->guard('web')->user();
@@ -100,8 +129,8 @@ final class LocalWebSettingsController extends Controller
             'settings' => new SettingsPage(
                 $theme, $actor->regelarbeitszeit, $actor->role === 'admin'
                     ? ($savedCarryIn ?? \settings_carry_in_display($actor->ueberstunden)) : null,
-                $error, $saved,
+                $error, $saved, $this->passwords->available(), $language,
             ),
-        ], $status);
+        ], $status, ['Cache-Control' => 'no-store']);
     }
 }
