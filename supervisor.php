@@ -14,6 +14,9 @@ $user_role = $_SESSION['role'] ?? '';
 $zeiten = [];
 $ueberstundenListe = [];
 $detaillierteDaten = [];
+$reportAvailable = false;
+$invalidRecords = [];
+$absenceConflicts = [];
 $userSearch = isset($_GET['user_search']) && is_string($_GET['user_search']) ? trim($_GET['user_search']) : '';
 $tableQuery = ['lang' => $lang, 'user_search' => $userSearch];
 $pageUrl = static fn (int $page): string => '?' . htmlspecialchars(http_build_query(array_merge($tableQuery, ['page' => $page])), ENT_QUOTES, 'UTF-8');
@@ -28,15 +31,18 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
     $stmt->execute([$user_id,$user_role]);
     $zeiten = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // This legacy report has independent cards, day sums, modal and chart
-    // rollups. Until that whole contract supports unresolved totals, refuse
-    // this affected authorized report set rather than publish numeric credits.
-    // No raw source row is changed; own list/history/corrections remain usable.
-    if (report_absence_conflicts($zeiten)!==[]) {
-        echo '<div class="alert alert-warning mb-4" role="alert"><span><strong>Klärung offen.</strong> Arbeitszeit und ganztägige Abwesenheit überschneiden sich im freigegebenen Berichtsumfang. Diese Auswertung enthält deshalb keine abschließenden Summen. Bitte die betroffenen Originaleinträge in der <a class="link" href="history.php">Historie</a> prüfen und die Korrektur durch die betroffene Person mit anschließender Vier-Augen-Freigabe klären. Die <a class="link" href="index.php">eigene Arbeitszeitliste</a> und <a class="link" href="adjustments.php">Korrekturanträge</a> bleiben verfügbar; es wurden keine Zeiten gelöscht oder gekürzt.</span></div></div></body></html>';
-        return;
+    // Diagnose the complete authorized source BEFORE dates, plans or rollups.
+    // Invalid and conflicting rows are not zero-minute work or a partial total.
+    foreach ($zeiten as $rowIndex => $row) {
+        $calculation = report_record_calculation($row);
+        if ($calculation['status'] === 'invalid') {
+            $invalidRecords[$rowIndex] = $calculation['error'];
+        }
     }
+    $absenceConflicts = report_absence_conflicts($zeiten);
+    $reportAvailable = $invalidRecords === [] && $absenceConflicts === [];
 
+    if ($reportAvailable) {
     foreach ($zeiten as &$entry) { $entry['weekNumber']=substr(report_week($entry),5);$entry['day']=report_day($entry);$entry['net_minutes']=report_minutes($entry);$entry['planned_minutes_day']=planned_minutes($conn,(int)$entry['user_id'],$entry['day']); } unset($entry);
     // Berechnung der Überstunden und detaillierte Daten
     $workHoursByUser = [];
@@ -102,6 +108,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
             'overtime_minutes' => $totalOverMinutes,
             'ueberstunden' => $formattedOvertime
         ];
+    }
     }
 }
 ?>
@@ -199,6 +206,15 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                     </div>
                 </div>
             <?php else : ?>
+                <?php if (!$reportAvailable) : ?>
+                    <?php if ($absenceConflicts !== []) : ?>
+                    <div class="alert alert-warning mb-4" role="alert"><span><strong>Klärung offen.</strong> Arbeitszeit und ganztägige Abwesenheit überschneiden sich im freigegebenen Berichtsumfang. Diese Auswertung enthält deshalb keine abschließenden Summen. Bitte die betroffenen Originaleinträge in der <a class="link" href="history.php">Historie</a> prüfen und die Korrektur durch die betroffene Person mit anschließender Vier-Augen-Freigabe klären. Die <a class="link" href="index.php">eigene Arbeitszeitliste</a> und <a class="link" href="adjustments.php">Korrekturanträge</a> bleiben verfügbar; es wurden keine Zeiten gelöscht oder gekürzt.</span></div>
+                    <?php endif; ?>
+                    <?php if ($invalidRecords !== []) : ?>
+                    <div class="alert alert-warning mb-4" role="alert"><span><strong><?= htmlspecialchars(sprintf(SUPERVISOR_INVALID_RECORDS, count($invalidRecords)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong> <?= htmlspecialchars(SUPERVISOR_TOTALS_UNAVAILABLE, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> <a class="link" href="history.php">Historie</a> · <a class="link" href="index.php">eigene Arbeitszeitliste</a> · <a class="link" href="adjustments.php">Korrekturanträge</a></span></div>
+                    <?php endif; ?>
+                <?php endif; ?>
+                <?php if ($reportAvailable) : ?>
                 <!-- Search and Filter Section -->
                 <div class="mb-6">
                     <div class="flex flex-wrap gap-4 items-center justify-between">
@@ -266,6 +282,8 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                     </div>
                 </div>
 
+                <?php endif; ?>
+
                 <!-- Time Records Table Section -->
                 <div class="mb-8">
                     <h3 class="text-2xl font-semibold mb-6">
@@ -273,6 +291,9 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                     </h3>
                     <div class="card bg-base-100 shadow-xl">
                         <div class="card-body">
+                            <?php if (!$reportAvailable) : ?>
+                            <p class="text-sm opacity-70 mb-4"><?= htmlspecialchars(SUPERVISOR_SOURCE_VALUES, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
+                            <?php endif; ?>
                             <!-- Search and Filter Bar -->
                             <form method="get" action="supervisor.php" class="flex flex-wrap gap-4 mb-4">
                                 <input type="hidden" name="lang" value="<?= htmlspecialchars($lang, ENT_QUOTES, 'UTF-8') ?>">
@@ -295,6 +316,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                             <div class="overflow-x-auto">
                                 <table class="table w-full">
                                     <thead>
+                                        <?php if ($reportAvailable) : ?>
                                         <tr>
                                             <th class="w-8"></th> <!-- Expand/Collapse Icon -->
                                             <th><?= TABLE_HEADER_USERNAME ?></th>
@@ -304,9 +326,20 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                                             <th><?= TABLE_HEADER_LOCATION ?></th>
                                             <th><?= TABLE_HEADER_OVERTIME ?></th>
                                         </tr>
+                                        <?php else : ?>
+                                        <tr>
+                                            <th><?= TABLE_HEADER_USERNAME ?></th>
+                                            <th><?= TABLE_HEADER_START_TIME ?></th>
+                                            <th><?= TABLE_HEADER_END_TIME ?></th>
+                                            <th><?= TABLE_HEADER_BREAK ?></th>
+                                            <th><?= TABLE_HEADER_LOCATION ?></th>
+                                            <th><?= TABLE_HEADER_COMMENT ?></th>
+                                        </tr>
+                                        <?php endif; ?>
                                     </thead>
                                     <tbody id="timeRecordsBody">
                                         <?php
+                                        if ($reportAvailable) {
                                         // Group entries by user and date
                                         $groupedEntries = [];
                                         foreach ($zeiten as $zeit) {
@@ -363,10 +396,26 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                                         $start = ($currentPage - 1) * $itemsPerPage;
                                         $pagedEntries = array_slice($groupedEntries, $start, $itemsPerPage, true);
 
-                                        if ($totalRecords === 0) {
-                                            echo '<tr><td colspan="7" class="text-center opacity-70">' . NO_ENTRIES_FOUND . '</td></tr>';
+                                        } else {
+                                            // Raw source rows need no guessed day/group or calculated value.
+                                            $sourceRows = $zeiten;
+                                            if ($userSearch !== '') {
+                                                $sourceRows = array_filter($sourceRows, static fn (array $row): bool => mb_stripos($row['username'], $userSearch) !== false);
+                                            }
+                                            $itemsPerPage = 10;
+                                            $totalRecords = count($sourceRows);
+                                            $totalPages = max(1, (int) ceil($totalRecords / $itemsPerPage));
+                                            $currentPage = isset($_GET['page']) && is_string($_GET['page']) ? (int)$_GET['page'] : 1;
+                                            $currentPage = max(1, min($currentPage, $totalPages));
+                                            $start = ($currentPage - 1) * $itemsPerPage;
+                                            $pagedEntries = array_slice($sourceRows, $start, $itemsPerPage, true);
                                         }
 
+                                        if ($totalRecords === 0) {
+                                            echo '<tr><td colspan="' . ($reportAvailable ? 7 : 6) . '" class="text-center opacity-70">' . NO_ENTRIES_FOUND . '</td></tr>';
+                                        }
+
+                                        if ($reportAvailable) {
                                         foreach ($pagedEntries as $group) {
                                             $totalDuration = $group['total_duration']; // Already includes break deduction
                                             $hours = floor($totalDuration / 60);
@@ -429,6 +478,20 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                                         </td>
                                     </tr>';
                                         }
+                                        } else {
+                                            // Escaped source values only: no date parsing, duration math or record IDs.
+                                            foreach ($pagedEntries as $rowIndex => $row) {
+                                                echo '<tr><td>' . htmlspecialchars((string)$row['username'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                                                if (isset($invalidRecords[$rowIndex])) {
+                                                    echo '<div class="mt-1"><span class="badge badge-warning">' . htmlspecialchars(SUPERVISOR_INVALID_ROW, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</span> <span class="text-sm">' . htmlspecialchars($invalidRecords[$rowIndex], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</span></div>';
+                                                }
+                                                echo '</td><td>' . htmlspecialchars((string)($row['startzeit'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                                                    . '</td><td>' . htmlspecialchars((string)($row['endzeit'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                                                    . '</td><td>' . htmlspecialchars((string)($row['pause'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                                                    . '</td><td>' . htmlspecialchars((string)($row['standort'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                                                    . '</td><td>' . htmlspecialchars((string)($row['beschreibung'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</td></tr>';
+                                            }
+                                        }
                                         ?>
                                     </tbody>
                                 </table>
@@ -483,6 +546,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
         </div>
     </div>
 
+    <?php if ($reportAvailable) : ?>
     <!-- Enhanced Modal -->
     <dialog id="details_modal" class="modal">
         <div class="modal-box w-11/12 max-w-7xl bg-base-200">
@@ -501,6 +565,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
             <button>Schließen</button>
         </form>
     </dialog>
+    <?php endif; ?>
 
     <script>
 function escapeHTML(value) {
