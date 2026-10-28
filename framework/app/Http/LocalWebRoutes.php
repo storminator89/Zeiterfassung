@@ -49,7 +49,7 @@ use Symfony\Component\HttpFoundation\Response;
 /** Explicit opt-in registrar. Never called by bootstrap/providers/default routes. */
 final class LocalWebRoutes
 {
-    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false, bool $includeSetup = false, bool $includeLdapSync = false, bool $useSharedLoginBudget = false, bool $includeTerminalSites = false, bool $includeTerminalCredentialRevocations = false, bool $includeCorrectionWithdrawals = false, bool $includeTerminalDeviceRevocations = false): void
+    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false, bool $includeSetup = false, bool $includeLdapSync = false, bool $useSharedLoginBudget = false, bool $includeTerminalSites = false, bool $includeTerminalCredentialRevocations = false, bool $includeCorrectionWithdrawals = false, bool $includeTerminalDeviceRevocations = false, bool $includeLdapSessionRevocations = false): void
     {
         if ($useSharedLoginBudget !== SharedLoginBudgetServiceProvider::selected($app)) {
             throw new LogicException('Login route and shared budget selection must agree.');
@@ -69,6 +69,22 @@ final class LocalWebRoutes
             || ! $app->bound(RuntimeDatabase::class) || ! $app->make(RuntimeDatabase::class)->isIntakePolicyV4()
             || ! $app->bound(AttendanceWriter::class))) {
             throw new LogicException('Correction withdrawal requires explicit non-debug writable V4 composition.');
+        }
+        if ($includeLdapSessionRevocations && (! $includeAdminPauseSettings
+            || $app->make('config')->get('app.debug') !== false
+            || ! $app->bound(RuntimeDatabase::class) || ! $app->make(RuntimeDatabase::class)->isIntakePolicyV4()
+            || ! $app->bound(AttendanceWriter::class)
+            || $app->bound(\App\Chrono\LocalWebLdapSessionRevocations::class))) {
+            throw new LogicException('LDAP session revocation requires its explicit non-debug writable V4 Admin composition.');
+        }
+        $app->make('config')->set('chrono_ldap_sessions.http_enabled', $includeLdapSessionRevocations);
+        if ($includeLdapSessionRevocations) {
+            // Pure/lazy factory. No directory, account, writer or key file at registration.
+            $app->scoped(\App\Chrono\LocalWebLdapSessionRevocations::class,
+                fn ($app) => new \App\Chrono\LegacyLocalWebLdapSessionRevocations(
+                    $app->make('auth'), $app->make('db'), $app->make(\Illuminate\Contracts\Encryption\Encrypter::class),
+                    fn (): AttendanceWriter => $app->make(AttendanceWriter::class),
+                ));
         }
         $app->make('config')->set('chrono_corrections.withdrawals_enabled', $includeCorrectionWithdrawals);
         // A server route capability, never inferred from display flags or input.
