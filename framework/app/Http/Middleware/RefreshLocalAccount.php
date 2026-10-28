@@ -3,8 +3,10 @@
 namespace App\Http\Middleware;
 
 use App\Auth\LegacyUser;
+use App\Auth\ExistingAccountUserProvider;
 use App\Auth\LocalSession;
 use Closure;
+use Illuminate\Auth\SessionGuard;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Auth\Factory;
 use Illuminate\Http\Request;
@@ -21,8 +23,21 @@ final class RefreshLocalAccount
         $identifier = $request->session()->get($guard->getName());
         $user = $identifier === null ? null : $guard->getProvider()->retrieveById($identifier);
 
-        if (! $user instanceof LegacyUser || $user->auth_source !== 'local'
-            || ! in_array($user->role, ['user', 'supervisor', 'admin'], true)) {
+        $provider = $guard instanceof SessionGuard ? $guard->getProvider() : null;
+        $hasSource = $request->session()->exists(LocalSession::SOURCE_MARKER);
+        $source = $hasSource ? $request->session()->get(LocalSession::SOURCE_MARKER) : 'local';
+        $hash = $user instanceof LegacyUser ? $user->getAuthPassword() : null;
+        $standardMarker = $request->session()->get(LocalSession::PASSWORD_MARKER);
+        // Truly absent old source means LOCAL only. Explicit null is not absent.
+        // Source-marked sessions must not use auth.session's missing-hash adoption.
+        $marked = ! $hasSource || (is_string($source) && in_array($source, ['local', 'ldap'], true)
+            && is_string($hash) && (bool) $hash
+            && $request->session()->exists(LocalSession::PASSWORD_MARKER)
+            && is_string($standardMarker) && $standardMarker !== '');
+        $eligible = $user instanceof LegacyUser && $user->auth_source === $source
+            && ($source === 'local' ? in_array($user->role, ['user', 'supervisor', 'admin'], true)
+                : ($provider instanceof ExistingAccountUserProvider && $provider->admits($user)));
+        if (! $marked || ! $eligible) {
             $this->sessions->logout($request);
             throw new AuthenticationException('Unauthenticated.', ['web']);
         }
