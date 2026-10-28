@@ -1,0 +1,28 @@
+# Operator-only base file. No default service, ports, web or dependency startup.
+services:
+  operator:
+    profiles: [operator]
+    image: ${CHRONO_LARAVEL_IMAGE:-chrono-laravel:local}
+    pull_policy: never
+    user: "${CHRONO_LARAVEL_UID:?Set a non-root Linux operator UID}:${CHRONO_LARAVEL_GID:?Set its GID}"
+    working_dir: /opt/chrono/framework
+    entrypoint: [php, artisan]
+    command: [list, --raw]
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      FRAMEWORK_FRESH_WEB_ENABLED: "false"
+      FRAMEWORK_CHRONO_READ_ENABLED: "false"
+      FRAMEWORK_CHRONO_WRITE_ENABLED: "false"
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,mode=1777
+    volumes:
+      - type: bind
+        source: ${CHRONO_LARAVEL_PRIVATE_PARENT:?Set an existing private host parent}
+        target: /var/lib/chrono-laravel
+        bind:
+          create_host_path: false

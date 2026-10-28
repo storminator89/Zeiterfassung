@@ -1,0 +1,57 @@
+# Include explicitly only AFTER separate source/operator/TLS/handoff gates.
+# No dependencies: an operator command can never start the web service.
+services:
+  web:
+    profiles: [web]
+    image: ${CHRONO_LARAVEL_IMAGE:-chrono-laravel:local}
+    pull_policy: never
+    user: "${CHRONO_LARAVEL_UID:?Set a non-root Linux operator UID}:${CHRONO_LARAVEL_GID:?Set its GID}"
+    working_dir: /opt/chrono/framework
+    entrypoint: [/usr/local/bin/chrono-laravel-web]
+    env_file:
+      - path: ${CHRONO_LARAVEL_PRIVATE_PARENT:?Set private parent}/${CHRONO_LARAVEL_INSTANCE:?Set exact creator-returned basename}/framework-app-key.env
+        required: true
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: ${CHRONO_LARAVEL_ORIGIN:?Set canonical HTTPS root origin}
+      APP_LOCALE: de
+      FRAMEWORK_PREVIOUS_KEYS: ""
+      FRAMEWORK_FRESH_WEB_ENABLED: "true"
+      FRAMEWORK_FRESH_INSTANCE_DIRECTORY: /var/lib/chrono-laravel/${CHRONO_LARAVEL_INSTANCE:?Set exact instance basename}
+      FRAMEWORK_FRESH_SETUP_ENABLED: ${CHRONO_LARAVEL_SETUP_ENABLED:-false}
+      FRAMEWORK_FRESH_SESSION_LOCK_SECONDS: ${CHRONO_LARAVEL_SESSION_LOCK_SECONDS:?Set reviewed session-lock TTL}
+      FRAMEWORK_FRESH_SESSION_WAIT_SECONDS: ${CHRONO_LARAVEL_SESSION_WAIT_SECONDS:?Set reviewed wait bound}
+      FRAMEWORK_CHRONO_READ_ENABLED: "true"
+      FRAMEWORK_CHRONO_WRITE_ENABLED: "true"
+      APACHE_RUN_USER: "#${CHRONO_LARAVEL_UID:?Set operator UID}"
+      APACHE_RUN_GROUP: "#${CHRONO_LARAVEL_GID:?Set operator GID}"
+    ports:
+      - "127.0.0.1:${CHRONO_LARAVEL_HTTPS_PORT:?Set an unused explicit host TLS port}:8443"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: "no"
+    stop_grace_period: 120s
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,mode=1777
+      - /var/run/apache2:rw,nosuid,nodev,noexec,mode=0700,uid=${CHRONO_LARAVEL_UID},gid=${CHRONO_LARAVEL_GID}
+      - /var/lock/apache2:rw,nosuid,nodev,noexec,mode=0700,uid=${CHRONO_LARAVEL_UID},gid=${CHRONO_LARAVEL_GID}
+    volumes:
+      - type: bind
+        source: ${CHRONO_LARAVEL_PRIVATE_PARENT:?Set private parent}
+        target: /var/lib/chrono-laravel
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${CHRONO_LARAVEL_TLS_CERTIFICATE:?Set existing trusted TLS certificate file}
+        target: /run/chrono-tls/certificate.pem
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${CHRONO_LARAVEL_TLS_PRIVATE_KEY:?Set existing matching private TLS key file}
+        target: /run/chrono-tls/private-key.pem
+        read_only: true
+        bind:
+          create_host_path: false
