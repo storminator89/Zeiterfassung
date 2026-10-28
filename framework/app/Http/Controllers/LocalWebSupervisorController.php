@@ -31,6 +31,7 @@ final class LocalWebSupervisorController extends Controller
         $search = isset($query['user_search']) && is_string($query['user_search']) ? trim($query['user_search']) : '';
         // teamReport rechecks fresh role and direct-team scope in its admitted snapshot.
         $report = $this->reads->teamReport($search, $query['page'] ?? null);
+        $absenceWeek = $this->reads->teamAbsenceWeek($query['team_date'] ?? null, $query['team_page'] ?? null);
 
         return response()->view('chrono.supervisor', [
             // Deliberately blocked until a separately reviewed protected GET and
@@ -40,7 +41,7 @@ final class LocalWebSupervisorController extends Controller
                 $actor->role, $this->reads->attendanceStatus(),
                 interactions: $this->interactions, activePage: 'supervisor.php',
             ),
-            'supervisor' => new SupervisorPage($report, $search, $language),
+            'supervisor' => new SupervisorPage($report, $search, $language, $absenceWeek),
         ])->header('Cache-Control', 'no-store');
     }
 }

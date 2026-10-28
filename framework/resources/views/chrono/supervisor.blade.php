@@ -121,6 +121,42 @@
                 </section>
             @endif
 
+            @if ($supervisor->absenceWeek !== null)
+                @php
+                    $absenceWeek = $supervisor->absenceWeek;
+                @endphp
+                <section class="card bg-base-100 shadow-xl mb-8" aria-labelledby="teamAbsenceTitle">
+                    <div class="card-body">
+                        <h3 id="teamAbsenceTitle" class="card-title">{{ $supervisor->text('TEAM_ABSENCE_TITLE') }}</h3>
+                        <p class="text-sm opacity-70">{{ $supervisor->text('TEAM_ABSENCE_NOTE') }}</p>
+                        <p class="text-sm">{{ $absenceWeek['from'] }} – {{ $absenceWeek['through'] }} · Europe/Berlin</p>
+                        <form method="get" action="supervisor.php" class="flex flex-wrap gap-4 my-4">
+                            <input type="hidden" name="lang" value="{{ $supervisor->language }}">
+                            <input type="hidden" name="user_search" value="{{ $supervisor->search }}">
+                            <input type="hidden" name="page" value="{{ $supervisor->report['page'] }}">
+                            <div class="form-control"><label for="team-absence-date">{{ $supervisor->text('TEAM_ABSENCE_DATE') }}</label><input class="input input-bordered" type="date" id="team-absence-date" name="team_date" value="{{ $absenceWeek['from'] }}"></div>
+                            <button class="btn btn-primary self-end">{{ $supervisor->text('TEAM_ABSENCE_SHOW') }}</button>
+                        </form>
+                        <nav class="flex flex-wrap gap-3 mb-4" aria-label="{{ $supervisor->text('TEAM_ABSENCE_NAV') }}">
+                            <a class="btn btn-outline" href="{{ $supervisor->absenceWeekUrl($absenceWeek['previous']) }}">{{ $supervisor->text('TEAM_ABSENCE_PREVIOUS') }}</a>
+                            <a class="btn btn-outline" href="{{ $supervisor->absenceWeekUrl($absenceWeek['today']) }}">{{ $supervisor->text('TEAM_ABSENCE_TODAY') }}</a>
+                            <a class="btn btn-outline" href="{{ $supervisor->absenceWeekUrl($absenceWeek['next']) }}">{{ $supervisor->text('TEAM_ABSENCE_NEXT') }}</a>
+                        </nav>
+                        @if ($absenceWeek['incomplete'] || $absenceWeek['truncated'])<p class="alert alert-warning mb-4" role="status">{{ $supervisor->text('TEAM_ABSENCE_INCOMPLETE') }}</p>@endif
+                        <div class="overflow-x-auto"><table class="table table-zebra w-full">
+                            <caption class="text-sm text-left mb-2">{{ $supervisor->text('TEAM_ABSENCE_LEGEND') }}</caption>
+                            <thead><tr><th scope="col">{{ $supervisor->text('TABLE_HEADER_USERNAME') }}</th>@foreach ($absenceWeek['days'] as $day)<th scope="col"><time datetime="{{ $day }}">{{ $day }}</time></th>@endforeach</tr></thead>
+                            <tbody>@forelse ($absenceWeek['people'] as $person)<tr><th scope="row">{{ $person['username'] }}</th>@foreach ($person['days'] as $absent)<td>{{ $absent ? $supervisor->text('TEAM_ABSENCE_MARKER') : '—' }}</td>@endforeach</tr>@empty<tr><td colspan="8">{{ $supervisor->text('TEAM_STATUS_EMPTY') }}</td></tr>@endforelse</tbody>
+                        </table></div>
+                        <p class="text-sm my-3">{{ $supervisor->text('TEAM_ABSENCE_PAGE') }} {{ $absenceWeek['page'] }} / {{ $absenceWeek['pages'] }}</p>
+                        <nav class="flex flex-wrap gap-3" aria-label="{{ $supervisor->text('TEAM_ABSENCE_PEOPLE') }}">
+                            @if ($absenceWeek['page'] > 1)<a class="btn btn-outline" href="{{ $supervisor->absenceWeekUrl($absenceWeek['from'], $absenceWeek['page'] - 1) }}">{{ $supervisor->text('TEAM_ABSENCE_PEOPLE_PREVIOUS') }}</a>@endif
+                            @if ($absenceWeek['page'] < $absenceWeek['pages'])<a class="btn btn-outline" href="{{ $supervisor->absenceWeekUrl($absenceWeek['from'], $absenceWeek['page'] + 1) }}">{{ $supervisor->text('TEAM_ABSENCE_PEOPLE_NEXT') }}</a>@endif
+                        </nav>
+                    </div>
+                </section>
+            @endif
+
             @if (! in_array($page->role, ['supervisor', 'admin'], true))
                 <div class="alert alert-warning shadow-lg">
                     <div>
@@ -213,6 +249,7 @@
                         <div class="card-body">
                             <!-- Search and Filter Bar -->
                             <form method="get" action="supervisor.php" class="flex flex-wrap gap-4 mb-4">
+                                @if ($supervisor->absenceWeek !== null)<input type="hidden" name="team_date" value="{{ $supervisor->absenceWeek['from'] }}"><input type="hidden" name="team_page" value="{{ $supervisor->absenceWeek['page'] }}">@endif
                                 <input type="hidden" name="lang" value="{{ $supervisor->language }}">
                                 <div class="form-control w-full max-w-xs">
                                     <div class="input-group">

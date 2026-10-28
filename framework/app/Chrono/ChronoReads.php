@@ -23,6 +23,9 @@ interface ChronoReads
     /** Complete native admin/direct-team report; search/page never narrow diagnostic scope. */
     public function teamReport(string $userSearch = '', mixed $page = null): array;
 
+    /** Seven Berlin dates and at most50 current scoped people; generic stored absence markers only. */
+    public function teamAbsenceWeek(mixed $calendarDate = null, mixed $page = null): array;
+
     /** Existing API own-only identity, including the current wire field types. */
     public function apiIdentity(): array;
 
