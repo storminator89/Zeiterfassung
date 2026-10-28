@@ -3,15 +3,20 @@
 @section('content')
 <main class="container mx-auto px-4 py-8 chrono-page">
     <h1 class="text-2xl font-bold mb-6">Praxis-Terminals</h1>
+    @if ($terminalDevices->deviceRevocationsEnabled)
+    <div class="alert alert-info mb-6" role="note">Geräteübersicht mit Standort und Kontaktstatus. Koppeln, Modulfreigabe und das Speichern persönlicher Terminal-Zugänge sind in dieser Laravel-Ansicht nicht verbunden. Standortanlage, Geräte- und Zugangssperre sind nur bei gesonderter Freigabe verfügbar.</div>
+    @else
     <div class="alert alert-info mb-6" role="note">Nur lesende Geräteübersicht mit Standort und Kontaktstatus. Koppeln, Sperren, Modulfreigabe und das Speichern persönlicher Terminal-Zugänge sind in dieser Laravel-Ansicht nicht verbunden. Standortanlage und Zugangssperre sind nur bei gesonderter Freigabe verfügbar.</div>
+    @endif
     @if ($terminalDevices->error)<div class="alert alert-error mb-6" role="alert">{{ $terminalDevices->error }}</div>@endif
     @if ($terminalDevices->saved)<div class="alert alert-success mb-6">Änderung gespeichert.</div>@endif
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">Geräte</h2>
         <p class="opacity-70 mb-4">Freigabe und letzter Kontakt sind unabhängig. Kontakt gilt nach {{ $terminalDevices->contactMaxAge }} Sekunden als veraltet; aktueller Kontakt garantiert keine Erreichbarkeit. Stand beim Laden der Seite.</p>
+        @if ($terminalDevices->deviceRevocationsEnabled)<p class="opacity-70 mb-4">Sperren beendet die Gerätefreigabe und verwirft eine offene Kopplung. Es werden keine bereits gespeicherten Buchungen geändert.</p>@endif
         <div class="table-responsive">
             <table class="table">
-                <thead><tr><th>Gerät</th><th>Standort</th><th>Freigabe</th><th>Kontaktstatus</th><th>Letzter Kontakt</th></tr></thead>
+                <thead><tr><th>Gerät</th><th>Standort</th><th>Freigabe</th><th>Kontaktstatus</th><th>Letzter Kontakt</th>@if ($terminalDevices->deviceRevocationsEnabled)<th></th>@endif</tr></thead>
                 <tbody>
                 @foreach ($terminalDevices->devices as $device)
                     <tr>
@@ -20,6 +25,14 @@
                         <td>{{ $device['permission_label'] }}</td>
                         <td><span class="{{ in_array($device['contact_state'], ['stale', 'invalid'], true) ? 'text-warning font-semibold' : '' }}">{{ $device['contact_label'] }}</span></td>
                         <td>{{ $device['last_seen_label'] }}</td>
+                        @if ($terminalDevices->deviceRevocationsEnabled)
+                        <td><form method="post">
+                            @csrf
+                            <input type="hidden" name="action" value="revoke_device">
+                            <input type="hidden" name="id" value="{{ $device['id'] }}">
+                            <button class="btn btn-error">Sperren</button>
+                        </form></td>
+                        @endif
                     </tr>
                 @endforeach
                 </tbody>

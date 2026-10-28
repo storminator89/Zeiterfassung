@@ -2,7 +2,7 @@
 
 namespace App\View\ExistingUi;
 
-/** Prepared read-only display only; no raw pairing/credential or authorization data. */
+/** Prepared display and composition flags; no raw pairing/credential or authorization data. */
 final readonly class TerminalDevicesPage
 {
     /** @param list<array{id: int, name: string, site: string, permission_label: string, contact_state: string, contact_label: string, last_seen_label: string}> $devices */
@@ -15,5 +15,6 @@ final readonly class TerminalDevicesPage
         /** Selected display fields only; never raw credential rows or hashes. */
         public array $credentials = [],
         public bool $credentialRevocationsEnabled = false,
+        public bool $deviceRevocationsEnabled = false,
     ) {}
 }

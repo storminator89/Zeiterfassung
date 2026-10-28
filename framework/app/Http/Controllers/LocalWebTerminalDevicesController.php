@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Chrono\ChronoReads;
 use App\Chrono\LocalWebTerminalSites;
 use App\Chrono\LocalWebTerminalCredentialRevocations;
+use App\Chrono\LocalWebTerminalDeviceRevocations;
 use Illuminate\Contracts\Config\Repository;
 use AttendanceError;
 use Illuminate\Auth\AuthenticationException;
@@ -20,7 +21,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
-/** Existing device/access display and separately opt-in site form; never secrets or device actions. */
+/** Existing device/access UI with independently selected fixed Admin actions; never pairing or secrets. */
 final class LocalWebTerminalDevicesController extends Controller
 {
     public function __construct(
@@ -30,6 +31,7 @@ final class LocalWebTerminalDevicesController extends Controller
         private LocalWebTerminalSites $sites,
         private ?LocalWebTerminalCredentialRevocations $revocations = null,
         private ?Repository $config = null,
+        private ?LocalWebTerminalDeviceRevocations $deviceRevocations = null,
     ) {}
 
     public function index(Request $request): Response
@@ -37,10 +39,18 @@ final class LocalWebTerminalDevicesController extends Controller
         return $this->page($request);
     }
 
-    /** Only the separately opted-in POST route may reach the fixed site command. */
+    /** Only separately selected server capabilities admit their fixed commands. */
     public function store(Request $request): Response|RedirectResponse
     {
         $command = array_diff_key($request->request->all(), array_flip(['_token', 'csrf_token']));
+        if (($command['action'] ?? null) === 'revoke_device') {
+            if (! $this->deviceRevocationsEnabled()
+                || array_diff(array_keys($command), LocalWebTerminalDeviceRevocations::COMMAND_FIELDS) !== []) {
+                return new Response('Diese Terminalaktion ist in diesem Profil nicht verbunden.', 400,
+                    ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
+            }
+            return $this->revokeDevice($request, $command);
+        }
         if (($command['action'] ?? null) === 'revoke_credential') {
             if (! $this->revocationsEnabled()
                 || array_diff(array_keys($command), LocalWebTerminalCredentialRevocations::COMMAND_FIELDS) !== []) {
@@ -94,10 +104,32 @@ final class LocalWebTerminalDevicesController extends Controller
         }
     }
 
+    private function deviceRevocationsEnabled(): bool
+    {
+        return $this->deviceRevocations !== null
+            && $this->config?->get('chrono_terminal_admin.device_revocations_enabled', false) === true;
+    }
+
+    private function revokeDevice(Request $request, array $command): Response|RedirectResponse
+    {
+        try {
+            $this->deviceRevocations->revoke($command);
+            // No response claims success before the fixed writer confirms COMMIT.
+            return new RedirectResponse('terminals.php?saved=1');
+        } catch (AuthenticationException|AuthorizationException $error) {
+            throw $error;
+        } catch (AttendanceError|InvalidArgumentException $error) {
+            return $this->page($request, $error->getMessage());
+        } catch (Throwable) {
+            return $this->page($request, 'Gerätesperrung konnte nicht bestätigt werden. Bitte neu laden und den gespeicherten Stand prüfen; nicht automatisch wiederholen.');
+        }
+    }
+
     private function page(Request $request, ?string $error = null): Response
     {
         // The snapshot independently checks the current local Admin before data.
         $projection = $this->reads->adminTerminalDevices();
+        $allowDeviceRevocations = $this->deviceRevocationsEnabled() && $this->interactions->terminalDeviceRevocations;
         $allowRevocations = $this->revocationsEnabled() && $this->interactions->terminalCredentialRevocations;
         $credentials = $allowRevocations ? $this->reads->adminTerminalCredentialRevocationTargets()
             : $this->reads->adminTerminalCredentials();
@@ -114,10 +146,11 @@ final class LocalWebTerminalDevicesController extends Controller
             ),
             'terminalDevices' => new TerminalDevicesPage(
                 $projection['devices'], $projection['contact_max_age'], $this->interactions->terminalSites,
-                $error, ($this->interactions->terminalSites || $allowRevocations) && $request->query->has('saved'),
+                $error, ($this->interactions->terminalSites || $allowRevocations || $allowDeviceRevocations) && $request->query->has('saved'),
                 credentials: $credentials,
                 credentialRevocationsEnabled: $allowRevocations,
+                deviceRevocationsEnabled: $allowDeviceRevocations,
             ),
-        ], 200, $allowRevocations ? ['Cache-Control' => 'no-store'] : []);
+        ], 200, ($allowRevocations || $allowDeviceRevocations) ? ['Cache-Control' => 'no-store'] : []);
     }
 }
