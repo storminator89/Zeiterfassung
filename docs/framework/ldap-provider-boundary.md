@@ -1,5 +1,9 @@
 # FW-09 / #80 – bestehende Providergrenze und optionaler realer Verifier
 
+Die getrennte [inaktive Laravel-Sync-Kollisionsgrenze](ldap-sync-collision-boundary.md)
+schützt im neuen Writerpfad lokale Konten vor stiller Sourcekonvertierung. Sie
+aktiviert keinen Sync und ändert weder native Import- noch Loginpfade.
+
 **Weiterhin keine Loginumschaltung oder abgeschlossene LDAP-Migration.**
 Die ursprüngliche Providergrenze wurde auf Main `165ce38008c3a4a54bc2b4fca4fa2c63160d8a78`
 vorbereitet. Der folgende Vierpfad-Schritt auf Main

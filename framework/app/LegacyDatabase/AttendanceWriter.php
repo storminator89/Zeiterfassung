@@ -259,6 +259,25 @@ final class AttendanceWriter
         }, fn (Closure $transaction): mixed => $this->context->run('web:registration', 'Self-registration', $transaction));
     }
 
+    /** Trusted server Admin ID and completed materialized stage, never request identity. */
+    public function importLdapUsers(int $user, #[\SensitiveParameter] \App\Ldap\MaterializedLdapImport $stage): array
+    {
+        require_once dirname(__DIR__, 3).'/lib/ldap_import.php';
+
+        return $this->executeLocked(function () use ($user, $stage): array {
+            $actor = att_one($this->pdo, 'SELECT role,auth_source FROM users WHERE id=?', [$user]);
+            if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local') {
+                throw new AuthorizationException('Only current local administration may import LDAP users.');
+            }
+            // Read the complete eligible stage under this same writer lock,
+            // before even ldap_settings or departments can be changed.
+            $stage->refuseLocalAccountCollisions($this->pdo);
+
+            return \chrono_ldap_import_locked($this->pdo, $stage->entries, $stage->host, $stage->port,
+                $stage->bindUser, $stage->ciphertext, $stage->baseDn);
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'LDAP synchronization', $transaction));
+    }
+
     /** Own Admin identity only; no request target/role/reason or general account mutation. */
     public function ownCarryIn(int $user, mixed $raw): string
     {
