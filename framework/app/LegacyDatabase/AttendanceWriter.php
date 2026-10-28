@@ -237,6 +237,24 @@ final class AttendanceWriter
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'admin.php', $transaction));
     }
 
+    /** Operator-authorized setup only; the empty-state decision is made under this lock. */
+    public function firstLocalAdministrator(string $username, string $email, #[\SensitiveParameter] string $passwordHash): bool
+    {
+        if ((password_get_info($passwordHash)['algoName'] ?? 'unknown') !== 'bcrypt') {
+            throw new \InvalidArgumentException('A configured bcrypt setup hash is required.');
+        }
+        return $this->executeLocked(function () use ($username, $email, $passwordHash): bool {
+            // ALL users, not only admins: never take over an existing installation.
+            if ((int) $this->pdo->query('SELECT COUNT(*) FROM users')->fetchColumn() !== 0) {
+                return false;
+            }
+            $statement = $this->pdo->prepare("INSERT INTO users (username,password,email,role,auth_source,token,department_id,supervisor_id,regelarbeitszeit,ueberstunden) VALUES (?,?,?,'admin','local',NULL,NULL,NULL,8,0)");
+            $statement->execute([$username, $passwordHash, $email]);
+            $statement->closeCursor();
+            return true;
+        }, fn (Closure $transaction): mixed => $this->context->run('setup:first-local-admin', 'First administrator setup', $transaction));
+    }
+
     /** Anonymous self-registration only: fixed ordinary role and no caller actor/privileges. */
     public function registerLocalUser(string $username, string $email, #[\SensitiveParameter] string $passwordHash): bool
     {

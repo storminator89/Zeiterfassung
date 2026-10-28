@@ -180,4 +180,18 @@ return [
     'REGISTRATION_UNCONFIRMED' => '無法確認註冊結果。請勿自動重試；請稍後嘗試登入。',
     'REGISTRATION_RESULT' => '您可以嘗試登入。只有資料有效且尚未使用時，才會建立新帳戶。',
     'REGISTRATION_NOT_READY' => '目前尚無法註冊。必須先另行設定本機管理員，請聯絡管理人員。',
+
+    // Explicit operator-token first-admin setup, separate from public registration.
+    'SETUP_TITLE' => '初始管理設定 - Quodara Chrono',
+    'SETUP_LINK' => '設定第一位管理員',
+    'SETUP_NOTICE' => '僅限尚無使用者的安裝環境，建立第一個本機管理員。營運者必須另外提供秘密設定授權。不會修改現有帳戶，也不會自動登入。',
+    'SETUP_TOKEN_LABEL' => '秘密設定授權',
+    'SETUP_CONFIRM_PASSWORD' => '確認密碼',
+    'SETUP_PASSWORD_HINT' => '密碼須為 12 至 72 位元組，不可包含控制字元；兩次輸入必須相同。',
+    'SETUP_CREATE_ADMIN' => '建立第一位本機管理員',
+    'SETUP_BACK_LOGIN' => '返回登入',
+    'SETUP_INVALID' => '請輸入有效資料，以及兩次相同、長度為 12 至 72 位元組的密碼。',
+    'SETUP_TOKEN_INVALID' => '設定授權無效，請聯絡管理人員。',
+    'SETUP_UNCONFIRMED' => '無法確認初始設定結果。請勿自動重試；請檢查已儲存的狀態並嘗試登入。',
+    'SETUP_RESULT' => '您可以嘗試登入。只有在尚無使用者且設定授權有效時，才會建立初始管理員。',
 ];

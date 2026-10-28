@@ -5,20 +5,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
     <title>{{ $page->copy->text('LOGIN_TITLE') }}</title>
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
-        body {
-            font-family: 'Poppins', sans-serif;
-        }
-    </style>
+    @include('chrono.partials.auth-style')
 </head>
 
-<body class="bg-gradient-to-r from-blue-100 to-blue-50 flex justify-center items-center min-h-screen p-4">
+<body class="chrono-auth bg-gradient-to-r from-blue-100 to-blue-50 flex justify-center items-center min-h-screen p-4">
     <div class="card w-full max-w-md bg-white shadow-2xl">
         <div class="card-body">
             <div class="flex flex-col items-center mb-6">
@@ -73,6 +66,11 @@
             </fieldset>
             </form>
 
+            @if ($page->showSetup)
+                <div class="text-center mt-4">
+                    <a href="setup.php" class="link link-primary text-sm">{{ $page->copy->text('SETUP_LINK') }}</a>
+                </div>
+            @endif
             @if ($page->showRegistration)
                 <div class="text-center mt-4">
                     <a href="register.php" class="link link-primary text-sm hover:underline">{{ $page->copy->text('REGISTER_BUTTON') }}</a>

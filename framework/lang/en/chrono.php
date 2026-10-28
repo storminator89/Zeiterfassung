@@ -183,4 +183,18 @@ return [
     'REGISTRATION_UNCONFIRMED' => 'Registration could not be confirmed. Do not retry automatically; try signing in later.',
     'REGISTRATION_RESULT' => 'You may try signing in. A new account is created only with valid, available details.',
     'REGISTRATION_NOT_READY' => 'Registration is not available yet. Initial local administration must be set up separately; contact administration.',
+
+    // Explicit operator-token first-admin setup, separate from public registration.
+    'SETUP_TITLE' => 'Initial administration - Quodara Chrono',
+    'SETUP_LINK' => 'Set up the first administrator',
+    'SETUP_NOTICE' => 'Only for initial local administration of an empty installation. The operator must provision the secret setup authorization separately. No existing account is changed and no automatic sign-in occurs.',
+    'SETUP_TOKEN_LABEL' => 'Secret setup authorization',
+    'SETUP_CONFIRM_PASSWORD' => 'Confirm password',
+    'SETUP_PASSWORD_HINT' => 'Password: 12 to 72 bytes, no control characters; both entries must match.',
+    'SETUP_CREATE_ADMIN' => 'Create the first local administrator',
+    'SETUP_BACK_LOGIN' => 'Back to login',
+    'SETUP_INVALID' => 'Enter valid details and matching passwords of 12 to 72 bytes.',
+    'SETUP_TOKEN_INVALID' => 'Invalid setup authorization. Contact administration.',
+    'SETUP_UNCONFIRMED' => 'Initial setup could not be confirmed. Do not retry automatically; check the saved state and try signing in.',
+    'SETUP_RESULT' => 'You may try signing in. Initial administration is created only for an empty user database with valid setup authorization.',
 ];
