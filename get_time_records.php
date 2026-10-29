@@ -102,7 +102,7 @@ echo '<details class="card bg-base-100 shadow-xl p-4 mb-4">
     <p class="text-sm opacity-70 mt-3">' . h(CSV_PERIOD_NOTE) . '</p>
 </details>';
 
-echo '<div class="flex flex-wrap items-end gap-3 mb-4"><label class="text-sm font-semibold" for="time-record-review">Listenansicht<select id="time-record-review" data-record-review-filter data-page="' . (int)$page . '" class="select select-bordered select-sm block mt-1"><option value="all"' . (!$reviewOnly ? ' selected' : '') . '>Alle eigenen Einträge</option><option value="review"' . ($reviewOnly ? ' selected' : '') . '>Vorhandene Prüfhinweise</option></select></label><p class="text-sm opacity-70">' . ($reviewOnly ? (int)$totalRecords . ' passende eigene Einträge. ' : '') . 'Ungültige Zeiten, bestehende Arbeitszeit-/Abwesenheitskonflikte, eindeutig prüfbare Überschneidungen abgeschlossener Arbeitszeiten und erkannte Berliner Zeitlücken oder doppelte Stunden ohne Offset; außerdem lesbare Zeiten außerhalb des Altzeit-Diagnoseformats. Kein vollständiger Bestandscheck oder Vollständigkeitsnachweis; ein unmarkierter Eintrag ist keine Freigabe. Bestehende Dauer- und Summenberechnungen bleiben unverändert und bestätigen keine eindeutige Altzeit. Summen berücksichtigen weiterhin den vollständigen eigenen Tageskontext.</p></div>';
+echo '<div class="flex flex-wrap items-end gap-3 mb-4"><label class="text-sm font-semibold" for="time-record-review">Listenansicht<select id="time-record-review" data-record-review-filter data-page="' . (int)$page . '" class="select select-bordered select-sm block mt-1"><option value="all"' . (!$reviewOnly ? ' selected' : '') . '>Alle eigenen Einträge</option><option value="review"' . ($reviewOnly ? ' selected' : '') . '>Vorhandene Prüfhinweise</option></select></label><p class="text-sm opacity-70">' . ($reviewOnly ? (int)$totalRecords . ' passende eigene Einträge. ' : '') . 'Ungültige Zeiten, bestehende Arbeitszeit-/Abwesenheitskonflikte, eindeutig prüfbare Überschneidungen abgeschlossener Arbeitszeiten und erkannte Berliner Zeitlücken oder doppelte Stunden ohne Offset; außerdem lesbare Zeiten mit Format- oder Ungültigbefund der Altzeitdiagnose. Kein vollständiger Bestandscheck oder Vollständigkeitsnachweis; ein unmarkierter Eintrag ist keine Freigabe. Bestehende Dauer- und Summenberechnungen bleiben unverändert und bestätigen keine eindeutige Altzeit. Summen berücksichtigen weiterhin den vollständigen eigenen Tageskontext.</p></div>';
 if ($reviewOnly && $totalRecords === 0) {
     echo '<p class="text-sm mb-4" role="status">Keine passenden Prüfhinweise gefunden. Dies bestätigt weder einen fehlerfreien Bestand noch rekonstruierbare Altzeiten.</p>';
 }
@@ -274,7 +274,9 @@ function outputRecordRow($record, bool $workOverlap = false) {
     $localTimeLabels = '';
     foreach (time_record_local_time_findings($record) as $column => $category) {
         $fieldLabel = $column === 'startzeit' ? 'Start' : 'Ende';
-        if ($category === 'unsupported_timestamp_shape') {
+        if ($category === 'invalid_timestamp') {
+            $localTimeLabels .= '<span class="block text-sm text-warning">'.h('Altzeit-Prüfhinweis ('.$fieldLabel.'): von der strengen Altzeitdiagnose als ungültig erkannt. Bestehende Laufzeitberechnung unverändert, nicht neu bestätigt. Über Korrektur / Storno prüfen.').'</span>';
+        } elseif ($category === 'unsupported_timestamp_shape') {
             $localTimeLabels .= '<span class="block text-sm text-warning">'.h('Format-Prüfhinweis ('.$fieldLabel.'): lesbar, aber außerhalb des Altzeit-Diagnoseformats. Das Zeitformat wird damit nicht als ungültig bewertet; Dauer/Summen unverändert. Über Korrektur / Storno prüfen.').'</span>';
         } else {
             $findingLabel = $category === 'ambiguous_berlin_local_time'

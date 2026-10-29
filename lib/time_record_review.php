@@ -12,8 +12,8 @@ function time_record_local_time_findings(array $row): array
         if ($column === 'endzeit' && ($value === null || $value === '')) { continue; }
         $category = legacy_timestamp_assessment($value)['category'];
         if (in_array($category, ['ambiguous_berlin_local_time', 'nonexistent_berlin_local_time'], true)
-            || ($category === 'unsupported_timestamp_shape' && report_stored_epoch($value) !== null)) {
-            // Runtime-readable is not the same as supported by the strict legacy diagnostic.
+            || (in_array($category, ['unsupported_timestamp_shape', 'invalid_timestamp'], true) && report_stored_epoch($value) !== null)) {
+            // Runtime-readable is not the same as supported or valid in the strict legacy diagnostic.
             // Unreadable values retain the existing invalid-row hint, not a duplicate format hint.
             $findings[$column] = $category;
         }
