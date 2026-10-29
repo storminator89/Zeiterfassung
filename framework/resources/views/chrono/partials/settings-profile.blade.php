@@ -25,6 +25,7 @@
                                 <tr><td>{{ $profile->weekday($index) }}</td><td>{{ $profile->duration($minutes) }}</td></tr>
                             @endforeach
                         </tbody>
+                        <tfoot><tr><th scope="row">{{ $profile->text('weekly_total') }}</th><td>{{ $profile->weeklyDuration() }}</td></tr></tfoot>
                     </table>
                 </div>
             @endif

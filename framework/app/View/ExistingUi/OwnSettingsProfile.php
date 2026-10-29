@@ -100,4 +100,10 @@ final readonly class OwnSettingsProfile
     {
         return sprintf('%d:%02d', intdiv($minutes, 60), $minutes % 60);
     }
+
+    /** Stored seven-day rule only; no dated target, holiday or balance calculation. */
+    public function weeklyDuration(): ?string
+    {
+        return $this->model === null ? null : $this->duration(array_sum($this->model['weekday_minutes']));
+    }
 }
