@@ -2,6 +2,7 @@
 
 namespace App\Http;
 
+use App\Accounts\LocalWebRecoveryEligibility;
 use App\Http\Controllers\LocalWebAdminPauseSettingsController;
 use App\Http\Controllers\LocalWebAttendanceController;
 use App\Http\Controllers\LocalWebCorrectionsController;
@@ -56,7 +57,10 @@ final class LocalWebRoutes
             // Normal immutable Runtime admission, not an alternate opener. The
             // current V5 hold refuses before this registrar changes anything.
             // V4 receives no additional read or changed connection lifetime.
-            $runtime->readConnection($app->make('config')->get('database.connections.chrono', []), 'chrono')->disconnect();
+            LocalWebRecoveryEligibility::requireReadSnapshot(
+                $runtime->readConnection($app->make('config')->get('database.connections.chrono', []), 'chrono'),
+                $includeSetup,
+            );
         }
         if ($useSharedLoginBudget !== SharedLoginBudgetServiceProvider::selected($app)) {
             throw new LogicException('Login route and shared budget selection must agree.');
