@@ -106,13 +106,20 @@ refused(static function() use ($conn, &$c, $refresh): void { $refresh($conn, $c)
 refused(static fn()=>$useToken($newJwt), 401);
 
 $localHash = password_hash('invented-local-password', PASSWORD_DEFAULT);
-$conn->prepare("INSERT INTO users(username,password,email,role) VALUES('convert-login',?,'convert-login@example.invalid','admin')")->execute([$localHash]);
+$conn->prepare("INSERT INTO users(username,password,email,role) VALUES('convert-login',?,'convert-login@example.invalid','supervisor')")->execute([$localHash]);
 $local = $row('convert-login'); $localSession = $session($local); $localJwt = $token($local);
 $converted = native_ldap_login_account($conn, 'convert-login', 'ignored@example.invalid');
-check($converted->id === $local->id && $converted->role === 'admin' && $converted->email === $local->email && $converted->password !== $localHash && !password_verify('invented-local-password', $converted->password), 'login conversion preserves identity and invalidates local password');
+check($converted->id === $local->id && $converted->role === 'supervisor' && $converted->email === $local->email && $converted->password !== $localHash && !password_verify('invented-local-password', $converted->password), 'login conversion preserves identity and invalidates local password');
 refused(static function() use ($conn, &$localSession, $refresh): void { $refresh($conn, $localSession); }, 401);
 refused(static fn()=>$useToken($localJwt), 401);
 check(native_ldap_login_account($conn, 'convert-login', 'ignored@example.invalid')->password === $converted->password, 'repeated converted login cannot rotate again');
+
+// #28 reserves local Admin identities; #29 still applies to other conversions.
+$conn->exec("INSERT INTO users(username,password,email,role) VALUES('reserved-local-admin','not-a-usable-hash','reserved-admin@example.invalid','admin')");
+$recovery = $row('reserved-local-admin');
+try { native_ldap_login_account($conn, 'reserved-local-admin', 'ignored@example.invalid'); throw new RuntimeException('Missing recovery refusal'); }
+catch (\DomainException) { check(!$conn->inTransaction() && $row('reserved-local-admin') == $recovery, 'local Admin conversion refuses without changing identity'); }
+check(native_local_recovery_admin($conn, 'reserved-local-admin') && !native_local_recovery_admin($conn, 'convert-login'), 'recovery routing is local Admin only');
 
 $conn->prepare("INSERT INTO users(username,password,email,role) VALUES('convert-sync',?,'convert-sync@example.invalid','user')")->execute([$localHash]);
 $syncLocal=$row('convert-sync'); $syncSession=$session($syncLocal); $syncJwt=$token($syncLocal);
