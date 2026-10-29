@@ -2,6 +2,7 @@
 require_once __DIR__.'/config.php'; require_admin();
 require_once __DIR__.'/lib/terminal.php'; require_once __DIR__.'/lib/app_ui.php';
 require_once __DIR__.'/lib/terminal_status.php';
+require_once __DIR__.'/lib/terminal_configuration.php';
 $error='';
 if ($_SERVER['REQUEST_METHOD']==='POST') {
     try {
@@ -12,10 +13,10 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
             if ($enabled && getenv('APP_TERMINAL_ENABLED')!=='1') { throw new AttendanceError('Zuerst APP_TERMINAL_ENABLED=1 auf dem Server setzen.'); }
             if (!$enabled && att_one($conn,'SELECT id FROM work_sessions WHERE ended_at IS NULL LIMIT 1')) { throw new AttendanceError('Zuerst offene Arbeitszeiten beenden.'); }
             if ($enabled && !attendance_enabled($conn) && att_one($conn,'SELECT id FROM zeiterfassung WHERE endzeit IS NULL LIMIT 1')) { throw new AttendanceError('Zuerst vorhandene offene Arbeitszeiten im bisherigen System beenden.'); }
-            att_exec($conn,'UPDATE terminal_settings SET enabled=? WHERE id=1',[$enabled]);
+            terminal_save_module_settings_locked($conn,(bool)$enabled);
         } elseif ($action==='site') {
             $name=trim((string)($_POST['name']??'')); if ($name===''||strlen($name)>100) { throw new AttendanceError('Standortnamen prüfen.',400); }
-            att_exec($conn,'INSERT INTO terminal_sites(name) VALUES(?)',[$name]);
+            terminal_create_site_locked($conn,$name);
         } elseif ($action==='device') {
             attendance_require_enabled($conn);
             $name=trim((string)($_POST['name']??'')); $site=(int)($_POST['site_id']??0);
