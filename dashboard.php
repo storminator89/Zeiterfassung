@@ -33,7 +33,14 @@ $calendarRange = calendar_visible_week($_GET['calendar_date'] ?? null, new DateT
 $stmt = $conn->prepare('SELECT datum, name FROM Feiertage WHERE datum >= ? AND datum < ? ORDER BY datum');
 $stmt->execute([$calendarRange['start']->format('Y-m-d'), $calendarRange['end']->format('Y-m-d')]);
 $eventLabels = ['Arbeit' => WORK, 'Urlaub' => EVENT_VACATION, 'Krankheit' => EVENT_SICK, 'Feiertag' => EVENT_HOLIDAY];
-$events = calendar_range_events($records, $stmt->fetchAll(PDO::FETCH_ASSOC), $calendarRange, $eventLabels);
+// BEGIN checked native calendar input
+// Header keeps the original rows, visible diagnostics and own correction links.
+// Match calendarWeek(): an invalid row has no trustworthy calendar projection.
+$calendarEventRecords = array_values(array_filter(
+    $records,
+    static fn(array $record): bool => report_record_calculation($record)['status'] !== 'invalid'
+));
+$events = calendar_range_events($calendarEventRecords, $stmt->fetchAll(PDO::FETCH_ASSOC), $calendarRange, $eventLabels);
 $calendarLink = static fn(string $day): string => 'dashboard.php?calendar_date=' . rawurlencode($day) . '#calendar';
 $holidayYear = holiday_inventory_year($_GET['holiday_year'] ?? null, (int)$currentYear);
 $holidayInventory = holiday_inventory($conn, $holidayYear['year']);

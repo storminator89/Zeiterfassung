@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Chrono\ChronoReads;
 use App\Chrono\LocalWebAbsences;
 use App\View\ExistingUi\Copy;
+use App\View\ExistingUi\Interactions;
 use App\View\ExistingUi\TimeRecordsPage;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\View\View;
@@ -17,7 +18,12 @@ use Throwable;
 /** Native own-record fragment and absence form transport, never a second rule engine. */
 final class LocalWebHomeController extends Controller
 {
-    public function __construct(private ChronoReads $reads, private LocalWebAbsences $absences, private Router $router) {}
+    public function __construct(
+        private ChronoReads $reads,
+        private LocalWebAbsences $absences,
+        private Router $router,
+        private Interactions $interactions = new Interactions,
+    ) {}
 
     public function records(Request $request): View|Response
     {
@@ -53,6 +59,7 @@ final class LocalWebHomeController extends Controller
             $page, (int) ceil($totalRecords / 10),
             csvExport: $this->router->has('chrono.export-csv'),
             reviewOnly: $reviewOnly, totalRecords: $totalRecords, localTimeFindings: $localTimeFindings,
+            historyLinks: $this->interactions->history,
         )]);
     }
 

@@ -27,8 +27,8 @@ listener, TLS certificate, host setting or external service**.
   certificate/key and private App-Key environment file, and binds only
   `127.0.0.1:<explicit host port>`. There is no HTTP fallback, fake HTTPS,
   forwarded-header trust, public bind or automatic restart. The application
-  still enforces its canonical HTTPS origin, V4 identity, auth/session/CSRF and
-  policy gates. Native endpoints are not copied into the webroot.
+  still enforces its canonical HTTPS origin, exact selected instance identity,
+  auth/session/CSRF and policy gates. Native endpoints are not copied into the webroot.
 
 ## Supported initial operator boundary
 
@@ -95,6 +95,33 @@ installation or retry an uncertain preparation automatically. The returned
 `activated:false`, `credentials_created:false`, `server_started:false` are
 boundaries, not a declaration that the UI is usable.
 
+### Explicit NEW V5 alternative; V4 remains the default
+
+The command above selects the original V4 profile. For a separately reviewed
+complete NEW-only V5 source composition, use the following **instead** of that
+command, never both and never on an existing instance:
+
+```sh
+docker compose --env-file "$OPERATOR_CONFIG" -f deploy/laravel/compose.yaml run --rm operator chrono:prepare-fresh --private-parent=/var/lib/chrono-laravel --new-only --dormant-account-lifecycle-v5
+```
+
+Record only its exact returned basename. This prepares dormant files, not
+Runtime activation, credentials, migration or source acceptance. A pre-NEW-V5
+image still refuses through its original Runtime hold.
+
+Before Web setup on an admitted NEW V5 source, explicitly set
+`CHRONO_LARAVEL_SHARED_LOGIN_BUDGET_ENABLED=true` in the private **operator
+configuration**, and keep it true afterwards. V5 requires the existing shared
+budget even with API off. Web Compose passes this existing boolean selection;
+default false preserves V4. False or a nonboolean does not bypass V5 admission.
+Do not append flags to generated App/API key files. The operator-only base
+service remains unchanged and does not inherit this Web opt-in.
+
+Do not use `compose.api.yaml` for first-Admin setup: that optional overlay
+deliberately requires setup=false. If API is planned, prepare its separately
+authorized NEW key while empty and **before** setup-token preparation; select
+the API overlay only after deliberate setup closure.
+
 With all web workers/requests stopped and drained, provision secrets only after
 separate explicit authorization. The unchanged existing commands print no
 secret bytes, and refuse existing secret files (no reset/rotation/reopen):
@@ -102,6 +129,19 @@ secret bytes, and refuse existing secret files (no reset/rotation/reopen):
 ```sh
 INSTANCE=/var/lib/chrono-laravel/chrono-fresh-REPLACE_WITH_RETURNED_BASENAME_SUFFIX
 docker compose --env-file "$OPERATOR_CONFIG" -f deploy/laravel/compose.yaml run --rm operator chrono:application-key --instance="$INSTANCE" --new-only --stopped
+```
+
+**Only if API is selected and its key creation separately authorized**, run the
+original NEW API-key producer now, before any setup profile/token or user:
+
+```sh
+docker compose --env-file "$OPERATOR_CONFIG" -f deploy/laravel/compose.yaml run --rm operator chrono:api-key --instance="$INSTANCE" --new-only --stopped
+```
+
+Otherwise omit that command and leave API off. In either case, provision the
+short setup token only after the selected keys above:
+
+```sh
 docker compose --env-file "$OPERATOR_CONFIG" -f deploy/laravel/compose.yaml run --rm operator chrono:setup-token prepare --instance="$INSTANCE" --stopped
 ```
 
@@ -113,8 +153,9 @@ native startup here. No target/reset/resume option is supplied.
 
 ## Phase 3 — independent gates BEFORE selecting the web profile
 
-1. Final integrated source review must accept the V4/runtime/writer/intake and
-   FreshWeb prerequisite composition. An image build or `/up` is not that review.
+1. Final integrated source review must accept the selected V4 or NEW-only V5
+   Runtime/writer/intake/FreshWeb composition. The budget setting does not remove
+   a Runtime hold or admit another source profile. A build or `/up` is not that review.
 2. Supply **existing, operator-managed** matching TLS files and a browser-trusted
    certificate for the chosen origin. This packet issues no certificate, bypasses
    no warning and changes no DNS/proxy/firewall/host configuration. Its narrow

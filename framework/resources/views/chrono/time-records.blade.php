@@ -93,7 +93,11 @@
                                             @foreach ($records->localTimeFindings[(string) $row['id']] ?? [] as $column => $category)
                                             <span class="block text-sm text-warning">DST-Prüfhinweis ({{ $column === 'startzeit' ? 'Start' : 'Ende' }}): {{ $category === 'ambiguous_berlin_local_time' ? 'doppelte Berliner Stunde ohne Offset. Kein eindeutiger Zeitpunkt' : 'Berliner Zeitlücke ohne Offset. Kein existierender lokaler Zeitpunkt' }}; Dauer/Summen nicht bestätigt.</span>
                                             @endforeach
-                                        </td><td>{{ $row['pause'] }}</td><td>{{ $row['location'] }}</td><td>{{ $row['comment'] }}</td><td><a class="link link-primary" href="adjustments.php?record_id={{ $row['id'] }}">Korrektur / Storno</a></td></tr>
+                                        </td><td>{{ $row['pause'] }}</td><td>{{ $row['location'] }}</td><td>{{ $row['comment'] }}</td><td><a class="link link-primary" href="adjustments.php?record_id={{ $row['id'] }}">Korrektur / Storno</a>
+                                            @if ($records->historyLinks && is_int($row['id']) && $row['id'] > 0)
+                                            <a class="link link-primary block mt-1 text-sm" href="{{ 'history.php?entity=zeiterfassung&record_id='.$row['id'].'&relations=1' }}" target="_blank" rel="noopener noreferrer" title="{{ $records->copy->text('TIME_RECORD_HISTORY_HINT') }}">{{ $records->copy->text('TIME_RECORD_HISTORY_LINK') }}</a>
+                                            @endif
+                                        </td></tr>
                                     @endforeach
                                     </tbody>
                                 </table>

@@ -1,18 +1,24 @@
 # V5 Runtime candidate: only the canonical NEW Laravel cohort
 
-Source anchor: Main `654e93f66e01ea65891bd5d1e79bd6f5add0d488`, tree
+Original source anchor: Main `654e93f66e01ea65891bd5d1e79bd6f5add0d488`, tree
 `9908f246c309221bd9db83e6f5c90f8b6e8d3fbd` after PR294.
-**Isolated source candidate, HOLD_PENDING_E2E. No production activation.**
+**Bounded NEW-only source profile. Isolated Kernel/API/lifecycle and current
+same-identity restore evidence is available; no browser or production activation.**
+The current local integration preparation is additive on Main
+`2bc4339af5ab3ad3899c0536627829f518448df5`, not a replacement of newer Main code
+with that historical checkout. The original credentialed journeys are not a
+rerun on the new aggregate. Source integration does not enable a deployment or
+replace independent configuration, key, route and operating prerequisites.
 
 The earlier blanket V5 hold is not replaced with a request/environment bypass
 flag, V4 alias or unrestricted source opener. V5 now has a fixed additional
 admission prerequisite at every original Runtime source-identity boundary:
 
 - Existing canonical `application.sqlite`, inside the existing NEW producer's
-  `chrono-fresh-<24 lowercase hex>` directory; owner-only0700 and trusted Unix
+  `chrono-fresh-<24 lowercase hex>` directory; owner-only `0700` and trusted Unix
   ancestors, no symlink/alias or webroot placement.
-- Existing `runtime-admission.json` in that same private cohort: owner0600,
-  regular single-link file, bounded4096-byte stable read, canonical creator JSON
+- Existing `runtime-admission.json` in that same private cohort: owner `0600`,
+  regular single-link file, bounded 4096-byte stable read, canonical creator JSON
   encoding (including rejection of duplicate keys), actual integer metadata.
 - The complete on-disk manifest must strictly reconstruct the same immutable
   RuntimeAdmission tuple: exact distinct V2/V3/V4/V5 signatures, identity and
@@ -20,7 +26,9 @@ admission prerequisite at every original Runtime source-identity boundary:
 - Runtime captures only directory/database/manifest identity and manifest hash
   on its first physical check; every existing source identity check repeats the
   validation. Normal DB writes and creation of setup/key files do not change
-  these identities; replacement/drift does refuse. No key file is read here.
+  these identities; replacement/drift does refuse. No key file is read here. Pinning is per Runtime object, not persistent across
+  restarts; this namespace is an operator/owner-trust contract, not cryptographic
+  NEW-producer provenance or malicious same-UID/ABA protection.
 
 This namespace is exactly what the existing Native early guard refuses before
 secret/session/connection/DDL. A renamed V5 database or arbitrary admitted path
@@ -43,13 +51,17 @@ Disabled/unimplemented channels do not gain routes from a Runtime file check.
 
 The supported file identity remains pinned. A copy to a different inode/path is
 not automatically recovery; no manifest edit/rebind/adoption operation is added.
-First isolated recovery proof is a cold in-place restore retaining identities,
-followed later by real setup/login/booking and controlled restore acceptance.
-Cross-inode/datenträger recovery remains a separate explicit operation.
+A current populated cold in-place restore retaining identities was verified,
+followed by fresh normal logins, a confirmed receipt replay without duplicate
+rows/events and a new closed booking. That is not historical-backup freshness or
+copy-to-new-inode/new-disk recovery. No such re-admission/migration operation is
+implemented; a fresh NEW instance for disposable test data is a different scope.
 
-The final coherent source must pass the Native/API/restore handshake and actual
-isolated browser journey before publication/activation is claimed. No server or
-credential generator is started by this code. Generating new stored App/API keys,
+Draft/source publication does not claim complete operating/browser acceptance.
+Manual browser validation for this transition belongs to the operator; we do
+not claim an executed browser/TLS/JavaScript pass. Trusted HTTPS/cookie behavior
+and the documented real whole-request/session-lock bound remain operating
+requirements regardless. No server or credential generator is started by this code. Generating new stored App/API keys,
 setup token or account password hash requires the specific current authorization;
 prior coarse fixture permission is not a blanket persistent credential grant.
 
@@ -67,6 +79,11 @@ creating users. A generationless legacy transition still refuses. No password
 hash/key/token generator, setup account, secret file, browser or server is used.
 
 Syntax, whole-tree/inverse preservation and independent source review are separate.
-These cases are not successful setup/login/HTTP/CSRF/browser/API/LDAP/terminal,
-concurrency/crash/restore/human recovery acceptance. All actual new credential and
-server actions remain pending their own explicit authorization and safe handshake.
+These nineteen cases alone are not setup/login/HTTP/CSRF/browser/API/LDAP/terminal
+or recovery acceptance. Subsequent separately authorized synthetic CGI/HttpKernel
+cohorts did verify normal setup/login/CSRF, Web/API booking, JWT/lifecycle generation
+non-revival, bounded read routes, same-identity cold restore and Native refusal.
+Both cohorts and their credentials/backups were deleted. The exact observations
+and still-open browser/TLS/JavaScript, role/team, crash/production/human recovery
+limits are recorded in [the current Runtime profile](account-lifecycle-v5-runtime-profile.md).
+They do not authorize another credential or server action.

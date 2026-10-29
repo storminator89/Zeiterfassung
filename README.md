@@ -5,6 +5,10 @@
 
 Selbst gehostete Zeiterfassung für Beschäftigte, Führungskräfte und Verwaltung: Arbeitszeit, tatsächliche Pausen, Abwesenheiten und nachvollziehbare Korrekturen in einer Webanwendung.
 
+## Video
+
+[![Quodara Chrono Tutorial](https://img.youtube.com/vi/vh1hj4rqv88/0.jpg)](https://www.youtube.com/watch?v=vh1hj4rqv88)
+
 ## Funktionsumfang
 
 - **Kommen, Pause, Gehen:** serverseitige Zeitstempel, bestätigte Buchungen und Schutz vor Doppelbuchung bei Wiederholung derselben `event_id` mit identischem Inhalt; Arbeitsort und Notiz optional beim Start. Keine automatisch abgezogenen Mindestpausen.
@@ -44,7 +48,9 @@ Ohne Docker benötigt die native Anwendung PHP **8.5** mit PDO SQLite, SQLite3, 
 
 ### Separater Laravel-Kandidat
 
-Unter [`framework/`](framework/) liegt eine Laravel-13-Implementierung mit vorbereiteten Web-, API- und Betriebsbausteinen. Sie ersetzt **nicht** die native Standardinstallation. Die Account-Lifecycle-V5-Runtime ist weiterhin gesperrt; vorhandener Quellcode und Komponentenprüfungen sind keine allgemeine Betriebs- oder Browserfreigabe.
+Unter [`framework/`](framework/) liegt ein separater Laravel-13-Kandidat. Er ersetzt **nicht** die native Standardinstallation. Sein V5-Profil lässt nur die kanonische, private **NEW-Laravel-Kohorte** mit vollständiger Zulassung und ausdrücklichen Opt-ins zu; ein allgemeines Öffnen vorhandener Datenbanken oder eine native Bestandsmigration ist damit nicht verbunden.
+
+Isolierte Prüfungen der ursprünglichen NEW-only-Komposition mit echtem PHP-CGI/Laravel-HttpKernel belegen Einrichtung, Anmeldung/CSRF, Buchungen, API/JWT sowie Kontosperrung und Nicht-Wiederaufleben alter Sitzungen/Tokens. Neuere Main-Korrekturen bleiben beim additiven Abgleich erhalten; der neue Gesamtstand wird dadurch nicht als nochmals vollständig end-to-end geprüft ausgegeben. Die Belege sind **keine Browser-, TLS- oder JavaScript-Abnahme** und keine Produktions-/Deploymentfreigabe. Die gesonderte Browserabnahme übernimmt der Betreiber; HTTPS-, Cookie- und Betriebsvoraussetzungen werden dadurch nicht gelockert. Wiederherstellung ist nur kalt unter erhaltenen Dateiidentitäten geprüft; andere Inodes/Datenträger und bestehende Installationen werden nicht automatisch übernommen.
 
 Nur gemäß [separatem Docker-/Operatorvertrag](docs/framework/installation-docker.md) einrichten, niemals beide Anwendungen auf dieselbe Datenbank richten. [Architektur und Verträge](docs/framework/README.md) · [V5-Runtime-Grenze](docs/framework/account-lifecycle-v5-runtime-profile.md).
 
@@ -68,5 +74,34 @@ Einstieg: `/api.php`. JWTs gelten eine Stunde und werden bei Passwortänderung o
 
 - [Praxisfunktionen und Fachregeln](docs/PRAXISFUNKTIONEN.md) · [Terminal-Konzept](docs/PRAXIS-TERMINAL-PLAN.md)
 - [Sicherheit und Betrieb](SECURITY.md) · [Sicherheitsreview und Grenzen](SECURITY-REVIEW.md) · [MIT-Lizenz](LICENSE)
-- [Tutorial auf YouTube](https://www.youtube.com/watch?v=vh1hj4rqv88)
-- Screenshots: [Startseite](assets/mainPage_Screenshot.png), [weitere Ansicht](assets/mainPage_Screenshot2.png), [Browsererweiterung](assets/erweiterung_edge.png), [Dashboard](assets/Dashboard_Screenshot.png), [Benutzerverwaltung](assets/user_management.png), [Vorgesetztenansicht](assets/supervisor.png), [Einstellungen](assets/settings.png), [Dunkelmodus](assets/darkmode.png)
+
+## Screenshots
+
+### Startseite
+
+![Startseite](assets/mainPage_Screenshot.png)
+![Weitere Ansicht der Startseite](assets/mainPage_Screenshot2.png)
+
+### Browsererweiterung
+
+![Browsererweiterung](assets/erweiterung_edge.png)
+
+### Dashboard
+
+![Dashboard](assets/Dashboard_Screenshot.png)
+
+### Benutzerverwaltung
+
+![Benutzerverwaltung](assets/user_management.png)
+
+### Vorgesetztenansicht
+
+![Vorgesetztenansicht](assets/supervisor.png)
+
+### Einstellungen
+
+![Einstellungen](assets/settings.png)
+
+### Dunkelmodus
+
+![Dunkelmodus](assets/darkmode.png)

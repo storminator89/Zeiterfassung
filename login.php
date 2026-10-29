@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/security.php';
 include 'config.php';
+require_once __DIR__ . '/lib/native_ldap_session.php';
 
 $_SESSION['lang'] = initial_language($_SESSION['lang'] ?? null, $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null);
 
@@ -73,31 +74,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             $ldapUser = $entries[0];
                             $email = $ldapUser["mail"][0];
 
-                            // Check if user exists in local database
-                            $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username");
-                            $stmt->bindParam(':username', $username, PDO::PARAM_STR);
-                            $stmt->execute();
-                            $user = $stmt->fetch(PDO::FETCH_OBJ);
-
-                            if (!$user) {
-                                // If user doesn't exist locally, insert the user
-                                $stmt = $conn->prepare("INSERT INTO users (username, password, email, role) VALUES (:username, :password, :email, 'user')");
-                                $hashedPassword = password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT); // No reusable local LDAP password
-                                $stmt->bindParam(':username', $username);
-                                $stmt->bindParam(':password', $hashedPassword);
-                                $stmt->bindParam(':email', $email);
-                                $stmt->execute();
-
-                                // Fetch the newly inserted user
-                                $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username");
-                                $stmt->bindParam(':username', $username, PDO::PARAM_STR);
-                                $stmt->execute();
-                                $user = $stmt->fetch(PDO::FETCH_OBJ);
-                            }
-
-                            // Directory-managed accounts must not retain a local password fallback.
-                            $user->password = password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT);
-                            $conn->prepare("UPDATE users SET auth_source='ldap', password=? WHERE id=?")->execute([$user->password, $user->id]);
+                            // Retain LDAP session versions; rotate only on a real
+                            // local-to-directory conversion, under one write lock.
+                            $user = native_ldap_login_account($conn, $username, $email);
                             // Regenerate session ID to prevent session fixation
                             session_regenerate_id(true);
 

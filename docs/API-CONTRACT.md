@@ -294,10 +294,17 @@ angelegten Puffer, nicht einen vorherigen äußeren Puffer, und beendet mit:
 
 Der neue Fallback hat **HTTP 500**, JSON-Content-Type und keine Exceptiontexte,
 Stacktraces, Requestdaten oder neu protokollierten Details. Bestehende
-Loggingquellen bleiben unverändert. Eine nichtskalare Datumsquery kann noch
-immer einen `TypeError` auslösen; dieser ergibt jetzt den generischen JSON-500,
-**keinen erfundenen Validierungs-400**. Die zwei DB-Erfolgsenkoder für `/users`
-und `/timeentries` verwenden `JSON_THROW_ON_ERROR`: ungültige UTF-8-Rohwerte
+Loggingquellen bleiben unverändert. **Explizite Vertragskorrektur #77:**
+`start_date` und `end_date` müssen bei Vorhandensein Zeichenketten sein. PHP-
+Arrayquerys wie `start_date[]=2026-10-29` oder `end_date[x]=2026-10-29` werden
+nun vor `preg_match` mit dem bestehenden JSON-400 und der jeweiligen Meldung
+`Invalid start_date format. Use YYYY-MM-DD` bzw. `Invalid end_date format. Use YYYY-MM-DD`
+abgewiesen, statt einen TypeError/JSON-500 auszulösen. Damit stimmen native und
+Laravel-Validierung überein. Auslassung, gültige Stringfilter, Berliner
+Buchungstagszuordnung, Format-only-Prüfung (keine neue Kalendernormalisierung),
+Pagination, Auth und SQL bleiben unverändert. Andere unerwartete Fehler bleiben
+JSON-500. Die zwei DB-Erfolgsenkoder für `/users` und `/timeentries` verwenden
+`JSON_THROW_ON_ERROR`: ungültige UTF-8-Rohwerte
 führen über ihre bestehenden `Exception`-Catches zu JSON-500 statt einem leeren HTTP-200-Body.
 Gültige Rohwerte werden nicht ersetzt, normalisiert oder neu gefiltert.
 

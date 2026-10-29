@@ -32,6 +32,7 @@ trait ManagedUserWriterOperations
         return $this->executeLocked(function () use ($admin, $expectedWebVersion, $targetId, $username,
             $email, $role, $password, $department, $supervisor, $regularHours, $carryIn, $lifecycleAuthority): AdminUserMutationResult {
             $this->assertExpectedWebPrincipal($admin, 'local', $expectedWebVersion, 'admin', $lifecycleAuthority);
+            \admin_validate_user_fields($username, $email, $regularHours, $carryIn);
             $hash = $this->accountLifecycleV5 && ! empty($password) ? password_hash($password, PASSWORD_DEFAULT) : null;
             $this->requireManagedUserTargetLocked($targetId, $role, $hash, $username);
             $assignment = \validateUserAssignment($this->pdo, $role, $supervisor, $department, $targetId);

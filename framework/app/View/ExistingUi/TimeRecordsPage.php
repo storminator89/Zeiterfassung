@@ -18,5 +18,7 @@ final readonly class TimeRecordsPage
         public bool $reviewOnly = false,
         public int $totalRecords = 0,
         public array $localTimeFindings = [],
+        /** Existing composition capability only; never a new read authority. */
+        public bool $historyLinks = false,
     ) {}
 }

@@ -3,6 +3,7 @@
 // Definitions only. The authenticated native caller owns one transaction;
 // never bootstrap, connect, register UDFs, encrypt, query LDAP or nest a BEGIN.
 require_once __DIR__.'/ldap_manager_mapping.php';
+require_once __DIR__.'/native_ldap_session.php';
 
 /** Exact legacy import policy, including local-name conversion and nonfatal manager conflicts. */
 function chrono_ldap_import_locked(PDO $conn, array $entries, string $ldapHost, string $ldapPort, string $ldapUser, string $encryptedLdapPass, string $ldapBaseDN, bool $accountLifecycleV5 = false): array
@@ -76,13 +77,20 @@ function chrono_ldap_import_locked(PDO $conn, array $entries, string $ldapHost, 
                 // Benutzerinformationen aktualisieren
                 $updateSql = $accountLifecycleV5
                     ? "UPDATE users SET email = :email, department_id = :department_id WHERE username = :username AND auth_source = 'ldap'"
-                    : "UPDATE users SET auth_source = 'ldap', email = :email, department_id = :department_id WHERE username = :username";
+                    : "UPDATE users SET auth_source = 'ldap', password = CASE WHEN auth_source = 'ldap' THEN password ELSE :placeholder END, email = :email, department_id = :department_id WHERE username = :username";
                 // V5 retains the row, source, role, placeholder and lifecycle.
                 // No presence/absence in this search activates or departs anyone.
                 $stmt = $conn->prepare($updateSql);
                 $stmt->bindParam(':email', $email);
                 $stmt->bindParam(':department_id', $departmentId);
                 $stmt->bindParam(':username', $username);
+                if (!$accountLifecycleV5) {
+                    // Switching a native local account to LDAP is revocation;
+                    // an ordinary repeat sync of an LDAP account is not.
+                    // The preceding settings write already owns the transaction's
+                    // write lock; this row cannot change underneath the selection.
+                    $stmt->bindValue(':placeholder', $user->auth_source === 'ldap' ? null : native_ldap_placeholder());
+                }
                 $stmt->execute();
                 $ldapUserId = (int)$user->id;
             } else {
