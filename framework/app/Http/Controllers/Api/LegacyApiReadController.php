@@ -7,6 +7,7 @@ use App\Chrono\ApiTimeEntriesQuery;
 use App\Chrono\AttendanceWorkflowStatus;
 use App\Chrono\ChronoReads;
 use App\Chrono\OwnApiCorrectionStatusReads;
+use App\Chrono\OwnApiCorrectionRequestStatusReads;
 use App\Chrono\OwnApiWorkModelReads;
 use AttendanceError;
 use Illuminate\Contracts\Validation\Factory;
@@ -62,11 +63,15 @@ final class LegacyApiReadController
         } catch (\InvalidArgumentException $error) {
             return LegacyApiResponse::json(['success' => false, 'message' => $error->getMessage()], 400);
         }
-        if (! $this->reads instanceof OwnApiCorrectionStatusReads) {
+        $requestId = $page['request_id'] ?? null;
+        if (! $this->reads instanceof OwnApiCorrectionStatusReads
+            || ($requestId !== null && ! $this->reads instanceof OwnApiCorrectionRequestStatusReads)) {
             return LegacyApiResponse::json(['success' => false, 'message' => 'Correction status unavailable.'], 503);
         }
         try {
-            return LegacyApiResponse::json($this->reads->ownApiCorrectionStatus($page['status'], $page['limit'], $page['offset']));
+            return LegacyApiResponse::json($requestId === null
+                ? $this->reads->ownApiCorrectionStatus($page['status'], $page['limit'], $page['offset'])
+                : $this->reads->ownApiCorrectionRequestStatus($requestId, $page['status'], $page['limit'], $page['offset']));
         } catch (Throwable) {
             return LegacyApiResponse::json(['success' => false, 'message' => 'Correction status unavailable.'], 503);
         }

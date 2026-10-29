@@ -413,13 +413,24 @@
     "/api.php/corrections": {
       "get": {
         "summary": "Get only the authenticated account's correction request statuses",
-        "description": "Read-only own-account snapshot, including for admin/supervisor tokens. No reason, proposed/original time, reviewer identity, mutation, notification/delivery receipt or review permission. IDs and epoch seconds are exact decimal strings. Offset pages can shift with new requests. Native retains its existing bearer JWT/password-version guard. Laravel retains its separate API admission/generation/operating policy and raw HTTP method/URL rules; those gates are not added to Native.",
+        "description": "Read-only own-account snapshot, including for admin/supervisor tokens. No reason, proposed/original time, reviewer identity, mutation, notification/delivery receipt or review permission. IDs and epoch seconds are exact decimal strings. Offset pages can shift with new requests. Optional request_id narrows the same own-account snapshot to one exact request; foreign/nonexistent IDs both return an empty matching set. Pagination and status remain conjunctive filters; no notification or write retry is triggered. Native retains its existing bearer JWT/password-version guard. Laravel retains its separate API admission/generation/operating policy and raw HTTP method/URL rules; those gates are not added to Native.",
         "security": [
           {
             "bearerAuth": []
           }
         ],
         "parameters": [
+          {
+            "name": "request_id",
+            "in": "query",
+            "required": false,
+            "description": "Optional exact positive ASCII decimal string 1..9223372036854775807, no leading zero, sign, whitespace or exponent. Narrows only the authenticated account; never selects an owner. For a known-request poll omit offset and use limit at least 1.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "maxLength": 19
+            }
+          },
           {
             "name": "status",
             "in": "query",
@@ -565,6 +576,12 @@
                             "rejected",
                             "withdrawn"
                           ]
+                        },
+                        "request_id": {
+                          "type": "string",
+                          "pattern": "^[1-9][0-9]{0,18}$",
+                          "maxLength": 19,
+                          "description": "Present only when request_id was explicitly supplied; echoes the validated selector, not proof of ownership, existence or delivery."
                         },
                         "order": {
                           "type": "string",
