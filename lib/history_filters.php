@@ -1,7 +1,7 @@
 <?php
 /** Read-only audit filtering; no connection, session or live-record lookup. */
 function chrono_history_entities(): array {
-    return ['zeiterfassung'=>'Buchung','work_models'=>'Arbeitszeitmodell','time_adjustments'=>'Korrekturantrag','users'=>'Kontostammdaten','Feiertage'=>'Feiertagskalender','work_sessions'=>'Arbeitsintervall','break_intervals'=>'Pausenintervall','pause_settings'=>'Pausenregel','terminal_sites'=>'Terminal-Standort','terminal_settings'=>'Terminal-Modul','ldap_settings'=>'LDAP-Konfiguration (redigiert)','user_intake_policy'=>'Aufnahmewege','api_service_policy'=>'API-Betriebsfreigabe'];
+    return ['zeiterfassung'=>'Buchung','work_models'=>'Arbeitszeitmodell','time_adjustments'=>'Korrekturantrag','users'=>'Kontostammdaten','Feiertage'=>'Feiertagskalender','work_sessions'=>'Arbeitsintervall','break_intervals'=>'Pausenintervall','pause_settings'=>'Pausenregel','terminal_sites'=>'Terminal-Standort','terminal_settings'=>'Terminal-Modul','terminals'=>'Terminal-Gerät (redigiert)','ldap_settings'=>'LDAP-Konfiguration (redigiert)','user_intake_policy'=>'Aufnahmewege','api_service_policy'=>'API-Betriebsfreigabe'];
 }
 
 function chrono_history_operations(): array {

@@ -432,6 +432,7 @@ final class AttendanceWriter
         mixed $deviceId,
         ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): void
     {
+        require_once dirname(__DIR__, 3).'/lib/terminal_configuration.php';
         if (! is_string($deviceId) || preg_match('/\A[1-9][0-9]*\z/', $deviceId) !== 1
             || ($target = filter_var($deviceId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])) === false) {
             throw new \InvalidArgumentException('Ungültiges Terminal-Gerät.');
@@ -439,11 +440,10 @@ final class AttendanceWriter
         $this->executeLocked(function () use ($admin, $expectedWebVersion, $target, $lifecycleAuthority): void {
             // The same IMMEDIATE lock protects fresh actor checks and mutation.
             $this->assertExpectedWebPrincipal($admin, 'local', $expectedWebVersion, 'admin', $lifecycleAuthority);
-            $statement = $this->pdo->prepare('UPDATE terminals SET enabled=0,generation=?,pairing_hash=NULL,pairing_expires=NULL WHERE id=?');
-            $statement->execute([bin2hex(random_bytes(16)), $target]);
-            $statement->closeCursor();
+            \terminal_revoke_device_locked($this->pdo, $target);
             // Exact native replacement generation, including repeated/zero-row
-            // behavior. No existing generation, secret or pairing hash is read.
+            // behavior. Only fixed redacted device fields enter the same journal.
+            // No existing generation, secret or pairing hash is read.
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction),
             lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
     }
@@ -478,6 +478,7 @@ final class AttendanceWriter
         mixed $name, mixed $siteId,
         ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): \App\Chrono\TerminalDevicePairing
     {
+        require_once dirname(__DIR__, 3).'/lib/terminal_configuration.php';
         if (! is_string($name) || trim($name) === '' || strlen(trim($name)) > 100
             || ! is_string($siteId) || preg_match('/\A[1-9][0-9]*\z/', $siteId) !== 1
             || ($site = filter_var($siteId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])) === false) {
@@ -499,7 +500,11 @@ final class AttendanceWriter
             $statement->execute([$site, $name, bin2hex(random_bytes(16)), hash('sha256', $code), $expires]);
             $statement->closeCursor();
 
-            return new \App\Chrono\TerminalDevicePairing((int) $this->pdo->lastInsertId(), $code, $expires);
+            // Capture before the journal INSERT changes lastInsertId.
+            $deviceId = (int) $this->pdo->lastInsertId();
+            \terminal_journal_created_device_locked($this->pdo, $deviceId);
+
+            return new \App\Chrono\TerminalDevicePairing($deviceId, $code, $expires);
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction),
             lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
     }

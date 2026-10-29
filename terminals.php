@@ -23,9 +23,11 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
             if ($name===''||strlen($name)>100||!att_one($conn,'SELECT id FROM terminal_sites WHERE id=?',[$site])) { throw new AttendanceError('Name und Standort prüfen.',400); }
             $code=bin2hex(random_bytes(24));
             att_exec($conn,'INSERT INTO terminals(site_id,name,generation,pairing_hash,pairing_expires) VALUES(?,?,?,?,?)',[$site,$name,bin2hex(random_bytes(16)),hash('sha256',$code),time()+600]);
-            $_SESSION['terminal_pairing']=['id'=>(int)$conn->lastInsertId(),'code'=>$code];
+            $deviceId=(int)$conn->lastInsertId();
+            terminal_journal_created_device_locked($conn,$deviceId);
+            $_SESSION['terminal_pairing']=['id'=>$deviceId,'code'=>$code];
         } elseif ($action==='revoke_device') {
-            att_exec($conn,'UPDATE terminals SET enabled=0,generation=?,pairing_hash=NULL,pairing_expires=NULL WHERE id=?',[bin2hex(random_bytes(16)),(int)($_POST['id']??0)]);
+            terminal_revoke_device_locked($conn,(int)($_POST['id']??0));
         } elseif ($action==='credential') {
             $user=(int)($_POST['user_id']??0); $site=(int)($_POST['site_id']??0); $code=trim((string)($_POST['employee_code']??'')); $pin=(string)($_POST['pin']??''); $card=trim((string)($_POST['card']??''));
             if (!att_one($conn,'SELECT id FROM users WHERE id=?',[$user])||!att_one($conn,'SELECT id FROM terminal_sites WHERE id=?',[$site])||!preg_match('/^[a-zA-Z0-9_-]{2,32}$/D',$code)||!preg_match('/^[0-9]{8}$/D',$pin)||strlen($card)>128) { throw new AttendanceError('Person, Standort, Personalcode und achtstellige PIN prüfen.',400); }

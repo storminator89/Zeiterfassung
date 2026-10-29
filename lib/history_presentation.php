@@ -16,6 +16,7 @@ function chrono_history_presentation_fields(string $entity): array {
             'account_status'=>['Kontostatus (gespeichert)','scalar']],
         'Feiertage'=>['id'=>['Datensatz-ID','scalar'], 'datum'=>['Datum','scalar'], 'name'=>['Bezeichnung','scalar']],
         'pause_settings'=>['id'=>['Regel-ID','scalar'], 'hours_threshold'=>['Stundengrenze','scalar'], 'minimum_pause'=>['Mindestpause (Minuten)','scalar']],
+        'terminals'=>['id'=>['Geräte-ID','scalar'], 'site_id'=>['Terminal-Standort-ID','scalar'], 'name'=>['Gerätename','scalar'], 'enabled'=>['Gerätefreigabe (gespeichert)','scalar']],
         'terminal_sites'=>['id'=>['Standort-ID','scalar'], 'name'=>['Bezeichnung','scalar']],
         'ldap_settings'=>['id'=>['Konfigurations-ID','scalar'], 'endpoint'=>['Sicherer Endpoint','scalar'], 'endpoint_redacted'=>['Endpoint ausgeblendet','scalar'],
             'port'=>['Port','scalar'], 'port_redacted'=>['Port ausgeblendet','scalar'], 'base_dn_present'=>['Suchbasis vorhanden (Wert ausgeblendet)','scalar'],

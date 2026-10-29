@@ -29,3 +29,27 @@ SELECT unixepoch(),audit_actor(),audit_reason(),'terminal_settings',id,0,'UPDATE
 FROM terminal_settings WHERE id=1");
     $statement->execute([$before]);$statement->closeCursor();
 }
+
+/** Fixed redacted device INSERT only; enrollment code and generation never selected. */
+function terminal_journal_created_device_locked(PDO $db, int $id): void {
+    if (!$db->inTransaction()) { throw new LogicException('Terminal device journal requires the caller transaction.'); }
+    $statement=$db->prepare("INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json)
+SELECT unixepoch(),audit_actor(),audit_reason(),'terminals',id,0,'INSERT',NULL,json_object('id',id,'site_id',site_id,'name',name,'enabled',enabled)
+FROM terminals WHERE id=?");
+    $statement->execute([$id]);$statement->closeCursor();
+}
+
+/** Existing revoke UPDATE, with fixed redacted snapshots in the same caller transaction. */
+function terminal_revoke_device_locked(PDO $db, int $id): void {
+    if (!$db->inTransaction()) { throw new LogicException('Terminal device journal requires the caller transaction.'); }
+    $statement=$db->prepare("SELECT json_object('id',id,'site_id',site_id,'name',name,'enabled',enabled) FROM terminals WHERE id=?");
+    $statement->execute([$id]);$before=$statement->fetchColumn();$statement->closeCursor();
+    $statement=$db->prepare('UPDATE terminals SET enabled=0,generation=?,pairing_hash=NULL,pairing_expires=NULL WHERE id=?');
+    $statement->execute([bin2hex(random_bytes(16)), $id]);$statement->closeCursor();
+    // Preserve successful no-op and zero-row behavior; never invent a prior device.
+    if ($before===false) { return; }
+    $statement=$db->prepare("INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json)
+SELECT unixepoch(),audit_actor(),audit_reason(),'terminals',id,0,'UPDATE',?,json_object('id',id,'site_id',site_id,'name',name,'enabled',enabled)
+FROM terminals WHERE id=?");
+    $statement->execute([$before,$id]);$statement->closeCursor();
+}
