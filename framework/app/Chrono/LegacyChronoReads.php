@@ -762,8 +762,9 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
 
             // No SELECT *, model serialization, password, token or auth_source.
             // Identifier stays a bound scalar, preserving native SQLite lookup coercion.
-            return $this->rows($pdo, 'SELECT users.id, users.username, users.email, users.role,
-                users.department_id, users.supervisor_id, users.regelarbeitszeit, users.ueberstunden,
+            return $this->rows($pdo, 'SELECT users.id, CAST(users.id AS TEXT) AS id_string, users.username, users.email, users.role,
+                users.department_id, CAST(users.department_id AS TEXT) AS department_id_string,
+                users.supervisor_id, CAST(users.supervisor_id AS TEXT) AS supervisor_id_string, users.regelarbeitszeit, users.ueberstunden,
                 departments.name AS department_name, supervisors.username AS supervisor_name
                 FROM users
                 LEFT JOIN departments ON users.department_id = departments.id
