@@ -472,20 +472,43 @@ $attendanceLabels = ['absent' => 'Nicht angemeldet', 'working' => 'Arbeitszeit l
         const themeToggle = document.getElementById('theme-toggle');
         const html = document.documentElement;
 
+        // Storage may be blocked or full. Keep this document usable without
+        // claiming the preference was persisted across navigation.
+        const chronoPreferenceFallback = new Map();
+        function chronoReadPreference(key) {
+            if (chronoPreferenceFallback.has(key)) {
+                return chronoPreferenceFallback.get(key);
+            }
+            try { return window.localStorage.getItem(key); } catch (_) { return null; }
+        }
+        function chronoWritePreference(key, value) {
+            chronoPreferenceFallback.set(key, value);
+            try {
+                window.localStorage.setItem(key, value);
+                chronoPreferenceFallback.delete(key);
+            } catch (_) { /* Document-local preference only. */ }
+        }
+
         // Function to set the theme
         function setTheme(theme) {
-            html.setAttribute('data-theme', theme);
-            localStorage.setItem('theme', theme);
+            // Keep the existing browser preference key/precedence, but do not
+            // confuse the raw System choice with a renderable DaisyUI theme.
+            const preference = ['light', 'dark', 'system'].includes(theme) ? theme : 'light';
+            const resolved = preference === 'system'
+                ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+                : preference;
+            html.setAttribute('data-theme', resolved);
+            chronoWritePreference('theme', preference);
+            themeToggle.checked = resolved === 'dark';
         }
 
         // Check for saved theme preference or use the system preference
-        const savedTheme = localStorage.getItem('theme');
-        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        const theme = savedTheme || systemTheme;
+        const savedTheme = chronoReadPreference('theme');
+        const theme = savedTheme || 'system';
 
         // Set initial theme
         setTheme(theme);
-        themeToggle.checked = theme === 'dark';
+        themeToggle.checked = html.getAttribute('data-theme') === 'dark';
 
         // Toggle theme when the checkbox is clicked
         themeToggle.addEventListener('change', () => {
@@ -495,9 +518,9 @@ $attendanceLabels = ['absent' => 'Nicht angemeldet', 'working' => 'Arbeitszeit l
 
         // Listen for system theme changes
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-            if (!localStorage.getItem('theme')) {
-                const newTheme = e.matches ? 'dark' : 'light';
-                setTheme(newTheme);
+            const preference = chronoReadPreference('theme');
+            if (!preference || preference === 'system') {
+                setTheme('system');
                 themeToggle.checked = e.matches;
             }
         });
@@ -549,11 +572,11 @@ $attendanceLabels = ['absent' => 'Nicht angemeldet', 'working' => 'Arbeitszeit l
         function toggleSidebar() {
             const collapsed = !sidebar.classList.contains('collapsed');
             setSidebarCollapsed(collapsed);
-            localStorage.setItem('sidebarCollapsed', String(collapsed));
+            chronoWritePreference('sidebarCollapsed', String(collapsed));
         }
 
         // Off-canvas links must not remain in the keyboard order on narrow screens.
-        setSidebarCollapsed(window.innerWidth <= 768 || localStorage.getItem('sidebarCollapsed') === 'true');
+        setSidebarCollapsed(window.innerWidth <= 768 || chronoReadPreference('sidebarCollapsed') === 'true');
         sidebarToggle.addEventListener('click', toggleSidebar);
         document.getElementById('sidebar-close').addEventListener('click', function() {
             setSidebarCollapsed(true);
@@ -573,7 +596,7 @@ $attendanceLabels = ['absent' => 'Nicht angemeldet', 'working' => 'Arbeitszeit l
             }
         });
         window.addEventListener('resize', function() {
-            setSidebarCollapsed(window.innerWidth <= 768 || localStorage.getItem('sidebarCollapsed') === 'true');
+            setSidebarCollapsed(window.innerWidth <= 768 || chronoReadPreference('sidebarCollapsed') === 'true');
         });
 
     </script>
