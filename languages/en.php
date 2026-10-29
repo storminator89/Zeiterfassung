@@ -364,4 +364,10 @@ define('OWN_OPEN_REVIEW_LINK', 'View correction / cancellation');
 define('OWN_OPEN_REVIEW_LIMIT', 'At most five entries: unreadable starts first, then oldest starts. More of your own entries are in the time-record list.');
 define('OWN_OPEN_REVIEW_REFRESH', 'Reload stored facts');
 define('OWN_OPEN_REVIEW_UNAVAILABLE', 'Your open-entry list is currently unavailable. Please reload.');
+
+// Fixed representation-only calendar states; never reflect runtime exceptions.
+define('DASHBOARD_CALENDAR_LOADING', 'Preparing the calendar view …');
+define('DASHBOARD_CALENDAR_UNAVAILABLE', 'Calendar view currently unavailable. Reload the page or open your own bookings.');
+define('DASHBOARD_CALENDAR_NO_SCRIPT', 'The calendar view requires JavaScript. The existing attendance page remains available.');
+define('DASHBOARD_CALENDAR_FALLBACK', 'Open your own bookings');
 ?>

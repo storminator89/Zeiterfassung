@@ -337,6 +337,8 @@ function calculateRemainingHours($workedHours, $expectedHours)
                     <a id="todayBtn" href="<?= h($calendarLink($calendarRange['today'])) ?>" class="btn btn-secondary btn-sm"><i class="fas fa-calendar-day mr-2"></i><?= BUTTON_TODAY ?></a>
                     <a id="nextWeekBtn" href="<?= h($calendarLink($calendarRange['next'])) ?>" class="btn btn-primary btn-sm"><?= BUTTON_NEXT_WEEK ?><i class="fas fa-arrow-right ml-2"></i></a>
                 </div>
+                <p id="calendarLoadStatus" class="text-sm opacity-70 mb-3" role="status"><span id="calendarLoadStatusText"><?= h(DASHBOARD_CALENDAR_LOADING) ?></span> <a class="link" href="attendance.php"><?= h(DASHBOARD_CALENDAR_FALLBACK) ?></a></p>
+                <noscript><p class="text-sm opacity-70 mb-3"><?= h(DASHBOARD_CALENDAR_NO_SCRIPT) ?></p></noscript>
                 <div id="calendar" class="calendar-container"></div>
             </div>
         </div>
@@ -359,9 +361,30 @@ function calculateRemainingHours($workedHours, $expectedHours)
     </div>
 
     <script>
-        // Calendar initialization
-        const Calendar = tui.Calendar;
-        const calendar = new Calendar('#calendar', {
+        function formatDate(date) {
+            let day = ("0" + date.getDate()).slice(-2);
+            let month = ("0" + (date.getMonth() + 1)).slice(-2);
+            let year = date.getFullYear();
+            return day + "." + month + "." + year;
+        }
+
+        function showModal() {
+            document.getElementById('scheduleModal').classList.add('modal-open');
+        }
+
+        function closeModal() {
+            document.getElementById('scheduleModal').classList.remove('modal-open');
+        }
+
+        // Representation only: do not leave a blank or partially initialized calendar.
+        const calendarStatus = document.getElementById('calendarLoadStatus');
+        const calendarStatusText = document.getElementById('calendarLoadStatusText');
+        const calendarRoot = document.getElementById('calendar');
+        let calendar = null;
+        try {
+        const Calendar = globalThis.tui?.Calendar;
+        if (typeof Calendar !== 'function') { throw new Error('Calendar unavailable'); }
+        calendar = new Calendar('#calendar', {
             defaultView: 'week',
             useCreationPopup: false,
             useDetailPopup: false,
@@ -415,21 +438,6 @@ function calculateRemainingHours($workedHours, $expectedHours)
         const events = <?= json_encode($events, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         calendar.createEvents(events);
 
-        function formatDate(date) {
-            let day = ("0" + date.getDate()).slice(-2);
-            let month = ("0" + (date.getMonth() + 1)).slice(-2);
-            let year = date.getFullYear();
-            return day + "." + month + "." + year;
-        }
-
-        function showModal() {
-            document.getElementById('scheduleModal').classList.add('modal-open');
-        }
-
-        function closeModal() {
-            document.getElementById('scheduleModal').classList.remove('modal-open');
-        }
-
         calendar.on('clickEvent', function(event) {
             let startDate = new Date(event.event.start);
             let endDate = new Date(event.event.end);
@@ -442,6 +450,14 @@ function calculateRemainingHours($workedHours, $expectedHours)
 
             showModal();
         });
+
+        if (calendarStatus) { calendarStatus.hidden = true; }
+        } catch {
+            try { if (calendar && typeof calendar.destroy === 'function') { calendar.destroy(); } } catch {}
+            try { if (calendarRoot) { calendarRoot.replaceChildren(); } } catch {}
+            if (calendarStatusText) { calendarStatusText.textContent = <?= json_encode(DASHBOARD_CALENDAR_UNAVAILABLE, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>; }
+            if (calendarStatus) { calendarStatus.hidden = false; }
+        }
 
         // Additional styles for calendar events
         const style = document.createElement('style');

@@ -352,4 +352,10 @@ define('OWN_OPEN_REVIEW_LINK', '查看更正／取消');
 define('OWN_OPEN_REVIEW_LIMIT', '最多顯示五筆：先顯示無法讀取的開始時間，再按最早開始時間排序。其他本人的紀錄在工時清單中。');
 define('OWN_OPEN_REVIEW_REFRESH', '重新載入已保存狀態');
 define('OWN_OPEN_REVIEW_UNAVAILABLE', '目前無法取得本人的未結束紀錄清單，請重新載入。');
+
+// Fixed representation-only calendar states; never reflect runtime exceptions.
+define('DASHBOARD_CALENDAR_LOADING', '正在準備日曆顯示…');
+define('DASHBOARD_CALENDAR_UNAVAILABLE', '目前無法顯示日曆。請重新載入頁面或開啟本人的打卡紀錄。');
+define('DASHBOARD_CALENDAR_NO_SCRIPT', '日曆顯示需要 JavaScript；原有的出勤頁面仍可開啟。');
+define('DASHBOARD_CALENDAR_FALLBACK', '開啟本人的打卡紀錄');
 ?>
