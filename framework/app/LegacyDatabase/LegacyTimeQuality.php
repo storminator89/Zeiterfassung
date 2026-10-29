@@ -85,7 +85,7 @@ final class LegacyTimeQuality
         $total = array_sum($counts);
 
         return [
-            'report_version' => 7,
+            'report_version' => 8,
             'scope_status' => 'partial_diagnostic_only',
             'read_only' => true,
             'records_checked' => $records,
@@ -100,7 +100,8 @@ final class LegacyTimeQuality
                 'open_overlap' => 'possible_only_for_unambiguous_supported_rows_no_guessed_end',
                 'original_session_break_boundaries' => 'checked_stored_integer_epochs_only_no_guessed_end',
                 'original_break_overlap' => 'checked_completed_positive_integer_original_break_pairs_same_session_only',
-                'event_session_break_projection_reconciliation' => 'not_checked_beyond_original_interval_boundaries_and_completed_break_pairs',
+                'original_session_overlap' => 'checked_completed_positive_integer_original_session_pairs_same_user_only',
+                'event_session_break_projection_reconciliation' => 'not_checked_beyond_original_interval_boundaries_and_completed_original_pairs',
                 'mapping_or_repair' => 'not_performed_requires_separate_confirmation',
             ],
             'offset_free_values_requiring_berlin_mapping_confirmation' => $offsetFree,
@@ -368,6 +369,7 @@ final class LegacyTimeQuality
             $breaks->closeCursor();
         }
         $this->originalBreakPairs($pdo, $add);
+        $this->originalSessionPairs($pdo, $add);
     }
 
     /** Stored completed positive breaks in one original session; no inferred end or projection. */
@@ -400,6 +402,39 @@ final class LegacyTimeQuality
         } finally {
             $others->closeCursor();
             $breaks->closeCursor();
+        }
+    }
+
+    /** Completed positive original session pairs for one user; never amended projections. */
+    private function originalSessionPairs(PDO $pdo, callable $add): void
+    {
+        $sessions = $pdo->query('SELECT id,user_id,started_at,ended_at FROM work_sessions ORDER BY id');
+        $others = $pdo->prepare('SELECT id,started_at,ended_at FROM work_sessions WHERE user_id=? AND id>? ORDER BY id');
+        try {
+            while (($session = $sessions->fetch(PDO::FETCH_ASSOC)) !== false) {
+                if (!is_int($session['started_at']) || !is_int($session['ended_at'])
+                    || $session['ended_at'] <= $session['started_at']) {
+                    continue; // No guessed open end, invalid/reversed span or zero-duration occupation.
+                }
+                $others->execute([$session['user_id'], $session['id']]);
+                try {
+                    while (($other = $others->fetch(PDO::FETCH_ASSOC)) !== false) {
+                        if (is_int($other['started_at']) && is_int($other['ended_at'])
+                            && $other['ended_at'] > $other['started_at']
+                            && $session['started_at'] < $other['ended_at']
+                            && $other['started_at'] < $session['ended_at']) {
+                            // Stored half-open original intervals only. No subtraction,
+                            // owner in the output, pair list or projection reconciliation.
+                            $add('work_sessions', (int) $session['id'], 'original_session_overlap', null, (int) $other['id']);
+                        }
+                    }
+                } finally {
+                    $others->closeCursor();
+                }
+            }
+        } finally {
+            $others->closeCursor();
+            $sessions->closeCursor();
         }
     }
 
