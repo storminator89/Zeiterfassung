@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads
+final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -463,6 +463,18 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
 
             return chrono_own_open_review_snapshot($pdo, (int) $actor->getKey(),
                 new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')));
+        });
+    }
+
+    /** Existing stored yearly calendar inventory only; never import or attest completeness. */
+    public function holidayInventory(mixed $requestedYear = null): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($requestedYear): array {
+            require_once dirname(__DIR__, 3).'/lib/holiday_inventory.php';
+            $year = holiday_inventory_year($requestedYear,
+                (int) (new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')))->format('Y'));
+
+            return holiday_inventory($pdo, $year['year']) + ['selection_invalid' => $year['invalid']];
         });
     }
 

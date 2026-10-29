@@ -3,6 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
+use App\Chrono\HolidayInventoryReads;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Auth\Access\AuthorizationException;
+use Throwable;
 use App\View\ExistingUi\AttendancePage;
 use App\View\ExistingUi\Copy;
 use App\View\ExistingUi\DashboardPage;
@@ -38,6 +42,20 @@ final class LocalWebDashboardController extends Controller
             'Krankheit' => $copy->text('EVENT_SICK'), 'Feiertag' => $copy->text('EVENT_HOLIDAY'),
         ];
 
+        $holidayInventory = null;
+        $holidayInventoryUnavailable = false;
+        $holidayInventoryOpen = array_key_exists('holiday_year', $query)
+            || ($query['holiday_inventory'] ?? null) === '1';
+        if ($this->reads instanceof HolidayInventoryReads) {
+            try {
+                $holidayInventory = $this->reads->holidayInventory($query['holiday_year'] ?? null);
+            } catch (AuthenticationException|AuthorizationException $error) {
+                throw $error;
+            } catch (Throwable) {
+                $holidayInventoryUnavailable = true; // Never interpret failure as an empty/complete year.
+            }
+        }
+
         return view('chrono.dashboard', [
             // Separate prerequisites: dashboard.php must join the shared chrome
             // whitelist and a reviewed protected GET before this can be dispatched.
@@ -52,6 +70,9 @@ final class LocalWebDashboardController extends Controller
                 \calendar_range_events($snapshot['records'], $snapshot['holidays'], $snapshot['range'], $labels),
                 $snapshot['report_finality'], $snapshot['report_incomplete'],
             ),
+            'holidayInventory' => $holidayInventory,
+            'holidayInventoryUnavailable' => $holidayInventoryUnavailable,
+            'holidayInventoryOpen' => $holidayInventoryOpen,
         ]);
     }
 }
