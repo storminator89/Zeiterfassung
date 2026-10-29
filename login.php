@@ -2,6 +2,7 @@
 require_once __DIR__ . '/security.php';
 include 'config.php';
 require_once __DIR__ . '/lib/native_ldap_session.php';
+require_once __DIR__ . '/lib/login_account_csrf.php';
 
 $_SESSION['lang'] = initial_language($_SESSION['lang'] ?? null, $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? null);
 
@@ -84,6 +85,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             $user = native_ldap_login_account($conn, $username, $email);
                             // Regenerate session ID to prevent session fixation
                             session_regenerate_id(true);
+                            native_login_account_csrf($_SESSION, $user->id);
 
                             $_SESSION['auth_version'] = hash('sha256', $user->password);
                             $_SESSION['user_id'] = $user->id;
@@ -107,6 +109,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if ($user && $user->auth_source === 'local' && $password !== 'defaultpassword' && password_verify($password, $user->password)) {
                 // Regenerate session ID to prevent session fixation
                 session_regenerate_id(true);
+                native_login_account_csrf($_SESSION, $user->id);
 
                 $_SESSION['auth_version'] = hash('sha256', $user->password);
                             $_SESSION['user_id'] = $user->id;
