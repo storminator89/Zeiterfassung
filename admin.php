@@ -23,6 +23,8 @@ $theme_mode = $_SESSION['theme_mode'] ?? 'system';
 
 $error = '';
 $successMessage = '';
+$createUserDraft = null;
+require_once __DIR__.'/lib/admin_create_user_draft.php';
 
 function encryptData($data, $key, $method)
 {
@@ -336,6 +338,7 @@ require_once __DIR__ . '/lib/admin_users.php';
 
 // Benutzer hinzufügen
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
+    $createAssignmentRejected = false;
     $username = $_POST['username'];
     $password = $_POST['password'];
     $email = $_POST['email'];
@@ -348,10 +351,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
     // Eingaben validieren
     if (empty($username) || empty($password) || empty($email) || empty($role) || empty($department_id) || empty($regelarbeitszeit)) {
         $error = ERROR_ALL_FIELDS_REQUIRED;
+        if (!$conn->inTransaction()) { $createUserDraft = admin_create_user_rejected_draft($_POST); }
     } else {
         try {
-            admin_create_user($conn, function () use ($conn, $username, $password, $email, $role, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden): void {
-                $assignment = validateUserAssignment($conn, $role, $supervisor, $department_id);
+            admin_create_user($conn, function () use ($conn, $username, $password, $email, $role, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden, &$createAssignmentRejected): void {
+                try { $assignment = validateUserAssignment($conn, $role, $supervisor, $department_id); }
+                catch (InvalidArgumentException $e) { $createAssignmentRejected = true; throw $e; }
                 $department_id = $assignment['department_id'];
                 $supervisor = $assignment['supervisor_id'];
                 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
@@ -363,6 +368,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
             $successMessage = USER_CREATED_SUCCESS;
         } catch (InvalidArgumentException $e) {
             $error = $e->getMessage();
+            if ($createAssignmentRejected && !$conn->inTransaction()) {
+                $createUserDraft = admin_create_user_rejected_draft($_POST);
+            }
         } catch (PDOException $e) {
             $error = USER_CREATED_ERROR . $e->getMessage();
         }
@@ -526,15 +534,16 @@ include 'header.php';
                     <button class="btn btn-primary mb-4" id="toggleUserForm">
                         <i class="fas fa-plus mr-2"></i><?= BUTTON_CREATE_USER ?>
                     </button>
-                    <div id="userForm" class="hidden mb-6">
+                    <div id="userForm" class="<?= $createUserDraft === null ? 'hidden ' : '' ?>mb-6">
                         <form method="post" class="space-y-4">
+                            <?php if ($createUserDraft !== null): ?><p class="text-sm opacity-70" role="status">Eingaben zur Überarbeitung erhalten. Bitte alle Angaben prüfen, Rolle und Zuordnungen ausdrücklich neu wählen und das Passwort erneut eingeben. Keine automatische Speicherung oder Wiederholung.</p><?php endif; ?>
 <?= csrf_field() ?>
                             <input type="hidden" name="add_user" value="1">
                             <div class="form-control">
                                 <label class="label" for="username">
                                     <span class="label-text"><?= FORM_USERNAME ?></span>
                                 </label>
-                                <input type="text" id="username" name="username" class="input input-bordered" required>
+                                <input type="text" id="username" name="username"<?= $createUserDraft !== null ? ' value="'.h($createUserDraft['username'] ?? '').'"' : '' ?> class="input input-bordered" required>
                             </div>
                             <div class="form-control">
                                 <label class="label" for="password">
@@ -546,13 +555,14 @@ include 'header.php';
                                 <label class="label" for="email">
                                     <span class="label-text"><?= FORM_EMAIL ?></span>
                                 </label>
-                                <input type="email" id="email" name="email" class="input input-bordered" required>
+                                <input type="email" id="email" name="email"<?= $createUserDraft !== null ? ' value="'.h($createUserDraft['email'] ?? '').'"' : '' ?> class="input input-bordered" required>
                             </div>
                             <div class="form-control">
                                 <label class="label" for="role">
                                     <span class="label-text"><?= FORM_ROLE ?></span>
                                 </label>
                                 <select id="role" name="role" class="select select-bordered" required>
+                                    <?php if ($createUserDraft !== null): ?><option value="" disabled selected>Rolle erneut wählen</option><?php endif; ?>
                                     <option value="user"><?= FORM_ROLE_USER ?></option>
                                     <option value="admin"><?= FORM_ROLE_ADMIN ?></option>
                                     <option value="supervisor"><?= FORM_ROLE_SUPERVISOR ?></option>
@@ -563,6 +573,7 @@ include 'header.php';
                                     <span class="label-text"><?= FORM_DEPARTMENT ?></span>
                                 </label>
                                 <select id="department" name="department" class="select select-bordered" required>
+                                    <?php if ($createUserDraft !== null): ?><option value="" disabled selected>Abteilung erneut wählen</option><?php endif; ?>
                                     <?php foreach ($departments as $department): ?>
                                         <option value="<?= $department->id ?>"><?= htmlspecialchars($department->name) ?></option>
                                     <?php endforeach; ?>
@@ -573,6 +584,7 @@ include 'header.php';
                                     <span class="label-text"><?= FORM_SUPERVISOR ?></span>
                                 </label>
                                 <select id="supervisor" name="supervisor" class="select select-bordered">
+                                    <?php if ($createUserDraft !== null): ?><option value="" disabled selected>Vorgesetzten oder ausdrücklich keinen erneut wählen</option><?php endif; ?>
                                     <option value=""><?= FORM_NO_SUPERVISOR ?></option>
                                     <?php foreach ($supervisors as $supervisorOption): ?>
                                         <option value="<?= $supervisorOption->id ?>"><?= htmlspecialchars($supervisorOption->username) ?></option>
@@ -583,13 +595,13 @@ include 'header.php';
                                 <label class="label" for="regelarbeitszeit">
                                     <span class="label-text"><?= FORM_REGULAR_WORKING_HOURS ?></span>
                                 </label>
-                                <input type="number" id="regelarbeitszeit" name="regelarbeitszeit" class="input input-bordered" step="0.01" required>
+                                <input type="number" id="regelarbeitszeit" name="regelarbeitszeit"<?= $createUserDraft !== null ? ' value="'.h($createUserDraft['regelarbeitszeit'] ?? '').'"' : '' ?> class="input input-bordered" step="0.01" required>
                             </div>
                             <div class="form-control">
                                 <label class="label" for="ueberstunden">
                                     <span class="label-text"><?= FORM_OVERTIME ?></span>
                                 </label>
-                                <input type="number" id="ueberstunden" name="ueberstunden" class="input input-bordered" step="0.01" value="0">
+                                <input type="number" id="ueberstunden" name="ueberstunden" class="input input-bordered" step="0.01" value="<?= h($createUserDraft === null ? '0' : ($createUserDraft['ueberstunden'] ?? '')) ?>">
                             </div>
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-user-plus mr-2"></i><?= BUTTON_CREATE_USER ?>
