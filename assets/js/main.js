@@ -31,6 +31,20 @@
         });
     }
 
+    // Same in-page Native date-range draft only, never stored or submitted here.
+    // Laravel keeps its CSV form outside this replaceable table container.
+    function csvPeriodControls(container) {
+        const from = container.querySelector('#csv-period-from');
+        const to = container.querySelector('#csv-period-to');
+        const form = from?.form;
+        const details = form?.closest('details');
+        if (!form || to?.form !== form || !details || !container.contains(details)
+            || from.type !== 'date' || to.type !== 'date'
+            || from.name !== 'from' || to.name !== 'to'
+            || form.method !== 'get' || form.getAttribute('action') !== 'export_csv.php') return null;
+        return {from, to, details};
+    }
+
     function tableMessage(container, message) {
         let status = document.getElementById('time-records-message');
         if (!status) {
@@ -71,7 +85,25 @@
                 && document.activeElement.matches('.btn-group button');
             const restoreFilterFocus = container.contains(document.activeElement)
                 && document.activeElement.matches('[data-record-review-filter]');
+            // Capture at the last possible moment, AFTER the latest-response guard:
+            // an edit/clear while fetch was pending must win over its older value.
+            const csvControls = csvPeriodControls(container);
+            const csvDraft = csvControls ? {
+                from: csvControls.from.value, to: csvControls.to.value,
+                open: csvControls.details.open,
+                focus: document.activeElement === csvControls.from ? 'from'
+                    : document.activeElement === csvControls.to ? 'to' : null,
+            } : null;
             container.innerHTML = html;
+            if (csvDraft) {
+                const currentCsv = csvPeriodControls(container);
+                if (currentCsv) {
+                    currentCsv.from.value = csvDraft.from;
+                    currentCsv.to.value = csvDraft.to;
+                    currentCsv.details.open = csvDraft.open;
+                    if (csvDraft.focus) currentCsv[csvDraft.focus].focus();
+                }
+            }
             const reviewControl = container.querySelector('[data-record-review-filter]');
             container.dataset.page = reviewControl?.dataset.page ?? String(selectedPage);
             container.dataset.review = selectedReview;
