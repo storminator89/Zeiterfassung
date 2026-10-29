@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__.'/admin_users.php';
+
 /** Delete only an existing, unassigned department through the native admin handler. */
 function department_delete_if_unused(PDO $db, mixed $departmentId): void
 {
@@ -19,16 +21,10 @@ function department_delete_if_unused(PDO $db, mixed $departmentId): void
     }
 }
 
-/** Exact native scalar/positive-ID parsing; no transaction or bootstrap. */
+/** Canonical department target ID; no transaction, coercion or bootstrap. */
 function department_delete_id(mixed $departmentId): int
 {
-    $targetId = (is_string($departmentId) || is_int($departmentId))
-        ? filter_var($departmentId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
-        : false;
-    if ($targetId === false) {
-        throw new InvalidArgumentException('Ungültige Abteilungs-ID.');
-    }
-    return $targetId;
+    return admin_assignment_id($departmentId, 'Ungültige Abteilungs-ID.');
 }
 
 /** Caller owns the native IMMEDIATE lock; never BEGIN/COMMIT/ROLLBACK here. */
@@ -72,9 +68,10 @@ function department_create_core(PDO $conn, mixed $department_name): void
     $stmt->execute([$department_name]);
 }
 
-/** Native rename quirks retained: no normalization, existence or row-count test. */
+/** Preserve rename semantics, but reject noncanonical target IDs before SQL. */
 function department_rename_core(PDO $conn, mixed $department_id, mixed $department_name): void
 {
+    $targetId = department_delete_id($department_id);
     $stmt = $conn->prepare("UPDATE departments SET name = ? WHERE id = ?");
-    $stmt->execute([$department_name, $department_id]);
+    $stmt->execute([$department_name, $targetId]);
 }
