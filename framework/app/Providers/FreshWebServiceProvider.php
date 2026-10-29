@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Auth\AccountLifecycleWebIdentity;
+use App\Chrono\LegacyLocalWebAccountLifecycle;
+use App\Chrono\LocalWebAccountLifecycle;
 use App\FreshWeb\FreshWebConfiguration;
 use App\Ldap\AdmittedLdapSettingsCipher;
 use App\Ldap\LdapSyncTransport;
@@ -58,6 +61,10 @@ final class FreshWebServiceProvider extends ServiceProvider
                     throw new LogicException('Fresh web must not replace another web route profile.');
                 }
             }
+            if ($this->app->make(RuntimeDatabase::class)->isAccountLifecycleV5()
+                && $this->app->bound(LocalWebAccountLifecycle::class)) {
+                throw new LogicException('Fresh V5 web must not replace another account lifecycle profile.');
+            }
             $this->app->instance(Interactions::class, new Interactions(
                 login: true, attendance: true, logout: true, corrections: true, home: true, absences: true,
                 workModels: true, history: true, supervisor: true, dashboard: true, adminPauseSettings: true,
@@ -70,6 +77,27 @@ final class FreshWebServiceProvider extends ServiceProvider
                     includeLdapSync: $profile->ldapSyncProfile() !== null,
                     useSharedLoginBudget: SharedLoginBudgetServiceProvider::selected($this->app));
             });
+            // The unchanged registrar must return first. Its current V5 Runtime
+            // hold still refuses before routes or this prepared capability exist.
+            if ($this->app->make(RuntimeDatabase::class)->isAccountLifecycleV5()) {
+                $this->app->scoped(LocalWebAccountLifecycle::class, static function ($app): LegacyLocalWebAccountLifecycle {
+                    $runtime = $app->make(RuntimeDatabase::class);
+                    $identity = $app->make(AccountLifecycleWebIdentity::class);
+                    if (! $runtime->isAccountLifecycleV5() || ! $identity->requiresGeneration()) {
+                        throw new LogicException('The explicit V5 account lifecycle profile is required.');
+                    }
+                    return new LegacyLocalWebAccountLifecycle(
+                        $app->make('auth'), $app->make('db'), $app->make('encrypter'),
+                        static function () use ($app): AttendanceWriter {
+                            if (! $app->bound(AttendanceWriter::class)) {
+                                throw new LogicException('An admitted operation-scoped lifecycle writer is required.');
+                            }
+                            return $app->make(AttendanceWriter::class);
+                        },
+                        $identity, $runtime,
+                    );
+                });
+            }
         });
     }
 }
