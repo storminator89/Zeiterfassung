@@ -464,6 +464,55 @@
         document.getElementById('edit_department').replaceChildren();
         document.getElementById('edit_supervisor').replaceChildren();
     }
+    // Exact text carries large IDs; only provably safe legacy numbers may be stringified.
+    function adminIntegerText(value, signed = false) {
+        if (typeof value !== 'string' || value === '') return null;
+        const negative = signed && value[0] === '-';
+        const digits = negative ? value.slice(1) : value;
+        if (digits === '' || /[^0-9]/.test(digits) || (digits.length > 1 && digits[0] === '0')
+            || ((!signed || negative) && digits === '0')) return null;
+        const maximum = negative ? '9223372036854775808' : '9223372036854775807';
+        return digits.length > maximum.length || (digits.length === maximum.length && digits > maximum) ? null : value;
+    }
+    function adminRequestedId(value) {
+        return typeof value === 'number'
+            ? (Number.isSafeInteger(value) && value > 0 ? String(value) : null)
+            : adminIntegerText(value);
+    }
+    function adminDetailId(data, requested) {
+        if (!data || typeof data !== 'object' || !Object.prototype.hasOwnProperty.call(data, 'id')) throw new Error('Invalid user detail.');
+        const hasText = Object.prototype.hasOwnProperty.call(data, 'id_string');
+        const exact = hasText ? adminIntegerText(data.id_string) : adminRequestedId(data.id);
+        if (exact === null || exact !== requested || (hasText && !(
+            (typeof data.id === 'number' && Number.isInteger(data.id) && Number(exact) === data.id)
+            || (typeof data.id === 'string' && data.id === exact)))) throw new Error('Invalid user detail.');
+        return exact;
+    }
+    function adminDetailAssignment(data, key) {
+        if (!Object.prototype.hasOwnProperty.call(data, key)) throw new Error('Invalid assignment detail.');
+        const raw = data[key], hasText = Object.prototype.hasOwnProperty.call(data, key + '_string');
+        if (!hasText) {
+            if (raw === null || typeof raw === 'string') return raw;
+            if (typeof raw === 'number' && Number.isFinite(raw) && Math.abs(raw) <= Number.MAX_SAFE_INTEGER) return String(raw);
+            throw new Error('Unconfirmed assignment detail.');
+        }
+        const exact = data[key + '_string'];
+        if (raw === null && exact === null) return null;
+        if (typeof exact !== 'string' || raw === null) throw new Error('Invalid assignment detail.');
+        if (typeof raw === 'string') {
+            if (raw !== exact) throw new Error('Inconsistent assignment detail.');
+        } else if (typeof raw === 'number' && Number.isFinite(raw)) {
+            if (Number.isSafeInteger(raw) || !Number.isInteger(raw)) {
+                if (exact !== String(raw)) throw new Error('Inconsistent assignment detail.');
+            } else if (adminIntegerText(exact, true) === null || Number(exact) !== raw) {
+                throw new Error('Unconfirmed assignment detail.');
+            }
+        } else {
+            throw new Error('Invalid assignment detail.');
+        }
+        // Preserve exact stored legacy 0/negative/string references for explicit correction.
+        return exact;
+    }
     function selectUserAssignment(id, options, value, label) {
         const select = document.getElementById(id);
         const selected = value === null || value === undefined ? '' : String(value);
@@ -483,17 +532,21 @@
         error.textContent = '';
         error.classList.add('hidden');
         try {
-            const response = await fetch('get_user.php?id=' + encodeURIComponent(userId), {headers: {'Accept': 'application/json'}});
+            const requestedUserId = adminRequestedId(userId);
+            if (requestedUserId === null) throw new Error('Invalid user detail target.');
+            const response = await fetch('get_user.php?id=' + encodeURIComponent(requestedUserId), {headers: {'Accept': 'application/json'}});
             if (!response.ok) throw new Error('Benutzerdetails nicht verfügbar. Bitte neu laden und erneut anmelden.');
             const data = await response.json();
             if (request !== userDetailRequest) return;
-            if (!data || String(data.id) !== String(userId)) throw new Error('Benutzerdetails nicht verfügbar. Bitte neu laden.');
-            document.getElementById('edit_user_id').value = data.id;
+            const exactUserId = adminDetailId(data, requestedUserId);
+            const exactDepartmentId = adminDetailAssignment(data, 'department_id');
+            const exactSupervisorId = adminDetailAssignment(data, 'supervisor_id');
+            document.getElementById('edit_user_id').value = exactUserId;
             document.getElementById('edit_username').value = data.username;
             document.getElementById('edit_email').value = data.email;
             document.getElementById('edit_role').value = data.role;
-            selectUserAssignment('edit_department', departmentOptions, data.department_id, data.department_name ?? '');
-            selectUserAssignment('edit_supervisor', supervisorOptions, data.supervisor_id,
+            selectUserAssignment('edit_department', departmentOptions, exactDepartmentId, data.department_name ?? '');
+            selectUserAssignment('edit_supervisor', supervisorOptions, exactSupervisorId,
                 data.supervisor_name ?? (data.supervisor_id ? '' : {!! \Illuminate\Support\Js::from($page->copy->text('FORM_NO_SUPERVISOR')) !!}));
             document.getElementById('edit_regelarbeitszeit').value = data.regelarbeitszeit;
             document.getElementById('edit_ueberstunden').value = data.ueberstunden;
