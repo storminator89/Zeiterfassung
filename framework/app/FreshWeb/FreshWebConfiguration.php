@@ -104,11 +104,13 @@ final readonly class FreshWebConfiguration
                 throw new RuntimeException;
             }
             if ($admission->schemaProfile === 'account-lifecycle-v5') {
-                // Prepared local-only composition, never a V4 alias or an LDAP/API admission.
+                // V5 stays local-only and distinct from V4. API still requires its
+                // separate exact key/generation/shared-budget admission provider.
                 $syncSettings = $config->get('chrono_ldap_sync.fresh');
+                $apiEnabled = $config->get('chrono_api.enabled', false);
                 if ($ldap['enabled'] !== false || ! is_array($syncSettings)
                     || ($syncSettings['enabled'] ?? null) !== false
-                    || $config->get('chrono_api.enabled', false) !== false
+                    || ! is_bool($apiEnabled)
                     || $config->get('chrono_login_budget.enabled', false) !== true) {
                     throw new RuntimeException;
                 }
@@ -144,7 +146,7 @@ final readonly class FreshWebConfiguration
             ];
             if ($admission->schemaProfile === 'account-lifecycle-v5') {
                 // These selected capabilities are rechecked with all other overrides.
-                $overrides += ['chrono_api.enabled' => false, 'chrono_login_budget.enabled' => true];
+                $overrides += ['chrono_api.enabled' => $apiEnabled, 'chrono_login_budget.enabled' => true];
             }
             $profile = new self($origin, $keyFingerprint, $directory, $directories, $manifest, $manifestHash, $manifestState,
                 $databaseState, $setup, $ldap['enabled'], $sync, $overrides);

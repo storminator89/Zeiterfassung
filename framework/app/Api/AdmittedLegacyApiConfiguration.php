@@ -22,6 +22,7 @@ final readonly class AdmittedLegacyApiConfiguration implements JsonSerializable
         private WriterLoginBudget $budget,
         private WriterApiLoginBudget $apiBudget,
         private ExistingApiFileSigningKey $key,
+        private ?RuntimeDatabase $v5Runtime,
     ) {}
 
     public static function fromApplication(Application $app): ?self
@@ -45,12 +46,14 @@ final readonly class AdmittedLegacyApiConfiguration implements JsonSerializable
             || ! is_array($api['existing_key_admission']) || ! is_array($manifest)
             || ! $app->bound(FreshWebConfiguration::class) || ! $app->bound(RuntimeDatabase::class)
             || ! $app->bound(AttendanceWriter::class) || ! SharedLoginBudgetServiceProvider::selected($app)) {
-            throw new LogicException('The complete fresh V4, shared budget and existing key metadata are required.');
+            throw new LogicException('The complete fresh profile, shared budget and existing key metadata are required.');
         }
         $database = RuntimeAdmission::fromConfiguration($manifest);
-        if ($database->schemaProfile !== 'intake-policy-v4') {
-            throw new LogicException('The admitted V4 API database profile is required.');
+        if (! in_array($database->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5'], true)) {
+            throw new LogicException('The admitted V4 or V5 API database profile is required.');
         }
+        $v5 = $database->schemaProfile === 'account-lifecycle-v5';
+        $v5Runtime = self::requireAccountProfile($app, $v5);
         $fresh = $app->make(FreshWebConfiguration::class);
         $budget = $app->make(WriterLoginBudget::class);
         $apiBudget = $app->make(LegacyApiLoginBudget::class);
@@ -71,7 +74,7 @@ final readonly class AdmittedLegacyApiConfiguration implements JsonSerializable
         }
         $admission = ExistingApiKeyAdmission::fromConfiguration($api['existing_key_admission'], $database);
         // The existing source is PURE until secret(); never read/adopt/create here.
-        return new self($fresh->origin, $settings, $fresh, $budget, $apiBudget, new ExistingApiFileSigningKey($admission));
+        return new self($fresh->origin, $settings, $fresh, $budget, $apiBudget, new ExistingApiFileSigningKey($admission), $v5Runtime);
     }
 
     /** Pure source object, NOT a key value, liveness check or physical admission. */
@@ -96,6 +99,23 @@ final readonly class AdmittedLegacyApiConfiguration implements JsonSerializable
             || ! SharedLoginBudgetServiceProvider::selected($app)) {
             throw new LogicException('The selected API service profile changed.');
         }
+        self::requireAccountProfile($app, $this->v5Runtime !== null, $this->v5Runtime);
+    }
+
+    /** Pure metadata only; never opens the Runtime, key or operation writer. */
+    private static function requireAccountProfile(Application $app, bool $v5, ?RuntimeDatabase $expected = null): ?RuntimeDatabase
+    {
+        if (! $v5) { return null; } // Preserve the original V4 composition path.
+        $runtime = $app->make(RuntimeDatabase::class);
+        if (! $runtime instanceof RuntimeDatabase || ($expected !== null && $runtime !== $expected)
+            || ! $runtime->isAccountLifecycleV5()
+            || ! $app->bound(AccountLifecycleApiIdentity::class)
+            || ! ($identity = $app->make(AccountLifecycleApiIdentity::class)) instanceof AccountLifecycleApiIdentity
+            || ! $identity->requiresGeneration()) {
+            throw new LogicException('The exact current V5 API generation profile is required.');
+        }
+
+        return $runtime;
     }
 
     public function __debugInfo(): array { return ['source' => 'explicit admitted legacy API composition']; }
