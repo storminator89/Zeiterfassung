@@ -84,6 +84,7 @@ $state = $attendanceState;
                             </div>
                         </fieldset>
                         <p class="text-sm opacity-70">Urlaub und Krankheit erhalten die Sollminuten Ihres Arbeitszeitmodells. Freie Tage und hinterlegte Feiertage werden ausgelassen. Gutschriften sind keine gestempelten Arbeitszeiten.</p>
+                        <p class="text-sm"><a href="dashboard.php?holiday_year=<?= (int)$currentYear ?>#holiday-inventory" target="_blank" rel="noopener noreferrer" class="link link-primary"><?= h(HOLIDAY_INVENTORY_ABSENCE_LINK) ?></a></p>
                         <p id="absence-message" class="text-sm" role="status" aria-live="polite"></p>
                         <button type="submit" class="btn btn-primary"><i class="fas fa-calendar-plus"></i>Abwesenheit erfassen</button>
                     </form>

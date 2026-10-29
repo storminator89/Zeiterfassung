@@ -306,4 +306,16 @@ define('DASHBOARD_REPORT_UNRESOLVED', 'Needs review');
 define('DASHBOARD_REPORT_INCOMPLETE', 'Incomplete');
 define('DASHBOARD_REPORT_REVIEW_HINT', 'Please review the bookings manually.');
 define('DASHBOARD_CURRENT_PERIOD_NOTE', 'Week (%s–%s) and month (%s–%s): full current periods, not a to-date balance. Calendar navigation does not change these figures.');
+// Read-only native holiday inventory; never an attestation of completeness.
+define('HOLIDAY_INVENTORY_TITLE', 'Check stored public holidays');
+define('HOLIDAY_INVENTORY_UNVERIFIED', 'Completeness unverified');
+define('HOLIDAY_INVENTORY_ACTION', 'Before recording absences or using target hours, compare the stored dates for the relevant year and practice location with your administrator.');
+define('HOLIDAY_INVENTORY_LIMIT', 'The stored data does not establish its region, source or completeness. The existing automatic source is Baden-Württemberg. This view only shows stored data; it does not import a year or change dates.');
+define('HOLIDAY_INVENTORY_YEAR', 'Year');
+define('HOLIDAY_INVENTORY_SHOW', 'Show stored dates');
+define('HOLIDAY_INVENTORY_INVALID_YEAR', 'Invalid year. The current year is shown; please choose a year from 1 to 9999.');
+define('HOLIDAY_INVENTORY_COUNT', '%d stored entries shown – not evidence of completeness.');
+define('HOLIDAY_INVENTORY_DATA_ISSUE', 'Invalid dates or more than 366 entries: the display is limited; ask your administrator to review the original data.');
+define('HOLIDAY_INVENTORY_EMPTY', 'No entry is stored for this year. This does not mean there are no public holidays.');
+define('HOLIDAY_INVENTORY_ABSENCE_LINK', 'Before crediting an absence: check the stored holidays for the relevant year (new tab).');
 ?>

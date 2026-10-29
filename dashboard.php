@@ -1,6 +1,7 @@
 <?php
 include 'header.php';
 require_once __DIR__ . '/lib/calendar_range.php';
+require_once __DIR__ . '/lib/holiday_inventory.php';
 require_once __DIR__ . '/lib/dashboard_presentation.php';
 
 // Fetch user's regular working hours and previous overtime
@@ -34,6 +35,8 @@ $stmt->execute([$calendarRange['start']->format('Y-m-d'), $calendarRange['end']-
 $eventLabels = ['Arbeit' => WORK, 'Urlaub' => EVENT_VACATION, 'Krankheit' => EVENT_SICK, 'Feiertag' => EVENT_HOLIDAY];
 $events = calendar_range_events($records, $stmt->fetchAll(PDO::FETCH_ASSOC), $calendarRange, $eventLabels);
 $calendarLink = static fn(string $day): string => 'dashboard.php?calendar_date=' . rawurlencode($day) . '#calendar';
+$holidayYear = holiday_inventory_year($_GET['holiday_year'] ?? null, (int)$currentYear);
+$holidayInventory = holiday_inventory($conn, $holidayYear['year']);
 
 // Completed booking days only, using local dates rather than SQLite UTC DATE().
 $monthDays=array_filter($reportDays,fn($day)=>$day>=$currentMonthStart&&$day<=$currentMonthEnd,ARRAY_FILTER_USE_KEY);
@@ -181,6 +184,25 @@ function calculateRemainingHours($workedHours, $expectedHours)
         <h2 class="text-4xl font-bold mb-8 text-center"><?= DASHBOARD_TITLE ?></h2>
 
         <p class="text-sm opacity-70 mb-6"><?= h(sprintf(DASHBOARD_CURRENT_PERIOD_NOTE, $firstDayOfWeek, $lastDayOfWeek, $currentMonthStart, $currentMonthEnd)) ?></p>
+
+        <details id="holiday-inventory" class="mb-6 text-sm border border-base-300 rounded-box p-3" <?= array_key_exists('holiday_year', $_GET) ? 'open' : '' ?>>
+            <summary class="cursor-pointer font-semibold"><?= h(HOLIDAY_INVENTORY_TITLE) ?> · <?= (int)$holidayInventory['year'] ?> · <?= h(HOLIDAY_INVENTORY_UNVERIFIED) ?></summary>
+            <p class="mt-3"><?= h(HOLIDAY_INVENTORY_ACTION) ?></p>
+            <p class="mt-2 opacity-70"><?= h(HOLIDAY_INVENTORY_LIMIT) ?></p>
+            <form method="get" action="dashboard.php#holiday-inventory" class="flex flex-wrap items-end gap-2 mt-3">
+                <input type="hidden" name="calendar_date" value="<?= h($calendarRange['start']->format('Y-m-d')) ?>">
+                <div><label for="holiday-year" class="block"><?= h(HOLIDAY_INVENTORY_YEAR) ?></label><input id="holiday-year" name="holiday_year" type="number" min="1" max="9999" step="1" required value="<?= (int)$holidayInventory['year'] ?>" class="input input-bordered input-sm w-28"></div>
+                <button type="submit" class="btn btn-outline btn-sm"><?= h(HOLIDAY_INVENTORY_SHOW) ?></button>
+            </form>
+            <?php if ($holidayYear['invalid']): ?><p class="mt-2" role="status"><?= h(HOLIDAY_INVENTORY_INVALID_YEAR) ?></p><?php endif; ?>
+            <p class="mt-3 font-semibold"><?= h(sprintf(HOLIDAY_INVENTORY_COUNT, count($holidayInventory['rows']))) ?></p>
+            <?php if ($holidayInventory['truncated'] || $holidayInventory['invalid_dates']): ?><p class="mt-2"><?= h(HOLIDAY_INVENTORY_DATA_ISSUE) ?></p><?php endif; ?>
+            <?php if ($holidayInventory['rows'] === []): ?><p class="mt-2"><?= h(HOLIDAY_INVENTORY_EMPTY) ?></p><?php else: ?>
+            <ul class="list-disc pl-5 mt-2 max-h-64 overflow-y-auto" aria-label="<?= h(HOLIDAY_INVENTORY_TITLE) ?>">
+                <?php foreach ($holidayInventory['rows'] as $holiday): ?><li><?= h($holiday['datum']) ?> · <?= h($holiday['name']) ?></li><?php endforeach; ?>
+            </ul>
+            <?php endif; ?>
+        </details>
 
         <!-- Overall Stats -->
         <div class="mb-8">

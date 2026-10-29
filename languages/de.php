@@ -309,4 +309,16 @@ define('DASHBOARD_REPORT_UNRESOLVED', 'Klärung offen');
 define('DASHBOARD_REPORT_INCOMPLETE', 'Unvollständig');
 define('DASHBOARD_REPORT_REVIEW_HINT', 'Buchungen bitte manuell prüfen.');
 define('DASHBOARD_CURRENT_PERIOD_NOTE', 'Woche (%s–%s) und Monat (%s–%s): volle aktuelle Perioden, nicht bis heute. Kalendernavigation ändert diese Kennzahlen nicht.');
+// Read-only native holiday inventory; never an attestation of completeness.
+define('HOLIDAY_INVENTORY_TITLE', 'Feiertagsbestand prüfen');
+define('HOLIDAY_INVENTORY_UNVERIFIED', 'Vollständigkeit ungeprüft');
+define('HOLIDAY_INVENTORY_ACTION', 'Vor der Erfassung von Abwesenheiten oder Verwendung von Sollzeiten die gespeicherten Termine für das betreffende Jahr und den Praxisstandort mit der Verwaltung abgleichen.');
+define('HOLIDAY_INVENTORY_LIMIT', 'Region, Herkunft und Vollständigkeit sind im Bestand nicht nachgewiesen. Die bisherige automatische Quelle ist Baden-Württemberg. Diese Ansicht zeigt nur gespeicherte Daten; sie lädt keinen Jahrgang nach und ändert keine Termine.');
+define('HOLIDAY_INVENTORY_YEAR', 'Jahr');
+define('HOLIDAY_INVENTORY_SHOW', 'Bestand anzeigen');
+define('HOLIDAY_INVENTORY_INVALID_YEAR', 'Ungültiges Jahr. Angezeigt wird das laufende Jahr; bitte ein Jahr von 1 bis 9999 wählen.');
+define('HOLIDAY_INVENTORY_COUNT', '%d gespeicherte Einträge angezeigt – kein Vollständigkeitsnachweis.');
+define('HOLIDAY_INVENTORY_DATA_ISSUE', 'Ungültige Datumswerte oder mehr als 366 Einträge: Anzeige begrenzt; bitte den Originalbestand durch die Verwaltung prüfen lassen.');
+define('HOLIDAY_INVENTORY_EMPTY', 'Kein Eintrag für diesen Jahrgang vorhanden. Das bedeutet nicht, dass es keine Feiertage gibt.');
+define('HOLIDAY_INVENTORY_ABSENCE_LINK', 'Vor einer Abwesenheitsgutschrift: Feiertagsbestand für das betreffende Jahr prüfen (neuer Tab).');
 ?>
