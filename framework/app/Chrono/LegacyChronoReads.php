@@ -147,18 +147,27 @@ final class LegacyChronoReads implements ChronoReads
             $weekHours = report_period_minutes($days, $weekStart, $weekEnd) / 60;
             $monthHours = report_period_minutes($days, ...$periods['month']) / 60;
             $yearHours = report_period_minutes($days, ...$periods['year']) / 60;
-            $plannedWeek = planned_hours($pdo, $user, $weekStart, $weekEnd);
-            $plannedMonth = planned_hours($pdo, $user, ...$periods['month']);
-            $plannedYear = planned_hours($pdo, $user, ...$periods['year']);
+            // One operation-local resolver in this already-authorized read snapshot.
+            // Cover current periods (including ISO-week year edges) and every report-start-day.
+            $plannedFirst = min($weekStart, $periods['year'][0]);
+            $plannedLast = max($weekEnd, $periods['year'][1]);
+            foreach ($days as $day => $_minutes) {
+                if (strcmp((string) $day, $plannedFirst) < 0) { $plannedFirst = (string) $day; }
+                if (strcmp((string) $day, $plannedLast) > 0) { $plannedLast = (string) $day; }
+            }
+            $planned = \planned_minutes_snapshot($pdo, $user, $plannedFirst, $plannedLast);
+            $plannedWeek = planned_hours($pdo, $user, $weekStart, $weekEnd, $planned);
+            $plannedMonth = planned_hours($pdo, $user, $periods['month'][0], $periods['month'][1], $planned);
+            $plannedYear = planned_hours($pdo, $user, $periods['year'][0], $periods['year'][1], $planned);
             $monthDays = array_filter($days, static fn (string $day): bool => $day >= $periods['month'][0] && $day <= $periods['month'][1], ARRAY_FILTER_USE_KEY);
             $workedDays = count($monthDays);
             require_once dirname(__DIR__, 3).'/lib/dashboard_presentation.php';
             $components = \chrono_dashboard_components($records, $weekStart, $weekEnd, ...$periods['month']);
             // The native cards remain CURRENT-period statistics when browsing an old week.
             $statistics = [
-                'regular_hours' => home_daily_hours($pdo, $user, $today),
+                'regular_hours' => home_daily_hours($pdo, $user, $today, $planned),
                 'weeks_count' => count($weeks), 'is_first_week' => count($weeks) === 1,
-                'total_overtime' => report_format_hours(home_total_overtime($pdo, $user, $days, (float) ($userData['ueberstunden'] ?? 0.0))),
+                'total_overtime' => report_format_hours(home_total_overtime($pdo, $user, $days, (float) ($userData['ueberstunden'] ?? 0.0), $planned)),
                 'year_overtime' => report_format_hours($yearHours - $plannedYear),
                 'week_hours' => report_format_hours($weekHours),
                 'week_work_hours' => report_format_hours($components['week_work_minutes'] / 60),

@@ -96,8 +96,9 @@ function planned_minutes_value(DateTimeImmutable $date,?array $model,?array $u):
     if ($model) { return (int)json_decode($model['minutes_json'],true)[(int)$date->format('N')-1]; }
     return (int)$date->format('N')<=5 ? max(0,min(1440,(int)round((float)($u['regelarbeitszeit']??0)*60))) : 0;
 }
-function planned_hours(PDO $db,int $user,string $start,string $end): float {
-    $sum=0;for($d=practice_date($start);$d<=practice_date($end);$d=$d->modify('+1 day')) { $sum+=planned_minutes($db,$user,$d->format('Y-m-d')); }return $sum/60;
+/** Optional trusted operation-local resolver; four-argument callers keep their SQL path. */
+function planned_hours(PDO $db,int $user,string $start,string $end,?Closure $planned=null): float {
+    $sum=0;for($d=practice_date($start);$d<=practice_date($end);$d=$d->modify('+1 day')) { $sum+=($planned===null?planned_minutes($db,$user,$d->format('Y-m-d')):$planned($d->format('Y-m-d'))); }return $sum/60;
 }
 /** One deterministic date/type parser shared by both absence entry points. */
 function practice_absence_range(string $start,string $end,string $kind): array {
