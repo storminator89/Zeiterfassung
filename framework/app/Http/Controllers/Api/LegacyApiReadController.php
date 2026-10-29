@@ -7,6 +7,7 @@ use App\Chrono\ApiTimeEntriesQuery;
 use App\Chrono\AttendanceWorkflowStatus;
 use App\Chrono\ChronoReads;
 use App\Chrono\OwnApiCorrectionStatusReads;
+use App\Chrono\OwnApiWorkModelReads;
 use AttendanceError;
 use Illuminate\Contracts\Validation\Factory;
 use Illuminate\Http\Request;
@@ -68,6 +69,25 @@ final class LegacyApiReadController
             return LegacyApiResponse::json($this->reads->ownApiCorrectionStatus($page['status'], $page['limit'], $page['offset']));
         } catch (Throwable) {
             return LegacyApiResponse::json(['success' => false, 'message' => 'Correction status unavailable.'], 503);
+        }
+    }
+
+    public function workModel(Request $request): Response
+    {
+        parse_str($request->server('QUERY_STRING', ''), $query);
+        require_once dirname(__DIR__, 5).'/lib/api_work_model.php';
+        try {
+            $day = \api_work_model_query($query);
+        } catch (\InvalidArgumentException $error) {
+            return LegacyApiResponse::json(['success' => false, 'message' => $error->getMessage()], 400);
+        }
+        if (! $this->reads instanceof OwnApiWorkModelReads) {
+            return LegacyApiResponse::json(['success' => false, 'message' => 'Work model unavailable.'], 503);
+        }
+        try {
+            return LegacyApiResponse::json($this->reads->ownApiWorkModel($day));
+        } catch (Throwable) {
+            return LegacyApiResponse::json(['success' => false, 'message' => 'Work model unavailable.'], 503);
         }
     }
 
