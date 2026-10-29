@@ -377,6 +377,32 @@ function getCorrectionStatus($conn, $user_id) {
     }
 }
 
+function getWorkModel($conn, $user_id) {
+    header('Cache-Control: no-store');
+    require_once __DIR__.'/lib/api_work_model.php';
+    try {
+        $day = api_work_model_query($_GET);
+    } catch (InvalidArgumentException $error) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $error->getMessage()]);
+        return;
+    }
+    try {
+        $conn->beginTransaction();
+        try {
+            $result = api_own_work_model_snapshot($conn, (int) $user_id, $day);
+            $conn->commit();
+        } catch (Throwable $error) {
+            if ($conn->inTransaction()) { $conn->rollBack(); }
+            throw $error;
+        }
+        echo json_encode($result, JSON_THROW_ON_ERROR);
+    } catch (Throwable) {
+        http_response_code(503);
+        echo json_encode(['success' => false, 'message' => 'Work model unavailable.']);
+    }
+}
+
 // Parse the URL path and route the request to the appropriate function
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'];
@@ -438,6 +464,10 @@ if ($method === 'POST') {
         case $basePath . '/corrections':
             $tokenData = validateToken();
             getCorrectionStatus($conn, $tokenData['user_id']);
+            break;
+        case $basePath . '/work-model':
+            $tokenData = validateToken();
+            getWorkModel($conn, $tokenData['user_id']);
             break;
         case $basePath . '/timeentries':
             $tokenData = validateToken();

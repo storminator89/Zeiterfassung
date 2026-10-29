@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads
+final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiWorkModelReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -281,6 +281,15 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
             require_once dirname(__DIR__, 3).'/lib/api_correction_status.php';
 
             return \api_own_correction_status_snapshot($pdo, (int) $actor->getKey(), $status, $limit, $offset);
+        }, false);
+    }
+
+    public function ownApiWorkModel(?string $day): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($day): array {
+            require_once dirname(__DIR__, 3).'/lib/api_work_model.php';
+
+            return \api_own_work_model_snapshot($pdo, (int) $actor->getKey(), $day);
         }, false);
     }
 

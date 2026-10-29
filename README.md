@@ -67,6 +67,7 @@ Die API ist im Laravel-Standardstart **ausgeschaltet**. Nach der Browser-Erstein
 | `POST /api.php/attendance` | `start`, `pause_start`, `pause_end`, `end` mit eindeutiger `event_id` |
 | `GET /api.php/timeentries` | Eigene Einträge, paginiert |
 | `GET /api.php/users` | Eigenes Konto als einelementige Liste |
+| `GET /api.php/work-model` | Eigene gespeicherte Modellversion für einen Berlin-Tag, keine Soll-/Saldo-Neuberechnung |
 
 `workentry` und `setendzeit` bleiben Start-/Endaliase. Clientzeiten sind nicht maßgeblich; historische Nachträge, direkte Änderungen und Löschungen gehören in den Korrekturworkflow. Bei unsicherem Ausgang dasselbe Ereignis mit unverändertem Inhalt wiederholen.
 
