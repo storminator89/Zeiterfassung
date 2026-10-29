@@ -5,6 +5,10 @@
 
 Selbst gehostete Zeiterfassung für Beschäftigte, Führungskräfte und Verwaltung: Arbeitszeit, tatsächliche Pausen, Abwesenheiten und nachvollziehbare Korrekturen in einer Webanwendung.
 
+## Video
+
+[![Quodara Chrono Tutorial](https://img.youtube.com/vi/vh1hj4rqv88/0.jpg)](https://www.youtube.com/watch?v=vh1hj4rqv88)
+
 ## Funktionsumfang
 
 - **Kommen, Pause, Gehen:** serverseitige Zeitstempel, bestätigte Buchungen und Schutz vor Doppelbuchung bei Wiederholung derselben `event_id` mit identischem Inhalt; Arbeitsort und Notiz optional beim Start. Keine automatisch abgezogenen Mindestpausen.
@@ -68,5 +72,34 @@ Einstieg: `/api.php`. JWTs gelten eine Stunde und werden bei Passwortänderung o
 
 - [Praxisfunktionen und Fachregeln](docs/PRAXISFUNKTIONEN.md) · [Terminal-Konzept](docs/PRAXIS-TERMINAL-PLAN.md)
 - [Sicherheit und Betrieb](SECURITY.md) · [Sicherheitsreview und Grenzen](SECURITY-REVIEW.md) · [MIT-Lizenz](LICENSE)
-- [Tutorial auf YouTube](https://www.youtube.com/watch?v=vh1hj4rqv88)
-- Screenshots: [Startseite](assets/mainPage_Screenshot.png), [weitere Ansicht](assets/mainPage_Screenshot2.png), [Browsererweiterung](assets/erweiterung_edge.png), [Dashboard](assets/Dashboard_Screenshot.png), [Benutzerverwaltung](assets/user_management.png), [Vorgesetztenansicht](assets/supervisor.png), [Einstellungen](assets/settings.png), [Dunkelmodus](assets/darkmode.png)
+
+## Screenshots
+
+### Startseite
+
+![Startseite](assets/mainPage_Screenshot.png)
+![Weitere Ansicht der Startseite](assets/mainPage_Screenshot2.png)
+
+### Browsererweiterung
+
+![Browsererweiterung](assets/erweiterung_edge.png)
+
+### Dashboard
+
+![Dashboard](assets/Dashboard_Screenshot.png)
+
+### Benutzerverwaltung
+
+![Benutzerverwaltung](assets/user_management.png)
+
+### Vorgesetztenansicht
+
+![Vorgesetztenansicht](assets/supervisor.png)
+
+### Einstellungen
+
+![Einstellungen](assets/settings.png)
+
+### Dunkelmodus
+
+![Dunkelmodus](assets/darkmode.png)
