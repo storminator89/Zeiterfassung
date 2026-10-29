@@ -131,7 +131,8 @@ The REST API is available at `/api.php`
 - **POST /api.php/login:** User login. Requires `username` and `password`.
 - **POST /api.php/workentry:** Start work with server time (historical entries require correction). Send a unique `event_id` for safe retries; client timestamps are not authoritative.
 - **POST /api.php/setendzeit:** Set end time for a specific work entry. Requires `id`.
-- **GET /api.php/attendance:** Get authoritative own attendance as `{success:true,state,record_id}`. `state` is `absent`, `working` or `paused`; `record_id` is an integer for an active record, otherwise `null`. Requires the existing bearer token; no user selector or booking is accepted.
+- **GET /api.php/attendance:** Read authoritative own `absent`/`working`/`paused` status with the existing bearer token, `record_id`, exact `record_id_string` and `start_metadata_version:1`. No user selector or booking is accepted.
+  Explicit `?workflow=1` additionally returns the already implemented versioned state-only action hints, exact expected-record text and paused-end confirmation requirement; it is not authorization or a receipt, and never replaces write rechecks or stable pending-event replay. Omit the parameter for the unchanged default response. [Scope and limits](docs/native-attendance-workflow.md).
 - **GET /api.php/users:** Get the currently authenticated user as a one-element array.
 - **GET /api.php/timeentries:** Get a bounded page of own time entries (`limit` default 100, maximum 1000; nonnegative integer `offset`). [Pagination contract and migration](docs/CH18-API-PAGINATION.md).
 - **DELETE /api.php/timeentry/{id}:** Disabled (409); use an approved cancellation request.
