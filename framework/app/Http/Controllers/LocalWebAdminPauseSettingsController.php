@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
+use App\Chrono\DepartmentIntegrityReads;
 use App\Chrono\LocalWebAccountLifecycle;
 use App\Chrono\LocalWebLdapSync;
 use App\Chrono\LocalWebLdapSessionRevocations;
@@ -427,6 +428,34 @@ final class LocalWebAdminPauseSettingsController extends Controller
         if (($v4 || $v5) && $this->config?->get('app.debug') !== false) {
             return $this->ldapFailure('Private non-debug Admin document composition is required.', 503);
         }
+        $departmentIntegrity = null;
+        $departmentIntegrityRequested = false;
+        $query = $request->query->all();
+        if ($request->isMethod('GET') && (array_key_exists('department_integrity', $query)
+            || array_key_exists('department_after', $query))) {
+            if (! $localSecurityControls) {
+                throw new AuthorizationException('Nur lokale Administration darf Benutzerzuordnungen prüfen.');
+            }
+            if (($query['department_integrity'] ?? null) !== '1'
+                || (array_key_exists('department_after', $query) && ! is_string($query['department_after']))) {
+                return new Response('Ungültige Prüfseite.', 400,
+                    ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
+            }
+            $departmentIntegrityRequested = true;
+            try {
+                if ($this->reads instanceof DepartmentIntegrityReads) {
+                    $departmentIntegrity = $this->reads->departmentIntegrity($query['department_after'] ?? null);
+                }
+            } catch (AuthenticationException|AuthorizationException $error) {
+                throw $error;
+            } catch (InvalidArgumentException) {
+                return new Response('Ungültige Prüfseite.', 400,
+                    ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
+            } catch (Throwable) {
+                // Unavailable is not an empty or healthy inventory; no raw diagnostics.
+                $departmentIntegrity = null;
+            }
+        }
         // Business readers reload current role/source/version/generation before
         // returning rows. Sensitive local readers are not called for LDAP Admins.
         $rules = $this->reads->adminPauseSettings();
@@ -545,6 +574,8 @@ final class LocalWebAdminPauseSettingsController extends Controller
                 accountLifecycleV5: $v5,
                 createUserDraft: $localSecurityControls ? $createUserDraft : null,
                 localSecurityControls: $localSecurityControls,
+                departmentIntegrity: $departmentIntegrity,
+                departmentIntegrityRequested: $departmentIntegrityRequested,
             ),
         ], 200, ['Cache-Control' => 'no-store']);
         if ($nonce !== null) {
