@@ -98,7 +98,17 @@
         }
         async function readJson(response) {
             try { return await response.json(); }
-            catch (error) { throw new Error('Keine gültige Serverantwort erhalten. Bitte neu laden und Anmeldung prüfen.'); }
+            catch (error) { throw responseError('Keine gültige Serverantwort erhalten. Bitte neu laden und Anmeldung prüfen.', response); }
+        }
+        function responseError(text, response) {
+            let requestId = null;
+            try {
+                if (Number.isInteger(response.status) && response.status >= 500 && response.status <= 599) {
+                    const value = response.headers?.get?.('X-Request-ID');
+                    if (typeof value === 'string' && value.length === 32 && /^[a-f0-9]+$/.test(value)) requestId = value;
+                }
+            } catch (ignored) { /* Best-effort presentation must not replace the original error. */ }
+            return new Error(requestId === null ? text : `${text} Anfragekennung: ${requestId} (kein Buchungsnachweis).`);
         }
         function message(text) {
             document.querySelectorAll('#message, #attendance-message').forEach(element => { element.textContent = text; });
@@ -204,7 +214,7 @@
                 const startedAt = revision;
                 refreshing = (async () => {
                     const response = await request('attendance.php?format=status', {cache: 'no-store', redirect: 'error'});
-                    if (!response.ok) throw new Error('Anzeige konnte nicht aktualisiert werden. Bitte Seite neu laden.');
+                    if (!response.ok) throw responseError('Anzeige konnte nicht aktualisiert werden. Bitte Seite neu laden.', response);
                     const data = await readJson(response);
                     if (!data.success || !Object.hasOwn(allowed, data.state)
                         || (data.state === 'absent' ? data.expected_record !== null : !recordString(data.expected_record))) {
@@ -268,7 +278,7 @@
                     body: new URLSearchParams({...pending, csrf_token: token})});
                 if (!response.ok && response.status < 500 && ![401, 403].includes(response.status)) { expectedRecord = null; pending = null; rememberPending(); }
                 const data = await readJson(response);
-                if (!response.ok) throw new Error(data.message || 'Buchung wurde nicht bestätigt.');
+                if (!response.ok) throw responseError(data.message || 'Buchung wurde nicht bestätigt.', response);
                 if (!data.success || !Object.hasOwn(allowed, data.state) || !acknowledgedStartMetadata(pending, data)) throw new Error('Keine gültige Buchungsbestätigung erhalten. Dieselbe Aktion erneut versuchen.');
                 if (pending.action === 'start') {
                     document.querySelectorAll('[data-start-metadata]').forEach(fields => { fields.querySelector('#attendance-location').value = 'office'; fields.querySelector('#attendance-note').value = ''; });

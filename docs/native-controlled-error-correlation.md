@@ -103,3 +103,49 @@ Transportjourney, der unveränderte vorhandene API-Fehler-Grobnachweis sowie
 PHP-Syntax und Diffcheck erneut ausgeführt. Alle übrigen Basisdateien und Modi
 bleiben exakt erhalten. Keine neue kleinteilige Testsuite oder Remoteaktion.
 Der offene Merge-Denial von PR #239 bleibt vollständig unberührt.
+
+## #66-Nachtrag: Anfragekennung im vorhandenen Anwesenheitshinweis
+
+Enger Client-Quellschritt auf Main
+`92a38f3dd4891d0f7037b6559e13222691da37dd`, Baum
+`1d9c5cf41b33bab3eed83b3bc5e986bc85caabbe`. Bei Anwesenheits-POST- oder
+Statuslesefehlern ergänzt der vorhandene Client den bisherigen Meldungstext
+um `Anfragekennung: … (kein Buchungsnachweis).`, sofern der tatsächliche
+Antwortstatus ganzzahlig500–599 ist und `X-Request-ID` exakt32 kleine
+Hexzeichen enthält. Das ist nur eine Formatprüfung der Antwortkennung, keine
+kryptografische Serverprüfung, Buchungsquittung oder Aussage über einen COMMIT.
+
+Ausgegeben wird weiter ausschließlich über das bestehende `textContent`.
+Fehlende/abweichende Headerwerte, 2xx/4xx und Netzfehler erzeugen keinen
+Ersatzwert. Auch fehlgeschlagene Headerabfrage darf die ursprüngliche Meldung
+nicht ersetzen. Bei unlesbarem JSON bleibt der feste bisherige Fehlertext
+erhalten; nur eine zulässige5xx-Kennung kann angehängt werden. Ein bestätigter
+POST mit anschließend fehlgeschlagenem Statusread behält den bisherigen
+Bestätigungspräfix und zeigt nur die Kennung dieses fehlgeschlagenen Reads.
+
+Keine Kennung wird in Pending/Sessionstorage/POST übernommen oder protokolliert.
+Ereignis-ID, exakter Retrypayload, Bestätigung, Storage-/Kontobindung, Status- und
+Revisionslogik bleiben unverändert.5xx/Antwortverlust behalten weiterhin den
+ungeklärten Vorgang; eine Anfragekennung beweist weder fehlende noch erfolgte
+Verarbeitung. Abwesenheitsformular, Tabellenclient, Login, API/Erweiterungen und
+globale Fehlerdarstellung werden nicht erweitert. Es gibt keinen neuen Header,
+CORS-/Expose-Schalter, Logtransport, Endpunkt, neuen Dienst oder Runtimezugang.
+
+Die vorhandene feste Public-Kopie bleibt bytegleich; ausschließlich ihr bisheriger
+FreshWeb-Hash und die zugehörige Assetdokumentation folgen den neuen Bytes.
+Keine alternative Assetzulassung oder Lockerung des Validators. Der isolierte
+VM-/Transportnachweis nutzt nur erfundenen DOM, Speicher und Antworten; keine
+tatsächliche Server-/Proxy-/Logzustellung oder Browserabnahme wird daraus
+abgeleitet. #66 bleibt für die übrigen Betriebs- und Alarmierungsgates offen.
+
+Der grobe tatsächliche Public-Client-/Startupadapter-VMvergleich bestätigt nur
+den Meldungszusatz gegenüber der Basis: simulierte gespeicherte Startwirkung
+mit5xx-Antwort, Reload und exaktem Metadaten-/Ereignis-Replay einmal; bestätigtes
+Ende mit eigener fehlgeschlagener Statusabfrage; unlesbares5xx-JSON und derselbe
+Replay. Pending-/POST-/Receipt-/Wirkungszustände bleiben gleich. Ungültiger oder
+werfender Headerzugriff, Netzwerkfehler, erfolgreiche Antwort,4xx,
+Speicherverweigerung und bisheriger Abwesenheitsfallback bleiben Kontrollen ohne
+Kennungszusatz. Keine Antwortkennung im gespeicherten Vorgang oder Folgerequest.
+Die vorhandene reine Assetprüfung akzeptiert passende alte/neue Kopie+Pins und
+verweigert beide gemischten Kombinationen. Notwendige JS-/PHP-Syntax und
+Quellerhaltung sind separat geprüft; keine neue Repositorytestsuite oder CI.
