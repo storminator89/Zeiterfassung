@@ -236,4 +236,5 @@ return [
     'HOLIDAY_INVENTORY_ABSENCE_LINK' => 'Before crediting an absence: check the stored holidays for the relevant year (new tab).',
     'HOLIDAY_INVENTORY_UNAVAILABLE' => 'The stored holiday inventory is currently unavailable. Please view it again later; no year was imported or changed.',
     'CSV_EXPORT_NEW_CONTEXT_HINT' => 'CSV downloads and error messages open separately; your selection stays on this page.',
+    'ADMIN_USER_DELETE_HISTORY_LOCKED' => 'Deletion blocked: accounts with history are retained.',
 ];

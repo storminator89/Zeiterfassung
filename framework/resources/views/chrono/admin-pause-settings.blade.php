@@ -160,7 +160,9 @@
                             <td>{{ $user['regelarbeitszeit'] }}</td><td>{{ $user['ueberstunden'] }}</td>
                             <td>
                                 <button type="button" class="btn btn-ghost btn-sm" data-read-user="{{ $user['id'] }}" title="{{ $page->copy->text('BUTTON_EDIT') }}"><i class="fas fa-edit"></i></button>
-                                @if ($managedUsersEnabled)
+                                @if (($user['has_audit_history'] ?? false) === true)
+                                <span class="inline-block text-sm">{{ $page->copy->text('ADMIN_USER_DELETE_HISTORY_LOCKED') }}</span>
+                                @elseif ($managedUsersEnabled)
                                 <form method="post" class="inline" data-delete-managed-user>
                                     @csrf
                                     <input type="hidden" name="delete_user" value="1">
