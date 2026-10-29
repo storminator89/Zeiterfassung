@@ -55,6 +55,7 @@
                             </div>
                         </fieldset>
                         <p class="text-sm opacity-70">Urlaub und Krankheit erhalten die Sollminuten Ihres Arbeitszeitmodells. Freie Tage und hinterlegte Feiertage werden ausgelassen. Gutschriften sind keine gestempelten Arbeitszeiten.</p>
+                        @if ($page->interactions->dashboard)<p class="text-sm opacity-70"><a class="link link-primary" href="dashboard.php?holiday_inventory=1#holiday-inventory" target="_blank" rel="noopener noreferrer">{{ $page->copy->text('HOLIDAY_INVENTORY_ABSENCE_LINK') }}</a></p>@endif
                         <p id="absence-message" class="text-sm" role="status" aria-live="polite"></p>
                         <button type="submit" class="btn btn-primary"><i class="fas fa-calendar-plus"></i>Abwesenheit erfassen</button>
                         </fieldset>

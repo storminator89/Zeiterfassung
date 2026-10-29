@@ -99,6 +99,32 @@
         <h2 class="text-4xl font-bold mb-8 text-center">{{ $page->copy->text('DASHBOARD_TITLE') }}</h2>
         <p class="text-sm mb-6">{{ $page->copy->text('DASHBOARD_PERIOD_BASIS') }}</p>
 
+        @if ($holidayInventoryUnavailable ?? false)
+        <details id="holiday-inventory" class="mb-6 text-sm border border-base-300 rounded-box p-3" @if ($holidayInventoryOpen ?? false) open @endif>
+            <summary class="cursor-pointer font-semibold">{{ $page->copy->text('HOLIDAY_INVENTORY_TITLE') }} · {{ $page->copy->text('HOLIDAY_INVENTORY_UNVERIFIED') }}</summary>
+            <p class="mt-3" role="status">{{ $page->copy->text('HOLIDAY_INVENTORY_UNAVAILABLE') }}</p>
+        </details>
+        @elseif (($holidayInventory ?? null) !== null)
+        <details id="holiday-inventory" class="mb-6 text-sm border border-base-300 rounded-box p-3" @if ($holidayInventoryOpen ?? false) open @endif>
+            <summary class="cursor-pointer font-semibold">{{ $page->copy->text('HOLIDAY_INVENTORY_TITLE') }} · {{ $holidayInventory['year'] }} · {{ $page->copy->text('HOLIDAY_INVENTORY_UNVERIFIED') }}</summary>
+            <p class="mt-3">{{ $page->copy->text('HOLIDAY_INVENTORY_ACTION') }}</p>
+            <p class="mt-2 opacity-70">{{ $page->copy->text('HOLIDAY_INVENTORY_LIMIT') }}</p>
+            <form method="get" action="dashboard.php#holiday-inventory" class="flex flex-wrap items-end gap-2 mt-3">
+                <input type="hidden" name="calendar_date" value="{{ $dashboard->range['start']->format('Y-m-d') }}">
+                <div><label for="holiday-year" class="block">{{ $page->copy->text('HOLIDAY_INVENTORY_YEAR') }}</label><input id="holiday-year" name="holiday_year" type="number" min="1" max="9999" step="1" required value="{{ $holidayInventory['year'] }}" class="input input-bordered input-sm w-28"></div>
+                <button type="submit" class="btn btn-outline btn-sm">{{ $page->copy->text('HOLIDAY_INVENTORY_SHOW') }}</button>
+            </form>
+            @if ($holidayInventory['selection_invalid'])<p class="mt-2" role="status">{{ $page->copy->text('HOLIDAY_INVENTORY_INVALID_YEAR') }}</p>@endif
+            <p class="mt-3 font-semibold">{{ sprintf($page->copy->text('HOLIDAY_INVENTORY_COUNT'), count($holidayInventory['rows'])) }}</p>
+            @if ($holidayInventory['truncated'] || $holidayInventory['invalid_dates'])<p class="mt-2">{{ $page->copy->text('HOLIDAY_INVENTORY_DATA_ISSUE') }}</p>@endif
+            @if ($holidayInventory['rows'] === [])<p class="mt-2">{{ $page->copy->text('HOLIDAY_INVENTORY_EMPTY') }}</p>@else
+            <ul class="list-disc pl-5 mt-2 max-h-64 overflow-y-auto" aria-label="{{ $page->copy->text('HOLIDAY_INVENTORY_TITLE') }}">
+                @foreach ($holidayInventory['rows'] as $holiday)<li>{{ $holiday['datum'] }} · {{ $holiday['name'] }}</li>@endforeach
+            </ul>
+            @endif
+        </details>
+        @endif
+
         <!-- Overall Stats -->
         <div class="mb-8">
             <h3 class="text-2xl font-semibold mb-4">{{ $page->copy->text('DASHBOARD_OVERALL_STATS') }}</h3>
