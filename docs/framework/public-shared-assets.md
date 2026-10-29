@@ -15,7 +15,7 @@ zusätzlicher Webroot oder Zugriff auf private Frameworkquellen wird eingeführt
 | `assets/css/main.css` | `framework/public/assets/css/main.css` | 19247 | `d293dcf9d31e0adfc0c6cda1c2f03f4c57afe325c79e223794460dc9f94c4e6f` |
 | `assets/css/app_ui.css` | `framework/public/assets/css/app_ui.css` | 6546 | `4f8bf76f83a5c5d3ea3807818a792aa2b4c12ec83aaf46a33342d1aadf4adc1e` |
 | `assets/js/main.js` | `framework/public/assets/js/main.js` | 8028 | `a9ccf2539d158cd6548bfd6deda6e561bdd4025b8d8d32443da385d3d6b655d9` |
-| `assets/js/attendance.js` | `framework/public/assets/js/attendance.js` | 22842 | `2927b317a339028f077ceb0d03cdc3e25b3036934da5d48e4de59c0020fa63ac` |
+| `assets/js/attendance.js` | `framework/public/assets/js/attendance.js` | 24265 | `86b759f00e3a9aa02b2d2f96d0ab1acf815114becb7691c7ccfb2c9997730b17` |
 | `framework/resources/js/chrono-local-web.js` | `framework/public/assets/js/chrono-local-web.js` | 2984 | `9940b5723b21a2fa21f39db9471523ff5818bc6946a480607c2e5cac20516b3b` |
 
 Logo, CSS und die drei vorhandenen Clients blieben im ursprünglichen Paket unverändert. Keine neue
@@ -112,3 +112,18 @@ die Tabellenzeile wurden aktualisiert. Alle fünf anderen Pins, der eigentliche
 Validator, Startupadapter, Auth-/Domain-/V5-/Runtimekonfiguration und APIs bleiben
 erhalten. Kein neuer öffentlicher Pfad, dynamischer Copy-/Fallbackweg, anderer
 Client, Log- oder Host-/Securityschalter und keine Laufzeitaktivierung.
+
+## #14-Nachtrag: exakte Korrekturlinks der jüngsten Zeilen
+
+Quellschritt auf Main `830b30f92066ba152e1d6f1aedd8da7a7fe671d5`, Baum
+`c332690c347fe133175753a2544a7897a754b47e`: Die vorhandenen nativen/Laravel-
+Webstatusreads ergänzen nur einen exakten `id_string` derselben eigenen Zeile.
+Der gemeinsame Client verwendet ihn statt einer gerundeten JS-Nummer für
+Korrekturlinks; unklare/fehlerhafte IDs werden ohne Link angezeigt, niemals als
+Record0. Alte sichere Nummern und kanonische Strings bleiben verwendbar.
+Details und Grenzen im [#14-Nachtrag](../CH30-EXPECTED-RECORD.md#14-nachtrag-jüngste-korrekturlinks-behalten-die-exakte-zeilen-id).
+
+Die feste Public-Kopie ist bytegleich; nur ihr bisheriger exakter Attendancehash
+und die Tabelle oben ändern sich. Alle anderen Pins und Validatoren sowie
+Startup-/Pending-/Event-/Retry-/#66-/V5-/Runtimegrenzen bleiben erhalten.
+Kein neuer öffentlicher Assetpfad, dynamischer Fallback oder Betriebszugang.

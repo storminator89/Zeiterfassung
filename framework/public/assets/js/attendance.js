@@ -185,6 +185,21 @@
                 button.classList.toggle('loading', busy && action === pending?.action);
             });
         }
+        function recentCorrectionId(record) {
+            const maximum = '9223372036854775807'; // Existing positive SQLite row-ID range, not a new writer rule.
+            const exactId = value => recordString(value) && !/[^0-9]/.test(value) && (value.length < maximum.length
+                || (value.length === maximum.length && value <= maximum));
+            if (Object.hasOwn(record, 'id_string')) {
+                const exact = record.id_string;
+                if (!exactId(exact)) return null; // A malformed additive field must not fall back to another ID.
+                if (typeof record.id === 'string') return record.id === exact ? exact : null;
+                // Number checks only consistency of the already-lossy legacy wire field; it never constructs the link.
+                return typeof record.id === 'number' && Number.isInteger(record.id) && record.id > 0
+                    && Number(exact) === record.id ? exact : null;
+            }
+            if (exactId(record.id)) return record.id; // Legacy string IDs are already exact.
+            return Number.isSafeInteger(record.id) && record.id > 0 ? String(record.id) : null;
+        }
         function renderRecent(records) {
             const body = document.getElementById('recent-records');
             if (!body || !Array.isArray(records)) return;
@@ -199,10 +214,16 @@
                     cell.textContent = value ?? '';
                     row.append(cell);
                 }
-                const cell = document.createElement('td'), link = document.createElement('a');
-                link.href = `adjustments.php?record_id=${Number(record.id)}`;
-                link.textContent = 'Beantragen';
-                cell.append(link); row.append(cell); fragment.append(row);
+                const cell = document.createElement('td'), correctionId = recentCorrectionId(record);
+                if (correctionId === null) {
+                    cell.textContent = 'Buchung nicht eindeutig verlinkbar.';
+                } else {
+                    const link = document.createElement('a');
+                    link.href = `adjustments.php?record_id=${correctionId}`;
+                    link.textContent = 'Beantragen';
+                    cell.append(link);
+                }
+                row.append(cell); fragment.append(row);
             }
             body.replaceChildren(fragment);
         }

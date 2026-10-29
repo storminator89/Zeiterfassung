@@ -22,8 +22,9 @@ oder demselben gültigen Webstatussnapshot. Der Webstatus ergänzt dafür
 und der separate APIstatus unverändert bleiben. Die `expected_record`-Sitzungsbindung
 wird im Client nie über `Number` konvertiert: auch eine vorhandene SQLite-ID
 jenseits der sicheren JavaScript-Integergrenze bleibt dafür ein exakter String.
-Unveränderte Korrekturlinks der jüngsten Zeilen verwenden weiterhin `Number(record.id)`;
-keine allgemeine Big-ID-Kompatibilität sämtlicher UIpfade wird behauptet.
+Die damals unveränderten Korrekturlinks der jüngsten Zeilen verwendeten noch
+`Number(record.id)`; der unten abgegrenzte #14-Nachtrag behebt genau diesen
+Darstellungspfad. Keine allgemeine Big-ID-Kompatibilität sämtlicher UIpfade wird behauptet.
 Keine neue ID-Betragsgrenze für die Sitzungsbindung.
 Ohne bestätigte Bindung sind neue Nicht-Start-Aktionen deaktiviert.
 
@@ -105,3 +106,60 @@ Ausführung oder neue CI. Echte Mehrtab-/Reload-/Betriebsabnahme bleibt offen,
 ebenso #57-Konto-/Tokenwechsel und ungeklärte sitzungsübergreifende Ereignisse.
 Ein produktiver gemischter Alt-/Neuwriterrollout wird nicht freigegeben; die
 bestehenden Ein-Writer-/Cutover-/Rücknahmegates gelten weiter.
+
+## #14-Nachtrag: jüngste Korrekturlinks behalten die exakte Zeilen-ID
+
+Quellschritt auf Main `830b30f92066ba152e1d6f1aedd8da7a7fe671d5`, Baum
+`c332690c347fe133175753a2544a7897a754b47e`. Der bisherige tatsächliche
+`renderRecent` erzeugte nach JSONzahlen-Decodierung für9007199254740993 den Link
+auf9007199254740992. Das ist isoliert am unveränderten Renderer reproduziert,
+keine Behauptung einer real fehlgeleiteten Korrektur.
+
+Native `attendance.php?format=status` und der vorhandene Laravel-Webstatusreader
+fügen in ihrer selben eigenen30er-Abfrage nur `CAST(id AS TEXT) AS id_string`
+hinzu. Numerische `id`, alle anderen alten Felder/Typen/Werte, Reihenfolge,
+Ownerprädikat, Limit, Transaktion, Kontext und Status bleiben erhalten. Kein
+weiterer Read, Subjectparameter oder neuer Pfad. Der getrennte öffentliche
+APIstatus/-vertrag und alle Schreib-/Receipt-/Terminalwege bleiben unverändert.
+
+Der gemeinsame Client baut diesen Korrekturlink ausschließlich aus dem exakten
+String. Zulässig sind positive kanonische Dezimalstrings im bereits bestehenden
+SQLite-Row-ID-Bereich bis9223372036854775807. Der alte numerische Wirewert dient
+nur einer Plausibilitätskontrolle: `Number(exact)` wird niemals als Link-ID
+verwendet oder zur Rekonstruktion einer verlorenen Zahl betrachtet. Ein
+widersprüchlicher oder fehlerhafter neuer Wert fällt nicht auf eine andere ID
+zurück. Auch fehlende/negative/Null-/gebrochene/zu große Werte ergeben keinen
+Link und insbesondere kein `record_id=0`. Stattdessen steht fester Hinweistext
+in derselben Aktionszelle, ohne automatischen Nachtrag oder Navigation.
+
+Für alte Server bleiben sichere positive JS-Integer und bereits kanonische
+String-IDs kompatibel. Eine alte unsichere JSONzahl ohne exakte Zusatzangabe ist
+nicht rekonstruierbar und wird nicht mehr als möglicherweise anderer Record
+verlinkt. Alte Clients ignorieren das additive Feld und lernen die neue
+Genauigkeit nicht selbst; das Update benötigt die passende Clientdatei bzw.
+ein bewusstes Neuladen, keine behauptete Fernsteuerung von Browsercaches.
+Die bisherige serverseitige eigene IDauswahl außerhalb der200er-Liste sowie
+Ablehnung fremder/fehlender/ungültiger IDs bleiben letzte Autorität. Kein
+`adjustments.php`-/Selector-/Form-/CSRF-/Freigabe-/Parser-/Writerdelta.
+
+Source/Public bleiben bytegleich, genau ihr bestehender Assethash und die
+zugehörige Tabelle folgen den neuen Bytes. Alle anderen fünf Pins, Validator,
+Startupadapter, aktuelle #66-Fehlerkennung, Pending-/Event-/Metadaten-/Retry- und
+Sitzungsbindung sowie V5-/Runtimegates bleiben erhalten.
+
+Ein grober erfundener Memory-/Renderervergleich unter PHP8.5.12/Node24.22.1 nutzt
+beide tatsächlichen festen SQLtexte und die tatsächlichen extrahierten
+Rendererfunktionen. Beide Webprojektionen sind gleich, liefern dieselben30
+Ownrows und erhalten nach Entfernen von `id_string` alle alten Werte/Typen/Order.
+IDs über der JS-Grenze und PHP_INT_MAX bleiben im erzeugten JSONstring exakt,
+und der bestehende eigene Selector findet damit denselben synthetischen Record.
+Der alte Renderer verlinkt zwei solcher Werte gerundet, der neue alle exakt.
+Alte sichere Nummern/Strings bleiben verwendbar; fehlerhafte/fehlende/
+widersprüchliche/unsafe-/Overflowwerte bleiben ohne Link. Andere Zellen und
+Texte unverändert, kein Quell-/Transaktions-/Changezählerdelta. Der bestehende
+grobe Publicclient-/Startup-/Pending-/Fehlerjourney sowie reine Assetmatrix
+und notwendige Syntax/Quellerhaltung werden separat geprüft.
+
+Keine neue Repositorytestsuite, CI, echte App-/Auth-/HTTP-/Browser-/Navigation-/
+Datenbank-/Form-/Korrektur-/Produktivabnahme oder tatsächliche Mutation.
+#14 bleibt für echte UI-/Integrationsabnahme und weitere nicht geprüfte Pfade offen.

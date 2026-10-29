@@ -6,9 +6,9 @@ if ($_SERVER['REQUEST_METHOD']==='GET' && ($_GET['format']??'')==='status') {
     attendance_json(function() use($conn,$user) {
         $conn->beginTransaction();
         try {
-            $s=$conn->prepare('SELECT id,startzeit,endzeit,pause,absence_kind,planned_minutes FROM zeiterfassung WHERE user_id=? ORDER BY id DESC LIMIT 30');$s->execute([$user]);$records=$s->fetchAll(PDO::FETCH_ASSOC);$s->closeCursor();
-            // Native presentation metadata only: raw recent rows and public
-            // API/extension contracts stay unchanged. Full effective context
+            $s=$conn->prepare('SELECT id,CAST(id AS TEXT) AS id_string,startzeit,endzeit,pause,absence_kind,planned_minutes FROM zeiterfassung WHERE user_id=? ORDER BY id DESC LIMIT 30');$s->execute([$user]);$records=$s->fetchAll(PDO::FETCH_ASSOC);$s->closeCursor();
+            // Existing recent values remain; id_string is exact correction-link metadata only.
+            // Public API/extension contracts stay unchanged. Full effective context
             // and state share this read snapshot, including off-page conflicts.
             $s=$conn->prepare('SELECT * FROM zeiterfassung WHERE user_id=?');$s->execute([$user]);$context=$s->fetchAll(PDO::FETCH_ASSOC);$s->closeCursor();
             $conflicts=report_absence_conflicts($context);

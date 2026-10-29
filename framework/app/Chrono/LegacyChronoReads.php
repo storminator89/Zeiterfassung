@@ -31,7 +31,7 @@ final class LegacyChronoReads implements ChronoReads
     public function attendanceStatus(): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
-            $statement = $pdo->prepare('SELECT id,startzeit,endzeit,pause,absence_kind,planned_minutes FROM zeiterfassung WHERE user_id=? ORDER BY id DESC LIMIT 30');
+            $statement = $pdo->prepare('SELECT id,CAST(id AS TEXT) AS id_string,startzeit,endzeit,pause,absence_kind,planned_minutes FROM zeiterfassung WHERE user_id=? ORDER BY id DESC LIMIT 30');
             $statement->execute([$actor->getKey()]);
             $records = $statement->fetchAll(PDO::FETCH_ASSOC);
             $statement->closeCursor();
