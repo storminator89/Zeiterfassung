@@ -14,6 +14,7 @@ function chrono_history_presentation_fields(string $entity): array {
             'regelarbeitszeit'=>['Tages-Soll (Stunden)','scalar'], 'ueberstunden'=>['Anfangsguthaben (Stunden)','scalar'],
             'role'=>['Rolle','scalar'], 'department_id'=>['Abteilungs-ID','scalar'], 'supervisor_id'=>['Vorgesetzten-ID','scalar']],
         'Feiertage'=>['id'=>['Datensatz-ID','scalar'], 'datum'=>['Datum','scalar'], 'name'=>['Bezeichnung','scalar']],
+        'pause_settings'=>['id'=>['Regel-ID','scalar'], 'hours_threshold'=>['Stundengrenze','scalar'], 'minimum_pause'=>['Mindestpause (Minuten)','scalar']],
         'work_sessions'=>['id'=>['Intervall-ID','scalar'], 'user_id'=>['Person-ID','scalar'], 'record_id'=>['Buchungs-ID','scalar'],
             'started_at'=>['Beginn (Unixsekunden)','scalar'], 'ended_at'=>['Ende (Unixsekunden)','scalar']],
         'break_intervals'=>['id'=>['Pausen-ID','scalar'], 'session_id'=>['Intervall-ID','scalar'],

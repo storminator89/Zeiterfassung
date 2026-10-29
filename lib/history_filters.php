@@ -1,7 +1,7 @@
 <?php
 /** Read-only audit filtering; no connection, session or live-record lookup. */
 function chrono_history_entities(): array {
-    return ['zeiterfassung'=>'Buchung','work_models'=>'Arbeitszeitmodell','time_adjustments'=>'Korrekturantrag','users'=>'Kontostammdaten','Feiertage'=>'Feiertagskalender','work_sessions'=>'Arbeitsintervall','break_intervals'=>'Pausenintervall'];
+    return ['zeiterfassung'=>'Buchung','work_models'=>'Arbeitszeitmodell','time_adjustments'=>'Korrekturantrag','users'=>'Kontostammdaten','Feiertage'=>'Feiertagskalender','work_sessions'=>'Arbeitsintervall','break_intervals'=>'Pausenintervall','pause_settings'=>'Pausenregel'];
 }
 
 function chrono_history_operations(): array {
