@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__.'/config.php'; require_once __DIR__.'/lib/app_ui.php';
 if (!isset($_SESSION['user_id'])) { header('Location: login.php'); exit; }
-$user=(int)$_SESSION['user_id'];$role=$_SESSION['role'];$error='';$requestDraft=[];
+$user=(int)$_SESSION['user_id'];$role=$_SESSION['role'];$error='';$requestDraft=[];$metadataDraft=[];
 require_once __DIR__.'/lib/corrections.php';
 require_once __DIR__.'/lib/correction_selection.php';
 require_once __DIR__.'/lib/correction_presentation.php';
@@ -13,8 +13,8 @@ $requestedPage=filter_var($_GET['request_page']??1,FILTER_VALIDATE_INT,['options
 $records=$conn->prepare('SELECT id,startzeit,endzeit FROM zeiterfassung WHERE user_id=? ORDER BY chrono_report_start_epoch(startzeit) DESC,id DESC LIMIT 200');$records->execute([$user]);$records=$records->fetchAll(PDO::FETCH_ASSOC);
 $selectedRecordId=0;$selectionError='';
 try {
-    if ($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['action']??'')==='request') {
-        $selectedRecordId=correction_selection_id($_POST['record_id']??null,true);
+    if ($_SERVER['REQUEST_METHOD']==='POST' && in_array($_POST['action']??null,['request','request_metadata_v1'],true)) {
+        $selectedRecordId=correction_selection_id($_POST['record_id']??null,($_POST['action']??null)==='request');
     } elseif ($_SERVER['REQUEST_METHOD']==='GET' && array_key_exists('record_id',$_GET)) {
         $selectedRecordId=correction_selection_id($_GET['record_id']);
     }
@@ -28,11 +28,11 @@ try {
     }
 } catch (InvalidArgumentException $e) { $selectionError=$error=$e->getMessage(); }
 $queueSelection=array_key_exists('record_id',$_GET)?['record_id'=>is_string($_GET['record_id'])?$_GET['record_id']:'invalid']:[];
-if ($_SERVER['REQUEST_METHOD']==='POST'&&($_POST['action']??'')==='request') {
+if ($_SERVER['REQUEST_METHOD']==='POST'&&in_array($_POST['action']??null,['request','request_metadata_v1'],true)) {
     $queueSelection=$selectionError?['record_id'=>'invalid']:($selectedRecordId?['record_id'=>$selectedRecordId]:[]);
 }
 $queueUrl=static fn(int $page): string=>'adjustments.php?'.http_build_query(array_merge(['request_status'=>$requestStatus,'request_page'=>$page],$queueSelection));
-if ($_SERVER['REQUEST_METHOD']==='POST' && (!$selectionError || ($_POST['action']??'')!=='request')) {
+if ($_SERVER['REQUEST_METHOD']==='POST' && (!$selectionError || !in_array($_POST['action']??null,['request','request_metadata_v1'],true))) {
     $requestCommandReturned=false;
     $conn->exec('BEGIN IMMEDIATE');
     try {
@@ -42,11 +42,18 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && (!$selectionError || ($_POST['action'
     } catch (Throwable $e) {
         $requestRollbackConfirmed=$conn->exec('ROLLBACK')!==false && !$conn->inTransaction();
         $error=$e instanceof AttendanceError?$e->getMessage():'Antrag konnte nicht verarbeitet werden.';
+        if (($_POST['action']??'')==='request_metadata_v1' && $requestCommandReturned) {
+            $error='Antrag konnte nicht bestätigt werden. Bitte neu laden und gespeicherten Stand prüfen; nicht automatisch wiederholen.';
+        }
         // Display only after a known rejection and confirmed rollback, never an uncertain outcome.
         if (!$requestCommandReturned && $requestRollbackConfirmed && ($_POST['action']??'')==='request'
             && $e instanceof AttendanceError && in_array($e->status,[400,409],true)) {
             require_once __DIR__.'/lib/correction_request_draft.php';
             $requestDraft=correction_rejected_request_draft($_POST);
+        }
+        if (!$requestCommandReturned && $requestRollbackConfirmed && ($_POST['action']??'')==='request_metadata_v1'
+            && $e instanceof AttendanceError && in_array($e->status,[400,409],true)) {
+            $metadataDraft=correction_metadata_v1_rejected_draft($_POST);
         }
     }
 }
@@ -92,7 +99,22 @@ chrono_page('Korrekturanträge');
 ?>
 <p class="opacity-70">Nachträgliche Änderungen mit Begründung und Freigabe. Originalereignisse bleiben erhalten. Eigene Anträge müssen von einer anderen berechtigten Person freigegeben werden.</p>
 <?php if($error): ?><div class="alert alert-error mb-6" role="alert"><?= h($error) ?></div><?php endif; ?><?php if(isset($_GET['saved'])): ?><div class="alert alert-success mb-6">Gespeichert.</div><?php endif; ?>
-<?php if(!$selectionError): ?><section class="card bg-base-100 shadow-xl p-6 mb-6"><h2 class="text-xl font-semibold mb-4">Arbeitszeit korrigieren oder nachtragen</h2><form method="post"><?= csrf_field() ?><input class="input input-bordered w-full" type="hidden" name="action" value="request"><label class="block text-sm font-semibold mt-4 mb-2" for="record_id">Bestehender Eintrag</label><select class="select select-bordered w-full" id="record_id" name="record_id"><option value="0">Fehlende Buchung nachtragen</option><?php foreach($records as $r): ?><option value="<?= (int)$r['id'] ?>" <?= $selectedRecordId===(int)$r['id']?'selected':'' ?>>#<?= (int)$r['id'] ?> · <?= h($r['startzeit']) ?> – <?= h($r['endzeit']) ?></option><?php endforeach; ?></select><label class="block text-sm font-semibold mt-4 mb-2"><input class="checkbox checkbox-primary" type="checkbox" name="cancel" value="1" <?= !empty($requestDraft['cancel'])?'checked':'' ?>> Bestehende Buchung stornieren (Zeitfelder dann leer lassen)</label><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label class="block text-sm font-semibold mt-4 mb-2" for="start">Beginn mit Zeitzone</label><input class="input input-bordered w-full" id="start" name="start" value="<?= h($requestDraft['start']??'') ?>" placeholder="2026-10-25T09:00+01:00"></div><div><label class="block text-sm font-semibold mt-4 mb-2" for="end">Ende mit Zeitzone</label><input class="input input-bordered w-full" id="end" name="end" value="<?= h($requestDraft['end']??'') ?>" placeholder="2026-10-25T17:00+01:00"></div><div><label class="block text-sm font-semibold mt-4 mb-2" for="pause">Tatsächliche Pause (Minuten)</label><input class="input input-bordered w-full" id="pause" name="pause" value="<?= h($requestDraft['pause']??'') ?>" type="number" min="0"></div></div><small class="block opacity-70 mt-3">Deutschland: Winterzeit +01:00, Sommerzeit +02:00. Abwesenheitsgutschriften beginnen um 00:00 Uhr Ortszeit; als Ende 00:00 plus Sollminuten und als Pause 0 eintragen. Arbeitsnachträge dürfen nicht in der Zukunft liegen. Bei Zeitumstellungen den Offset für jeden Zeitpunkt einzeln angeben.</small><label class="block text-sm font-semibold mt-4 mb-2" for="reason">Begründung</label><textarea class="textarea textarea-bordered w-full" id="reason" name="reason" minlength="5" maxlength="1000" required><?= h($requestDraft['reason']??'') ?></textarea><div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary">Antrag stellen</button></div></form></section><?php else: ?><p class="mb-6"><a class="btn btn-outline" href="adjustments.php">Eigene Buchung neu auswählen</a></p><?php endif; ?>
+<?php if(!$selectionError): ?><section class="card bg-base-100 shadow-xl p-6 mb-6"><h2 class="text-xl font-semibold mb-4">Arbeitszeit korrigieren oder nachtragen</h2><form method="post"><?= csrf_field() ?><input class="input input-bordered w-full" type="hidden" name="action" value="request"><label class="block text-sm font-semibold mt-4 mb-2" for="record_id">Bestehender Eintrag</label><select class="select select-bordered w-full" id="record_id" name="record_id"><option value="0">Fehlende Buchung nachtragen</option><?php foreach($records as $r): ?><option value="<?= (int)$r['id'] ?>" <?= $selectedRecordId===(int)$r['id']?'selected':'' ?>>#<?= (int)$r['id'] ?> · <?= h($r['startzeit']) ?> – <?= h($r['endzeit']) ?></option><?php endforeach; ?></select><label class="block text-sm font-semibold mt-4 mb-2"><input class="checkbox checkbox-primary" type="checkbox" name="cancel" value="1" <?= !empty($requestDraft['cancel'])?'checked':'' ?>> Bestehende Buchung stornieren (Zeitfelder dann leer lassen)</label><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label class="block text-sm font-semibold mt-4 mb-2" for="start">Beginn mit Zeitzone</label><input class="input input-bordered w-full" id="start" name="start" value="<?= h($requestDraft['start']??'') ?>" placeholder="2026-10-25T09:00+01:00"></div><div><label class="block text-sm font-semibold mt-4 mb-2" for="end">Ende mit Zeitzone</label><input class="input input-bordered w-full" id="end" name="end" value="<?= h($requestDraft['end']??'') ?>" placeholder="2026-10-25T17:00+01:00"></div><div><label class="block text-sm font-semibold mt-4 mb-2" for="pause">Tatsächliche Pause (Minuten)</label><input class="input input-bordered w-full" id="pause" name="pause" value="<?= h($requestDraft['pause']??'') ?>" type="number" min="0"></div></div><small class="block opacity-70 mt-3">Deutschland: Winterzeit +01:00, Sommerzeit +02:00. Abwesenheitsgutschriften beginnen um 00:00 Uhr Ortszeit; als Ende 00:00 plus Sollminuten und als Pause 0 eintragen. Arbeitsnachträge dürfen nicht in der Zukunft liegen. Bei Zeitumstellungen den Offset für jeden Zeitpunkt einzeln angeben.</small><label class="block text-sm font-semibold mt-4 mb-2" for="reason">Begründung</label><textarea class="textarea textarea-bordered w-full" id="reason" name="reason" minlength="5" maxlength="1000" required><?= h($requestDraft['reason']??'') ?></textarea><div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary">Antrag stellen</button></div></form>
+<details class="mt-5" <?= $metadataDraft?'open':'' ?>>
+<summary class="cursor-pointer font-semibold">Nur Arbeitsort und Notiz beantragen</summary>
+<p class="text-sm opacity-70 mt-3">Nur bestehende abgeschlossene eigene Arbeitsbuchungen, keine Abwesenheiten. Beide Angaben ersetzen die bisherigen Werte nach fremder berechtigter Freigabe; eine leere Notiz löscht die alte Notiz. Zeiten, Pausen und Originalereignisse bleiben unverändert.</p>
+<?php if($metadataDraft): ?><p class="text-sm opacity-70 mt-3" role="status">Felder nur zur Prüfung beibehalten. Ersetzen erneut bewusst bestätigen; nichts wird automatisch gesendet.</p><?php endif; ?>
+<form method="post"><?= csrf_field() ?><input type="hidden" name="action" value="request_metadata_v1">
+<label class="block text-sm font-semibold mt-4 mb-2" for="metadata_record_id">Bestehende eigene Arbeitsbuchung</label>
+<select class="select select-bordered w-full" id="metadata_record_id" name="record_id"><option value="0">Bitte bestehende Buchung wählen</option><?php foreach($records as $r): ?><option value="<?= (int)$r['id'] ?>" <?= $selectedRecordId===(int)$r['id']?'selected':'' ?>>#<?= (int)$r['id'] ?> · <?= h($r['startzeit']) ?> – <?= h($r['endzeit']) ?></option><?php endforeach; ?></select>
+<label class="block text-sm font-semibold mt-4 mb-2" for="metadata_location">Neuer Arbeitsort</label>
+<select class="select select-bordered w-full" id="metadata_location" name="location"><?php foreach(['office'=>'Büro (office)','home_office'=>'Homeoffice (home_office)','business_trip'=>'Dienstreise (business_trip)'] as $code=>$label): ?><option value="<?= h($code) ?>" <?= ($metadataDraft['location']??'office')===$code?'selected':'' ?>><?= h($label) ?></option><?php endforeach; ?></select>
+<label class="block text-sm font-semibold mt-4 mb-2" for="metadata_note">Neue Notiz (einzeilig, höchstens 1000 UTF-8-Bytes; leer löscht)</label>
+<textarea class="textarea textarea-bordered w-full" id="metadata_note" name="note" maxlength="1000"><?= h($metadataDraft['note']??'') ?></textarea>
+<label class="block text-sm font-semibold mt-4 mb-2" for="metadata_reason">Begründung</label><textarea class="textarea textarea-bordered w-full" id="metadata_reason" name="reason" minlength="5" maxlength="1000" required><?= h($metadataDraft['reason']??'') ?></textarea>
+<label class="block text-sm mt-4"><input class="checkbox checkbox-primary" type="checkbox" name="metadata_confirm" value="1" required> Beide bisherigen Metadaten durch diese Angaben ersetzen lassen.</label>
+<div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary">Ort/Notiz beantragen</button></div>
+</form></details></section><?php else: ?><p class="mb-6"><a class="btn btn-outline" href="adjustments.php">Eigene Buchung neu auswählen</a></p><?php endif; ?>
 <section class="card bg-base-100 shadow-xl p-6 mb-6">
 <h2 class="text-xl font-semibold mb-4">Anträge filtern</h2>
 <p class="mb-4">Offene Anträge: <strong><?= $requestCounts['pending'] ?></strong> · innerhalb Ihrer bisherigen Sichtrechte.</p>
@@ -105,12 +127,15 @@ chrono_page('Korrekturanträge');
 <h2 class="text-xl font-semibold mb-4">Anträge: <?= h($requestStatusLabels[$requestStatus]) ?></h2>
 <p class="text-sm opacity-70 mb-4"><?= $requestTotal ?> Anträge · Seite <?= $requestPage ?> von <?= $requestPages ?></p>
 <?php if(!$requests): ?><p class="mb-6" role="status">Keine sichtbaren Anträge für diesen Status.</p><?php endif; ?>
-<?php foreach($requests as $a): $preview=chrono_correction_preview($a); ?><section class="card bg-base-100 shadow-xl p-6 mb-6"><p class="text-sm font-semibold opacity-70 mb-2">#<?= (int)$a['id'] ?> · <?= h($a['username']) ?> · <?= h(['pending'=>'Offen','approved'=>'Freigegeben','rejected'=>'Abgelehnt','withdrawn'=>'Zurückgenommen'][$a['status']]) ?></p><?php if($a['cancel']): ?><p>STORNIERUNG · kein neuer Zeitwert</p><?php elseif($preview['proposed_usable']): ?><p><?= h(attendance_local((int)$a['proposed_start'])) ?> – <?= h(attendance_local((int)$a['proposed_end'])) ?> · <?= (int)$a['proposed_pause'] ?> Minuten Pause</p><?php else: ?><p>Beantragte Zeitangaben nicht auswertbar.</p><?php endif; ?>
+<?php foreach($requests as $a): $preview=chrono_correction_preview($a);$metadataPreview=correction_metadata_v1_preview($a); ?><section class="card bg-base-100 shadow-xl p-6 mb-6"><p class="text-sm font-semibold opacity-70 mb-2">#<?= (int)$a['id'] ?> · <?= h($a['username']) ?> · <?= h(['pending'=>'Offen','approved'=>'Freigegeben','rejected'=>'Abgelehnt','withdrawn'=>'Zurückgenommen'][$a['status']]) ?></p><?php if($metadataPreview!==null): ?><div class="text-sm my-3"><p class="font-semibold">Ort/Notiz-Antrag · keine Zeitänderung</p>
+<?php if($metadataPreview['available']): ?><p>Arbeitsort vorher: <?= h($metadataPreview['before_location']) ?> · Beantragt: <?= h($metadataPreview['after_location']) ?></p><p>Notiz vorher: <?= h($metadataPreview['before_note']) ?></p><p>Notiz beantragt: <?= h($metadataPreview['after_note']) ?></p><?php else: ?><p>Metadaten-Antrag nicht auswertbar; keine Freigabezusage.</p><?php endif; ?></div>
+<?php else: ?><?php if($a['cancel']): ?><p>STORNIERUNG · kein neuer Zeitwert</p><?php elseif($preview['proposed_usable']): ?><p><?= h(attendance_local((int)$a['proposed_start'])) ?> – <?= h(attendance_local((int)$a['proposed_end'])) ?> · <?= (int)$a['proposed_pause'] ?> Minuten Pause</p><?php else: ?><p>Beantragte Zeitangaben nicht auswertbar.</p><?php endif; ?>
 <div class="text-sm my-3"><p class="font-semibold">Gespeicherte Netto-Buchungsdauer · kein Kontosaldo</p>
 <p>Vorher: <?= h($preview['before']) ?> · Beantragt: <?= h($preview['after']) ?></p>
 <p><?= h($preview['difference']===null?'Keine verlässliche Dauer-Differenz verfügbar.':'Dauer-Differenz: '.$preview['difference']) ?></p>
 <p class="opacity-70">Nur ausgewählte Zeitfelder des gespeicherten Originals und Antrags. Keine Freigabe- oder Saldozusage; die Entscheidung prüft den aktuellen Datensatz erneut.</p></div>
-<?php if($a['status']==='pending'&&(int)$a['user_id']===$user): ?>
+<?php endif; ?>
+<?php if($metadataPreview===null&&$a['status']==='pending'&&(int)$a['user_id']===$user): ?>
 <div class="text-sm my-3" id="balance-preview-<?= (int)$a['id'] ?>">
 <?php if($balancePreviewRequestId===(int)$a['id'] && $balancePreview): ?>
 <p class="font-semibold">Eigener Home-Stand · Vorschau</p>

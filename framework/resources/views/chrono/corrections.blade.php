@@ -51,6 +51,28 @@
                 <div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary">Antrag stellen</button></div>
             </fieldset>
         </form>
+        @if ($corrections->metadataEnabled)
+        <details class="mt-5" @if ($corrections->metadataDraft) open @endif>
+            <summary class="cursor-pointer font-semibold">Nur Arbeitsort und Notiz beantragen</summary>
+            <p class="text-sm opacity-70 mt-3">Nur bestehende abgeschlossene eigene Arbeitsbuchungen, keine Abwesenheiten. Beide Angaben ersetzen die bisherigen Werte nach fremder berechtigter Freigabe; eine leere Notiz löscht die alte Notiz. Zeiten, Pausen und Originalereignisse bleiben unverändert.</p>
+            @if ($corrections->metadataDraft)<p class="text-sm opacity-70 mt-3" role="status">Felder nur zur Prüfung beibehalten. Ersetzen erneut bewusst bestätigen; nichts wird automatisch gesendet.</p>@endif
+            <form method="post">
+                @csrf
+                <fieldset @disabled(! $corrections->enabled)>
+                    <input type="hidden" name="action" value="request_metadata_v1">
+                    <label class="block text-sm font-semibold mt-4 mb-2" for="metadata_record_id">Bestehende eigene Arbeitsbuchung</label>
+                    <select class="select select-bordered w-full" id="metadata_record_id" name="record_id"><option value="0">Bitte bestehende Buchung wählen</option>@foreach ($corrections->recordOptions as $r)<option value="{{ $r['id'] }}" @selected($corrections->selectedRecordId === $r['id'])>#{{ $r['id'] }} · {{ $r['start'] }} – {{ $r['end'] }}</option>@endforeach</select>
+                    <label class="block text-sm font-semibold mt-4 mb-2" for="metadata_location">Neuer Arbeitsort</label>
+                    <select class="select select-bordered w-full" id="metadata_location" name="location">@foreach (['office'=>'Büro (office)','home_office'=>'Homeoffice (home_office)','business_trip'=>'Dienstreise (business_trip)'] as $code=>$label)<option value="{{ $code }}" @selected(($corrections->metadataDraft['location'] ?? 'office') === $code)>{{ $label }}</option>@endforeach</select>
+                    <label class="block text-sm font-semibold mt-4 mb-2" for="metadata_note">Neue Notiz (einzeilig, höchstens 1000 UTF-8-Bytes; leer löscht)</label>
+                    <textarea class="textarea textarea-bordered w-full" id="metadata_note" name="note" maxlength="1000">{{ $corrections->metadataDraft['note'] ?? '' }}</textarea>
+                    <label class="block text-sm font-semibold mt-4 mb-2" for="metadata_reason">Begründung</label><textarea class="textarea textarea-bordered w-full" id="metadata_reason" name="reason" minlength="5" maxlength="1000" required>{{ $corrections->metadataDraft['reason'] ?? '' }}</textarea>
+                    <label class="block text-sm mt-4"><input class="checkbox checkbox-primary" type="checkbox" name="metadata_confirm" value="1" required> Beide bisherigen Metadaten durch diese Angaben ersetzen lassen.</label>
+                    <div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary">Ort/Notiz beantragen</button></div>
+                </fieldset>
+            </form>
+        </details>
+        @endif
     </section>
     @else
     <p class="mb-6"><a class="btn btn-outline" href="adjustments.php">Eigene Buchung neu auswählen</a></p>
@@ -74,18 +96,28 @@
     <p class="text-sm opacity-70 mb-4">{{ $corrections->requestTotal }} Anträge · Seite {{ $corrections->requestPage }} von {{ $corrections->requestPages }}</p>
     @if (! $corrections->requests)<p class="mb-6" role="status">Keine sichtbaren Anträge für diesen Status.</p>@endif
     @foreach ($corrections->requests as $a)
+    @php($metadataPreview = $a['metadata_preview'] ?? null)
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <p class="text-sm font-semibold opacity-70 mb-2">#{{ $a['id'] }} · {{ $a['username'] }} · {{ ['pending' => 'Offen', 'approved' => 'Freigegeben', 'rejected' => 'Abgelehnt', 'withdrawn' => 'Zurückgenommen'][$a['status']] }}</p>
-        @if ($a['cancel'])<p>STORNIERUNG · kein neuer Zeitwert</p>
+        @if ($metadataPreview !== null)
+        <div class="text-sm my-3"><p class="font-semibold">Ort/Notiz-Antrag · keine Zeitänderung</p>
+            @if ($metadataPreview['available'])
+            <p>Arbeitsort vorher: {{ $metadataPreview['before_location'] }} · Beantragt: {{ $metadataPreview['after_location'] }}</p>
+            <p>Notiz vorher: {{ $metadataPreview['before_note'] }}</p><p>Notiz beantragt: {{ $metadataPreview['after_note'] }}</p>
+            @else<p>Metadaten-Antrag nicht auswertbar; keine Freigabezusage.</p>@endif
+        </div>
+        @elseif ($a['cancel'])<p>STORNIERUNG · kein neuer Zeitwert</p>
         @elseif ($a['preview']['proposed_usable'])<p>{{ $a['start'] }} – {{ $a['end'] }} · {{ $a['pause'] }} Minuten Pause</p>
         @else<p>Beantragte Zeitangaben nicht auswertbar.</p>@endif
+        @if ($metadataPreview === null)
         <div class="text-sm my-3">
             <p class="font-semibold">Gespeicherte Netto-Buchungsdauer · kein Kontosaldo</p>
             <p>Vorher: {{ $a['preview']['before'] }} · Beantragt: {{ $a['preview']['after'] }}</p>
             <p>{{ $a['preview']['difference'] === null ? 'Keine verlässliche Dauer-Differenz verfügbar.' : 'Dauer-Differenz: ' . $a['preview']['difference'] }}</p>
             <p class="opacity-70">Nur ausgewählte Zeitfelder des gespeicherten Originals und Antrags. Keine Freigabe- oder Saldozusage; die Entscheidung prüft den aktuellen Datensatz erneut.</p>
         </div>
-        @if ($a['status'] === 'pending' && $a['user_id'] === $page->userId)
+        @endif
+        @if ($metadataPreview === null && $a['status'] === 'pending' && $a['user_id'] === $page->userId)
         <div class="text-sm my-3" id="balance-preview-{{ $a['id'] }}">
             @if ($corrections->balancePreviewRequestId === $a['id'] && $corrections->balancePreview)
             <p class="font-semibold">Eigener Home-Stand · Vorschau</p>
