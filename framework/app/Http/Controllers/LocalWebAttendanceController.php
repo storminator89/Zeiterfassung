@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
 use App\Chrono\LocalWebAttendance;
+use App\Chrono\OwnOpenReviewReads;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Auth\Access\AuthorizationException;
 use App\View\ExistingUi\AttendancePage;
 use App\View\ExistingUi\Copy;
 use App\View\ExistingUi\Interactions;
@@ -38,6 +41,18 @@ final class LocalWebAttendanceController extends Controller
         $copy = new Copy($language);
         $summary = $this->interactions->home ? $this->reads->homeSummary() : null;
 
+        $ownOpenReview = null;
+        $ownOpenReviewUnavailable = false;
+        if ($this->reads instanceof OwnOpenReviewReads) {
+            try {
+                $ownOpenReview = $this->reads->ownOpenReview();
+            } catch (AuthenticationException|AuthorizationException $error) {
+                throw $error; // A stale/forbidden identity must retain its protected response.
+            } catch (Throwable) {
+                $ownOpenReviewUnavailable = true; // Never turn a failed read into an empty/clean list.
+            }
+        }
+
         return view('chrono.attendance', ['page' => new AttendancePage(
             $copy, (int) $actor->getAuthIdentifier(), $actor->username,
             $actor->role, $this->reads->attendanceStatus(),
@@ -53,7 +68,7 @@ final class LocalWebAttendanceController extends Controller
             reportInvalidCount: count($summary['invalid_records'] ?? []),
             reportInvalidRecordIds: $summary['invalid_record_ids'] ?? [],
             reportUnresolved: $summary['report_finality']['all'] ?? false,
-        )]);
+        ), 'ownOpenReview' => $ownOpenReview, 'ownOpenReviewUnavailable' => $ownOpenReviewUnavailable]);
     }
 
     public function transition(Request $request): JsonResponse
