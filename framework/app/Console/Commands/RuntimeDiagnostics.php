@@ -22,7 +22,7 @@ final class RuntimeDiagnostics extends Command
 
     public function handle(): int
     {
-        $report = ['schema_version' => 1, 'diagnostic_id' => bin2hex(random_bytes(16)),
+        $report = ['schema_version' => 2, 'diagnostic_id' => null,
             'checked_at' => gmdate('c'), 'scope' => 'read_only_runtime_observations',
             'readiness' => 'not_assessed',
             'unassessed' => ['login', 'writer', 'API', 'LDAP', 'hardware', 'TLS', 'log_capture', 'restore_integrity'],
@@ -35,6 +35,12 @@ final class RuntimeDiagnostics extends Command
             throw new \RuntimeException('Diagnostic observation refused.');
         });
         try {
+            try {
+                $report['diagnostic_id'] = bin2hex(random_bytes(16));
+            } catch (Throwable) {
+                // An unavailable support ID must not prevent this read-only
+                // observation, reuse an earlier ID or reveal entropy errors.
+            }
             $maximumAge = $this->integerOption('max-backup-age', 1);
             $minimumFree = $this->integerOption('min-free-bytes', 0);
             $backup = $this->option('backup');
@@ -75,6 +81,13 @@ final class RuntimeDiagnostics extends Command
             $report += ['state' => 'degraded', 'codes' => ['runtime_observation_refused'], 'checks' => []];
         } finally {
             restore_error_handler();
+        }
+        if ($report['diagnostic_id'] === null) {
+            $report['codes'][] = 'diagnostic_id_unavailable';
+            if ($exit === self::SUCCESS) {
+                $report['state'] = 'degraded';
+                $exit = self::FAILURE;
+            }
         }
         $this->line(json_encode($report, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
