@@ -2,22 +2,132 @@
 
 namespace App\Setup;
 
+use App\Auth\FirstAdminSetupFields;
+use App\Auth\FirstAdminSetupInputRejected;
 use App\LegacyDatabase\AccountLifecycleV5References;
+use App\LegacyDatabase\AuditContext;
+use App\LegacyDatabase\AuditFunctions;
 use App\LegacyDatabase\IntakePolicyV4References;
 use App\LegacyDatabase\OfflineFiles;
 use App\LegacyDatabase\RuntimeAdmission;
 use App\LegacyDatabase\RuntimeDatabase;
+use Closure;
+use Illuminate\Contracts\Hashing\Hasher;
+use InvalidArgumentException;
 use PDO;
 use RuntimeException;
 use Throwable;
 
-/** Local operator capability files only; no web provisioning or account creation. */
+/** Explicit local operator setup only; no public provisioning or existing-account reset. */
 final class FirstAdminSetupFiles
 {
     public const PROFILE = 'setup-profile.json';
     public const CLOSED = 'setup-closed';
     private const TOKEN = 'operator-setup-token.txt';
     private const LOCK = 'setup-operator.lock';
+
+    /**
+     * Interactive stopped-only NEW-V5 alternative to browser/token setup.
+     * The collector receives no file/DB handle and runs only after private fresh-state admission.
+     * @param Closure(): array $credentials Local hidden-terminal collection, never request/env/arguments.
+     */
+    public static function createLocalAdministrator(string $instance, Hasher $hasher, Closure $credentials): array
+    {
+        self::cli();
+        $state = self::instance($instance);
+        $lock = self::lock($instance, $state);
+        $form = $password = $hash = $writer = null;
+        try {
+            self::requireNoSetup($instance);
+            [$manifest, $manifestHash, $manifestState] = self::json($instance.'/runtime-admission.json');
+            $admission = RuntimeAdmission::fromConfiguration($manifest);
+            if ($admission->schemaProfile !== 'account-lifecycle-v5' || $admission->path !== $instance.'/application.sqlite') {
+                throw new RuntimeException;
+            }
+            // App-key preparation requires empty state, so it must precede this operation.
+            // Check its private canonical format without activating it or exposing any bytes.
+            $keyState = self::applicationKeyState($instance);
+            $root = dirname(__DIR__, 3);
+            $files = new OfflineFiles([$root, $root.'/framework/public']);
+            $before = $files->snapshot($admission->path);
+            self::assertEmptyReadSnapshot($admission, $files, $root);
+            if ($files->snapshot($admission->path) !== $before) { throw new RuntimeException; }
+
+            $form = $credentials();
+            try {
+                [$username, $email, $password] = FirstAdminSetupFields::validate($form);
+            } catch (InvalidArgumentException) {
+                throw new FirstAdminSetupInputRejected;
+            }
+            $form = null;
+            self::sameInstance($instance, $state);
+            self::sameJson($instance.'/runtime-admission.json', $manifestHash, $manifestState);
+            self::requireNoSetup($instance);
+            if (self::applicationKeyState($instance) !== $keyState || $files->snapshot($admission->path) !== $before) {
+                throw new RuntimeException;
+            }
+
+            $hash = $hasher->make($password);
+            $password = null;
+            $context = new AuditContext;
+            $writer = (new RuntimeDatabase($admission, $files))->writer($context, new AuditFunctions(static fn () => $context));
+            // The existing single transaction rechecks ALL users=0 under its lock.
+            // A false/nonempty result is never an account update or successful receipt here.
+            if ($writer->firstLocalAdministrator($username, $email, $hash) !== true) { throw new RuntimeException; }
+            $hash = $writer = null;
+            self::sameInstance($instance, $state);
+            self::sameJson($instance.'/runtime-admission.json', $manifestHash, $manifestState);
+            self::requireNoSetup($instance);
+            if (self::applicationKeyState($instance) !== $keyState) { throw new RuntimeException; }
+            // Only AFTER confirmed account COMMIT. Never remove even a partial marker.
+            // If closure fails, web stays stopped; its closed-mode entrypoint refuses absence.
+            self::writeNew($instance.'/'.self::CLOSED, "closed\n");
+            self::sameInstance($instance, $state);
+
+            return ['account_created' => true, 'setup_closed' => true, 'setup_token_created' => false,
+                'server_started' => false, 'next_step' => 'Start the separately authorized closed-setup web profile, then use normal password login.'];
+        } catch (FirstAdminSetupInputRejected) {
+            throw new FirstAdminSetupInputRejected('Enter valid username/email and matching chosen passwords of 12-72 bytes. No account was created by this input refusal.');
+        } catch (Throwable) {
+            // A late error may follow a confirmed or uncertain COMMIT: never retry/reset,
+            // reopen setup, remove its marker, log a raw error, or claim rollback.
+            throw new RuntimeException('Local first-administrator setup not confirmed. Keep web workers stopped and inspect locally; no automatic retry.');
+        } finally {
+            unset($form, $password, $hash, $writer);
+            @flock($lock, LOCK_UN);
+            @fclose($lock);
+        }
+    }
+
+    private static function requireNoSetup(string $instance): void
+    {
+        foreach ([self::CLOSED, self::PROFILE, self::TOKEN] as $name) {
+            clearstatcache(true, $instance.'/'.$name);
+            if (@lstat($instance.'/'.$name) !== false) { throw new RuntimeException; }
+        }
+    }
+
+    /** Internal identity only; no key/digest is returned to the operator or activated. */
+    private static function applicationKeyState(string $instance): array
+    {
+        $path = $instance.'/framework-app-key.env';
+        $handle = self::openPrivate($path);
+        try {
+            $state = self::file($path, $handle);
+            $length = strlen('FRAMEWORK_APP_KEY=base64:') + 44 + 1;
+            if ($state['size'] !== $length) { throw new RuntimeException; }
+            $bytes = stream_get_contents($handle, $length + 1);
+            if (! is_string($bytes) || strlen($bytes) !== $length || self::file($path, $handle) !== $state
+                || preg_match('/\AFRAMEWORK_APP_KEY=base64:([A-Za-z0-9+\/]{43}=)\n\z/D', $bytes, $matches) !== 1
+                || ($decoded = base64_decode($matches[1], true)) === false || strlen($decoded) !== 32
+                || base64_encode($decoded) !== $matches[1]) { throw new RuntimeException; }
+
+            return [$state, hash('sha256', $bytes)];
+        } finally {
+            unset($bytes, $matches, $decoded);
+            if (! @fclose($handle)) { throw new RuntimeException; }
+        }
+    }
 
     /** Pure trusted-profile projection; web composition must recheck closure per request. */
     public static function configuration(array $profile, string $admissionSha256, bool $closed, int $now): array

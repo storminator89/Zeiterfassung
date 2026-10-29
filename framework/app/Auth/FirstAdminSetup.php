@@ -6,7 +6,6 @@ use App\LegacyDatabase\AttendanceWriter;
 use Closure;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Hashing\Hasher;
-use InvalidArgumentException;
 use LogicException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -32,26 +31,7 @@ final class FirstAdminSetup
             || ! hash_equals($digest, hash('sha256', $token))) {
             throw new AccessDeniedHttpException;
         }
-        if (array_diff(array_keys($form), ['username', 'email', 'password', 'password_confirmation', 'setup_token']) !== []) {
-            throw new InvalidArgumentException('Invalid setup fields.');
-        }
-        foreach (['username', 'email', 'password', 'password_confirmation'] as $field) {
-            if (! is_string($form[$field] ?? null)) {
-                throw new InvalidArgumentException('Invalid setup fields.');
-            }
-        }
-        $username = trim($form['username']);
-        $email = trim($form['email']);
-        $password = $form['password']; // Never trim or normalize a chosen password.
-        if ($username === '' || strlen($username) > 100 || ! mb_check_encoding($username, 'UTF-8')
-            || preg_match('/[\x00-\x1f\x7f]/', $username)
-            || strlen($email) > 254 || filter_var($email, FILTER_VALIDATE_EMAIL) === false
-            || strlen($password) < 12 || strlen($password) > 72 || $password === 'defaultpassword'
-            || preg_match('/[\x00-\x1f\x7f]/', $password)
-            || strlen($form['password_confirmation']) > 72
-            || ! hash_equals($password, $form['password_confirmation'])) {
-            throw new InvalidArgumentException('Invalid setup fields.');
-        }
+        [$username, $email, $password] = FirstAdminSetupFields::validate(array_diff_key($form, ['setup_token' => true]));
 
         // Invalid/unprovisioned tokens never hash passwords or resolve a writer.
         $hash = $this->hasher->make($password);

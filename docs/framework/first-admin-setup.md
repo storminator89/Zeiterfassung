@@ -19,7 +19,21 @@ existing installation, and does not enable setup or start a NEW-V5 instance. The
 operator authorization below remains required; the preset is not proof that the
 browser belongs to the installation owner.
 
-## Explicit operator authorization
+## Local NEW-V5 alternative: no setup token
+
+The explicit interactive `chrono:first-admin --instance=... --new-only --stopped`
+operator command collects `admin` (editable), email and a hidden chosen password
+plus confirmation directly in the operator's terminal. It admits only the
+canonical empty private NEW V5 cohort, uses the existing first-admin writer,
+then writes the monotone setup closure marker after confirmed COMMIT. It neither
+generates a token nor enables browser setup, starts a server or resets an existing
+account. The App-key and any selected other keys must be prepared while empty,
+before this command. See [local first-administrator setup](local-first-admin.md).
+
+The sections below describe the unchanged **alternative browser-token path**;
+its token is not required by the local command.
+
+## Explicit browser operator authorization
 
 `chrono_setup.php` ships as `enabled=false`, `token_sha256=null`. No environment
 variable, native setup token, signing/encryption key or request is inherited.
