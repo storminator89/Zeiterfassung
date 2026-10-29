@@ -29,6 +29,7 @@ final readonly class FreshWebConfiguration
         private array $manifestState,
         private array $databaseState,
         private bool $setupOptIn,
+        private bool $nonExpiringSessionLock,
         private bool $ldapLogin,
         private ?FreshWebLdapSyncProfile $ldapSync,
         private array $overrides,
@@ -75,9 +76,9 @@ final readonly class FreshWebConfiguration
         if ($ldap['enabled'] && $setup) {
             throw new LogicException('Existing LDAP login requires the separate closed setup mode.');
         }
-        $lock = self::seconds($config->get('chrono_fresh_web.session_lock_seconds'));
+        $lock = self::lockSeconds($config->get('chrono_fresh_web.session_lock_seconds'));
         $wait = self::seconds($config->get('chrono_fresh_web.session_wait_seconds'));
-        if ($wait > $lock) {
+        if ($lock !== 0 && $wait > $lock) {
             throw new LogicException('Explicit positive fresh session lock/wait durations are required.');
         }
         if (! function_exists('posix_geteuid')) { throw new LogicException('Fresh web requires the supported local Unix runtime.'); }
@@ -103,7 +104,9 @@ final readonly class FreshWebConfiguration
                 || $admission->path !== $directory.'/application.sqlite') {
                 throw new RuntimeException;
             }
-            if ($admission->schemaProfile === 'account-lifecycle-v5') {
+            $v5 = $admission->schemaProfile === 'account-lifecycle-v5';
+            if (($v5 && $lock !== 0) || (! $v5 && $lock === 0)) { throw new RuntimeException; }
+            if ($v5) {
                 // V5 stays local-only and distinct from V4. API still requires its
                 // separate exact key/generation/shared-budget admission provider.
                 $syncSettings = $config->get('chrono_ldap_sync.fresh');
@@ -149,7 +152,7 @@ final readonly class FreshWebConfiguration
                 $overrides += ['chrono_api.enabled' => $apiEnabled, 'chrono_login_budget.enabled' => true];
             }
             $profile = new self($origin, $keyFingerprint, $directory, $directories, $manifest, $manifestHash, $manifestState,
-                $databaseState, $setup, $ldap['enabled'], $sync, $overrides);
+                $databaseState, $setup, $v5, $ldap['enabled'], $sync, $overrides);
             $profile->assertCurrent($config, false);
             return $profile;
         } catch (Throwable) {
@@ -199,6 +202,9 @@ final readonly class FreshWebConfiguration
             }
         }
     }
+
+    /** Pure selection from the admitted schema; no route/request input or file I/O. */
+    public function requiresNonExpiringSessionLock(): bool { return $this->nonExpiringSessionLock; }
 
     /** Pure admitted metadata; does not resolve files, keys or a directory. */
     public function ldapSyncProfile(): ?FreshWebLdapSyncProfile { return $this->ldapSync; }
@@ -302,6 +308,12 @@ final readonly class FreshWebConfiguration
         $origin = 'https://'.$parts['host'].(isset($parts['port']) && $parts['port'] !== 443 ? ':'.$parts['port'] : '');
         if (! in_array($url, [$origin, $origin.'/'], true)) { throw new LogicException('A trusted canonical HTTPS root origin is required.'); }
         return $origin;
+    }
+
+    /** Zero is the locked FileStore non-expiring lease, allowed only after V5 admission. */
+    private static function lockSeconds(mixed $value): int
+    {
+        return $value === 0 || $value === '0' ? 0 : self::seconds($value);
     }
 
     private static function seconds(mixed $value): int

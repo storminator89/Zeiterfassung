@@ -147,9 +147,13 @@ or a previous isolated test checkout.
 A usable installation additionally needs the original NEW-only operator sequence
 under one supported non-root UID and unchanged image/mount identity, a private
 setup-token entry path, and a real trusted canonical HTTPS origin. The selected
-operator must establish a maximum whole-request wall-clock lifetime strictly
-below the session-lock TTL. Apache I/O timeouts and PHP execution limits are not
-that proof; do not enable Web writes by assuming that gate passed. Docker/Compose
+V5 profile now requires a stock FileStore **non-expiring lease (0)** with a
+positive wait and no per-route override. This removes lease expiry during a long
+request, rather than pretending Apache/PHP timeouts prove a whole-request bound.
+Normal Laravel `finally` releases it; worker exit without release intentionally
+leaves it blocked until a verified-stopped, restart-excluded cleanup of that
+exact store. V4 retains its original positive-lease/request-bound contract.
+[Detailed lock and recovery contract](v5-nonexpiring-session-locks.md). Docker/Compose
 was unavailable for our source preparation: no image/container acceptance is
 implied. Follow [the existing deployment contract](installation-docker.md), not
 a new bypass flag, manifest edit, Native database adoption or automatic restart.
