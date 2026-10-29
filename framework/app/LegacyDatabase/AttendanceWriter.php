@@ -734,15 +734,17 @@ final class AttendanceWriter
         // The legacy operation still sets globals. Framework UDFs use scoped
         // context instead; nevertheless restore even pre-existing null values.
         $globals = array_intersect_key($GLOBALS, array_flip(['audit_actor', 'audit_reason']));
+        $commitAttempted = false;
 
         try {
-            $transaction = function () use ($body): mixed {
+            $transaction = function () use ($body, &$commitAttempted): mixed {
                 // Exactly one attempt. Laravel owns BEGIN/COMMIT/ROLLBACK and
                 // transactionLevel; the domain's raw-BEGIN wrapper is NOT used.
                 $this->connection->beginTransaction();
                 $this->assertActive();
                 $response = $body();
                 $this->assertActive();
+                $commitAttempted = true;
                 $this->connection->commit();
                 $this->assertIdle();
 
@@ -771,6 +773,12 @@ final class AttendanceWriter
                 // A known domain refusal is no longer a confirmed outcome when
                 // cleanup/idle state is unknown. Never expose either failure or
                 // let callers treat it as safe validation/replay feedback.
+                throw new RuntimeException('Writer outcome could not be confirmed. Do not retry automatically.');
+            }
+            if ($commitAttempted) {
+                // COMMIT may have succeeded before its acknowledgement/callback
+                // failed. An idle handle cannot prove the mutation rolled back.
+                $this->unusable = true;
                 throw new RuntimeException('Writer outcome could not be confirmed. Do not retry automatically.');
             }
             throw $error;
