@@ -178,6 +178,7 @@ define('TABLE_HEADER_ACTIONS', '操作');
 define('BUTTON_EDIT', '編輯');
 define('BUTTON_DELETE', '刪除');
 define('CONFIRM_DELETE_USER', '確定要刪除此用戶嗎？');
+define('ADMIN_USER_DELETE_HISTORY_LOCKED', '無法刪除：含有歷程記錄的帳戶必須保留。');
 define('DEPARTMENT_MANAGEMENT_TITLE', '部門管理');
 define('FORM_NEW_DEPARTMENT', '新部門');
 define('BUTTON_ADD_DEPARTMENT', '新增部門');

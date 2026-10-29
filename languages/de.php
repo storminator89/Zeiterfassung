@@ -182,6 +182,7 @@ define('TABLE_HEADER_ACTIONS', 'Aktionen');
 define('BUTTON_EDIT', 'Bearbeiten');
 define('BUTTON_DELETE', 'Löschen');
 define('CONFIRM_DELETE_USER', 'Sind Sie sicher, dass Sie diesen Benutzer löschen möchten?');
+define('ADMIN_USER_DELETE_HISTORY_LOCKED', 'Löschen gesperrt: Konto mit Historie bleibt erhalten.');
 define('DEPARTMENT_MANAGEMENT_TITLE', 'Abteilungsverwaltung');
 define('FORM_NEW_DEPARTMENT', 'Neue Abteilung');
 define('BUTTON_ADD_DEPARTMENT', 'Abteilung hinzufügen');

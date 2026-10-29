@@ -458,7 +458,8 @@ $perPage = 10; // Anzahl der Benutzer pro Seite
 
 // Benutzer aus der Datenbank abrufen (mit Suche und Paginierung)
 $stmt = $conn->prepare("
-    SELECT users.*, departments.name as department_name, supervisors.username as supervisor_name
+    SELECT users.*, departments.name as department_name, supervisors.username as supervisor_name,
+           EXISTS (SELECT 1 FROM audit_log WHERE audit_log.user_id = users.id) AS has_audit_history
     FROM users
     LEFT JOIN departments ON users.department_id = departments.id
     LEFT JOIN users as supervisors ON users.supervisor_id = supervisors.id
@@ -634,6 +635,9 @@ include 'header.php';
                                             <button class="btn btn-ghost btn-sm" onclick="editUser(<?= $user->id ?>)" title="<?= BUTTON_EDIT ?>">
                                                 <i class="fas fa-edit"></i>
                                             </button>
+                                            <?php if ((int)$user->has_audit_history === 1): ?>
+                                                <span class="inline-block text-sm"><?= h(ADMIN_USER_DELETE_HISTORY_LOCKED) ?></span>
+                                            <?php else: ?>
                                             <form method="post" class="inline" onsubmit="return confirm('<?= CONFIRM_DELETE_USER ?>')">
 <?= csrf_field() ?>
                                                 <input type="hidden" name="delete_user" value="1">
@@ -642,6 +646,7 @@ include 'header.php';
                                                     <i class="fas fa-trash-alt"></i>
                                                 </button>
                                             </form>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
