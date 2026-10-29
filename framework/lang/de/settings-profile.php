@@ -10,6 +10,7 @@ return [
     'no_model' => 'Für diesen Tag ist kein gespeichertes Arbeitszeitmodell vorhanden. Das bedeutet nicht Nullsoll; ein bestehender Legacy-Fallback wird hier nicht als Modell ausgegeben.',
     'model_from' => 'Gespeichertes Modell gültig ab',
     'weekly_minutes' => 'Gespeicherte Soll-Dauer je Wochentag, ohne Feiertagsabzug',
+    'weekly_total' => 'Summe der gespeicherten Wochenregel (ohne Feiertagsabzug)',
     'weekday' => 'Wochentag',
     'duration' => 'Dauer (HH:MM)',
     'weekdays' => ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'],

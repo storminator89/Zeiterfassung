@@ -10,6 +10,7 @@ return [
     'no_model' => 'No stored work model exists for this date. This does not mean a zero target; an existing legacy fallback is not presented as a stored model here.',
     'model_from' => 'Stored model effective from',
     'weekly_minutes' => 'Stored target duration for each weekday, before any holiday adjustment',
+    'weekly_total' => 'Stored weekly rule total (before holiday adjustment)',
     'weekday' => 'Weekday',
     'duration' => 'Duration (HH:MM)',
     'weekdays' => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],

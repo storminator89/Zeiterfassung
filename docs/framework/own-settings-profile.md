@@ -79,3 +79,31 @@ Dies ist eine lesende eigene Kontohilfe, **kein vollständiges Onboarding**:
 Region-/Regelentscheidungen, Einladung/Recovery, Geräte-/Sessionverwaltung und
 echte UI-/Operationsabnahme bleiben offen. Keine Vollfreigabe von #62/#79 und
 keine Arbeit an freigabepflichtiger #50-Rücknahme oder #57-Reconciliation.
+
+## Gespeicherte Wochensumme — begrenzte Einrichtungshilfe #62
+
+Die bestehende eigene Wochenregeltabelle in Laravel und Native zeigt zusätzlich
+eine Fußzeile mit der Summe ihrer sieben gespeicherten Tagesminuten. So lässt
+sich etwa eine 40:00-Woche ohne Kopfrechnen mit der vorgesehenen Einrichtung
+vergleichen. Beide Ansichten nutzen dieselbe reine DTO-Methode und DE/EN/ZH-
+Beschriftungen; keine neue Query, Berechtigung, Route oder Schreibwirkung.
+
+Nur das bereits vollständig validierte Modell wird summiert: sieben Ganzzahlen
+von 0 bis 1440 Minuten ergeben maximal 168:00. Die Anzeige ist eine Dauer,
+keine Uhrzeit; sie wird weder nach 24 Stunden umgebrochen noch gerundet. Ein
+ausdrücklich gespeichertes Nullmodell zeigt 0:00. Ein fehlendes oder unzuverlässig
+gelesenes Modell bleibt dagegen ohne Tabelle/Wochensumme, nicht bei 0:00.
+
+Die Fußzeile nennt ausdrücklich die **gespeicherte Wochenregel ohne
+Feiertagsabzug**. Sie ist kein Soll für eine konkrete Kalenderwoche, kein
+Vertragszeitkonto, Saldo, Urlaubsanspruch oder Abwesenheitsgutschrift und keine
+Bestätigung vollständiger Einrichtung. Modellwahl, Rohdaten, Tagestabelle,
+bestehende Hinweise und Formulare bleiben unverändert.
+
+Begrenzter Nachweis auf Main `9b42efbc` (PHP 8.5.12 / SQLite 3.46.1 /
+Laravel 13.38.0): die vorhandenen groben Reader-/Settings-/kompilierten-Blade-
+und extrahierten Native-Profil-Journeys mit Query-only-Memorydaten erneut
+verwendet; DE/EN/ZH, 35:05-/40:00-, Null-/168:00-Maximalwoche sowie fehlendes /
+defektes Modell ohne erfundene Nullsumme geprüft. Keine neue Testsuite,
+manueller CI-Start, echte Konten/Credentials, HTTP-/Browser-/Layout- oder
+Betriebsabnahme; die oben beschriebenen Grenzen und offenen #62-Gates bleiben.
