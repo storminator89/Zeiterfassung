@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads
+final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -450,6 +450,36 @@ final class LegacyChronoReads implements ChronoReads
             return ['rows' => $rows, 'correlation' => \chrono_history_correlations(
                 $pdo, $rows, (int) $actor->getKey(), $actor->role,
             )];
+        });
+    }
+
+    /** Existing bounded Native hypothetical comparison; never a writer or recalculation. */
+    public function workModelCreditPreview(array $command): array
+    {
+        $authenticated = $this->auth->guard()->user();
+        if (! $authenticated instanceof LegacyUser || (int) $authenticated->getKey() < 1) {
+            throw new AuthenticationException;
+        }
+        if ($authenticated->role !== 'admin' || $authenticated->auth_source !== 'local') {
+            throw new AuthorizationException('Nur die lokale Verwaltung darf Gutschriften vorab prüfen.');
+        }
+        $password = $authenticated->getAuthPassword();
+        if (! is_string($password) || $password === '') {
+            throw new AuthenticationException;
+        }
+        // Captured guard version, not a request value or a freshly invented
+        // authority. The unchanged snapshot still verifies source/generation.
+        $version = hash('sha256', $password);
+        $actorId = (int) $authenticated->getKey();
+        unset($password);
+
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($command, $version, $actorId): array {
+            if ((int) $actor->getKey() !== $actorId || $actor->role !== 'admin' || $actor->auth_source !== 'local') {
+                throw new AuthorizationException('Nur die lokale Verwaltung darf Gutschriften vorab prüfen.');
+            }
+            require_once dirname(__DIR__, 3).'/lib/work_model_credit_preview.php';
+
+            return work_model_credit_preview_locked($pdo, $actorId, $version, $command);
         });
     }
 

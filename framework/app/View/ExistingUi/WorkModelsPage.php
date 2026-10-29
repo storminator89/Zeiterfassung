@@ -26,7 +26,18 @@ final readonly class WorkModelsPage
         public ?array $selectedModel = null,
         public ?array $effectiveModel = null,
         public ?string $selectionError = null,
+        public bool $previewEnabled = false,
+        public array $previewForm = [],
+        public ?array $creditPreview = null,
     ) {}
+
+    /** Same bounded Native form display values; never writer input or stored draft. */
+    public static function previewFormValues(array $command, string $today): array
+    {
+        require_once dirname(__DIR__, 4).'/lib/work_model_credit_preview.php';
+
+        return \work_model_preview_form_values($command, $today);
+    }
 
     /** Presentation URL only; explicit zero clears selection, null preserves it. */
     public function url(int $page, ?int $id = null): string
