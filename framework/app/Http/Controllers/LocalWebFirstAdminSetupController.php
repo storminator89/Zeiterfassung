@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\InitialWebLanguage;
+
 use App\Auth\FirstAdminSetup;
 use App\View\ExistingUi\Copy;
 use App\View\ExistingUi\FirstAdminSetupPage;
@@ -45,7 +47,7 @@ final class LocalWebFirstAdminSetupController extends Controller
     {
         $this->setup->assertConfigured();
         require_once dirname(__DIR__, 4).'/lib/language.php';
-        $language = \valid_language($request->query('lang', \initial_language(
+        $language = \valid_language($request->query('lang', InitialWebLanguage::resolve(
             $request->session()->get('lang'), $request->header('Accept-Language', 'de'),
         )));
         $request->session()->put('lang', $language);

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\InitialWebLanguage;
+
 use App\Auth\LocalSession;
 use App\Auth\SelfRegistration;
 use Throwable;
@@ -77,10 +79,10 @@ final class LocalWebSessionController extends Controller
 
     private function copy(Request $request): Copy
     {
-        // Definitions only. Keep explicit/stored Chinese, but preserve native
-        // de/en-only initial browser detection and its stored-choice precedence.
+        // Definitions only. Keep explicit/stored preference before initial
+        // Laravel browser negotiation; no authentication/session policy change.
         require_once dirname(__DIR__, 4).'/lib/language.php';
-        $language = \valid_language($request->query('lang', \initial_language(
+        $language = \valid_language($request->query('lang', InitialWebLanguage::resolve(
             $request->session()->get('lang'), $request->header('Accept-Language', 'de'),
         )));
         $request->session()->put('lang', $language);
