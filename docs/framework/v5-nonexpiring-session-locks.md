@@ -28,6 +28,15 @@ policy; unknown profile/route drift stays fail-closed with a generic response.
 Existing setup/token/identity, source/Writer, CSRF/auth and generation checks are
 unchanged. A lock error is not a DB rollback/commit conclusion.
 
+## Deliberate policy switch, not a rolling mixed lease
+
+Before changing a running V5 image/configuration from a positive lease to zero,
+stop and drain every user of that store and exclude restart during the switch.
+Do not mix old positive-lease workers with new zero-lease workers: the new
+configuration cannot change an already executing old request. This is an
+operator shutdown prerequisite, not something detected by the source or proved
+by a flag. Default/first NEW preparation starts no workers in the first place.
+
 ## Worker exit and recovery
 
 This is a persistent owner lease, **not a process-held OS flock**. Normal

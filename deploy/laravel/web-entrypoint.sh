@@ -1,6 +1,8 @@
 #!/bin/sh
-# Startup checks only. Never provision, migrate, reset, repair, source/eval a
-# config file, print secrets, start a background task, or fall back to native PHP.
+# Startup and explicitly requested stopped cache-lock cleanup only.
+# Never provision/migrate/reset accounts, data, keys or setup; never repair
+# admission/config files, source/eval config, print secrets, start background
+# tasks or fall back to native PHP.
 set -eu
 umask 077
 fail() { printf '%s\n' 'Laravel web startup refused; inspect the private operator configuration.' >&2; exit 1; }

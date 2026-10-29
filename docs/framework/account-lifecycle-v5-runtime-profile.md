@@ -55,8 +55,11 @@ Runtime flag. With API selected, the required order is:
 1. NEW dormant V5 files in an existing private parent outside checkout/webroots.
 2. Private App key and, if API is selected, NEW API signing key/metadata **while
    the source and login budget are empty, before any setup profile/token/user**.
-3. Original short setup-token preparation; normal token/HTML/session/CSRF first
-   Admin setup; deliberate monotone setup closure with requests stopped/drained.
+3. Preferred NEW V5: the existing stopped interactive `chrono:first-admin`
+   command with the operator's own hidden password; no setup token. It closes
+   setup after confirmed creation. Alternatively, retain the original short
+   token/HTML/session/CSRF path and deliberate stopped/drained closure. See
+   [local first-admin setup](local-first-admin.md).
 4. Normal credential login and separately selected local Web/API operations.
 
 The existing API-key CLI still requires Fresh/Runtime/Budget/API flags off.
@@ -145,8 +148,9 @@ natural CI must refer to the exact aggregate source head, not only the old Draft
 or a previous isolated test checkout.
 
 A usable installation additionally needs the original NEW-only operator sequence
-under one supported non-root UID and unchanged image/mount identity, a private
-setup-token entry path, and a real trusted canonical HTTPS origin. The selected
+under one supported non-root UID and unchanged image/mount identity, private
+operator password entry (interactive CLI, or the alternative browser-token
+handoff), and a real trusted canonical HTTPS origin. The selected
 V5 profile now requires a stock FileStore **non-expiring lease (0)** with a
 positive wait and no per-route override. This removes lease expiry during a long
 request, rather than pretending Apache/PHP timeouts prove a whole-request bound.
