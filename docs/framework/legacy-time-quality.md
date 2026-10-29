@@ -36,6 +36,11 @@ Das ist ausdrücklich ein möglicher Konflikt, kein Nachweis einer tatsächliche
 Gutschrift oder Obergrenzenwert im Bericht. Die bestehende ganztägige Semantik
 einer Abwesenheit bleibt erhalten. Mapping, Reparatur und UI bleiben offen.
 
+**Additive Originalintervall-Schritte:** Format6 ergänzt ausschließlich gespeicherte
+Session-/Pausengrenzen; Format7 ergänzt abgeschlossene positive Originalpausenpaare
+innerhalb derselben Session. Die genauen Grenzen und Nachweise stehen unten.
+Kein vollständiger Event-/Projektionsabgleich, Mapping, Reparatur oder UI-Abschluss.
+
 ## Expliziter Aufruf, keine Dateisuche
 
 Installierte gelockte Frameworkabhängigkeiten und PHP 8.5 vorausgesetzt:
@@ -388,3 +393,66 @@ Zeitzone bleiben erhalten. Keine Rohzeiten, Namen, Notizen oder Kontoidentitäte
 im Bericht. Syntax und vollständige Klasseninverse separat geprüft.
 Das ist kein tatsächlicher Aufruf des Dateiscanners oder seiner Preflight-/
 Datei-/Sidecarzulassung, kein Bestandsscan, Lasttest oder Betriebsattest.
+
+## Additiver Format-7-Schritt: abgeschlossene Originalpausenpaare
+
+Quellbasis: Main `2ea273e6eddd294ff210a25b7bf65d535337aee5`, Baum
+`35f86aaf85c32cc149cae6f2b017ff2ca7aad109`.
+Die noch offene Prüfung überlappender gespeicherter Originalpausen wird eng
+ergänzt: `original_break_overlap` meldet zwei **abgeschlossene positive**
+Intervalle aus `break_intervals` mit derselben gespeicherten `session_id`.
+Beide Starts und Enden müssen SQLite-INTEGER sein. Die halboffene Bedingung
+`StartA < EndeB && StartB < EndeA` verwendet nur Vergleiche, keine potentiell
+überlaufende Subtraktion. Verschachtelte und identische positive Intervalle
+zählen; Randberührung und Null-Dauer nicht. Offene, umgekehrte oder ungültige
+Pausen erhalten kein geschätztes Ende und nehmen an diesen Paaren nicht teil.
+
+Der Vergleich bleibt von den bisherigen Eltern-Grenzbefunden getrennt: Zwei
+prüfbare Pausen können sich auch dann überschneiden, wenn eine Sessiongrenze
+ungültig ist oder die Pausen außerhalb der Session liegen. Deren bisherige
+Befunde bleiben zusätzlich erhalten. Unterschiedliche Sessions werden niemals
+kombiniert, auch nicht bei demselben Konto. Referenzen und Inhaberschaft bleiben
+Aufgabe der unveränderten V2-Vorprüfung. Kein Vergleich mit genehmigten
+Projektionskorrekturen, kein Abzug oder Neuverteilen von Pausenminuten und keine
+Behauptung über eine falsche Vergütung.
+
+Neue Paardetails folgen nach **allen** bisherigen Details, stabil geordnet nach
+kleinerer und dann größerer Pausen-ID. Sie verwenden
+`{entity: break_intervals, entity_id: <exakte Dezimalzeichenfolge>,
+category: original_break_overlap, column: null,
+related_entity_id: <exakte Dezimalzeichenfolge>}`. Die kleinere Quell-ID steht
+in `entity_id`, die größere in `related_entity_id`; keine davon wird als
+Projektions-`record_id` ausgegeben. Es erscheinen keine Session-/Kontoidentitäten,
+Zeitwerte oder Rohzeilen. Alte Kategorien behalten Form und Reihenfolge.
+
+`report_version=7` und `checks.original_break_overlap` benennen diese enge
+Prüfung. `event_session_break_projection_reconciliation` bleibt ausdrücklich
+`not_checked_beyond_original_interval_boundaries_and_completed_break_pairs`.
+Offene Pausenüberschneidungen, vollständiger Event-/Session-/Projektionsabgleich,
+bestätigtes Mapping, Reparatur und UI bleiben offen; `scope_status` und Exitcodes
+ändern sich nicht. Externe Leser müssen die neue Version/Paardetailform beachten.
+
+Die Abfragen streamen pro äußerer Pause nur größere IDs derselben Session.
+Jedes geeignete Paar erscheint einmal; gehalten werden nur zwei Zeilen statt
+einer Kandidaten-/Paarliste. Das Detail-Limit beschränkt weder Zähler noch
+untersuchte Zeilen oder Laufzeit. Wiederholtes Lesen kann quadratisch teuer
+sein; keine Performance-/Großbestandsabnahme oder Index-/Schemaänderung.
+
+**Grober Quellnachweis:** PHP8.5.12 / SQLite3.46.1, tatsächliche Klasse und
+ursprüngliche Quellmigratoren ausschließlich auf anonymem Memory. 22 erfundene
+Pausenzeilen ergeben genau elf erwartete neue Paare, darunter Verschachtelung,
+identische Intervalle, getrennte Session-/Eigentümergrenzen, separat ungültige
+Eltern, signed64-Zeitgrenzen sowie exakte Quell-IDs `9007199254740993` und
+`9223372036854775807`. Offene/ungültige/umgekehrte/Null-Dauer-Pausen und reine
+Randberührung erzeugen keine neuen Paare. Nach Entfernen ausschließlich der
+neuen versionierten Felder/Kategorie ist der bisherige vollständige Bericht
+identisch; Limit2 behält alle Zähler. Wiederholung, query-only-Transaktion,
+Originalzeilen/Schema, SQLite-Änderungszähler, Session und Zeitzone bleiben
+unverändert. Keine Namen, Notizen, Rohzeiten oder Kontoidentitäten im Bericht.
+Notwendige PHP-Syntax und vollständige Quellinverse wurden separat geprüft.
+
+Nur Klasse und diese Dokumentation ändern sich. Kein tatsächlicher Aufruf der
+Dateiscanner-CLI oder erneuter Datei-/Sidecar-/V2-Zulassungsnachweis, echter
+Bestandsscan, Lasttest, neue Testsuite oder manuell gestartete CI. Keine App-/
+Auth-/HTTP-/Browser-/Runtime-/Produktiv-/Migrationsabnahme, Konten, Credentials,
+Schlüssel oder Daten-/Konfigurationsänderung. #55 bleibt teilweise und offen.
