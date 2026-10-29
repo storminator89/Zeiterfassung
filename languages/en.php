@@ -333,4 +333,22 @@ define('SETTINGS_OWN_PASSWORD_STALE', 'Session no longer valid. Please sign in a
 define('SETTINGS_OWN_PASSWORD_UNCONFIRMED', 'Password change not confirmed. Do not retry automatically. Check your sign-in status.');
 define('SETTINGS_OWN_PASSWORD_LOGOUT_UNCONFIRMED', 'Password changed; complete sign-out not confirmed. Please sign in again.');
 define('SETTINGS_OWN_PASSWORD_PROFILE_UNAVAILABLE', 'Password changes are not admitted for this data profile.');
+
+// Existing generic team-absence labels; never expose type or notes.
+define('TEAM_ABSENCE_TITLE', 'Recorded team absence days');
+define('TEAM_ABSENCE_NOTE', 'Only stored absence days in the current team, without type or notes. Not a request, substitution plan or promise of available capacity.');
+define('TEAM_ABSENCE_DATE', 'Date in week');
+define('TEAM_ABSENCE_SHOW', 'Show week');
+define('TEAM_ABSENCE_NAV', 'Team absence week');
+define('TEAM_ABSENCE_PREVIOUS', 'Previous week');
+define('TEAM_ABSENCE_TODAY', 'Current week');
+define('TEAM_ABSENCE_NEXT', 'Next week');
+define('TEAM_ABSENCE_INCOMPLETE', 'Some records are unclear or the read limit was reached. Missing markers do not prove availability.');
+define('TEAM_ABSENCE_LEGEND', 'Absent = stored absence day; — = no displayed absence day, not proof of attendance.');
+define('TEAM_ABSENCE_MARKER', 'Absent');
+define('TEAM_ABSENCE_PAGE', 'Team page');
+define('TEAM_ABSENCE_PEOPLE', 'Team member pages');
+define('TEAM_ABSENCE_PEOPLE_PREVIOUS', 'Previous people');
+define('TEAM_ABSENCE_PEOPLE_NEXT', 'More people');
+define('TEAM_ABSENCE_UNAVAILABLE', 'Unavailable. Please reload.');
 ?>
