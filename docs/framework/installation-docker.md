@@ -1,10 +1,12 @@
-# Separate Laravel Docker installation — candidate, not activation
+# Laravel Docker operator contract — explicit preparation, not activation
 
-This is an executable **separate installation composition**, not a cutover of the
-native application, an old-data importer or proof that deployment works. The root
-Dockerfile/SECURITY.md still describe native PHP. Never point both applications
-at the same database. This packet itself creates **no instance, secret, account,
-listener, TLS certificate, host setting or external service**.
+The root Dockerfile and root Compose Web service are now the **Laravel standard**;
+start with the [NEW local V5 standard installation](laravel-default-installation.md).
+The detailed profiled compositions below remain explicit alternatives/operator
+tools, not a native-data cutover, old-data importer or deployment acceptance.
+The original native build is preserved as `deploy/native/Dockerfile`. Never
+point both applications at the same database. Publishing this packet creates
+**no instance, secret, account, listener, TLS certificate, host setting or service**.
 
 ## What is supplied
 
@@ -20,7 +22,7 @@ listener, TLS certificate, host setting or external service**.
   The image contains framework/public assets and the existing nonpublic
   `lib/`, `languages/`, schema map and LICENSE needed by the adapters. Only
   `/opt/chrono/framework/public` is served; `/opt/chrono` is denied.
-- The default image command is `php artisan list --raw`, **not a web server**.
+- The explicit `deploy/laravel/Dockerfile` image command is `php artisan list --raw`, **not a web server**. The root image instead defaults to the same fail-closed Web entrypoint used by Web Compose; no automatic provisioning.
   `compose.yaml` contains only the profiled one-off operator, no ports/network
   and no web dependency. Listing commands does not provision an installation.
 - `compose.web.yaml` separately adds the web service. It requires a real TLS
@@ -64,8 +66,9 @@ From the repository root:
 docker build -f deploy/laravel/Dockerfile -t chrono-laravel:local .
 ```
 
-Do not use the native root Dockerfile for this Laravel image. The Dockerfile's
-ignore file is used only with this explicit `-f` build. No real `.env`, volume,
+The root Dockerfile also builds Laravel, with Web execution as its default.
+The explicit `-f` image above remains command-only; its own ignore file is used
+for that path, while root `Dockerfile.dockerignore` isolates the standard build. No real `.env`, volume,
 TLS key or operator receipt belongs in the build context or source control.
 There is no preconfigured/default account and no automated installation test.
 
@@ -95,9 +98,10 @@ installation or retry an uncertain preparation automatically. The returned
 `activated:false`, `credentials_created:false`, `server_started:false` are
 boundaries, not a declaration that the UI is usable.
 
-### Explicit NEW V5 alternative; V4 remains the default
+### Explicit producer alternatives; unflagged command retains V4
 
-The command above selects the original V4 profile. For a separately reviewed
+The unflagged operator command above retains the original V4 profile; this is
+not the root standard installer, which selects local browser V5 explicitly. For a separately reviewed
 complete NEW-only V5 source composition, use the following **instead** of that
 command, never both and never on an existing instance:
 
@@ -369,7 +373,9 @@ are not a Docker/real deployment, arbitrary-backup or disaster-recovery pass.
 Checks are bounded source syntax/config inventory checks. No Docker daemon is
 available in the preparation environment: an actual image build, Apache/TLS
 startup, mount identity, provisioning, account creation or browser functional
-acceptance **has not been run**. No GitHub CI/test run, publish or activation.
+acceptance **has not been run**. Local preparation triggers no manual CI or real
+activation; natural repository CI is separate regression evidence, not a Docker
+or deployment pass. Source publication does not perform provisioning.
 The separate synthetic20-request Kernel proof on earlier Main is not a Docker
 or browser acceptance certificate for this composition.
 

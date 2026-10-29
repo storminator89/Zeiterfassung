@@ -20,6 +20,7 @@ framework/bootstrap/cache/*
 framework/storage/**
 **/.env
 **/.env.*
+**/*.env
 **/*.sqlite
 **/*.sqlite-*
 **/*.key
@@ -31,3 +32,7 @@ framework/storage/**
 **/framework-app-key.env
 **/.git
 **/__pycache__
+**/local-first-user-setup.json
+**/setup-closed
+**/setup-operator.lock
+deploy/native/
