@@ -115,7 +115,14 @@ configuration**, and keep it true afterwards. V5 requires the existing shared
 budget even with API off. Web Compose passes this existing boolean selection;
 default false preserves V4. False or a nonboolean does not bypass V5 admission.
 Do not append flags to generated App/API key files. The operator-only base
-service remains unchanged and does not inherit this Web opt-in.
+service remains unchanged and does not inherit this Web opt-in. For NEW V5 also
+set `CHRONO_LARAVEL_SESSION_LOCK_SECONDS=0` and choose a positive
+`CHRONO_LARAVEL_SESSION_WAIT_SECONDS`. V5 requires the locked stock FileStore
+non-expiring lease; positive V5 leases are refused. V4 keeps its original
+positive lease contract. Before changing a running V5 image/configuration, stop
+and drain all users and exclude restart; never mix old positive-lease workers
+with new zero-lease workers. The source does not detect such an old process.
+See [V5 session locking and stopped recovery](v5-nonexpiring-session-locks.md).
 
 Do not use `compose.api.yaml` for first-Admin setup: that optional overlay
 deliberately requires setup=false. If API is planned, prepare its separately
@@ -192,12 +199,15 @@ native startup here. No target/reset/resume option is supplied.
 3. Fill canonical HTTPS root origin, explicit unused port and reviewed lock/wait
    bounds. The origin must be reachable by the intended browser and exactly
    match its actual scheme/host/port. No aliases/subpath/proxy assumptions.
-4. Establish a real maximum **wall-clock request lifetime below the session-lock
-   TTL** and confirm single-host lock/SQLite behavior. Apache `TimeOut`, request
-   read timeouts and PHP `max_execution_time` are useful limited controls, but
-   **do not establish that whole-request bound**, particularly for blocking I/O.
-   This composition has no new hard watchdog and does not claim this gate passed.
-   Do not enable web writes until that external operational gate is resolved.
+4. Confirm the supported single-host lock/SQLite behavior. **V4 retains its
+   positive lease and requires a real maximum whole-request wall-clock lifetime
+   below that TTL.** Apache/PHP I/O/CPU limits do not prove it. **NEW V5 instead
+   requires exactly0 for the stock non-expiring FileStore session lease**, plus a
+   positive wait. It cannot expire while an old request is still executing;
+   per-route overrides are refused before session work. A worker exit without
+   release intentionally leaves the session blocked. Accept and rehearse the
+   verified-stopped recovery procedure below; never automatically clear a lock
+   because a wait timed out. There is no new watchdog or production acceptance.
 5. **Only for the alternative browser setup**, establish the supported
    **private operator-token handoff** before creating an
    administrator. The token is only in private `operator-setup-token.txt`0600,
@@ -268,6 +278,47 @@ LDAP, JWT API, device protocol/keys and shared-login-budget selection remain
 separate, default-off capabilities; this local-admin installation does not
 configure/test/activate them. The existing per-file login/setup throttles remain,
 not a new capacity or reverse-proxy acceptance claim.
+
+## V5 worker-exit lock recovery — explicit, stopped and isolated
+
+An ordinary V5 request releases its non-expiring lock in Laravel's existing
+`finally`, after session persistence. If a worker exits without that path, the
+lock intentionally remains; a later request waits only its configured positive
+bound and fails closed. A timeout is not proof of a dead owner or a failed DB
+commit. Normal `cache:clear` does not remove the separate lock store.
+
+Use only the original private instance configuration, same image/mount/UID and
+complete Fresh profile. Stop **all** web/API/CLI/other users of that store and
+exclude any restart for the entire operation; the example `stop web` alone does
+not discover or prove that global drain. Preserve the current full private state
+and reconcile any uncertain booking by its original stable receipt/ID. Never
+infer rollback, delete sessions or generate replacement events/keys to unblock.
+
+After independently confirmed shutdown and restart exclusion:
+
+```sh
+docker compose --env-file "$OPERATOR_CONFIG" -f deploy/laravel/compose.yaml -f deploy/laravel/compose.web.yaml stop web
+# Verify ALL users exited; keep restart excluded. --stopped is only your assertion.
+docker compose --env-file "$OPERATOR_CONFIG" -f deploy/laravel/compose.yaml -f deploy/laravel/compose.web.yaml run --rm --no-deps web --clear-stopped-cache-locks --stopped
+```
+
+This one-off mode runs **all the unchanged web-entrypoint preflights first**,
+including non-root, instance/setup/cache and TLS syntax checks. Then the original
+application must boot its exact admitted private Fresh FileStore before the
+existing `php artisan cache:clear file --locks` command runs. No entrypoint
+replacement, default-off operator-store guess or extra API overlay is used. It
+starts no Apache/HTTP listener, publishes no `run` service ports, creates no
+credential and does not reopen setup. Unknown/missing/extra arguments refuse.
+
+The command removes **ALL cache locks in that exact store**, not just one session
+lock. It does not clear ordinary cache/session records, DB rows, setup closure,
+account generations or keys. This is safe only behind the verified global drain;
+neither the flag nor the command proves it. If any preflight, profile or cleanup
+is unconfirmed, keep the service stopped and inspect privately; do not force an
+owner/path, relax a gate or run the normal web command as fallback. After confirmed
+success, deliberately restart the chosen normal profile and obtain current
+status/login; no automatic booking retry. This source and its component fixtures
+are not a Docker/real deployment, arbitrary-backup or disaster-recovery pass.
 
 ## Evidence for this source packet
 

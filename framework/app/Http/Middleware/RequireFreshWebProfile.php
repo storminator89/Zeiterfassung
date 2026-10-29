@@ -27,6 +27,7 @@ final class RequireFreshWebProfile
             // Reject encoded/trailing aliases before raw-field parsing and session work.
             if (! $route instanceof Route || ! $this->canonicalRequest($request, $route, $profile->origin)) { return $this->closed(); }
             $profile->assertCurrent($config);
+            $this->requireSessionPolicy($profile, $route);
             $setup = $profile->setupConfiguration();
             $config->set('chrono_setup', $setup);
             // Controller identity covers EVERY router-accepted setup URI, not only raw path text.
@@ -38,6 +39,15 @@ final class RequireFreshWebProfile
                 ['Content-Type' => 'text/plain; charset=UTF-8']));
         }
         return $this->headers($next($request));
+    }
+
+    /** A per-route lease must not override the admitted V5 non-expiring global lease. */
+    private function requireSessionPolicy(FreshWebConfiguration $profile, Route $route): void
+    {
+        if ($profile->requiresNonExpiringSessionLock()
+            && ($route->locksFor() !== null || $route->waitsFor() !== null)) {
+            throw new \LogicException('A route override cannot replace the admitted V5 session lock policy.');
+        }
     }
 
     private function canonicalRequest(Request $request, Route $route, string $origin): bool

@@ -1,9 +1,18 @@
 #!/bin/sh
-# Startup checks only. Never provision, migrate, reset, repair, source/eval a
-# config file, print secrets, start a background task, or fall back to native PHP.
+# Startup and explicitly requested stopped cache-lock cleanup only.
+# Never provision/migrate/reset accounts, data, keys or setup; never repair
+# admission/config files, source/eval config, print secrets, start background
+# tasks or fall back to native PHP.
 set -eu
 umask 077
 fail() { printf '%s\n' 'Laravel web startup refused; inspect the private operator configuration.' >&2; exit 1; }
+mode=web
+case "$#" in
+    0) ;;
+    2) [ "$1" = --clear-stopped-cache-locks ] && [ "$2" = --stopped ] || fail; mode=clear_stopped_cache_locks ;;
+    *) fail ;;
+esac
+# --stopped is an operator assertion, not discovery or proof of stopped workers.
 [ "$(id -u)" -ne 0 ] || fail
 [ "${APP_ENV:-}" = production ] && [ "${APP_DEBUG:-}" = false ] || fail
 [ "${FRAMEWORK_FRESH_WEB_ENABLED:-}" = true ] || fail
@@ -26,4 +35,10 @@ esac
 # A syntax check may read the explicitly mounted TLS credentials but never
 # returns their bytes. Failure has no automatic repair or alternate HTTP mode.
 apache2ctl -t >/dev/null 2>&1 || fail
+if [ "$mode" = clear_stopped_cache_locks ]; then
+    # Original application boot must still admit this exact private Fresh store.
+    # Clear ALL its cache locks only after external shutdown/restart exclusion.
+    # Never clear sessions/cache/data/keys, reset a token or start an HTTP server.
+    exec php artisan cache:clear file --locks
+fi
 exec apache2-foreground

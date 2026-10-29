@@ -349,14 +349,17 @@ final class LocalWebRoutes
             || $config->get('cache.stores.'.$store.'.driver') !== 'file') {
             throw new LogicException('The opt-in local web stack requires explicit persistent Laravel session blocking.');
         }
-        foreach (['session.block_lock_seconds', 'session.block_wait_seconds'] as $key) {
-            $seconds = $config->get($key);
-            if (! is_int($seconds) || $seconds < 1) {
-                throw new LogicException('Positive integer Laravel session lock and wait durations are required.');
-            }
+        $v5 = $app->bound(RuntimeDatabase::class) && $app->make(RuntimeDatabase::class)->isAccountLifecycleV5();
+        $lock = $config->get('session.block_lock_seconds');
+        $wait = $config->get('session.block_wait_seconds');
+        if (! is_int($lock) || ($v5 ? $lock !== 0 : $lock < 1) || ! is_int($wait) || $wait < 1) {
+            throw new LogicException('The selected session lease and positive wait durations are required.');
         }
         $backend = $app->make(CacheFactory::class)->store($store)->getStore();
-        if (! $backend instanceof FileStore || ! $backend instanceof LockProvider) {
+        if (! $backend instanceof FileStore || ! $backend instanceof LockProvider
+            || ($v5 && get_class($backend) !== FileStore::class)) {
+            // FileLock overrides acquire with atomic FileStore::add even for zero.
+            // A generic CacheLock zero fallback does not provide this contract.
             throw new LogicException('A stock Laravel FileStore LockProvider is required for local web sessions.');
         }
     }
