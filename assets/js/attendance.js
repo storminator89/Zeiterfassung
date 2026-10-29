@@ -300,7 +300,7 @@
                 if (!response.ok && response.status < 500 && ![401, 403].includes(response.status)) { expectedRecord = null; pending = null; rememberPending(); }
                 const data = await readJson(response);
                 if (!response.ok) throw responseError(data.message || 'Buchung wurde nicht bestätigt.', response);
-                if (!data.success || !Object.hasOwn(allowed, data.state) || !acknowledgedStartMetadata(pending, data)) throw new Error('Keine gültige Buchungsbestätigung erhalten. Dieselbe Aktion erneut versuchen.');
+                if (!data.success || data.event_id !== pending.event_id || !Object.hasOwn(allowed, data.state) || !acknowledgedStartMetadata(pending, data)) throw new Error('Keine gültige Buchungsbestätigung erhalten. Dieselbe Aktion erneut versuchen.');
                 if (pending.action === 'start') {
                     document.querySelectorAll('[data-start-metadata]').forEach(fields => { fields.querySelector('#attendance-location').value = 'office'; fields.querySelector('#attendance-note').value = ''; });
                 }
