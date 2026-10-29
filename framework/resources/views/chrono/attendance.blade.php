@@ -77,6 +77,30 @@
             </section>
         </aside>
     </div>
+    @if ($ownOpenReviewUnavailable ?? false)
+    <p class="text-sm opacity-70 mt-6" role="status">{{ $page->copy->text('OWN_OPEN_REVIEW_UNAVAILABLE') }}</p>
+    @elseif (($ownOpenReview ?? null) !== null && $ownOpenReview['count'] > 0)
+    <section class="card bg-base-100 shadow-xl mt-6" aria-labelledby="ownOpenReviewTitle">
+        <div class="card-body p-4 sm:p-6">
+            <h2 id="ownOpenReviewTitle" class="card-title">{{ $page->copy->text('OWN_OPEN_REVIEW_TITLE') }}</h2>
+            <p class="text-sm">{{ sprintf($page->copy->text('OWN_OPEN_REVIEW_COUNT'), $ownOpenReview['count'], $ownOpenReview['cutoff_day']) }}</p>
+            <p class="text-sm opacity-70">{{ $page->copy->text('OWN_OPEN_REVIEW_NOTE') }}</p>
+            <p class="text-sm opacity-70">{{ $page->copy->text('OWN_OPEN_REVIEW_ACTION') }}</p>
+            <p class="text-xs opacity-70">{{ $page->copy->text('OWN_OPEN_REVIEW_SNAPSHOT') }} <time datetime="{{ $ownOpenReview['loaded_at'] }}">{{ $ownOpenReview['loaded_at'] }}</time></p>
+            <ul class="space-y-2 my-3">
+            @foreach ($ownOpenReview['rows'] as $row)
+                <li class="text-sm">{{ $row['start_label'] ?? $page->copy->text('OWN_OPEN_REVIEW_UNKNOWN_START') }} · #{{ $row['record_id'] }}
+                @if (is_string($row['record_id']) && preg_match('/\A[1-9][0-9]*\z/D', $row['record_id']) === 1 && filter_var($row['record_id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) !== false)
+                    <a class="link link-primary" href="{{ 'adjustments.php?record_id='.rawurlencode($row['record_id']) }}">{{ $page->copy->text('OWN_OPEN_REVIEW_LINK') }}</a>
+                @endif
+                </li>
+            @endforeach
+            </ul>
+            @if ($ownOpenReview['limited'])<p class="text-sm opacity-70">{{ $page->copy->text('OWN_OPEN_REVIEW_LIMIT') }}</p>@endif
+            <a class="link text-sm" href="attendance.php">{{ $page->copy->text('OWN_OPEN_REVIEW_REFRESH') }}</a>
+        </div>
+    </section>
+    @endif
     @if ($page->interactions->home)
     <section id="timeRecordsContainer" class="mt-8" aria-label="Erfasste Arbeitszeiten"><p role="status">Arbeitszeiten werden geladen …</p></section>
     @else

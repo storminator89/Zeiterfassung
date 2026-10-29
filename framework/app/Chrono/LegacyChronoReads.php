@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads
+final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -452,6 +452,17 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
             return ['rows' => $rows, 'correlation' => \chrono_history_correlations(
                 $pdo, $rows, (int) $actor->getKey(), $actor->role,
             )];
+        });
+    }
+
+    /** Fixed own stored-row facts only, using the unchanged authorized snapshot. */
+    public function ownOpenReview(): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
+            require_once dirname(__DIR__, 3).'/lib/own_open_review.php';
+
+            return chrono_own_open_review_snapshot($pdo, (int) $actor->getKey(),
+                new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')));
         });
     }
 
