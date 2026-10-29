@@ -16,6 +16,14 @@ if (file_exists($langFile)) {
 include 'functions.php';
 require_once __DIR__ . '/lib/report_ordering.php';
 $user_id = $_SESSION['user_id'];
+require_once __DIR__ . '/lib/time_record_review.php';
+$reviewOnly = array_key_exists('review', $_GET);
+if ($reviewOnly && $_GET['review'] !== '1') {
+    http_response_code(400);
+    header('Content-Type: text/plain; charset=UTF-8');
+    echo 'Ungültige Listenansicht. Bitte Alle oder Prüfhinweise wählen.';
+    exit;
+}
 
 // Pagination
 $itemsPerPage = 10;
@@ -29,6 +37,7 @@ report_register_start_order($conn);
 // belong to another day or page. functions.php has finished its native reads.
 $conn->beginTransaction();
 try {
+    if (!$reviewOnly) {
     $stmt = $conn->prepare("
     SELECT *,
            NULL AS weekNumber,
@@ -41,13 +50,23 @@ try {
     $stmt->execute([$user_id, $itemsPerPage, $offset]);
     $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $stmt->closeCursor();
-    $totalsStmt = $conn->prepare('SELECT * FROM zeiterfassung WHERE user_id = ?');
+    }
+    $totalsStmt = $conn->prepare('SELECT * FROM zeiterfassung WHERE user_id = ?'
+        . ($reviewOnly ? ' ORDER BY chrono_report_start_epoch(startzeit) DESC, id DESC' : ''));
     $totalsStmt->bindValue(1, (int)$user_id, PDO::PARAM_INT);
     $totalsStmt->execute();
     $completeDayRows = $totalsStmt->fetchAll(PDO::FETCH_ASSOC);
     $totalsStmt->closeCursor();
     $listConflicts = report_absence_conflicts($completeDayRows);
+    if ($reviewOnly) {
+        // Classify the complete own snapshot BEFORE pagination; never the visible page.
+        $reviewRows = time_record_review_rows($completeDayRows, $listConflicts);
+        $totalRecords = count($reviewRows);
+        $page = min($page, max(1, (int) ceil($totalRecords / $itemsPerPage)));
+        $records = array_slice($reviewRows, ($page - 1) * $itemsPerPage, $itemsPerPage);
+    } else {
     $totalRecords = count($completeDayRows);
+    }
     $conn->commit();
 } catch (Throwable $error) {
     if ($conn->inTransaction()) { $conn->rollBack(); }
@@ -80,6 +99,11 @@ echo '<details class="card bg-base-100 shadow-xl p-4 mb-4">
     </form>
     <p class="text-sm opacity-70 mt-3">Nur eigene Buchungen nach Berliner Startdatum, unabhängig von Suche oder Listenseite. Nachtschichten bleiben vollständig beim Starttag. Die Qualitätsprüfung umfasst weiterhin Ihren gesamten Bestand; auch Fehler oder ungeklärte Überschneidungen außerhalb des Zeitraums können den Download blockieren. Kein Lohnsoftwareformat.</p>
 </details>';
+
+echo '<div class="flex flex-wrap items-end gap-3 mb-4"><label class="text-sm font-semibold" for="time-record-review">Listenansicht<select id="time-record-review" data-record-review-filter data-page="' . (int)$page . '" class="select select-bordered select-sm block mt-1"><option value="all"' . (!$reviewOnly ? ' selected' : '') . '>Alle eigenen Einträge</option><option value="review"' . ($reviewOnly ? ' selected' : '') . '>Vorhandene Prüfhinweise</option></select></label><p class="text-sm opacity-70">' . ($reviewOnly ? (int)$totalRecords . ' passende eigene Einträge. ' : '') . 'Nur ungültige Zeiten und bestehende Arbeitszeit-/Abwesenheitskonflikte. Kein vollständiger Bestandscheck oder Vollständigkeitsnachweis; ein unmarkierter Eintrag ist keine Freigabe. Summen berücksichtigen weiterhin den vollständigen eigenen Tageskontext.</p></div>';
+if ($reviewOnly && $totalRecords === 0) {
+    echo '<p class="text-sm mb-4" role="status">Keine passenden Prüfhinweise gefunden. Dies bestätigt weder einen fehlerfreien Bestand noch rekonstruierbare Altzeiten.</p>';
+}
 
 echo '<div id="timeRecordsTable" class="card bg-base-100 shadow-xl">
     <div class="card-body p-6">
