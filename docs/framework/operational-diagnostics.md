@@ -99,7 +99,7 @@ php artisan chrono:diagnose --backup=/ABSOLUTER/PRIVATER/AKTUELLER/BACKUPDATEI -
 
 ## Begrenzung der Quellenabnahme
 
-Quellbasis: Main `1e8e50a4c95f1eb4c4397943bb371404a0cdce28`, 29.10.2026.
+Quellbasis: Main `54c409af37c11c12cfd6ee3f9f4bd45ea081d608`, 29.10.2026.
 Die vorhandene HTTPkorrelation wird nicht ersetzt. PHP8.5.12 / gelocktes
 Laravel13.38.0: Syntax und acht begrenzte CommandTester-Komponentenfälle geprüft:
 geschlossen/ungültig ohne Runtimeauflösung, tatsächliche zugelassene read-only

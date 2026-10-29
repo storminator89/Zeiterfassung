@@ -1,4 +1,4 @@
-{{-- Existing login card; explicit operator-token first-admin setup, never public registration. --}}
+{{-- Existing card: first user of a NEW local install, or the separate operator-token setup. --}}
 <!DOCTYPE html>
 <html lang="{{ $page->copy->language }}" data-theme="light">
 
@@ -28,15 +28,17 @@
                 </div>
             @endif
 
-            <p class="text-sm text-gray-700 mb-4" role="note">{{ $page->copy->text('SETUP_NOTICE') }}</p>
+            <p class="text-sm text-gray-700 mb-4" role="note">{{ $page->copy->text($page->requiresOperatorToken ? 'SETUP_NOTICE' : 'SETUP_LOCAL_FIRST_USER_NOTICE') }}</p>
             <form method="post" action="setup.php" class="space-y-4">
                 <fieldset class="space-y-4">
                 @csrf
 
+                @if ($page->requiresOperatorToken)
                 <div class="form-control">
                     <label class="label" for="setup-token"><span class="label-text text-gray-700">{{ $page->copy->text('SETUP_TOKEN_LABEL') }}</span></label>
                     <input type="password" id="setup-token" name="setup_token" autocomplete="off" minlength="32" maxlength="256" class="input input-bordered w-full bg-gray-50 focus:bg-white" required />
                 </div>
+                @endif
                 <div class="form-control">
                     <label class="label" for="setup-username">
                         <span class="label-text text-gray-700">{{ $page->copy->text('USERNAME_LABEL') }}</span>
@@ -70,7 +72,7 @@
             </fieldset>
             </form>
 
-            <div class="text-center mt-4"><a href="login.php" class="link link-primary text-sm">{{ $page->copy->text('SETUP_BACK_LOGIN') }}</a></div>
+            <div class="text-center mt-4"><a href="{{ $page->requiresOperatorToken ? 'login.php' : 'login.php?setup=complete' }}" class="link link-primary text-sm">{{ $page->copy->text('SETUP_BACK_LOGIN') }}</a></div>
         </div>
         <div class="text-center pb-6">
             <p class="text-xs text-gray-500">© 2024 Quodara Chrono - Zeiterfassung</p>

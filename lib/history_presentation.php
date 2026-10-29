@@ -71,11 +71,26 @@ function chrono_history_select_presentation(stdClass $object,array $fields,bool 
         }
         $nested=is_string($value)?chrono_history_decode_presentation($value):$value;
         if ($kind==='booking' && $nested instanceof stdClass) {
-            [$childSelected,$childCells]=chrono_history_select_presentation($nested,chrono_history_presentation_fields('zeiterfassung'),$omitted,$path.'.',$fieldLabel.' / ');
+            $bookingFields=chrono_history_presentation_fields('zeiterfassung');
+            if ($path==='original_json') { $bookingFields['_chrono_metadata_request_v1']=['Beantragte Metadaten (v1)','metadata_proposal_v1']; }
+            [$childSelected,$childCells]=chrono_history_select_presentation($nested,$bookingFields,$omitted,$path.'.',$fieldLabel.' / ');
             $selected->{$key}=$childSelected;
             $cells[$path]=['label'=>$fieldLabel,'text'=>'Ausgewählte Buchungsfelder','signature'=>'booking'];
             $cells+=$childCells;
             continue;
+        }
+        if ($kind==='metadata_proposal_v1') {
+            try {
+                require_once __DIR__.'/correction_metadata.php';
+                $metadata=correction_metadata_v1_values($nested);
+                $selected->{$key}=(object)(['version'=>1]+$metadata);
+                $cells[$path]=['label'=>$fieldLabel,'text'=>'Nur Ort und Notiz beantragt','signature'=>'metadata-v1'];
+                foreach (['location'=>'Beantragter Arbeitsort','note'=>'Beantragte Notiz'] as $name=>$label) {
+                    $cell=chrono_history_selected_scalar($metadata[$name],$omitted);
+                    $selected->{$key}->{$name}=$cell['value'];$cells[$path.'.'.$name]=['label'=>$label]+$cell;
+                }
+                continue;
+            } catch (Throwable) { /* Fixed unavailable marker below, never arbitrary JSON. */ }
         }
         if ($kind==='week' && is_array($nested) && array_is_list($nested) && count($nested)===7
             && count(array_filter($nested,static fn($day)=>is_int($day)||(is_float($day)&&is_finite($day))))===7) {

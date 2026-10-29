@@ -22,8 +22,11 @@ final class LocalWebRegistrationController extends Controller
 {
     public function __construct(private SelfRegistration $registration, private Repository $config) {}
 
-    public function create(Request $request): Response
+    public function create(Request $request): Response|RedirectResponse
     {
+        if ($this->config->get('chrono_setup.local_first_user', false) === true) {
+            return new RedirectResponse('setup.php', 303, ['Cache-Control' => 'no-store']);
+        }
         return $this->page($request);
     }
 

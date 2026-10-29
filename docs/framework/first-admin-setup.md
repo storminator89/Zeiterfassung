@@ -21,7 +21,15 @@ browser belongs to the installation owner.
 
 ## Local NEW-V5 alternative: no setup token
 
-The explicit interactive `chrono:first-admin --instance=... --new-only --stopped`
+For a newly prepared **local-browser first-user** installation, the existing card
+directly collects username/email/own password without a token. The first successful
+registration becomes Admin atomically, then setup closes. Neither old profiles
+nor existing accounts are switched to this policy. See [browser first-user setup](browser-first-user-admin.md).
+Local/network access is not an identity proof: anyone who can reach the unfinished
+installation could register first. Complete it only in the trusted local setting
+explicitly selected by the user; never expose this mode publicly.
+
+The optional interactive `chrono:first-admin --instance=... --new-only --stopped`
 operator command collects `admin` (editable), email and a hidden chosen password
 plus confirmation directly in the operator's terminal. It admits only the
 canonical empty private NEW V5 cohort, uses the existing first-admin writer,

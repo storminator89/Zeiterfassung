@@ -189,6 +189,7 @@ return [
     'SETUP_TITLE' => 'Initial administration - Quodara Chrono',
     'SETUP_LINK' => 'Set up the first administrator',
     'SETUP_NOTICE' => 'Only for initial local administration of an empty installation. The operator must provision the secret setup authorization separately. No existing account is changed and no automatic sign-in occurs.',
+    'SETUP_LOCAL_FIRST_USER_NOTICE' => 'Fresh local installation: the first successfully registered user becomes administrator. Choose your own password now, without a token or terminal. Anyone with access on a shared network could register first: set up only in a trusted local environment. Existing accounts are not changed.',
     'SETUP_TOKEN_LABEL' => 'Secret setup authorization',
     'SETUP_STANDARD_ADMIN_NOTICE' => 'The username admin is prefilled and can be changed here. Choose your own administrator password before creating the account. There is no usable default password.',
     'SETUP_NEW_PASSWORD_LABEL' => 'Choose your own administrator password',
