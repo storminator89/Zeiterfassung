@@ -3,6 +3,28 @@
 import argparse, getpass, hashlib, hmac, http.server, json, os, pathlib, re, secrets, stat, threading, time, urllib.error, urllib.parse, urllib.request
 from pending_store import PendingStore, StoreError, CapacityError, partition_for, positive_immediate
 ROOT=pathlib.Path(__file__).resolve().parent
+
+class _CorrelatedRemoteFailure(dict):
+    """Ephemeral header metadata, never a JSON field, receipt or stored event."""
+    def __init__(self, data, request_id):
+        super().__init__(data);self.request_id=request_id
+
+def _remote_error_message(message, result):
+    if not isinstance(result,_CorrelatedRemoteFailure):return message
+    return f'{message} Anfragekennung: {result.request_id} (kein Buchungsnachweis).'
+
+def _with_remote_error_id(response, data):
+    # Only the actual failed response header may annotate an existing error.
+    # Body fields, network failures, success and 4xx never supply an identifier.
+    try:
+        if type(response.status) is not int or not 500<=response.status<=599:return data
+        values=response.headers.get_all('X-Request-ID',[])
+        if len(values)!=1 or not isinstance(values[0],str) or re.fullmatch(r'[a-f0-9]{32}',values[0]) is None:return data
+        result=_CorrelatedRemoteFailure(data,values[0])
+        if isinstance(result.get('message'),str):result['message']=_remote_error_message(result['message'],result)
+        return result
+    except Exception:return data # Presentation must never replace the original failure.
+
 class Remote:
     def __init__(self, config, allow_http=False):
         self.config=config
@@ -32,8 +54,8 @@ class Remote:
         try:
             data=json.loads(response.read(16384))
             if not isinstance(data,dict):raise ValueError()
-            return response.status,data
-        except (ValueError,OSError):return 503,{'success':False,'message':'Keine gültige Serverbestätigung. Vorgang nicht als gebucht behandeln.'}
+            return response.status,_with_remote_error_id(response,data)
+        except (ValueError,OSError):return 503,_with_remote_error_id(response,{'success':False,'message':'Keine gültige Serverbestätigung. Vorgang nicht als gebucht behandeln.'})
 
 def identify_record_binding(result):
     """Exact observed own record only. Never repair a present malformed string field."""
@@ -78,7 +100,7 @@ class DurableKiosk:
                 return 200,{'success':True,'name':name,'state':result['state'],'interaction_token':token,'durable_pending':True}
             except (ValueError,TypeError,KeyError):
                 self.current=None
-                return 503,{'success':False,'message':'Keine passende Anmeldung bestätigt. Bitte erneut anmelden.'}
+                return 503,{'success':False,'message':_remote_error_message('Keine passende Anmeldung bestätigt. Bitte erneut anmelden.',result)}
     def reset(self,data):
         with self.lock:
             matched=(self.identifying is not None and data.get('identify_request_id')==self.identifying[1])
@@ -131,7 +153,7 @@ class DurableKiosk:
             response={'success':True,'message':result['message'],'time':result['time']}
             if local_warning:response['message']='Server hat bestätigt; lokale Ablage nicht bestätigt. Nicht erneut buchen; Betreiberklärung erforderlich.'
             return 200,response
-        return 503,{'success':False,'message':'Nicht bestätigt – ursprünglicher Vorgang bleibt privat zur Klärung erhalten. Keine automatische Wiederholung; bitte neu anmelden oder freigegebenen Korrekturweg nutzen.','durable_pending':True}
+        return 503,{'success':False,'message':_remote_error_message('Nicht bestätigt – ursprünglicher Vorgang bleibt privat zur Klärung erhalten. Keine automatische Wiederholung; bitte neu anmelden oder freigegebenen Korrekturweg nutzen.',result),'durable_pending':True}
     def handle(self,path,data):
         if path=='/identify':return self.identify(data)
         if path=='/event':return self.event(data)
