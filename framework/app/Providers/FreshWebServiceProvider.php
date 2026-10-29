@@ -65,17 +65,22 @@ final class FreshWebServiceProvider extends ServiceProvider
                 && $this->app->bound(LocalWebAccountLifecycle::class)) {
                 throw new LogicException('Fresh V5 web must not replace another account lifecycle profile.');
             }
+            // Prepared local V5 uses the existing owner-only withdrawal flow.
+            // This metadata does not bypass the registrar's Runtime/eligibility gate.
+            $includeCorrectionWithdrawals = $this->app->make(RuntimeDatabase::class)->isAccountLifecycleV5();
             $this->app->instance(Interactions::class, new Interactions(
                 login: true, attendance: true, logout: true, corrections: true, home: true, absences: true,
                 workModels: true, history: true, supervisor: true, dashboard: true, adminPauseSettings: true,
+                correctionWithdrawals: $includeCorrectionWithdrawals,
             ));
             // Terminal protocol/key and secret-bearing DB-download capabilities are NOT inferred.
-            $router->group(['middleware' => [RequireFreshWebProfile::class]], function () use ($config, $profile): void {
+            $router->group(['middleware' => [RequireFreshWebProfile::class]], function () use ($config, $profile, $includeCorrectionWithdrawals): void {
                 LocalWebRoutes::register($this->app, includeHistory: true, includeSupervisor: true, includeDashboard: true,
                     includeCsv: true, includeSettings: true, includeAdminPauseSettings: true,
                     includeRegistration: true, includeSetup: $config->get('chrono_setup.enabled') === true,
                     includeLdapSync: $profile->ldapSyncProfile() !== null,
-                    useSharedLoginBudget: SharedLoginBudgetServiceProvider::selected($this->app));
+                    useSharedLoginBudget: SharedLoginBudgetServiceProvider::selected($this->app),
+                    includeCorrectionWithdrawals: $includeCorrectionWithdrawals);
             });
             // The unchanged registrar must return first. Its current V5 Runtime
             // hold still refuses before routes or this prepared capability exist.

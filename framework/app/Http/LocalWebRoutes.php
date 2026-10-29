@@ -85,9 +85,11 @@ final class LocalWebRoutes
             throw new LogicException('Terminal device enrollment requires its existing page, non-debug mode and an admitted writer.');
         }
         if ($includeCorrectionWithdrawals && ($app->make('config')->get('app.debug') !== false
-            || ! $app->bound(RuntimeDatabase::class) || ! $app->make(RuntimeDatabase::class)->isIntakePolicyV4()
+            || ! $app->bound(RuntimeDatabase::class)
+            || (! $app->make(RuntimeDatabase::class)->isIntakePolicyV4()
+                && ! $app->make(RuntimeDatabase::class)->isAccountLifecycleV5())
             || ! $app->bound(AttendanceWriter::class))) {
-            throw new LogicException('Correction withdrawal requires explicit non-debug writable V4 composition.');
+            throw new LogicException('Correction withdrawal requires explicit non-debug writable V4 or V5 composition.');
         }
         if ($includeLdapSessionRevocations && (! $includeAdminPauseSettings
             || $app->make('config')->get('app.debug') !== false
