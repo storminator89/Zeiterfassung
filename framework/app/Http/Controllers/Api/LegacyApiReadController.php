@@ -27,7 +27,7 @@ final class LegacyApiReadController
 
     public function attendance(Request $request): Response
     {
-        // Explicit Laravel-only additive view. Reconstruct the raw PHP query:
+        // Explicit additive view matching native raw PHP opt-in. Reconstruct the query:
         // trimming/null normalization must not make a malformed opt-in valid.
         parse_str($request->server('QUERY_STRING', ''), $query);
         if (array_key_exists('workflow', $query) && $query['workflow'] !== '1') {
