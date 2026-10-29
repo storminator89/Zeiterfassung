@@ -243,4 +243,9 @@ return [
     'ADMIN_USER_DELETE_HISTORY_LOCKED' => 'Löschen gesperrt: Konto mit Historie bleibt erhalten.',
     'TIME_RECORD_HISTORY_LINK' => 'Buchungshistorie (separat)',
     'TIME_RECORD_HISTORY_HINT' => 'Vorhandene Änderungen und begrenzte Bezüge dieser Buchung öffnen. Kein Nachweis einer vollständigen Historie.',
+    'CSV_PERIOD_TITLE' => 'Eigener CSV-Export für einen Zeitraum',
+    'CSV_PERIOD_FROM' => 'Von (Berliner Starttag)',
+    'CSV_PERIOD_TO' => 'Bis einschließlich',
+    'CSV_PERIOD_SUBMIT' => 'Zeitraum als CSV',
+    'CSV_PERIOD_NOTE' => 'Nur eigene Buchungen nach Berliner Startdatum, unabhängig von Suche oder Listenseite. Nachtschichten bleiben vollständig beim Starttag. Die Qualitätsprüfung umfasst weiterhin Ihren gesamten Bestand; auch Fehler oder ungeklärte Überschneidungen außerhalb des Zeitraums können den Download blockieren. Kein Lohnsoftwareformat.',
 ];
