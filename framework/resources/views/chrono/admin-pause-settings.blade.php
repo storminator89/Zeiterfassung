@@ -54,7 +54,7 @@
             <h2 class="card-title text-2xl mb-4">{{ $page->copy->text('USER_MANAGEMENT_TITLE') }}
                 <span id="account-lifecycle-help">
                     <button type="button" id="account-lifecycle-trigger" class="btn btn-ghost btn-sm" aria-label="Hinweis zu Kontosperren" aria-describedby="account-lifecycle-tooltip" aria-controls="account-lifecycle-tooltip" aria-expanded="false">ⓘ</button>
-                    <span id="account-lifecycle-tooltip" role="tooltip" hidden>Eine zentrale Kontosperre fehlt noch. Lokale Passwortänderungen sperren weder erneute LDAP-Anmeldungen noch Terminal-Zugänge.</span>
+                    <span id="account-lifecycle-tooltip" role="tooltip" hidden>@if ($adminPauseSettings->lifecycleUsers !== [])Kontostatus und Terminal-/LDAP-Sitzungssperren sind getrennte Aktionen. Gesperrte Konten bleiben mit ihrer Historie erhalten.@else Eine zentrale Kontosperre fehlt noch. Lokale Passwortänderungen sperren weder erneute LDAP-Anmeldungen noch Terminal-Zugänge.@endif</span>
                 </span>
             </h2>
             @if ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled'])<p class="alert alert-info mb-4" role="note">Manuelle Benutzeraufnahme ist durch die gespeicherte Auswahl deaktiviert.</p>@endif
@@ -63,6 +63,9 @@
             @endif
             @if ($page->interactions->ldapSessionRevocations)
             <p class="text-sm opacity-70 mb-4" id="ldap-session-revocation-help">„LDAP-Sitzungen beenden“ beendet bestehende Web-Sitzungen und bisherige hashgebundene Tokens beim nächsten autoritativen Check. Es deaktiviert kein Konto: erneute gültige LDAP-Anmeldung bleibt möglich, Terminal-Zugänge bleiben unverändert. Bei unklarer Antwort nicht erneut senden.</p>
+            @endif
+            @if ($adminPauseSettings->lifecycleNotice !== null)
+            <p class="alert alert-info mb-4" role="status">{{ $adminPauseSettings->lifecycleNotice }}</p>
             @endif
             @unless ($managedUsersEnabled)
             <div id="user-mutations-hold" class="alert alert-info mb-4" role="note">Bestehende Benutzer bleiben nur lesend: Ändern, Löschen und Passwortänderungen sind nicht verbunden.</div>
@@ -159,6 +162,9 @@
                                 @else
                                 <button type="button" class="btn btn-ghost btn-sm" title="{{ $page->copy->text('BUTTON_DELETE') }}" disabled aria-describedby="user-mutations-hold"><i class="fas fa-trash-alt"></i></button>
                                 @endif
+                                @if (isset($adminPauseSettings->lifecycleUsers[$user['id']]))
+                                    @include('chrono.partials.account-lifecycle-actions', ['lifecycleUser' => $adminPauseSettings->lifecycleUsers[$user['id']], 'lifecycleId' => $user['id']])
+                                @endif
                                 @if (isset($adminPauseSettings->ldapSessionConfirmations[$user['id']]))
                                 <form method="post" class="inline" data-revoke-ldap-sessions aria-describedby="ldap-session-revocation-help">
                                     @csrf
@@ -250,6 +256,9 @@
         </div>
     </div>
 </main>
+@if ($adminPauseSettings->lifecycleUsers !== [])
+@include('chrono.partials.account-lifecycle-dialog')
+@endif
 <dialog id="editUserModal" class="modal">
     @if ($managedUsersEnabled)
     <form method="post" class="modal-box" id="managed-user-form">

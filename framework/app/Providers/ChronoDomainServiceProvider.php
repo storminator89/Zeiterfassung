@@ -38,7 +38,7 @@ final class ChronoDomainServiceProvider extends ServiceProvider
                 }
 
                 return $app->make(AttendanceWriter::class);
-            },
+            }, $app->make(\App\Auth\AccountLifecycleWebIdentity::class),
         ));
         // Construction never opens a writer, reads credentials or resolves keys.
         $this->app->scoped(LocalWebTerminalCredentialRevocations::class, fn ($app) => new LegacyLocalWebTerminalCredentialRevocations(
@@ -49,7 +49,7 @@ final class ChronoDomainServiceProvider extends ServiceProvider
                 }
 
                 return $app->make(AttendanceWriter::class);
-            },
+            }, $app->make(\App\Auth\AccountLifecycleWebIdentity::class),
         ));
         // Pure lazy owner withdrawal service; no route or capability is selected.
         $this->app->scoped(LocalWebCorrectionWithdrawals::class, fn ($app) => new LegacyLocalWebCorrectionWithdrawals(
@@ -71,7 +71,7 @@ final class ChronoDomainServiceProvider extends ServiceProvider
                 }
 
                 return $app->make(AttendanceWriter::class);
-            },
+            }, $app->make(\App\Auth\AccountLifecycleWebIdentity::class),
         ));
         // Independent optional module operation; construction never changes settings.
         $this->app->scoped(LocalWebTerminalModuleSettings::class, fn ($app) => new LegacyLocalWebTerminalModuleSettings(
@@ -82,7 +82,7 @@ final class ChronoDomainServiceProvider extends ServiceProvider
                 }
 
                 return $app->make(AttendanceWriter::class);
-            },
+            }, $app->make(\App\Auth\AccountLifecycleWebIdentity::class),
         ));
         // Enrollment has no signing-key dependency; the writer is resolved only on a valid command.
         $this->app->scoped(LocalWebTerminalDevicePairings::class, fn ($app) => new LegacyLocalWebTerminalDevicePairings(
@@ -93,7 +93,7 @@ final class ChronoDomainServiceProvider extends ServiceProvider
                 }
 
                 return $app->make(AttendanceWriter::class);
-            },
+            }, $app->make(\App\Auth\AccountLifecycleWebIdentity::class),
         ));
         // Real backend, but no route, root-key binding or fallback is installed.
         // Check explicit key admission before resolving any writer/connection.

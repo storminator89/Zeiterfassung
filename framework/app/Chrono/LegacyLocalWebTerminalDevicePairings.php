@@ -3,6 +3,7 @@
 namespace App\Chrono;
 
 use App\Auth\LegacyUser;
+use App\Auth\AccountLifecycleWebIdentity;
 use App\LegacyDatabase\AttendanceWriter;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -15,7 +16,8 @@ use LogicException;
 final class LegacyLocalWebTerminalDevicePairings implements LocalWebTerminalDevicePairings
 {
     /** @param Closure(): AttendanceWriter $writer Trusted operation-scoped resolver. */
-    public function __construct(private readonly Factory $auth, private readonly Closure $writer) {}
+    public function __construct(private readonly Factory $auth, private readonly Closure $writer,
+        private readonly ?AccountLifecycleWebIdentity $lifecycle = null) {}
 
     public function create(array $command): TerminalDevicePairing
     {
@@ -37,13 +39,14 @@ final class LegacyLocalWebTerminalDevicePairings implements LocalWebTerminalDevi
         }
 
         $version = hash('sha256', $actor->getAuthPassword());
+        $authority = $this->lifecycle?->capture($actor);
         $writer = ($this->writer)();
         if (! $writer instanceof AttendanceWriter) {
             throw new LogicException('An admitted operation-scoped terminal device enrollment writer is required.');
         }
         try {
             // No result leaves the writer before confirmed COMMIT and idle state.
-            return $writer->createTerminalDevicePairing((int) $actor->getKey(), $version, $command['name'], $command['site_id']);
+            return $writer->createTerminalDevicePairing((int) $actor->getKey(), $version, $command['name'], $command['site_id'], $authority);
         } catch (\AttendanceError $error) {
             if ($error->status === 401) {
                 throw new AuthenticationException('Unauthenticated.', ['web']);

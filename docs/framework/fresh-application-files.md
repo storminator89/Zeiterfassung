@@ -1,5 +1,8 @@
 # New empty application files (source-only preparation)
 
+The separately selected [dormant NEW-only V5 branch](fresh-account-lifecycle-v5-files.md)
+does not change this ordinary V4 default or admit V5 runtime/setup operations.
+
 `chrono:prepare-fresh --private-parent=/canonical/private/parent --new-only`
 prepares **new empty V4 files**, not a running or provisioned installation. It is
 an explicit operator CLI command, not a web endpoint or automatic bootstrap.
