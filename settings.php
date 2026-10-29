@@ -148,6 +148,9 @@ try {
     $ownSettingsProfile = new \App\View\ExistingUi\OwnSettingsProfile(null, $lang);
 }
 
+require_once __DIR__ . '/lib/native_own_password_display.php';
+$ownPasswordDisplay = native_own_password_display($conn, $userInfo);
+
 include 'header.php';
 ?>
 
@@ -221,7 +224,7 @@ include 'header.php';
             <?php if ($passwordError !== '') : ?>
                 <div class="alert alert-error mb-4" role="alert"><?= h($passwordError) ?></div>
             <?php endif; ?>
-            <?php if (is_array($userInfo) && native_own_password_available($userInfo)) : ?>
+            <?php if ($ownPasswordDisplay === 'available') : ?>
                 <p class="text-sm opacity-70 mb-4"><?= h(SETTINGS_OWN_PASSWORD_HELP) ?></p>
                 <form method="post" class="space-y-4">
                     <?= csrf_field() ?>
@@ -233,6 +236,8 @@ include 'header.php';
                     </div>
                     <button class="btn btn-primary" type="submit"><?= h(SETTINGS_OWN_PASSWORD_SUBMIT) ?></button>
                 </form>
+            <?php elseif ($ownPasswordDisplay === 'profile_unavailable') : ?>
+                <p class="text-sm opacity-70"><?= h(SETTINGS_OWN_PASSWORD_PROFILE_UNAVAILABLE) ?></p>
             <?php else : ?>
                 <p class="text-sm opacity-70"><?= h(SETTINGS_OWN_PASSWORD_UNAVAILABLE) ?></p>
             <?php endif; ?>
