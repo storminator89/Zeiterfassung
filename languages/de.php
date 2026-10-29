@@ -336,4 +336,22 @@ define('SETTINGS_OWN_PASSWORD_STALE', 'Sitzung nicht mehr gültig. Bitte neu anm
 define('SETTINGS_OWN_PASSWORD_UNCONFIRMED', 'Passwortänderung nicht bestätigt. Nicht automatisch wiederholen. Bitte den Anmeldestand prüfen.');
 define('SETTINGS_OWN_PASSWORD_LOGOUT_UNCONFIRMED', 'Passwort geändert; Abmeldung nicht vollständig bestätigt. Bitte erneut anmelden.');
 define('SETTINGS_OWN_PASSWORD_PROFILE_UNAVAILABLE', 'Passwortwechsel für dieses Datenprofil nicht freigegeben.');
+
+// Existing generic team-absence labels; never expose type or notes.
+define('TEAM_ABSENCE_TITLE', 'Erfasste Team-Abwesenheitstage');
+define('TEAM_ABSENCE_NOTE', 'Nur gespeicherte Abwesenheitstage im aktuellen Team, ohne Art oder Notiz. Kein Antrag, keine Vertretung und keine Zusage freier Kapazität.');
+define('TEAM_ABSENCE_DATE', 'Datum der Woche');
+define('TEAM_ABSENCE_SHOW', 'Woche anzeigen');
+define('TEAM_ABSENCE_NAV', 'Team-Abwesenheitswoche');
+define('TEAM_ABSENCE_PREVIOUS', 'Vorige Woche');
+define('TEAM_ABSENCE_TODAY', 'Aktuelle Woche');
+define('TEAM_ABSENCE_NEXT', 'Nächste Woche');
+define('TEAM_ABSENCE_INCOMPLETE', 'Einträge sind unklar oder die Lesebegrenzung ist erreicht. Fehlende Marker sind kein Nachweis verfügbarer Personen.');
+define('TEAM_ABSENCE_LEGEND', 'Abwesend = gespeicherter Abwesenheitstag; — = kein dargestellter Abwesenheitstag, kein Anwesenheitsnachweis.');
+define('TEAM_ABSENCE_MARKER', 'Abwesend');
+define('TEAM_ABSENCE_PAGE', 'Teamseite');
+define('TEAM_ABSENCE_PEOPLE', 'Teammitglieder-Seiten');
+define('TEAM_ABSENCE_PEOPLE_PREVIOUS', 'Vorige Personen');
+define('TEAM_ABSENCE_PEOPLE_NEXT', 'Weitere Personen');
+define('TEAM_ABSENCE_UNAVAILABLE', 'Nicht verfügbar. Bitte neu laden.');
 ?>

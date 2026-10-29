@@ -19,10 +19,22 @@ $invalidRecords = [];
 $absenceConflicts = [];
 $teamStatus = null;
 $teamStatusUnavailable = false;
+$teamAbsenceWeek = null;
+$teamAbsenceUnavailable = false;
 $userSearch = isset($_GET['user_search']) && is_string($_GET['user_search']) ? trim($_GET['user_search']) : '';
 $tableQuery = ['lang' => $lang, 'user_search' => $userSearch];
-$pageUrl = static fn (int $page): string => '?' . htmlspecialchars(http_build_query(array_merge($tableQuery, ['page' => $page])), ENT_QUOTES, 'UTF-8');
 if ($user_role === 'admin' || $user_role === 'supervisor') {
+    require_once __DIR__.'/lib/team_absence_week.php';
+    try {
+        $teamAbsenceWeek = chrono_native_team_absence_week($conn, (int) $user_id, (string) ($_SESSION['auth_version'] ?? ''),
+            $_GET['team_date'] ?? null, $_GET['team_page'] ?? null);
+    } catch (Throwable) {
+        // No failure becomes an empty/available team; the existing status read still rechecks role below.
+        $teamAbsenceUnavailable = true;
+    }
+    if ($teamAbsenceWeek !== null) {
+        $tableQuery += ['team_date' => $teamAbsenceWeek['from'], 'team_page' => $teamAbsenceWeek['page']];
+    }
     require_once __DIR__.'/lib/team_status.php';
     $currentTeamRole = null;
     try {
@@ -126,6 +138,8 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
     }
     }
 }
+$pageUrl = static fn (int $page): string => '?' . htmlspecialchars(http_build_query(array_merge($tableQuery, ['page' => $page])), ENT_QUOTES, 'UTF-8');
+$planReportPage = isset($_GET['page']) && is_string($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
 ?>
 
 <!DOCTYPE html>
@@ -258,6 +272,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                     <div class="alert alert-warning mb-4" role="alert"><span><strong><?= htmlspecialchars(sprintf(SUPERVISOR_INVALID_RECORDS, count($invalidRecords)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong> <?= htmlspecialchars(SUPERVISOR_TOTALS_UNAVAILABLE, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> <a class="link" href="history.php">Historie</a> · <a class="link" href="index.php">eigene Arbeitszeitliste</a> · <a class="link" href="adjustments.php">Korrekturanträge</a></span></div>
                     <?php endif; ?>
                 <?php endif; ?>
+                <?php require __DIR__.'/lib/native_team_absence_week_view.php'; ?>
                 <?php if ($reportAvailable) : ?>
                 <!-- Search and Filter Section -->
                 <div class="mb-6">
@@ -341,6 +356,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
                             <!-- Search and Filter Bar -->
                             <form method="get" action="supervisor.php" class="flex flex-wrap gap-4 mb-4">
                                 <input type="hidden" name="lang" value="<?= htmlspecialchars($lang, ENT_QUOTES, 'UTF-8') ?>">
+                                <?php if ($teamAbsenceWeek !== null) : ?><input type="hidden" name="team_date" value="<?= h($teamAbsenceWeek['from']) ?>"><input type="hidden" name="team_page" value="<?= h($teamAbsenceWeek['page']) ?>"><?php endif; ?>
                                 <div class="form-control w-full max-w-xs">
                                     <div class="input-group">
                                         <input type="search"

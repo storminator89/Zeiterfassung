@@ -321,4 +321,22 @@ define('SETTINGS_OWN_PASSWORD_STALE', '工作階段已失效，請重新登入�
 define('SETTINGS_OWN_PASSWORD_UNCONFIRMED', '尚未確認密碼變更。請勿自動重試，請檢查登入狀態。');
 define('SETTINGS_OWN_PASSWORD_LOGOUT_UNCONFIRMED', '密碼已更改，但尚未確認完整登出。請重新登入。');
 define('SETTINGS_OWN_PASSWORD_PROFILE_UNAVAILABLE', '此資料設定尚未獲准更改密碼。');
+
+// Existing generic team-absence labels; never expose type or notes.
+define('TEAM_ABSENCE_TITLE', '已记录的团队缺勤日');
+define('TEAM_ABSENCE_NOTE', '仅显示当前团队已保存的缺勤日，不含类型或备注。这不是申请、代班安排或可用人员承诺。');
+define('TEAM_ABSENCE_DATE', '本周日期');
+define('TEAM_ABSENCE_SHOW', '显示周');
+define('TEAM_ABSENCE_NAV', '团队缺勤周');
+define('TEAM_ABSENCE_PREVIOUS', '上一周');
+define('TEAM_ABSENCE_TODAY', '本周');
+define('TEAM_ABSENCE_NEXT', '下一周');
+define('TEAM_ABSENCE_INCOMPLETE', '部分记录不明确或已达到读取上限。没有标记并不代表人员可用。');
+define('TEAM_ABSENCE_LEGEND', '缺勤＝已保存的缺勤日；—＝未显示缺勤日，不是出勤证明。');
+define('TEAM_ABSENCE_MARKER', '缺勤');
+define('TEAM_ABSENCE_PAGE', '团队页');
+define('TEAM_ABSENCE_PEOPLE', '团队成员分页');
+define('TEAM_ABSENCE_PEOPLE_PREVIOUS', '上一页成员');
+define('TEAM_ABSENCE_PEOPLE_NEXT', '更多成员');
+define('TEAM_ABSENCE_UNAVAILABLE', '目前無法取得，請重新載入。');
 ?>
