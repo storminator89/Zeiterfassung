@@ -46,21 +46,21 @@ function report_record_calculation(array $record): array {
  * rows remain the separate data-quality diagnostic; open work is not credited.
  * Sweep half-open intervals (ends before starts) and never join different users.
  */
-function report_absence_conflicts(array $records): array {
-    $records=array_values($records);$events=[];
-    foreach ($records as $index=>$record) {
-        $calculation=report_record_calculation($record);
-        if ($calculation['status']!=='completed') { continue; }
-        $absence=booking_is_absence($record);
-        if ($absence) {
-            $day=booking_local_date($calculation['start'])->setTime(0,0);
-            $from=$day->getTimestamp();$to=$day->modify('+1 day')->getTimestamp();
-        } else { $from=$calculation['start'];$to=$calculation['end']; }
-        if ($to<=$from) { continue; }
-        $user=(int)($record['user_id']??0);$kind=$absence?'absence':'work';
-        $events[$user][]=[$from,1,$kind,$index];
-        $events[$user][]=[$to,0,$kind,$index];
-    }
+/** Internal builder: calculation must come from this operation's source row. */
+function report_append_absence_conflict_event(array &$events,array $record,array $calculation,int $index): void {
+    if ($calculation['status']!=='completed') { return; }
+    $absence=booking_is_absence($record);
+    if ($absence) {
+        $day=booking_local_date($calculation['start'])->setTime(0,0);
+        $from=$day->getTimestamp();$to=$day->modify('+1 day')->getTimestamp();
+    } else { $from=$calculation['start'];$to=$calculation['end']; }
+    if ($to<=$from) { return; }
+    $user=(int)($record['user_id']??0);$kind=$absence?'absence':'work';
+    $events[$user][]=[$from,1,$kind,$index];
+    $events[$user][]=[$to,0,$kind,$index];
+}
+/** Internal sweep: records use the same dense indices as the event builder. */
+function report_sweep_absence_conflict_events(array $records,array $events): array {
     $conflicts=[];
     foreach ($events as $user=>$timeline) {
         usort($timeline,static fn(array $a,array $b):int=>($a[0]<=>$b[0])?:($a[1]<=>$b[1])?:($a[3]<=>$b[3]));
@@ -79,6 +79,13 @@ function report_absence_conflicts(array $records): array {
         }
     }
     return $conflicts;
+}
+function report_absence_conflicts(array $records): array {
+    $records=array_values($records);$events=[];
+    foreach ($records as $index=>$record) {
+        report_append_absence_conflict_event($events,$record,report_record_calculation($record),$index);
+    }
+    return report_sweep_absence_conflict_events($records,$events);
 }
 function report_conflict_key(array $record): string {
     return (int)($record['user_id']??0).':'.(int)($record['id']??0);
@@ -133,8 +140,8 @@ function report_week_bounds(string $date): array {
 function report_days(array $records, ?array &$invalidRecords=null, ?array &$absenceConflicts=null): array {
     $hasDiagnostics=func_num_args()>1;
     if ($hasDiagnostics) { $invalidRecords=[]; }
-    $days=[];
-    foreach ($records as $record) {
+    $records=array_values($records);$days=[];$events=[];
+    foreach ($records as $index=>$record) {
         $result=report_record_calculation($record);
         if ($result['status']==='invalid') {
             if ($hasDiagnostics) {
@@ -146,11 +153,15 @@ function report_days(array $records, ?array &$invalidRecords=null, ?array &$abse
             continue;
         }
         if ($result['status']!=='completed') { continue; }
+        // Reuse this row's checked calculation; no second parse pass or cache.
+        report_append_absence_conflict_event($events,$record,$result,$index);
         $day=$result['day'];$days[$day]=($days[$day]??0)+$result['minutes'];
     }
-    $conflicts=report_absence_conflicts($records);
+    $conflicts=report_sweep_absence_conflict_events($records,$events);
     if (func_num_args()>2) { $absenceConflicts=$conflicts; }
-    elseif ($conflicts!==[]) { report_assert_no_absence_conflicts($records); }
+    elseif ($conflicts!==[]) {
+        throw new UnexpectedValueException('Arbeitszeit und ganztägige Abwesenheit überschneiden sich. Betroffene Summen sind bis zur manuellen Klärung nicht abschließend; bitte Korrekturanträge verwenden.');
+    }
     // Opted-in consumers keep the measured amounts, but MUST use the conflict
     // context to show affected totals as unresolved, not a final numeric credit.
     ksort($days);return $days;
