@@ -97,7 +97,7 @@ define('DASHBOARD_PROGRESS', '進度');
 define('DASHBOARD_CURRENT_WEEK', '當前週 %s');
 define('DASHBOARD_HOURS_OF', '%s 小時，共 %s 小時');
 define('DASHBOARD_CALENDAR', '日曆');
-define('DASHBOARD_OVERTIME_INFO', '前期結轉，加上已完成紀錄日的計入時數與當日目標之差。包括工作與缺勤抵算；並非連續契約工時帳戶，也不是截至今日的餘額。');
+define('DASHBOARD_OVERTIME_INFO', '前期結轉，加上已完成紀錄起始日的工作／缺勤抵算減當日目標。總值包含所有已存日期；截至日只計柏林該日期以前（含）的起始日。未記錄的應工作日不扣除；並非完整契約工時帳戶。');
 define('DASHBOARD_WEEKLY_PRODUCTIVITY_INFO', '工作時數加缺勤抵算，除以完整週目標；限制為 0–100%。目標不大於零時為 0%。並非生產力評分。');
 define('DASHBOARD_PRODUCTIVITY_SCORE_INFO', '工作時數加缺勤抵算，除以完整月目標；限制為 0–100%。目標不大於零時為 0%。並非生產力評分。');
 define('BUTTON_PREV_WEEK', '上週');
@@ -139,7 +139,8 @@ define('DASHBOARD_HOURS_PER_DAY', '每日小時數');
 define('DASHBOARD_WEEKS_WORKED', '有紀錄的週數');
 define('DASHBOARD_FIRST_WEEK', '第一個紀錄週');
 define('DASHBOARD_KEEP_GOING', '僅計入已完成的紀錄。');
-define('DASHBOARD_TOTAL_OVERTIME', '總加班時數');
+define('DASHBOARD_TOTAL_OVERTIME', '已記錄日餘額（全部）');
+define('DASHBOARD_RECORDED_AS_OF', '已記錄起始日截至 %s（Europe/Berlin）：%s');
 define('DASHBOARD_OVER_HOURS_YEAR', '本年加班時數：%s');
 
 // Days of the Week

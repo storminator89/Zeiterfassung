@@ -210,7 +210,10 @@ $firstDayOfTheMonth = "{$currentYear}-{$currentMonth}-01";
 $lastDayOfTheMonth = date("Y-m-t", strtotime($currentMonthStart));
 $workingDaysThisMonth = getWorkingDays($firstDayOfTheMonth, $lastDayOfTheMonth);
 
-$workHoursByDate=[];$totalOverHours=home_total_overtime($conn,(int)$user_id,$reportDays,(float)$previousOvertime);
+$workHoursByDate=[];
+$recordedAsOfDay=(new DateTimeImmutable('now',new DateTimeZone('Europe/Berlin')))->format('Y-m-d');
+$recordedDayBalances=home_recorded_day_balances($conn,(int)$user_id,$reportDays,(float)$previousOvertime,null,$recordedAsOfDay);
+$totalOverHours=$recordedDayBalances['total_hours'];
 foreach ($reportDays as $day=>$minutes) {
     $workHoursByDate[$day]=$minutes/60;
 }

@@ -27,8 +27,12 @@ Arbeitszeit plus Gutschrift geteilt durch volles Periodensoll, weiterhin auf
 0–100 % begrenzt und ohne positives Soll weiterhin 0 %. Der Durchschnitt bleibt
 pro abgeschlossenem Buchungstag, die Wochenzählung zählt weiterhin abgeschlossene
 Buchungen. Eine knappe Notiz nennt die volle aktuelle Woche und den vollen
-aktuellen Monat. Kalendernavigation verschiebt diese Kennzahlen nicht. Es ist
-kein Stichtagssaldo oder lückenloses Vertragszeitkonto.
+aktuellen Monat. Kalendernavigation verschiebt diese Kennzahlen nicht.
+Die bestehende Saldo-Karte zeigt zusätzlich Übertrag plus Differenzen nur der
+erfassten abgeschlossenen Buchungsstarttage bis einschließlich des angegebenen
+Berliner Heute-Datums. Gesamtwert und Stichtagswert entstehen im selben Durchlauf
+mit derselben Sollauflösung, ohne weitere SQLabfragen. Fehlende Solltage werden
+nicht ergänzt oder abgezogen; dies ist weiterhin kein vollständiges Vertragszeitkonto.
 
 Die neun Karten mit Reihenfolge, Icons, Farben und Zahlenformaten bleiben.
 Titel und neue Unterzeilen dürfen umbrechen; Kalender, Dialoge, Assets und
@@ -66,4 +70,5 @@ Nur erfundene Arrays, Sprachdefinitionen und tatsächliches PHP-Inhaltsrendern,
 kein Appbootstrap, DBzugriff, Account, Session, HTTP/Server, Browser oder
 JavaScriptausführung. Keine visuelle, geschützte oder produktive Abnahme,
 Runtimeaktivierung, GitHub-CI-Auslösung, Remoteänderung oder Veröffentlichung.
-#45 bleibt für echte Stichtags-/Fach-/Browserabnahme offen.
+Die ursprünglichen Nachweise bleiben historisch; der ergänzte gemeinsame
+Stichtagsread wird separat grob geprüft. Keine Browserabnahme wird behauptet.
