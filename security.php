@@ -20,6 +20,12 @@ if ($dataDir === $webRoot || str_starts_with($dataDir, $webRoot . DIRECTORY_SEPA
     abort_request(503, 'APP_DATA_DIR must be outside the application web root.');
 }
 define('APP_DATA_DIR', $dataDir);
+require_once __DIR__ . '/lib/legacy_instance_boundary.php';
+try {
+    assert_native_laravel_instance_boundary(APP_DATA_DIR);
+} catch (Throwable $error) {
+    abort_request(503, 'Database profile unavailable for native access.');
+}
 function app_secret(string $name): string {
     $path = APP_DATA_DIR . '/' . $name . '.key';
     $handle = fopen($path, 'c+');
