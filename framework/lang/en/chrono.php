@@ -235,4 +235,5 @@ return [
     'HOLIDAY_INVENTORY_EMPTY' => 'No entry is stored for this year. This does not mean there are no public holidays.',
     'HOLIDAY_INVENTORY_ABSENCE_LINK' => 'Before crediting an absence: check the stored holidays for the relevant year (new tab).',
     'HOLIDAY_INVENTORY_UNAVAILABLE' => 'The stored holiday inventory is currently unavailable. Please view it again later; no year was imported or changed.',
+    'CSV_EXPORT_NEW_CONTEXT_HINT' => 'CSV downloads and error messages open separately; your selection stays on this page.',
 ];

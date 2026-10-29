@@ -235,4 +235,5 @@ return [
     'HOLIDAY_INVENTORY_EMPTY' => 'Kein Eintrag für diesen Jahrgang vorhanden. Das bedeutet nicht, dass es keine Feiertage gibt.',
     'HOLIDAY_INVENTORY_ABSENCE_LINK' => 'Vor einer Abwesenheitsgutschrift: Feiertagsbestand für das betreffende Jahr prüfen (neuer Tab).',
     'HOLIDAY_INVENTORY_UNAVAILABLE' => 'Feiertagsbestand derzeit nicht verfügbar. Bitte später erneut ansehen; es wurde kein Jahrgang importiert oder geändert.',
+    'CSV_EXPORT_NEW_CONTEXT_HINT' => 'CSV-Download oder Fehlermeldung öffnen separat; Ihre Auswahl bleibt auf dieser Seite erhalten.',
 ];
