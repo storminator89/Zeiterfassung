@@ -410,6 +410,201 @@
         "description": "Own account only, even for an administrator. No user/team selector. Normally one item, never a directory of multiple people."
       }
     },
+    "/api.php/corrections": {
+      "get": {
+        "summary": "Get only the authenticated account's correction request statuses",
+        "description": "Read-only own-account snapshot, including for admin/supervisor tokens. No reason, proposed/original time, reviewer identity, mutation, notification/delivery receipt or review permission. IDs and epoch seconds are exact decimal strings. Offset pages can shift with new requests. Native retains its existing bearer JWT/password-version guard. Laravel retains its separate API admission/generation/operating policy and raw HTTP method/URL rules; those gates are not added to Native.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "pending",
+                "approved",
+                "rejected",
+                "withdrawn"
+              ],
+              "default": "all"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "ASCII decimal integer; default 100, range 0..1000. Zero returns an empty page.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000,
+              "default": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "ASCII decimal integer 0..2147483647; omission skips zero with null metadata.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Own stored statuses and matching count in the same authenticated read snapshot.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "request_id",
+                          "record_id",
+                          "status",
+                          "created_at_epoch",
+                          "reviewed_at_epoch"
+                        ],
+                        "properties": {
+                          "request_id": {
+                            "type": "string",
+                            "pattern": "^[1-9][0-9]*$",
+                            "maxLength": 19
+                          },
+                          "record_id": {
+                            "type": "string",
+                            "pattern": "^[1-9][0-9]*$",
+                            "maxLength": 19,
+                            "nullable": true
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "approved",
+                              "rejected",
+                              "withdrawn"
+                            ]
+                          },
+                          "created_at_epoch": {
+                            "type": "string",
+                            "pattern": "^(0|-?[1-9][0-9]*)$",
+                            "maxLength": 20
+                          },
+                          "reviewed_at_epoch": {
+                            "type": "string",
+                            "pattern": "^(0|-?[1-9][0-9]*)$",
+                            "maxLength": 20,
+                            "nullable": true
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "required": [
+                        "total",
+                        "filtered",
+                        "limit",
+                        "offset",
+                        "status",
+                        "order"
+                      ],
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "filtered": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 1000
+                        },
+                        "offset": {
+                          "type": "integer",
+                          "nullable": true,
+                          "minimum": 0,
+                          "maximum": 2147483647
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "all",
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "withdrawn"
+                          ]
+                        },
+                        "order": {
+                          "type": "string",
+                          "enum": [
+                            "request_id_desc"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid raw query; only status, limit and offset are accepted. No subject selector.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/BearerUnauthorized"
+          },
+          "503": {
+            "description": "Read unavailable or malformed source status: fixed Correction status unavailable. No exception details or partial rows. Controlled bootstrap/profile errors retain their existing envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api.php/timeentries": {
       "get": {
         "summary": "Get filtered time entries for the authenticated user",

@@ -351,6 +351,32 @@ function deleteTimeEntry($conn, $user_id, $entry_id) {
     abort_request(409,'Use an approved correction request to cancel a record.');
 }
 
+function getCorrectionStatus($conn, $user_id) {
+    header('Cache-Control: no-store');
+    require_once __DIR__.'/lib/api_correction_status.php';
+    try {
+        $page = api_correction_status_query($_GET);
+    } catch (InvalidArgumentException $error) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $error->getMessage()]);
+        return;
+    }
+    try {
+        $conn->beginTransaction();
+        try {
+            $result = api_own_correction_status_snapshot($conn, (int) $user_id, $page['status'], $page['limit'], $page['offset']);
+            $conn->commit();
+        } catch (Throwable $error) {
+            if ($conn->inTransaction()) { $conn->rollBack(); }
+            throw $error;
+        }
+        echo json_encode($result, JSON_THROW_ON_ERROR);
+    } catch (Throwable) {
+        http_response_code(503);
+        echo json_encode(['success' => false, 'message' => 'Correction status unavailable.']);
+    }
+}
+
 // Parse the URL path and route the request to the appropriate function
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'];
@@ -408,6 +434,10 @@ if ($method === 'POST') {
         case $basePath . '/users':
             $tokenData = validateToken();
             getUsers($conn, $tokenData['user_id']);
+            break;
+        case $basePath . '/corrections':
+            $tokenData = validateToken();
+            getCorrectionStatus($conn, $tokenData['user_id']);
             break;
         case $basePath . '/timeentries':
             $tokenData = validateToken();
