@@ -42,17 +42,20 @@ final class LocalWebHomeController extends Controller
         $records = $this->reads->reportRows(chronological: true);
         $listConflicts = \report_absence_conflicts($records);
         $workOverlapLookup = \time_record_work_overlap_lookup($records);
+        $absenceOverlapLookup = \time_record_absence_overlap_lookup($records);
         // Classify the complete already-own-scoped snapshot before slicing it.
-        $visible = $reviewOnly ? \time_record_review_rows($records, $listConflicts, $workOverlapLookup) : $records;
+        $visible = $reviewOnly ? \time_record_review_rows($records, $listConflicts, $workOverlapLookup, $absenceOverlapLookup) : $records;
         $totalRecords = count($visible);
         // Both native modes clamp to this same own snapshot's matching count.
         $page = min($page, max(1, (int) ceil($totalRecords / 10)));
         $pagedRows = array_slice($visible, ($page - 1) * 10, 10);
         $localTimeFindings = [];
         $workOverlapFindings = [];
+        $absenceOverlapFindings = [];
         foreach ($pagedRows as $row) {
             $localTimeFindings[(string) $row['id']] = \time_record_local_time_findings($row);
             if (isset($workOverlapLookup[\report_conflict_key($row)])) { $workOverlapFindings[(string) $row['id']] = true; }
+            if (isset($absenceOverlapLookup[\report_conflict_key($row)])) { $absenceOverlapFindings[(string) $row['id']] = true; }
         }
 
         // Native ten-RAW-row pagination precedes grouping, but totals and
@@ -63,6 +66,7 @@ final class LocalWebHomeController extends Controller
             csvExport: $this->router->has('chrono.export-csv'),
             reviewOnly: $reviewOnly, totalRecords: $totalRecords, localTimeFindings: $localTimeFindings,
             historyLinks: $this->interactions->history, workOverlapFindings: $workOverlapFindings,
+            absenceOverlapFindings: $absenceOverlapFindings,
         )]);
     }
 

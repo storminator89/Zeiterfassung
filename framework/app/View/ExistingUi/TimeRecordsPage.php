@@ -22,5 +22,7 @@ final readonly class TimeRecordsPage
         public bool $historyLinks = false,
         /** Visible own-row participant flags only; no counterpart/account data. */
         public array $workOverlapFindings = [],
+        /** Visible own absence participant flags only; no type or counterpart data. */
+        public array $absenceOverlapFindings = [],
     ) {}
 }
