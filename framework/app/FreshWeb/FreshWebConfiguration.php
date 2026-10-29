@@ -21,6 +21,7 @@ final readonly class FreshWebConfiguration
 {
     private function __construct(
         public string $origin,
+        private string $keyFingerprint,
         private string $directory,
         private array $directories,
         private array $manifest,
@@ -66,7 +67,7 @@ final readonly class FreshWebConfiguration
             || $config->get('chrono_terminal.http_enabled', false) !== false) {
             throw new LogicException('The explicit fresh local web/runtime profile is not admitted.');
         }
-        self::key($config);
+        $keyFingerprint = self::key($config);
         $origin = self::origin($config->get('app.url'));
         $setup = $config->get('chrono_fresh_web.setup_enabled', false);
         if (! is_bool($setup)) { throw new LogicException('Fresh setup requires a separate boolean opt-in.'); }
@@ -145,7 +146,7 @@ final readonly class FreshWebConfiguration
                 // These selected capabilities are rechecked with all other overrides.
                 $overrides += ['chrono_api.enabled' => false, 'chrono_login_budget.enabled' => true];
             }
-            $profile = new self($origin, $directory, $directories, $manifest, $manifestHash, $manifestState,
+            $profile = new self($origin, $keyFingerprint, $directory, $directories, $manifest, $manifestHash, $manifestState,
                 $databaseState, $setup, $ldap['enabled'], $sync, $overrides);
             $profile->assertCurrent($config, false);
             return $profile;
@@ -165,6 +166,15 @@ final readonly class FreshWebConfiguration
     /** Metadata only; no DB contents/hash/PDO and no receipt/raw-token read. */
     public function assertCurrent(Repository $config, bool $checkConfiguration = true): void
     {
+        // These initial prerequisites are not configuration overrides. Recheck
+        // them before private metadata and before cookie/session middleware too.
+        if ($config->get('app.env') !== 'production' || $config->get('app.debug') !== false
+            || $config->get('hashing.driver') !== 'bcrypt' || $config->get('auth.defaults.guard') !== 'web'
+            || $config->get('auth.guards.web') !== ['driver' => 'session', 'provider' => 'chrono_users']
+            || $config->get('chrono_terminal.http_enabled', false) !== false
+            || ! hash_equals($this->keyFingerprint, self::key($config))) {
+            throw new RuntimeException;
+        }
         foreach ($this->directories as $path => $state) {
             if (self::directory($path) !== $state) { throw new RuntimeException; }
         }
@@ -255,7 +265,7 @@ final readonly class FreshWebConfiguration
         return @lstat($directory.'/'.FirstAdminSetupFiles::CLOSED) !== false;
     }
 
-    private static function key(Repository $config): void
+    private static function key(Repository $config): string
     {
         $key = $config->get('app.key');
         $cipher = $config->get('app.cipher');
@@ -266,6 +276,8 @@ final readonly class FreshWebConfiguration
         if (! is_string($key) || ! Encrypter::supported($key, $cipher)) {
             throw new LogicException('A separately supplied fresh Laravel encryption key is required.');
         }
+        // Retain identity only, never another raw key copy or an Encrypter.
+        return hash('sha256', $key);
     }
 
     private static function origin(mixed $url): string
