@@ -14,6 +14,18 @@ $error = '';
 $successMessage = '';
 $showSuccessModal = false;
 
+// Resolve the existing explicit choices before defining any locale constants.
+// The unchanged security/CSRF bootstrap and signed-in guard have already run.
+$passwordFormRequested = $_SERVER['REQUEST_METHOD'] === 'POST'
+    && array_intersect(array_keys($_POST), ['password_action', 'current_password', 'password', 'password_confirmation']) !== [];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$passwordFormRequested && isset($_POST['lang'])) {
+    $_SESSION['lang'] = valid_language($_POST['lang']);
+}
+// Preserve header.php's existing final priority when GET and POST both name a language.
+if (!$passwordFormRequested && isset($_GET['lang'])) {
+    $_SESSION['lang'] = valid_language($_GET['lang']);
+}
+
 // Sprachdateien laden
 $lang = $_SESSION['lang'] ?? 'de';
 $langFile = "languages/$lang.php";
@@ -31,8 +43,6 @@ $stmt->closeCursor();
 
 require_once __DIR__ . '/lib/native_own_password.php';
 $passwordError = '';
-$passwordFormRequested = $_SERVER['REQUEST_METHOD'] === 'POST'
-    && array_intersect(array_keys($_POST), ['password_action', 'current_password', 'password', 'password_confirmation']) !== [];
 if ($passwordFormRequested) {
     header('Cache-Control: no-store');
     $passwordChanged = false;
@@ -82,16 +92,6 @@ if ($passwordFormRequested) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$passwordFormRequested) {
-    if (isset($_POST['lang'])) {
-        $lang = valid_language($_POST['lang']);
-        $_SESSION['lang'] = $lang;
-        // Lade die neue Sprachdatei sofort
-        $langFile = "languages/$lang.php";
-        if (file_exists($langFile)) {
-            require_once $langFile;
-        }
-    }
-
     if (isset($_POST['ueberstunden']) && $user_role === 'admin') {
         require_once __DIR__ . '/lib/settings_carry_in.php';
         $ueberstunden = floatval($_POST['ueberstunden']);
