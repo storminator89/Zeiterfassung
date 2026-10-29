@@ -433,11 +433,18 @@ $attendanceLabels = ['absent' => 'Nicht angemeldet', 'working' => 'Arbeitszeit l
             <a class="link" href="adjustments.php">Korrekturanträge</a>
         </div>
         <?php if (!empty($reportInvalidRecords)): ?>
+        <?php require_once __DIR__.'/lib/own_invalid_record_links.php';$ownQualityLinks=own_invalid_record_links($reportInvalidRecords,$records??[],(int)$_SESSION['user_id']); ?>
         <div class="alert alert-warning mb-4" role="alert">
-            <span><strong>Datenqualität: <?= count($reportInvalidRecords) ?> ungültige eigene Zeiteinträge.</strong>
+            <div><p><strong>Datenqualität: <?= count($reportInvalidRecords) ?> ungültige eigene Zeiteinträge.</strong>
             Arbeitszeit-, Überstunden- und Berichtssummen sind unvollständig und nicht zur Abrechnung geeignet; auch die Kalenderdarstellung kann unvollständig sein.
             Bitte die betroffenen Einträge in der Arbeitszeitliste über „Korrektur / Storno“ prüfen. Es wurden keine Bestandsdaten geändert.
-            <a class="link" href="adjustments.php">Korrekturanträge</a></span>
+            <a class="link" href="adjustments.php">Korrekturanträge</a></p>
+            <details class="mt-2"><summary class="cursor-pointer font-semibold">Betroffene eigene Einträge direkt prüfen (max. 10)</summary>
+                <?php if($ownQualityLinks): ?><ul class="list-disc pl-5 mt-2">
+                <?php foreach($ownQualityLinks as $ownQualityId): ?><li><a class="link" target="_blank" rel="noopener noreferrer" href="adjustments.php?record_id=<?= (int)$ownQualityId ?>">Eintrag #<?= (int)$ownQualityId ?> prüfen (neuer Tab)</a></li><?php endforeach; ?>
+                </ul><?php else: ?><p class="text-sm mt-2">Keine sichere eigene Datensatz-ID verfügbar. Bitte mit der Verwaltung klären; keine Ersatzbuchung anlegen.</p><?php endif; ?>
+                <?php if(count($reportInvalidRecords)>10): ?><p class="text-sm mt-2">Weitere betroffene Einträge sind hier nicht aufgeführt. Die Arbeitszeitliste und der bisherige Korrekturweg bleiben verfügbar.</p><?php endif; ?>
+            </details></div>
         </div>
         <?php endif; ?>
         <!-- Your existing content goes here -->
