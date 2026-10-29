@@ -1,3 +1,8 @@
+> Aktualisierung: Der ursprüngliche Laravel-Schritt und seine bewusste damalige
+> Native-Kompatibilitätsgrenze werden unten historisch dokumentiert. Die separate
+> ausdrückliche Native-Anbindung desselben unveränderten Parsers steht in
+> [Native Settings-Übertrag](../native-settings-carry-in.md). Keine neue Ledgerfunktion.
+
 # #79 – eigener Admin-Übertrag mit explizitem Laravel-Zahlenvertrag
 
 Ausgangspunkt ist Main `c7169dedb5537e71641564e3fd2489e6c04787a9`. Nur das
