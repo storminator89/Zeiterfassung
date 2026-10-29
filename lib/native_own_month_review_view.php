@@ -1,0 +1,21 @@
+<details class="card bg-base-100 shadow-xl mb-6" id="own-month-review" <?= $ownMonthReview->requested?'open':'' ?>>
+    <summary class="card-body cursor-pointer font-semibold"><?= h($ownMonthReview->text('title')) ?></summary>
+    <div class="card-body pt-0 text-sm">
+        <form method="get" action="attendance.php#own-month-review" class="flex flex-wrap items-end gap-2">
+            <label class="form-control" for="own-review-month"><span class="label-text"><?= h($ownMonthReview->text('month')) ?></span><input id="own-review-month" name="month_review" type="month" min="0001-01" max="9999-12" value="<?= h($ownMonthReview->month) ?>" required class="input input-bordered"></label>
+            <button class="btn btn-outline" type="submit"><?= h($ownMonthReview->text('check')) ?></button>
+        </form>
+        <?php if ($ownMonthReview->invalid): ?><p role="status"><?= h($ownMonthReview->text('invalid')) ?></p><?php elseif ($ownMonthReview->unavailable): ?><p role="status"><?= h($ownMonthReview->text('unavailable')) ?></p><?php elseif ($ownMonthReview->result!==null): $monthReview=$ownMonthReview->result;$monthCounts=$monthReview['counts']; ?>
+        <p><?= h(sprintf($ownMonthReview->text('open_counts'),$monthCounts['open_selected'],$monthCounts['open_earlier'],$monthCounts['open_unclear'])) ?></p>
+        <p><?= h(sprintf($ownMonthReview->text('pending_counts'),$monthCounts['pending_selected'],$monthCounts['pending_unclear'])) ?></p>
+        <?php if (array_sum($monthCounts)===0): ?><p role="status"><?= h($ownMonthReview->text('empty')) ?></p><?php else: ?>
+        <p><?= h($ownMonthReview->text('samples')) ?></p><ul class="list-disc pl-5">
+            <?php foreach ($monthReview['samples'] as $sample): ?><li><?= h($ownMonthReview->text('kind_'.$sample['kind'])) ?> #<?= h($sample['id']) ?> · <?= h($ownMonthReview->text($sample['relation'])) ?><?php if ($sample['kind']==='open'): ?> · <a class="link" href="adjustments.php?record_id=<?= h(rawurlencode($sample['id'])) ?>"><?= h($ownMonthReview->text('correction')) ?></a><?php endif; ?></li><?php endforeach; ?>
+        </ul><?php endif; ?>
+        <?php if ($monthReview['limited']): ?><p><?= h($ownMonthReview->text('limited')) ?></p><?php endif; ?>
+        <p class="text-xs opacity-70"><?= h($ownMonthReview->text('snapshot')) ?> <time datetime="<?= h($monthReview['loaded_at']) ?>"><?= h($monthReview['loaded_at']) ?></time></p>
+        <?php endif; ?>
+        <p class="opacity-70"><?= h($ownMonthReview->text('note')) ?></p>
+        <div class="flex flex-wrap gap-3"><a class="link" href="adjustments.php?request_status=pending"><?= h($ownMonthReview->text('pending_link')) ?></a><a class="link" href="attendance.php#timeRecordsContainer"><?= h($ownMonthReview->text('review_link')) ?></a></div>
+    </div>
+</details>

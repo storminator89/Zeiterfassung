@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiWorkModelReads, OwnSettingsProfileReads
+final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiWorkModelReads, OwnSettingsProfileReads, OwnMonthReviewReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -291,6 +291,16 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
 
             return \api_own_work_model_snapshot($pdo, (int) $actor->getKey(), $day);
         }, false);
+    }
+
+    public function ownMonthReview(string $month): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($month): array {
+            require_once dirname(__DIR__, 3).'/lib/own_month_review.php';
+
+            return \chrono_own_month_review_snapshot($pdo, (int) $actor->getKey(), $month,
+                new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')));
+        });
     }
 
     public function ownSettingsProfile(): array

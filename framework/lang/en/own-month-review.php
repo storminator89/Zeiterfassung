@@ -1,0 +1,23 @@
+<?php
+return [
+    'title' => 'Your open items before monthly review',
+    'month' => 'Month',
+    'check' => 'Check your stored items',
+    'invalid' => 'Choose a valid month. No other period was checked.',
+    'unavailable' => 'Your monthly precheck is unavailable. Do not infer empty or completed items.',
+    'open_counts' => 'Open entries: %1$d starting in the month · %2$d starting earlier · %3$d with unknown start date.',
+    'pending_counts' => 'Your pending requests: %1$d with original or proposed start in the month · %2$d with unclear dates.',
+    'note' => 'Stored start-date facts only. Earlier open entries and unclear dates have no confirmed relationship to this month. Not a complete quality check, month approval, lock, balance or export promise; nothing is changed. Overnight shifts are not split across months.',
+    'empty' => 'No matches in these categories. This does not certify closure or data quality.',
+    'samples' => 'At most five examples from this own read snapshot:',
+    'kind_open' => 'Open entry',
+    'kind_request' => 'Pending request',
+    'selected' => 'start in the month',
+    'earlier' => 'earlier open start',
+    'unclear' => 'unclear dates',
+    'limited' => 'More own matches exist; inspect the existing lists.',
+    'pending_link' => 'Request overview (existing visibility rights)',
+    'review_link' => 'Your time-entry list',
+    'snapshot' => 'Read snapshot',
+    'correction' => 'Correction / cancellation',
+];

@@ -1,0 +1,23 @@
+<?php
+return [
+    'title' => 'Eigene offene Vorgänge vor der Monatsprüfung',
+    'month' => 'Monat',
+    'check' => 'Eigenen Stand prüfen',
+    'invalid' => 'Bitte einen gültigen Monat wählen. Es wurde kein anderer Zeitraum geprüft.',
+    'unavailable' => 'Die eigene Monatsvorprüfung ist nicht verfügbar. Daraus keine leeren oder abgeschlossenen Vorgänge ableiten.',
+    'open_counts' => 'Offene Buchungen: %1$d mit Start im Monat · %2$d mit früherem Start · %3$d Startdatum unklar.',
+    'pending_counts' => 'Eigene offene Anträge: %1$d mit Original- oder Vorschlagsstart im Monat · %2$d zeitlich unklar.',
+    'note' => 'Nur gespeicherte Startdatumsfakten. Frühere offene Buchungen und unklare Daten haben keinen bestätigten Monatsbezug. Keine vollständige Datenprüfung, Monatsfreigabe, Sperre, Saldo- oder Exportzusage; nichts wird geändert. Auch Nachtschichten werden nicht auf Monate aufgeteilt.',
+    'empty' => 'In diesen Kategorien keine Treffer. Das ist kein Abschluss- oder Qualitätsattest.',
+    'samples' => 'Höchstens fünf Beispiele aus diesem eigenen Lesestand:',
+    'kind_open' => 'Offene Buchung',
+    'kind_request' => 'Offener Antrag',
+    'selected' => 'Startbezug im Monat',
+    'earlier' => 'früherer offener Start',
+    'unclear' => 'zeitlich unklar',
+    'limited' => 'Weitere eigene Treffer vorhanden; bestehende Listen prüfen.',
+    'pending_link' => 'Antragsübersicht (bestehende Sichtrechte)',
+    'review_link' => 'Eigene Arbeitszeitliste',
+    'snapshot' => 'Gelesener Stand',
+    'correction' => 'Korrektur / Storno',
+];

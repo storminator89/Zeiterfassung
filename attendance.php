@@ -27,6 +27,27 @@ if ($_SERVER['REQUEST_METHOD']==='GET' && ($_GET['format']??'')==='status') {
 if ($_SERVER['REQUEST_METHOD']==='POST') {
     attendance_json(fn() => attendance_transition($conn,$user,'web:'.$user,$_POST['event_id']??'',$_POST['action']??'',($_POST['confirm_end_pause']??'')==='1',attendance_expected_record($_POST),true,attendance_start_metadata($_POST)));
 }
+// Explicit own-month GET only, before header output; booking/status branches above stay unchanged.
+require_once __DIR__.'/lib/own_month_review.php';
+require_once __DIR__.'/framework/app/View/ExistingUi/OwnMonthReview.php';
+// Match header.php's existing explicit GET choice without changing its session flow.
+$monthReviewLanguage=valid_language(isset($_GET['lang'])?$_GET['lang']:($_SESSION['lang']??'de'));
+$monthReviewMonth=(new DateTimeImmutable('now',new DateTimeZone('Europe/Berlin')))->format('Y-m');
+$ownMonthReview=new \App\View\ExistingUi\OwnMonthReview($monthReviewMonth,$monthReviewLanguage);
+if ($_SERVER['REQUEST_METHOD']==='GET' && array_key_exists('month_review',$_GET)) {
+    try { $monthReviewMonth=chrono_own_month_review_month($_GET['month_review']); }
+    catch (InvalidArgumentException) { $monthReviewMonth=''; }
+    if ($monthReviewMonth==='') { $ownMonthReview=new \App\View\ExistingUi\OwnMonthReview('',$monthReviewLanguage,requested:true,invalid:true); }
+    else {
+        try {
+            $monthReviewSnapshot=chrono_native_own_month_review($conn,$user,$_SESSION['auth_version']??null,$monthReviewMonth);
+            $ownMonthReview=new \App\View\ExistingUi\OwnMonthReview($monthReviewMonth,$monthReviewLanguage,$monthReviewSnapshot,requested:true);
+        } catch (AttendanceError $error) {
+            if (in_array($error->status,[401,403],true)) { abort_request($error->status,$error->getMessage()); }
+            $ownMonthReview=new \App\View\ExistingUi\OwnMonthReview($monthReviewMonth,$monthReviewLanguage,requested:true,unavailable:true);
+        } catch (Throwable) { $ownMonthReview=new \App\View\ExistingUi\OwnMonthReview($monthReviewMonth,$monthReviewLanguage,requested:true,unavailable:true); }
+    }
+}
 $strictAppUi = true;
 require __DIR__ . '/header.php';
 $state = $attendanceState;
@@ -102,6 +123,7 @@ try {
         </div>
         <aside class="min-w-0">
             <?php require __DIR__.'/lib/own_open_review_view.php'; ?>
+            <?php require __DIR__.'/lib/native_own_month_review_view.php'; ?>
             <section class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300">
                 <div class="card-body p-4 sm:p-6">
                     <h2 class="card-title text-2xl mb-4"><i class="fas fa-chart-bar mr-2"></i><?= STATISTICS_WORKING_TIMES ?></h2>

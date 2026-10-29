@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Chrono\ChronoReads;
 use App\Chrono\LocalWebAttendance;
 use App\Chrono\OwnOpenReviewReads;
+use App\Chrono\OwnMonthReviewReads;
+use App\View\ExistingUi\OwnMonthReview;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\Access\AuthorizationException;
 use App\View\ExistingUi\AttendancePage;
@@ -53,6 +55,23 @@ final class LocalWebAttendanceController extends Controller
             }
         }
 
+        $ownMonthReview = null;
+        if ($this->interactions->home && $this->reads instanceof OwnMonthReviewReads) {
+            require_once dirname(__DIR__, 4).'/lib/own_month_review.php';
+            $month = (new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')))->format('Y-m');
+            $ownMonthReview = new OwnMonthReview($month, $language);
+            if (array_key_exists('month_review', $request->query->all())) {
+                try { $month = \chrono_own_month_review_month($request->query('month_review')); }
+                catch (\InvalidArgumentException) { $month = ''; }
+                if ($month === '') { $ownMonthReview = new OwnMonthReview('', $language, requested: true, invalid: true); }
+                else {
+                    try { $ownMonthReview = new OwnMonthReview($month, $language, $this->reads->ownMonthReview($month), requested: true); }
+                    catch (AuthenticationException|AuthorizationException $error) { throw $error; }
+                    catch (Throwable) { $ownMonthReview = new OwnMonthReview($month, $language, requested: true, unavailable: true); }
+                }
+            }
+        }
+
         return view('chrono.attendance', ['page' => new AttendancePage(
             $copy, (int) $actor->getAuthIdentifier(), $actor->username,
             $actor->role, $this->reads->attendanceStatus(),
@@ -68,7 +87,7 @@ final class LocalWebAttendanceController extends Controller
             reportInvalidCount: count($summary['invalid_records'] ?? []),
             reportInvalidRecordIds: $summary['invalid_record_ids'] ?? [],
             reportUnresolved: $summary['report_finality']['all'] ?? false,
-        ), 'ownOpenReview' => $ownOpenReview, 'ownOpenReviewUnavailable' => $ownOpenReviewUnavailable]);
+        ), 'ownOpenReview' => $ownOpenReview, 'ownOpenReviewUnavailable' => $ownOpenReviewUnavailable, 'ownMonthReview' => $ownMonthReview]);
     }
 
     public function transition(Request $request): JsonResponse
