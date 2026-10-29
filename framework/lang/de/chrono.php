@@ -237,4 +237,6 @@ return [
     'HOLIDAY_INVENTORY_UNAVAILABLE' => 'Feiertagsbestand derzeit nicht verfügbar. Bitte später erneut ansehen; es wurde kein Jahrgang importiert oder geändert.',
     'CSV_EXPORT_NEW_CONTEXT_HINT' => 'CSV-Download oder Fehlermeldung öffnen separat; Ihre Auswahl bleibt auf dieser Seite erhalten.',
     'ADMIN_USER_DELETE_HISTORY_LOCKED' => 'Löschen gesperrt: Konto mit Historie bleibt erhalten.',
+    'TIME_RECORD_HISTORY_LINK' => 'Buchungshistorie (separat)',
+    'TIME_RECORD_HISTORY_HINT' => 'Vorhandene Änderungen und begrenzte Bezüge dieser Buchung öffnen. Kein Nachweis einer vollständigen Historie.',
 ];

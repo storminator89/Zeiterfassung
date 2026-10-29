@@ -237,4 +237,6 @@ return [
     'HOLIDAY_INVENTORY_UNAVAILABLE' => 'The stored holiday inventory is currently unavailable. Please view it again later; no year was imported or changed.',
     'CSV_EXPORT_NEW_CONTEXT_HINT' => 'CSV downloads and error messages open separately; your selection stays on this page.',
     'ADMIN_USER_DELETE_HISTORY_LOCKED' => 'Deletion blocked: accounts with history are retained.',
+    'TIME_RECORD_HISTORY_LINK' => 'Booking history (opens separately)',
+    'TIME_RECORD_HISTORY_HINT' => 'Open stored changes and bounded references for this booking. Not evidence of a complete history.',
 ];
