@@ -8,6 +8,10 @@ Keine neue Oberfläche, Datenbankspalte, Paketinstallation oder generische
 Preferences-/Auth-/Writer-Infrastruktur. **Keine Startseitenpräferenz existiert
 im Bestand; eine solche wird nicht erfunden.**
 
+Der spätere eigene, strikt lesende Zuordnungs-/Wochenmodellbereich ist separat
+unter [Eigenes Settingsprofil](own-settings-profile.md) beschrieben; er ändert
+keinen der folgenden bestehenden Präferenz-/Passwort-/Übertragsverträge.
+
 Aktuelle eng begrenzte Erweiterung: Der eigene Admin-Überstunden-Übertrag ist
 jetzt über einen festen, auditierten Writer angeschlossen. Der bisherige
 Vortrags-Hold wird nur dafür ersetzt; der vollständige Vertrag einschließlich
