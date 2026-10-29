@@ -443,7 +443,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_user'])) {
 // Abteilung bearbeiten
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_department'])) {
     require_once __DIR__ . '/lib/departments.php';
-    $department_id = $_POST['department_id'];
+    $department_id = $_POST['department_id'] ?? null;
     $department_name = $_POST['department_name'];
 
     try {
@@ -454,6 +454,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_department'])) {
         // Seite nach erfolgreichem Bearbeiten neu laden
         header("Location: " . $_SERVER['PHP_SELF']);
         exit();
+    } catch (InvalidArgumentException $e) {
+        $error = $e->getMessage();
     } catch (PDOException $e) {
         $error = DEPARTMENT_UPDATED_ERROR . $e->getMessage();
     }
@@ -713,7 +715,7 @@ include 'header.php';
                                     <td><?= $department->id ?></td>
                                     <td><?= htmlspecialchars($department->name) ?></td>
                                     <td>
-                                        <button class="btn btn-ghost btn-sm" onclick="editDepartment(<?= (int)$department->id ?>, <?= h(json_encode($department->name, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>)" title="<?= BUTTON_EDIT ?>">
+                                        <button class="btn btn-ghost btn-sm" onclick="editDepartment(<?= h(json_encode((string)$department->id, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>, <?= h(json_encode($department->name, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>)" title="<?= BUTTON_EDIT ?>">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                         <form method="post" class="inline" onsubmit="return confirm('<?= CONFIRM_DELETE_DEPARTMENT ?>')">

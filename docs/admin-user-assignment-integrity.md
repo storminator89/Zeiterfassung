@@ -169,3 +169,50 @@ Kein Laravel-Writer-/Runtime-/HttpKernel-/Auth-/CSRF-/UI-/Browsertest, keine ech
 Bestandsdaten, neuen Credentials, Keys, Appinstanz oder Sicherheitskonfiguration.
 Browserabnahme übernimmt der Nutzer; die genannten Quell-/Komponentennachweise
 sind keine Deployment- oder Gesamt-App-Abnahme.
+
+
+## Exakte Abteilungsziele für Bearbeiten und Löschen (#34)
+
+Quellbasis: Main `9cbe63d931388b1c5e3891a929f2e381be929828`, Baum
+`67345d57a667907c4cb0dc2766f375eae3fb509f`. Die native Bearbeiten-Schaltfläche
+übergibt die bestehende Abteilungs-ID jetzt wie der Benutzereditor als exakt
+gequoteten String, nicht als JavaScript-Zahl. Zuvor konnte beispielsweise die
+ID `9007199254740993` zu `9007199254740992` gerundet und beim Umbenennen die
+benachbarte Abteilung geändert werden. Die Laravel-Schaltfläche verwendet
+bereits ein exaktes String-Dataset und bleibt unverändert.
+
+Beide vorhandenen Abteilungsmutationen verwenden nun denselben bestehenden
+`admin_assignment_id`-Parser wie die Benutzerzuordnungen: positive kanonische
+Dezimalstrings oder PHP-Integer im Integerbereich. Leerzeichen, Vorzeichen,
+führende Nullen, Dezimal-/Exponentenformen, Überlauf, Arrays, bool, float und
+fehlende Ziele werden nicht als ID normalisiert oder von SQLite umgedeutet.
+Die native Umbenennung zeigt den festen Validierungsfehler in der bestehenden
+Fehlerfläche, statt eine unbehandelte Ausnahme oder Missing-Key-Warnung zu
+verursachen. Der vorbereitete Laravel-Controller behandelt diesen Fehlertyp
+bereits; beide Writer verwenden weiterhin dieselben festen Kernfunktionen.
+
+Keine neue Existenz-/Zeilenanzahlregel für Umbenennen, Namensnormalisierung,
+Ersatzzuordnung oder Löschpolitik. SQL und vorhandene Writer-/Rollen-/CSRF-/
+Transaktionsgrenzen bleiben gleich, einschließlich der Verweigerung einer
+belegten Abteilung unter dem bestehenden Writerlock. Kein FK-Schalter,
+Schema-/Audit-/API-/Runtime-/Hostdelta; keine neue Verbindung oder Migration.
+Die zusätzliche Include-Kette enthält nur bestehende Funktionsdefinitionen.
+
+### Begrenzter Nachweis
+
+Ein grober anonymer Memory-Journey mit PHP 8.5.12 / SQLite 3.46.1 und Node
+24.22.1 reproduziert aus den tatsächlichen alten Funktionen/Schaltflächen die
+Nachbar-ID-Umbenennung sowie numerische Zielaliase. Das tatsächliche neue
+PHP-Schaltflächenfragment und der Node-VM-Aufruf erhalten beide großen
+Nachbar-IDs und `PHP_INT_MAX` exakt; die gemeinsame PDO-Umbenennung trifft nur
+das beabsichtigte Ziel. 16 ungültige Zielarten werden vor jeder Mutation
+abgelehnt. Belegte, freie und fehlende Löschziele, eine vom Aufrufer besessene
+Transaktion und der tatsächlich extrahierte native Fehlereingang werden grob
+geprüft. Syntax und vollständige Quell-/Pfad-/Moduserhaltung werden separat
+geprüft. Kein kleinteiliger Testsuite-Ausbau und kein manueller CI-Start.
+
+Dies ist kein tatsächlicher App-/Login-/Auth-/CSRF-/HTTP-/Browser-/Layout- oder
+Laravel-Writer-Zulassungsnachweis; der Node-Aufruf ist kein Browser. Keine reale
+Datei-DB, Bestandsbeziehungen, Konten, Zugangsdaten oder Betriebsumstellung.
+Bestätigte reale Mappings, Fremdschlüssel-Migrationsplan und übrige #34-Gates
+bleiben offen; aus dem Zielfix folgt keine vollständige Abnahme oder Reparatur.
