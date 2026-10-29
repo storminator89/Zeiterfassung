@@ -58,14 +58,18 @@ foreach (['generateJWT', 'validateToken'] as $name) {
 }
 eval('namespace ChronoLdapSessionProof; '.source_function(file_get_contents($root.'/security.php'), 'require_admin'));
 define(__NAMESPACE__.'\\JWT_SECRET', bin2hex(random_bytes(32))); // Ephemeral invented signing key, never output.
-$conn = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ]);
+$conn = PDO::connect('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ]);
 $GLOBALS['conn'] = $conn;
 $conn->exec("CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, password TEXT NOT NULL, email TEXT NOT NULL UNIQUE, role TEXT NOT NULL DEFAULT 'user', auth_source TEXT NOT NULL DEFAULT 'local', department_id INTEGER, supervisor_id INTEGER);
 CREATE TABLE departments(id INTEGER PRIMARY KEY, name TEXT UNIQUE);
 CREATE TABLE ldap_settings(id INTEGER PRIMARY KEY, ldap_host TEXT, ldap_port TEXT, ldap_user TEXT, ldap_pass TEXT, ldap_base_dn TEXT);
+CREATE TABLE audit_log(id INTEGER PRIMARY KEY AUTOINCREMENT, occurred_at INTEGER NOT NULL, actor TEXT NOT NULL, reason TEXT NOT NULL, entity TEXT NOT NULL, record_id INTEGER NOT NULL, user_id INTEGER NOT NULL, operation TEXT NOT NULL, before_json TEXT, after_json TEXT);
 CREATE TABLE changes(kind TEXT);
 CREATE TRIGGER user_insert AFTER INSERT ON users BEGIN INSERT INTO changes VALUES('insert'); END;
 CREATE TRIGGER user_update AFTER UPDATE ON users BEGIN INSERT INTO changes VALUES('update'); END;");
+// The shared import now requires its original audit sink/context even in this tiny fixture.
+$conn->createFunction('audit_actor', static fn(): string => 'synthetic:ldap-session', 0);
+$conn->createFunction('audit_reason', static fn(): string => 'Synthetic LDAP session proof', 0);
 $session = static fn(object $user): array => ['user_id'=>$user->id, 'username'=>$user->username, 'role'=>$user->role, 'auth_version'=>hash('sha256', $user->password)];
 $token = static fn(object $user): string => generateJWT(['alg'=>'HS256','typ'=>'JWT'], ['iss'=>'localhost','aud'=>'localhost','iat'=>time(),'exp'=>time()+3600,'user_id'=>(int)$user->id,'ver'=>hash('sha256',$user->password)], JWT_SECRET);
 $useToken = static function(string $jwt): array { $GLOBALS['proof_headers'] = ['Authorization'=>'Bearer '.$jwt]; return validateToken(); };
