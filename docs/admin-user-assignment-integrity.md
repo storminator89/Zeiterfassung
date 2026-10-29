@@ -1,4 +1,9 @@
-# Native Benutzerzuordnungen — begrenztes #31-/#34-Teilpaket
+# Benutzerzuordnungen und Stammdatenvalidierung (#31 / #34)
+
+Die ursprüngliche Zuordnungsintegration ist unten historisch beschrieben. Die
+gemeinsame Native-/Laravel-Feldvalidierung ist im Folgeabschnitt am Ende ergänzt;
+ältere Aussagen über unveränderte E-Mail-/Zahlen-/Ziel-ID-Regeln gelten nur für
+das damalige Teilpaket, nicht für den ergänzten Stand.
 
 Basis: Main `7657688e0b3346d61d1adcb5995b895bfe189b36`, Tree
 `8f027d80f07da9ad6dc8d07b7eeb3e2198dd3cf0`. Bezug:
@@ -91,3 +96,76 @@ ausgeführt. Keine echte DB, Accounts oder Credentials,
 App-/Session-/Auth-/HTTP-/Browserausführung, Server-/Quellrefresh, GitHubschreiben,
 neue CI oder Deployment. Das ist keine Schutz-/Rollen-/UI-Abnahme und kein
 vollständiger Abschluss von #31, #34 oder #32.
+
+## Gemeinsame Native-/Laravel-Stammdatenvalidierung (#31)
+
+Folgebasis: Main `3d9bc5eaf691d011e1c6b07bc6c6cccb9dbe584a`, Tree
+`691969683b162da5fd1185622d1612d56ec601d7`. Der definitions-only Helper
+`lib/admin_user_fields.php` gilt jetzt für manuelles Anlegen **und** Bearbeiten
+in `admin.php`, `AttendanceWriter::createLocalUser` und
+`ManagedUserWriterOperations::editManagedUser`. Kein zweiter Validator, neue
+Verbindung oder generischer Writer. Laravel prüft weiterhin zuerst die aktuelle
+Authority unter seinem bisherigen Writerlock; die nativen Prüfungen liegen vor
+Hashing/INSERT/UPDATE in den bestehenden eigenen Transaktionen.
+
+- Benutzername: 1–100 gültige UTF-8-Bytes, keine ASCII-Steuerzeichen oder äußere
+  Leerzeichen. Letztere passen nicht zum bestehenden trim-basierten Login.
+- E-Mail: String mit gültiger vorhandener PHP-E-Mail-Syntax, höchstens 254 Bytes.
+  Die Grenzen entsprechen dem vorhandenen Setup-/Registrierungsvertrag.
+- Stunden: nichtleere endliche numerische Formstrings (auch Dezimal-/Exponenten-
+  schreibweise), höchstens 64 Zeichen, keine Arrays, bools, NaN, INF oder
+  Überläufe. Das vorhandene Tages-Soll liegt zwischen 0 und 24 Stunden
+  (derselbe 0–1440-Minutenvertrag der Arbeitszeitmodelle). Ein signiertes
+  Anfangsguthaben darf negativ sein und hat keinen erfundenen betrieblichen
+  Höchstsaldo; nur die sichere Sekunden-/Minutenumrechnung im PHP-Integerbereich
+  begrenzt seinen Betrag auf `intdiv(PHP_INT_MAX, 3600) - 1` Stunden.
+- Edit-/Löschziel-IDs verwenden jetzt denselben bereits vorhandenen kanonischen
+  positiven Integerparser wie Zuordnungs-IDs. Kein bool-/float-/Whitespace-/
+  Vorzeichen-/Null-/Überlaufwert wird zum vermeintlich gültigen Ziel umgewandelt.
+
+Werte werden nicht still getrimmt, normalisiert, geklemmt oder repariert.
+Ungültige übernommene Altwerte werden ebenfalls nicht zurückgeschrieben. Die
+bisherige Create-`empty()`-Pflichtsemantik einschließlich Tages-Soll-String `0`
+bleibt erhalten; die Edit-Passwortzweige behalten leeres Passwort bzw. String `0`
+als unverändert bei. Nichtskalare Passworteingaben werden vor Hashing abgelehnt,
+ohne eine neue Passwortpolitik oder LDAP-Passwortrotation einzuführen.
+Native Create behält bei bekannter vor-Hash-/vor-INSERT-Validierungsablehnung
+über denselben vorhandenen Projektor nur begrenzte Nicht-Credentialfelder für
+manuelle Überarbeitung, nie Passwort oder Rollen-/Zuordnungsentscheidung.
+
+### Originalkriterien und bewahrte Grenzen
+
+- **Atomarer Letzt-Admin-Schutz:** aktueller Rollencheck/-count und Mutation
+  bleiben unter demselben IMMEDIATE-Lock. Die bestehenden Laravel-Schutzregeln
+  für den letzten lokalen bzw. V5-loginfähigen aktiven Admin bleiben zusätzlich
+  unverändert; keine Herabstufungs-, Lösch- oder Recoveryausnahme.
+- **Ungültige Eingaben ablehnen:** bestehende Rollenliste, aktuelle Abteilung,
+  berechtigter Supervisor, Selbst-/ausgewählte Zyklus-/Waisenprüfung bleiben
+  erhalten, ergänzt um die oben genannten Pflichtwerte, E-Mail und Zahlen.
+  Globale Admins dürfen weiterhin alle vorhandenen Abteilungen wählen; kein
+  neues Mandanten-/gleiche-Abteilung-Modell. Nicht existierende/falsch kodierte
+  IDs werden abgelehnt.
+- SQL-Feldlisten, Audit-/Historienregeln, Auth/CSRF, UI und beide Passwortzweige
+  bleiben erhalten. Tages-Soll-Validierung ändert kein datiertes Arbeitszeitmodell,
+  keine frühere Gutschrift und keine Summenformel. LDAP/Registrierung/Setup,
+  globale Altdatenbereinigung, Nachfolgerregeln für entfernte Vorgesetzte und
+  Fremdschlüsselaktivierung (#34) bleiben eigenständige Themen.
+
+### Grober Nachweis
+
+PHP 8.5.12: ein isolierter Ablauf mit tatsächlichen nativen Handlerfragmenten,
+gemeinsamen Helfern und erfundenen SQLite-Zeilen prüft gültige Edits sowie
+Pflichtwerte/E-Mail/Stunden/Rollen/IDs/Zuordnungsablehnung ohne Datenänderung.
+Zwei reale PDO-Verbindungen beweisen die Serialisierung: der zweite BEGIN kann
+unter dem ersten Writerlock nicht eintreten; nach dessen Herabstufungs-COMMIT
+verweigert der frische Count die Herabstufung des verbleibenden Admins. Dazu
+PHP-Syntax, vollständige Pfad-/Modus-/Quellinverse und unabhängige Quellprüfung;
+unveränderliche Head-/Tree-/Patchnachweise werden am PR festgehalten.
+
+Nur unbrauchbare Passwortmarker; jeder Hashaufruf ist **im Harness** ein harter
+Tripwire, keine erfundene Hashfunktion. Gültiges Create wird deshalb nur bis zur
+Hashgrenze geprüft, keine erfolgreiche Passwortanlage/-rotation behauptet.
+Kein Laravel-Writer-/Runtime-/HttpKernel-/Auth-/CSRF-/UI-/Browsertest, keine echten
+Bestandsdaten, neuen Credentials, Keys, Appinstanz oder Sicherheitskonfiguration.
+Browserabnahme übernimmt der Nutzer; die genannten Quell-/Komponentennachweise
+sind keine Deployment- oder Gesamt-App-Abnahme.

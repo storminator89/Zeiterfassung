@@ -338,15 +338,15 @@ require_once __DIR__ . '/lib/admin_users.php';
 
 // Benutzer hinzufügen
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
-    $createAssignmentRejected = false;
-    $username = $_POST['username'];
-    $password = $_POST['password'];
-    $email = $_POST['email'];
+    $createInputRejected = false;
+    $username = $_POST['username'] ?? null;
+    $password = $_POST['password'] ?? null;
+    $email = $_POST['email'] ?? null;
     $role = $_POST['role'] ?? null;
-    $department_id = $_POST['department'];
+    $department_id = $_POST['department'] ?? null;
     $supervisor = $_POST['supervisor'] ?? null;
-    $regelarbeitszeit = $_POST['regelarbeitszeit'];
-    $ueberstunden = $_POST['ueberstunden'];
+    $regelarbeitszeit = $_POST['regelarbeitszeit'] ?? null;
+    $ueberstunden = $_POST['ueberstunden'] ?? null;
 
     // Eingaben validieren
     if (empty($username) || empty($password) || empty($email) || empty($role) || empty($department_id) || empty($regelarbeitszeit)) {
@@ -354,9 +354,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
         if (!$conn->inTransaction()) { $createUserDraft = admin_create_user_rejected_draft($_POST); }
     } else {
         try {
-            admin_create_user($conn, function () use ($conn, $username, $password, $email, $role, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden, &$createAssignmentRejected): void {
-                try { $assignment = validateUserAssignment($conn, $role, $supervisor, $department_id); }
-                catch (InvalidArgumentException $e) { $createAssignmentRejected = true; throw $e; }
+            admin_create_user($conn, function () use ($conn, $username, $password, $email, $role, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden, &$createInputRejected): void {
+                try {
+                    $assignment = validateUserAssignment($conn, $role, $supervisor, $department_id);
+                    admin_validate_user_fields($username, $email, $regelarbeitszeit, $ueberstunden);
+                    if (!is_string($password)) { throw new InvalidArgumentException('Ungültige Benutzereingabe.'); }
+                } catch (InvalidArgumentException $e) { $createInputRejected = true; throw $e; }
                 $department_id = $assignment['department_id'];
                 $supervisor = $assignment['supervisor_id'];
                 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
@@ -368,7 +371,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_user'])) {
             $successMessage = USER_CREATED_SUCCESS;
         } catch (InvalidArgumentException $e) {
             $error = $e->getMessage();
-            if ($createAssignmentRejected && !$conn->inTransaction()) {
+            if ($createInputRejected && !$conn->inTransaction()) {
                 $createUserDraft = admin_create_user_rejected_draft($_POST);
             }
         } catch (PDOException $e) {
@@ -402,19 +405,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_user'])) {
 // Benutzer bearbeiten
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_user'])) {
     $user_id = $_POST['user_id'] ?? null;
-    $username = $_POST['username'];
-    $email = $_POST['email'];
+    $username = $_POST['username'] ?? null;
+    $email = $_POST['email'] ?? null;
     $role = $_POST['role'] ?? null;
-    $password = $_POST['password'];
-    $department_id = $_POST['department'];
+    $password = $_POST['password'] ?? '';
+    $department_id = $_POST['department'] ?? null;
     $supervisor = $_POST['supervisor'] ?? null;
-    $regelarbeitszeit = $_POST['regelarbeitszeit'];
-    $ueberstunden = $_POST['ueberstunden'];
+    $regelarbeitszeit = $_POST['regelarbeitszeit'] ?? null;
+    $ueberstunden = $_POST['ueberstunden'] ?? null;
 
     try {
         admin_assignment_role($role); // Keep invalid roles out of the existing typed last-admin boundary.
         admin_mutate_existing_user($conn, $user_id, $role, function (int $targetId) use ($conn, $username, $email, $role, $password, $department_id, $supervisor, $regelarbeitszeit, $ueberstunden): void {
             $assignment = validateUserAssignment($conn, $role, $supervisor, $department_id, $targetId);
+            admin_validate_user_fields($username, $email, $regelarbeitszeit, $ueberstunden);
+            if (!is_string($password)) { throw new InvalidArgumentException('Ungültige Benutzereingabe.'); }
             $department_id = $assignment['department_id'];
             $supervisor = $assignment['supervisor_id'];
             if (!empty($password)) {

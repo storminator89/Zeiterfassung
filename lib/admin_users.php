@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__.'/admin_user_fields.php';
+
 /**
  * Internal helper for the existing authenticated admin edit/delete handlers.
  * SQLite's writer lock keeps the current role/count and mutation atomic.
@@ -21,14 +23,10 @@ function admin_mutate_existing_user(PDO $db, mixed $userId, ?string $nextRole, C
     }
 }
 
-/** Same native target parser; the caller keeps validation before acquiring its transaction. */
+/** Canonical positive target ID; caller keeps validation before its transaction. */
 function admin_existing_user_id(mixed $userId): int
 {
-    $targetId = filter_var($userId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-    if ($targetId === false) {
-        throw new InvalidArgumentException('Ungültiger Benutzer.');
-    }
-    return $targetId;
+    return admin_assignment_id($userId, 'Ungültiger Benutzer.');
 }
 
 /** Existing target/last-admin rule only; no transaction, mutation, actor or callback API. */
