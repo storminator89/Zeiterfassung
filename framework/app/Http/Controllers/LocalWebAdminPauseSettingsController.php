@@ -182,14 +182,17 @@ final class LocalWebAdminPauseSettingsController extends Controller
 
     private function refillHolidays(Request $request, array $form): Response|RedirectResponse
     {
+        // A new refused attempt must never display a previous successful receipt.
+        $request->session()->forget('chrono_holiday_refill_receipt');
+        require_once dirname(__DIR__, 4).'/lib/holiday_refill_draft.php';
         try {
             $receipt = $this->holidayRefill->apply(array_diff_key($form, array_flip(['_token', 'csrf_token'])));
         } catch (AuthenticationException|AuthorizationException $error) {
             throw $error;
         } catch (InvalidArgumentException $error) {
-            return $this->page($request, $error->getMessage())->setStatusCode(400);
+            return $this->page($request, $error->getMessage(), holidayRefillDraft: \holiday_refill_rejected_draft($form))->setStatusCode(400);
         } catch (DomainException $error) {
-            return $this->page($request, $error->getMessage())->setStatusCode(409);
+            return $this->page($request, $error->getMessage(), holidayRefillDraft: \holiday_refill_rejected_draft($form))->setStatusCode(409);
         } catch (Throwable) {
             return $this->userMutationText('Feiertagsergänzung nicht bestätigt. Neu laden und gespeichertes Jahr prüfen; nicht automatisch wiederholen.', 503);
         }
@@ -471,7 +474,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         return (new RedirectResponse('admin.php#api-management', 303))->header('Cache-Control', 'no-store');
     }
 
-    private function page(Request $request, ?string $error = null, ?string $errorKey = null, ?string $successKey = null, ?array $createUserDraft = null): Response
+    private function page(Request $request, ?string $error = null, ?string $errorKey = null, ?string $successKey = null, ?array $createUserDraft = null, ?array $holidayRefillDraft = null): Response
     {
         $actor = $this->adminActor();
         $localSecurityControls = $actor->auth_source === 'local';
@@ -635,6 +638,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
             'managedUsersEnabled' => $localSecurityControls && $this->userMutationsEnabled(),
             'apiManagement' => $apiManagement, 'apiManagementUnavailable' => $apiManagementUnavailable,
             'holidayRefillReceipt' => $holidayRefillReceipt,
+            'holidayRefillDraft' => $localSecurityControls ? $holidayRefillDraft : null,
             'holidayRefillEnabled' => $localSecurityControls && $this->holidayRefill !== null && $this->interactions->adminPauseSettings,
             'page' => new AttendancePage(
                 $copy, (int) $actor->getAuthIdentifier(), $actor->username,
