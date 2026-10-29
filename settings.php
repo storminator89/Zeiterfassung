@@ -122,6 +122,32 @@ if (!$passwordFormRequested && isset($_SESSION['import_error'])) {
     unset($_SESSION['import_error']);
 }
 
+// Own display only, after all existing form handling. Reuse the definitions-only
+// shared snapshot and DTO/labels without a Laravel bootstrap or a new selector.
+require_once __DIR__ . '/lib/own_settings_profile.php';
+require_once __DIR__ . '/framework/app/View/ExistingUi/OwnSettingsProfile.php';
+$ownSettingsProfileTransaction = false;
+try {
+    if ($conn->inTransaction()) {
+        throw new LogicException('Own settings profile requires an idle connection.');
+    }
+    if (!$conn->beginTransaction()) {
+        throw new RuntimeException('Own settings profile unavailable.');
+    }
+    $ownSettingsProfileTransaction = true;
+    $ownSettingsProfile = new \App\View\ExistingUi\OwnSettingsProfile(
+        own_settings_profile_snapshot($conn, (int)$user_id), $lang);
+    if (!$conn->commit()) {
+        throw new RuntimeException('Own settings profile unavailable.');
+    }
+    $ownSettingsProfileTransaction = false;
+} catch (Throwable) {
+    if ($ownSettingsProfileTransaction && $conn->inTransaction()) {
+        try { $conn->rollBack(); } catch (Throwable) {}
+    }
+    $ownSettingsProfile = new \App\View\ExistingUi\OwnSettingsProfile(null, $lang);
+}
+
 include 'header.php';
 ?>
 
@@ -188,6 +214,8 @@ include 'header.php';
                     <button type="submit" class="btn btn-primary w-full md:w-auto"><i class="fas fa-save mr-2"></i><?= BUTTON_SAVE_CHANGES ?></button>
                 </div>
             </form>
+
+            <?php require __DIR__ . '/lib/native_own_settings_profile_view.php'; ?>
 
             <div class="divider my-8"><?= h(SETTINGS_OWN_PASSWORD_TITLE) ?></div>
             <?php if ($passwordError !== '') : ?>
