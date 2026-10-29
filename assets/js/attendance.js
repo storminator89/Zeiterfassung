@@ -306,10 +306,11 @@
                 }
                 pending = null; rememberPending(); confirmed = true;
                 render(data.state, null); // Cached acknowledgment is not a current session binding.
+                // Any confirmed end changes completed totals; the status read has no replacement numbers.
                 // This may be a historical cached warning. It proves neither a
                 // current conflict nor current numeric totals; the fresh read
                 // below owns current period flags. Invalidate before it can fail.
-                if (data.overlap_warning) invalidateReportValues();
+                if (action === 'end' || data.overlap_warning) invalidateReportValues();
                 message([data.overlap_warning ? 'Buchungsbestätigung (bei Wiederholung historisch); aktueller Konfliktstand wird getrennt geprüft.' : '', data.message, data.local_time].filter(Boolean).join(' '));
             } catch (error) {
                 // A lost/malformed end acknowledgement may already be committed.
@@ -340,6 +341,8 @@
                 const data = await readJson(response);
                 if (status) status.textContent = data.message || 'Keine Bestätigung erhalten.';
                 if (response.ok && data.success) {
+                    // Status/table refreshes do not replace numeric report values.
+                    invalidateReportValues();
                     absenceForm.reset();
                     try { await refresh(true); }
                     catch (error) { if (status) status.textContent += ` ${error.message}`; }
