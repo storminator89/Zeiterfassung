@@ -381,4 +381,6 @@ define('CSV_PERIOD_TO', 'Bis einschließlich');
 define('CSV_PERIOD_SUBMIT', 'Zeitraum als CSV');
 define('CSV_PERIOD_NOTE', 'Nur eigene Buchungen nach Berliner Startdatum, unabhängig von Suche oder Listenseite. Nachtschichten bleiben vollständig beim Starttag. Die Qualitätsprüfung umfasst weiterhin Ihren gesamten Bestand; auch Fehler oder ungeklärte Überschneidungen außerhalb des Zeitraums können den Download blockieren. Kein Lohnsoftwareformat.');
 
+define('CSV_EXPORT_NEW_CONTEXT_HINT', 'CSV-Download oder Fehlermeldung öffnen separat; Ihre Auswahl bleibt auf dieser Seite erhalten.');
+
 ?>

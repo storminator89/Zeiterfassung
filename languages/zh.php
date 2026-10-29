@@ -370,4 +370,6 @@ define('CSV_PERIOD_NOTE', '仅按柏林开始日期选择您自己的记录，�
 define('TABLE_HEADER_TIME_RECORDS', '工時紀錄');
 define('BUTTON_EXPORT_CSV', '匯出 CSV');
 
+define('CSV_EXPORT_NEW_CONTEXT_HINT', 'CSV 下载或错误信息将在单独的页面打开；您选择的日期会保留在本页。');
+
 ?>

@@ -378,4 +378,6 @@ define('CSV_PERIOD_TO', 'To (inclusive)');
 define('CSV_PERIOD_SUBMIT', 'Export range as CSV');
 define('CSV_PERIOD_NOTE', 'Only your own entries by their Berlin start date, regardless of search or list page. Overnight shifts remain entirely on their start date. The quality check still covers all your entries; errors or unresolved overlaps outside the range can also block the download. Not a payroll-software format.');
 
+define('CSV_EXPORT_NEW_CONTEXT_HINT', 'CSV downloads and error messages open separately; your selection stays on this page.');
+
 ?>
