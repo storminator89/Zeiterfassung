@@ -165,11 +165,14 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
             $workedDays = count($monthDays);
             require_once dirname(__DIR__, 3).'/lib/dashboard_presentation.php';
             $components = \chrono_dashboard_components($records, $weekStart, $weekEnd, ...$periods['month']);
+            $recordedBalances = home_recorded_day_balances($pdo, $user, $days, (float) ($userData['ueberstunden'] ?? 0.0), $planned, $today);
             // The native cards remain CURRENT-period statistics when browsing an old week.
             $statistics = [
                 'regular_hours' => home_daily_hours($pdo, $user, $today, $planned),
                 'weeks_count' => count($weeks), 'is_first_week' => count($weeks) === 1,
-                'total_overtime' => report_format_hours(home_total_overtime($pdo, $user, $days, (float) ($userData['ueberstunden'] ?? 0.0), $planned)),
+                'total_overtime' => report_format_hours($recordedBalances['total_hours']),
+                'recorded_as_of_day' => $recordedBalances['as_of_day'],
+                'recorded_as_of_overtime' => report_format_hours($recordedBalances['as_of_hours']),
                 'year_overtime' => report_format_hours($yearHours - $plannedYear),
                 'week_hours' => report_format_hours($weekHours),
                 'week_work_hours' => report_format_hours($components['week_work_minutes'] / 60),
@@ -187,7 +190,7 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
                 'monthly_productivity' => number_format(report_percentage($monthHours, $plannedMonth), 1).'%',
             ];
             foreach ([
-                'all' => ['weeks_count', 'is_first_week', 'total_overtime'],
+                'all' => ['weeks_count', 'is_first_week', 'total_overtime', 'recorded_as_of_overtime'],
                 'year' => ['year_overtime'],
                 'week' => ['week_hours', 'week_work_hours', 'week_absence_hours', 'remaining_week', 'weekly_productivity'],
                 'month' => ['month_hours', 'month_work_hours', 'month_absence_hours', 'average_daily_hours', 'worked_days', 'monthly_productivity'],

@@ -245,6 +245,7 @@ function calculateRemainingHours($workedHours, $expectedHours)
                         </span>
                     </div>
                     <div data-report-period="all" data-report-presentation="<?= $nativeDashboardState('all') ?>" class="stat-value"><?= $nativeDashboardValue(formatHoursAsHHMM($totalOverHours), 'all') ?></div>
+                    <p data-report-period="all" data-report-presentation="<?= $nativeDashboardState('all') ?>" class="text-sm opacity-70 mt-2" style="white-space: normal;"><?= h(sprintf(DASHBOARD_RECORDED_AS_OF, $recordedDayBalances['as_of_day'], $nativeDashboardValue(formatHoursAsHHMM($recordedDayBalances['as_of_hours']), 'all'))) ?></p>
                     <p class="text-sm opacity-70 mt-2" style="white-space: normal;"><?= h(DASHBOARD_OVERTIME_INFO) ?></p>
                     <div data-report-period="year" data-report-presentation="<?= $nativeDashboardState('year') ?>" class="stat-desc text-sm font-medium opacity-80">
                         <?= sprintf(DASHBOARD_OVER_HOURS_YEAR, $nativeDashboardValue(formatHoursAsHHMM($overHoursThisYear), 'year')) ?>

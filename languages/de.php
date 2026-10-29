@@ -97,7 +97,7 @@ define('DASHBOARD_PROGRESS', 'Fortschritt');
 define('DASHBOARD_CURRENT_WEEK', 'Aktuelle Woche %s');
 define('DASHBOARD_HOURS_OF', '%s von %s Stunden');
 define('DASHBOARD_CALENDAR', 'Kalender');
-define('DASHBOARD_OVERTIME_INFO', 'Übertrag plus Differenzen aus abgeschlossenen Buchungstagen und deren Soll. Enthält Arbeitszeit und Abwesenheitsgutschriften. Kein lückenloses Vertragszeitkonto und kein Saldo bis heute.');
+define('DASHBOARD_OVERTIME_INFO', 'Übertrag plus Arbeit/Abwesenheitsgutschrift minus Soll je abgeschlossenem Buchungsstarttag. Gesamt: alle gespeicherten Tage; Stichtag: nur bis zum Berliner Datum. Fehlende Solltage werden nicht abgezogen; kein vollständiges Vertragszeitkonto.');
 define('DASHBOARD_WEEKLY_PRODUCTIVITY_INFO', 'Arbeitszeit plus Abwesenheitsgutschrift geteilt durch das volle Wochensoll; begrenzt auf 0–100 %. Ohne positives Soll: 0 %. Keine Produktivitätsbewertung.');
 define('DASHBOARD_PRODUCTIVITY_SCORE_INFO', 'Arbeitszeit plus Abwesenheitsgutschrift geteilt durch das volle Monatssoll; begrenzt auf 0–100 %. Ohne positives Soll: 0 %. Keine Produktivitätsbewertung.');
 define('BUTTON_PREV_WEEK', 'Vorherige Woche');
@@ -139,7 +139,8 @@ define('DASHBOARD_HOURS_PER_DAY', 'Stunden pro Tag');
 define('DASHBOARD_WEEKS_WORKED', 'Wochen mit Buchung');
 define('DASHBOARD_FIRST_WEEK', 'Erste Buchungswoche');
 define('DASHBOARD_KEEP_GOING', 'Abgeschlossene Buchungen zählen.');
-define('DASHBOARD_TOTAL_OVERTIME', 'Gesamte Überstunden');
+define('DASHBOARD_TOTAL_OVERTIME', 'Erfasste Tage-Saldo (gesamt)');
+define('DASHBOARD_RECORDED_AS_OF', 'Erfasste Buchungstage bis %s (Europe/Berlin): %s');
 define('DASHBOARD_OVER_HOURS_YEAR', 'Überstunden dieses Jahr: %s');
 
 // Wochentage
