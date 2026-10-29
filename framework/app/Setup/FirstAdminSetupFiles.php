@@ -23,6 +23,7 @@ final class FirstAdminSetupFiles
 {
     public const PROFILE = 'setup-profile.json';
     public const CLOSED = 'setup-closed';
+    public const LOCAL_BROWSER_PROFILE = 'local-first-user-setup.json';
     private const TOKEN = 'operator-setup-token.txt';
     private const LOCK = 'setup-operator.lock';
 
@@ -34,6 +35,20 @@ final class FirstAdminSetupFiles
     public static function createLocalAdministrator(string $instance, Hasher $hasher, Closure $credentials): array
     {
         self::cli();
+        return self::createAdministrator($instance, $hasher, $credentials);
+    }
+
+    /** First successful browser registration only, under the chosen NEW local-install policy. */
+    public static function createBrowserAdministrator(string $instance, string $origin, Hasher $hasher, #[\SensitiveParameter] array $form): array
+    {
+        if (! self::localOrigin($origin) || ! function_exists('posix_geteuid') || ! function_exists('fsync')) {
+            throw new RuntimeException('The local browser setup profile is not admitted.');
+        }
+        return self::createAdministrator($instance, $hasher, static fn (): array => $form, $origin);
+    }
+
+    private static function createAdministrator(string $instance, Hasher $hasher, Closure $credentials, ?string $browserOrigin = null): array
+    {
         $state = self::instance($instance);
         $lock = self::lock($instance, $state);
         $form = $password = $hash = $writer = null;
@@ -44,13 +59,20 @@ final class FirstAdminSetupFiles
             if ($admission->schemaProfile !== 'account-lifecycle-v5' || $admission->path !== $instance.'/application.sqlite') {
                 throw new RuntimeException;
             }
+            if ($browserOrigin !== null) { self::requireLocalBrowserProfile($instance, $manifestHash); }
             // App-key preparation requires empty state, so it must precede this operation.
             // Check its private canonical format without activating it or exposing any bytes.
             $keyState = self::applicationKeyState($instance);
             $root = dirname(__DIR__, 3);
             $files = new OfflineFiles([$root, $root.'/framework/public']);
             $before = $files->snapshot($admission->path);
-            self::assertEmptyReadSnapshot($admission, $files, $root);
+            if ($browserOrigin === null) {
+                self::assertEmptyReadSnapshot($admission, $files, $root);
+            } else {
+                // Fresh provenance was certified before this nonsecret profile was
+                // created. Normal anonymous login-budget rows do not revoke it.
+                self::assertNoUsersReadSnapshot($admission, $files);
+            }
             if ($files->snapshot($admission->path) !== $before) { throw new RuntimeException; }
 
             $form = $credentials();
@@ -63,6 +85,7 @@ final class FirstAdminSetupFiles
             self::sameInstance($instance, $state);
             self::sameJson($instance.'/runtime-admission.json', $manifestHash, $manifestState);
             self::requireNoSetup($instance);
+            if ($browserOrigin !== null) { self::requireLocalBrowserProfile($instance, $manifestHash); }
             if (self::applicationKeyState($instance) !== $keyState || $files->snapshot($admission->path) !== $before) {
                 throw new RuntimeException;
             }
@@ -78,14 +101,19 @@ final class FirstAdminSetupFiles
             self::sameInstance($instance, $state);
             self::sameJson($instance.'/runtime-admission.json', $manifestHash, $manifestState);
             self::requireNoSetup($instance);
+            if ($browserOrigin !== null) { self::requireLocalBrowserProfile($instance, $manifestHash); }
             if (self::applicationKeyState($instance) !== $keyState) { throw new RuntimeException; }
             // Only AFTER confirmed account COMMIT. Never remove even a partial marker.
-            // If closure fails, web stays stopped; its closed-mode entrypoint refuses absence.
+            // Closure failure is unconfirmed, never proof of rollback. CLI callers
+            // keep web stopped; an already-running browser profile instead retains
+            // the original all-users-zero guard and must be inspected/closed safely.
             self::writeNew($instance.'/'.self::CLOSED, "closed\n");
             self::sameInstance($instance, $state);
 
             return ['account_created' => true, 'setup_closed' => true, 'setup_token_created' => false,
-                'server_started' => false, 'next_step' => 'Start the separately authorized closed-setup web profile, then use normal password login.'];
+                'server_started' => false, 'next_step' => $browserOrigin === null
+                    ? 'Start the separately authorized closed-setup web profile, then use normal password login.'
+                    : 'Use normal password login; first-user setup is now closed.'];
         } catch (FirstAdminSetupInputRejected) {
             throw new FirstAdminSetupInputRejected('Enter valid username/email and matching chosen passwords of 12-72 bytes. No account was created by this input refusal.');
         } catch (Throwable) {
@@ -96,6 +124,115 @@ final class FirstAdminSetupFiles
             unset($form, $password, $hash, $writer);
             @flock($lock, LOCK_UN);
             @fclose($lock);
+        }
+    }
+
+    /** Selected only by the NEW local installation command; no token, key, account or listener. */
+    public static function prepareLocalBrowserNew(string $instance): array
+    {
+        self::cli();
+        $state = self::instance($instance);
+        $lock = self::lock($instance, $state);
+        try {
+            self::requireNoSetup($instance);
+            if (@lstat($instance.'/'.self::LOCAL_BROWSER_PROFILE) !== false) { throw new RuntimeException; }
+            [$manifest, $hash, $manifestState] = self::json($instance.'/runtime-admission.json');
+            $admission = RuntimeAdmission::fromConfiguration($manifest);
+            if ($admission->schemaProfile !== 'account-lifecycle-v5' || $admission->path !== $instance.'/application.sqlite') {
+                throw new RuntimeException;
+            }
+            $root = dirname(__DIR__, 3);
+            $files = new OfflineFiles([$root, $root.'/framework/public']);
+            $before = $files->snapshot($admission->path);
+            self::assertEmptyReadSnapshot($admission, $files, $root);
+            if ($files->snapshot($admission->path) !== $before) { throw new RuntimeException; }
+            self::sameInstance($instance, $state);
+            self::sameJson($instance.'/runtime-admission.json', $hash, $manifestState);
+            self::requireNoSetup($instance);
+            self::writeNew($instance.'/'.self::LOCAL_BROWSER_PROFILE, json_encode([
+                'version' => 1, 'mode' => 'local-first-user-admin', 'runtime_admission_sha256' => $hash,
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)."\n");
+            self::sameInstance($instance, $state);
+
+            return ['local_browser_first_user_admin' => true, 'account_created' => false,
+                'setup_token_created' => false, 'server_started' => false];
+        } catch (Throwable) {
+            throw new RuntimeException('NEW local browser setup preparation not confirmed. Keep the new instance private; no automatic retry.');
+        } finally {
+            @flock($lock, LOCK_UN);
+            @fclose($lock);
+        }
+    }
+
+    /** Per-request private metadata only. Local reachability is a policy boundary, NOT user identity. */
+    public static function localBrowserConfiguration(string $instance, string $origin): array
+    {
+        if (! self::localOrigin($origin)) { throw new RuntimeException; }
+        self::instance($instance);
+        self::requireNoSetup($instance);
+        [$manifest, $hash] = self::json($instance.'/runtime-admission.json');
+        $admission = RuntimeAdmission::fromConfiguration($manifest);
+        if ($admission->schemaProfile !== 'account-lifecycle-v5' || $admission->path !== $instance.'/application.sqlite') {
+            throw new RuntimeException;
+        }
+        self::requireLocalBrowserProfile($instance, $hash);
+
+        return ['enabled' => true, 'token_sha256' => null, 'local_first_user' => true,
+            'instance_directory' => $instance, 'origin' => $origin];
+    }
+
+    private static function requireLocalBrowserProfile(string $instance, string $manifestHash): void
+    {
+        [$profile] = self::json($instance.'/'.self::LOCAL_BROWSER_PROFILE);
+        if ($profile !== ['version' => 1, 'mode' => 'local-first-user-admin', 'runtime_admission_sha256' => $manifestHash]) {
+            throw new RuntimeException;
+        }
+    }
+
+    /** Canonical HTTPS loopback/RFC1918 origins only; never an authentication claim. */
+    private static function localOrigin(string $origin): bool
+    {
+        try { $parts = @parse_url($origin); } catch (Throwable) { return false; }
+        if (! is_array($parts) || ($parts['scheme'] ?? null) !== 'https' || isset($parts['user']) || isset($parts['pass'])
+            || isset($parts['query']) || isset($parts['fragment']) || isset($parts['path'])
+            || ! is_string($parts['host'] ?? null)
+            || (isset($parts['port']) && (! is_int($parts['port']) || $parts['port'] < 1 || $parts['port'] > 65535))) { return false; }
+        $host = $parts['host'];
+        if (preg_match('/\A[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\z/D', $host) !== 1 || str_contains($host, '..')) { return false; }
+        foreach (explode('.', $host) as $label) {
+            if (preg_match('/\A[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\z/D', $label) !== 1) { return false; }
+        }
+        $canonical = 'https://'.$host.(isset($parts['port']) && $parts['port'] !== 443 ? ':'.$parts['port'] : '');
+        if ($host !== strtolower($host) || $origin !== $canonical) { return false; }
+        if ($host === 'localhost' || str_ends_with($host, '.localhost')) { return true; }
+        if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) { return false; }
+        $octets = array_map('intval', explode('.', $host));
+
+        return $octets[0] === 127 || $octets[0] === 10
+            || ($octets[0] === 172 && $octets[1] >= 16 && $octets[1] <= 31)
+            || ($octets[0] === 192 && $octets[1] === 168);
+    }
+
+    private static function assertNoUsersReadSnapshot(RuntimeAdmission $admission, OfflineFiles $files): void
+    {
+        $reader = (new RuntimeDatabase($admission, $files))->readConnection($admission->configuration(), 'chrono');
+        $pdo = $statement = null;
+        try {
+            $pdo = $reader->getPdo();
+            $pdo->beginTransaction();
+            $statement = $pdo->query('SELECT COUNT(*) FROM users');
+            if ($statement->fetchColumn() !== 0) { throw new RuntimeException; }
+            $statement->closeCursor();
+            $statement = null;
+            if (! $pdo->rollBack()) { throw new RuntimeException; }
+        } finally {
+            try {
+                $statement?->closeCursor();
+                if ($pdo instanceof PDO && $pdo->inTransaction() && ! $pdo->rollBack()) { throw new RuntimeException; }
+            } finally {
+                $reader->disconnect();
+                $pdo = $statement = $reader = null;
+            }
         }
     }
 
@@ -157,7 +294,7 @@ final class FirstAdminSetupFiles
         $created = [];
         try {
             self::sameInstance($instance, $state);
-            foreach ([self::CLOSED, self::PROFILE, self::TOKEN] as $name) {
+            foreach ([self::CLOSED, self::PROFILE, self::TOKEN, self::LOCAL_BROWSER_PROFILE] as $name) {
                 clearstatcache(true, $instance.'/'.$name);
                 if (@lstat($instance.'/'.$name) !== false) {
                     throw new RuntimeException;

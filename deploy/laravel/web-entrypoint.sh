@@ -28,7 +28,17 @@ case "$instance" in /var/lib/chrono-laravel/chrono-fresh-*) ;; *) fail ;; esac
 for cache in /opt/chrono/framework/bootstrap/cache/routes*.php; do [ ! -e "$cache" ] || fail; done
 case "${FRAMEWORK_FRESH_SETUP_ENABLED:-}" in
     true) [ ! -e "$instance/setup-closed" ] && [ ! -L "$instance/setup-closed" ] && [ -f "$instance/setup-profile.json" ] || fail ;;
-    false) [ -e "$instance/setup-closed" ] || [ -L "$instance/setup-closed" ] || fail ;;
+    false)
+        if [ -e "$instance/setup-closed" ] || [ -L "$instance/setup-closed" ]; then
+            : # Original closed setup mode.
+        else
+            # Explicit NEW local-install profile only. Laravel still validates
+            # its private identity/binding, local HTTPS origin and zero-user writer.
+            [ "${FRAMEWORK_ADMITTED_LEGACY_API_ENABLED:-false}" = false ] || fail
+            [ -f "$instance/local-first-user-setup.json" ] && [ ! -L "$instance/local-first-user-setup.json" ] || fail
+            [ ! -e "$instance/setup-profile.json" ] && [ ! -L "$instance/setup-profile.json" ] || fail
+            [ ! -e "$instance/operator-setup-token.txt" ] && [ ! -L "$instance/operator-setup-token.txt" ] || fail
+        fi ;;
     *) fail ;;
 esac
 [ -r /run/chrono-tls/certificate.pem ] && [ -r /run/chrono-tls/private-key.pem ] || fail

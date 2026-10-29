@@ -24,8 +24,12 @@ final class LocalWebSessionController extends Controller
     public function __construct(private LocalSession $sessions, private Interactions $interactions, private Repository $config,
         private ?SelfRegistration $registration = null) {}
 
-    public function create(Request $request): View
+    public function create(Request $request): View|RedirectResponse
     {
+        if ($this->config->get('chrono_setup.local_first_user', false) === true
+            && ! $request->query->has('setup')) {
+            return new RedirectResponse('setup.php', 303, ['Cache-Control' => 'no-store']);
+        }
         return $this->page($request);
     }
 

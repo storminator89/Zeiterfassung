@@ -3,6 +3,7 @@
 namespace App\Auth;
 
 use App\LegacyDatabase\AttendanceWriter;
+use App\Setup\FirstAdminSetupFiles;
 use Closure;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Hashing\Hasher;
@@ -10,20 +11,29 @@ use LogicException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
-/** Operator-token-authorized first local admin; not public registration or enrollment. */
+/** First admin via an explicit NEW local-install policy or the separate operator-token profile. */
 final class FirstAdminSetup
 {
     /** @param Closure(): AttendanceWriter $writer Explicit admitted operation resolver. */
     public function __construct(private Repository $config, private Hasher $hasher, private Closure $writer) {}
 
-    /** Pure configuration check: no source, session, user count or token is exposed. */
+    /** No DB/session/user count is exposed; local mode rechecks private nonsecret metadata. */
     public function assertConfigured(): void
     {
+        if ($this->localBrowser()) { return; }
         $this->tokenDigest();
     }
 
+    /** Display only after the same configuration gate; never supplied by a request. */
+    public function requiresOperatorToken(): bool { return ! $this->localBrowser(); }
+
     public function create(#[\SensitiveParameter] array $form): void
     {
+        if ($this->localBrowser()) {
+            FirstAdminSetupFiles::createBrowserAdministrator($this->config->get('chrono_setup.instance_directory'),
+                $this->config->get('chrono_setup.origin'), $this->hasher, $form);
+            return;
+        }
         $digest = $this->tokenDigest();
         $token = $form['setup_token'] ?? null;
         if (! is_string($token) || strlen($token) < 32 || strlen($token) > 256
@@ -41,6 +51,22 @@ final class FirstAdminSetup
         }
         // Existing/nonempty and newly initialized have the same generic PRG.
         $writer->firstLocalAdministrator($username, $email, $hash);
+    }
+
+    private function localBrowser(): bool
+    {
+        if ($this->config->get('chrono_setup.local_first_user', false) !== true) { return false; }
+        if ($this->config->get('chrono_setup.enabled') !== true || $this->config->get('chrono_setup.token_sha256') !== null
+            || $this->config->get('app.debug', false) !== false || $this->config->get('hashing.driver') !== 'bcrypt'
+            || $this->config->get('auth.providers.chrono_users') !== ['driver' => 'eloquent', 'model' => LegacyUser::class]
+            || ! is_string($this->config->get('chrono_setup.instance_directory'))
+            || ! is_string($this->config->get('chrono_setup.origin'))) { throw new NotFoundHttpException; }
+        try {
+            if (FirstAdminSetupFiles::localBrowserConfiguration($this->config->get('chrono_setup.instance_directory'),
+                $this->config->get('chrono_setup.origin')) !== $this->config->get('chrono_setup')) { throw new NotFoundHttpException; }
+        } catch (\Throwable) { throw new NotFoundHttpException; }
+
+        return true;
     }
 
     /** Digest supplied by trusted composition, not inherited native keys or a request. */

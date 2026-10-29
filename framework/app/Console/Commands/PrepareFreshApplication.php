@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\LegacyDatabase\AttendanceWriter;
 use App\LegacyDatabase\FreshApplicationFiles;
 use App\LegacyDatabase\RuntimeDatabase;
+use App\Setup\FirstAdminSetupFiles;
 use Illuminate\Console\Command;
 use RuntimeException;
 use Throwable;
@@ -15,7 +16,8 @@ final class PrepareFreshApplication extends Command
     protected $signature = 'chrono:prepare-fresh
         {--private-parent= : Canonical existing owner-only directory outside checkout and webroots}
         {--new-only : Explicitly prepare a NEW empty instance, never reuse/reset an existing database}
-        {--dormant-account-lifecycle-v5 : Prepare only NEW empty V5 files; runtime and setup remain unavailable}';
+        {--dormant-account-lifecycle-v5 : Prepare only NEW empty V5 files; runtime and setup remain unavailable}
+        {--local-browser-first-admin : NEW V5 local install: first successful browser registration becomes Admin; no token}';
 
     protected $description = 'Prepare NEW private empty V4 files, or explicitly dormant V5 files; no users, secrets or runtime activation.';
 
@@ -30,9 +32,15 @@ final class PrepareFreshApplication extends Command
                 || $this->laravel->make('db')->getConnections() !== []) {
                 throw new RuntimeException;
             }
-            $result = $this->option('dormant-account-lifecycle-v5') === true
+            $localBrowser = $this->option('local-browser-first-admin') === true;
+            if ($localBrowser && $this->option('dormant-account-lifecycle-v5') === true) { throw new RuntimeException; }
+            $result = $localBrowser || $this->option('dormant-account-lifecycle-v5') === true
                 ? FreshApplicationFiles::createNewDormantV5($parent)
                 : FreshApplicationFiles::createNew($parent);
+            if ($localBrowser) {
+                $result += FirstAdminSetupFiles::prepareLocalBrowserNew($result['directory']);
+                unset($result['runtime_openable'], $result['setup_provisionable']);
+            }
             $this->line(json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 
             return self::SUCCESS;
