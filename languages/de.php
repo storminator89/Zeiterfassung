@@ -355,4 +355,16 @@ define('TEAM_ABSENCE_PEOPLE', 'Teammitglieder-Seiten');
 define('TEAM_ABSENCE_PEOPLE_PREVIOUS', 'Vorige Personen');
 define('TEAM_ABSENCE_PEOPLE_NEXT', 'Weitere Personen');
 define('TEAM_ABSENCE_UNAVAILABLE', 'Nicht verfügbar. Bitte neu laden.');
+
+// Own stored open-row facts only, never an inferred rule violation.
+define('OWN_OPEN_REVIEW_TITLE', 'Gespeicherte offene Einträge');
+define('OWN_OPEN_REVIEW_COUNT', '%d eigene Einträge ohne gespeichertes Ende: Beginn vor %s (Europe/Berlin) oder nicht lesbar.');
+define('OWN_OPEN_REVIEW_NOTE', 'Auch eine reguläre Nachtschicht kann hier erscheinen. Dies ist kein Nachweis vergessener Arbeit oder einer Regelverletzung.');
+define('OWN_OPEN_REVIEW_ACTION', 'Laufende Arbeit regulär beenden. Nur bei tatsächlichem Klärungsbedarf eine begründete Korrektur oder Stornierung beantragen; eine andere berechtigte Person entscheidet. Keine Zeit wird automatisch ergänzt.');
+define('OWN_OPEN_REVIEW_SNAPSHOT', 'Stand beim Seitenabruf; nach Buchungen neu laden:');
+define('OWN_OPEN_REVIEW_UNKNOWN_START', 'Startzeit nicht lesbar');
+define('OWN_OPEN_REVIEW_LINK', 'Korrektur / Storno ansehen');
+define('OWN_OPEN_REVIEW_LIMIT', 'Höchstens fünf Einträge: unlesbare zuerst, danach älteste Starts. Weitere eigene Einträge stehen in der Arbeitszeitliste.');
+define('OWN_OPEN_REVIEW_REFRESH', 'Sachstand neu laden');
+define('OWN_OPEN_REVIEW_UNAVAILABLE', 'Eigene Liste offener Einträge derzeit nicht verfügbar. Bitte neu laden.');
 ?>

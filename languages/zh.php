@@ -340,4 +340,16 @@ define('TEAM_ABSENCE_PEOPLE', '团队成员分页');
 define('TEAM_ABSENCE_PEOPLE_PREVIOUS', '上一页成员');
 define('TEAM_ABSENCE_PEOPLE_NEXT', '更多成员');
 define('TEAM_ABSENCE_UNAVAILABLE', '目前無法取得，請重新載入。');
+
+// Own stored open-row facts only, never an inferred rule violation.
+define('OWN_OPEN_REVIEW_TITLE', '已保存的未結束紀錄');
+define('OWN_OPEN_REVIEW_COUNT', '您有 %d 筆未保存結束時間的紀錄：開始日期早於 %s（Europe/Berlin），或開始時間無法讀取。');
+define('OWN_OPEN_REVIEW_NOTE', '正常跨夜班也可能出現在這裡。這不代表忘記打卡或違反規則。');
+define('OWN_OPEN_REVIEW_ACTION', '正在進行的工作請正常結束。只有確實需要釐清時才提出附理由的更正或取消申請，由另一位有權人員決定。不會自動補入時間。');
+define('OWN_OPEN_REVIEW_SNAPSHOT', '頁面載入時的狀態；打卡後請重新載入：');
+define('OWN_OPEN_REVIEW_UNKNOWN_START', '開始時間無法讀取');
+define('OWN_OPEN_REVIEW_LINK', '查看更正／取消');
+define('OWN_OPEN_REVIEW_LIMIT', '最多顯示五筆：先顯示無法讀取的開始時間，再按最早開始時間排序。其他本人的紀錄在工時清單中。');
+define('OWN_OPEN_REVIEW_REFRESH', '重新載入已保存狀態');
+define('OWN_OPEN_REVIEW_UNAVAILABLE', '目前無法取得本人的未結束紀錄清單，請重新載入。');
 ?>
