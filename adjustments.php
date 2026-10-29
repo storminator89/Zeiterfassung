@@ -39,6 +39,14 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && (!$selectionError || ($_POST['action'
         $conn->exec('COMMIT');header('Location: '.$queueUrl($requestedPage).'&saved=1');exit;
     } catch (Throwable $e) { $conn->exec('ROLLBACK');$error=$e instanceof AttendanceError?$e->getMessage():'Antrag konnte nicht verarbeitet werden.'; }
 }
+$balancePreviewRequestId=null;$balancePreview=[];
+if ($_SERVER['REQUEST_METHOD']==='GET' && array_key_exists('balance_preview',$_GET)) {
+    try { $balancePreviewRequestId=correction_selection_id($_GET['balance_preview']); }
+    catch (InvalidArgumentException) { /* Invalid selectors never widen the visible queue. */ }
+}
+// Queue and the optional own projection must use one current read snapshot.
+$conn->beginTransaction();
+try {
 $requestScope="(a.user_id=? OR ?='admin' OR (?='supervisor' AND u.supervisor_id=?))";
 $requestParams=[$user,$role,$role,$user];
 $requestCounts=array_fill_keys(array_keys($requestStatusLabels),0);
@@ -49,6 +57,26 @@ $requestPages=max(1,(int)ceil($requestTotal/$requestPageSize));$requestPage=min(
 $requestWhere=$requestScope;
 if ($requestStatus!=='all') { $requestWhere.=' AND a.status=?';$requestParams[]=$requestStatus; }
 $s=$conn->prepare('SELECT a.*,u.username FROM time_adjustments a JOIN users u ON u.id=a.user_id WHERE '.$requestWhere.' ORDER BY a.id DESC LIMIT '.$requestPageSize.' OFFSET '.$requestOffset);$s->execute($requestParams);$requests=$s->fetchAll(PDO::FETCH_ASSOC);
+// At most one explicit own pending request on this already-scoped visible page.
+if ($balancePreviewRequestId!==null) {
+    foreach ($requests as $request) {
+        if ((int)$request['id']!==$balancePreviewRequestId || (int)$request['user_id']!==$user || $request['status']!=='pending') { continue; }
+        require_once __DIR__.'/lib/correction_balance_preview.php';
+        $balancePreview=['available'=>false,'before'=>null,'after'=>null,'difference'=>null];
+        $s=$conn->prepare('SELECT ueberstunden FROM users WHERE id=?');$s->execute([$user]);$carryIn=$s->fetchColumn();$s->closeCursor();
+        if ((is_int($carryIn)||is_float($carryIn)||is_string($carryIn)) && is_numeric($carryIn)) {
+            $s=$conn->prepare('SELECT * FROM zeiterfassung WHERE user_id=? ORDER BY startzeit DESC');$s->execute([$user]);$ownRecords=$s->fetchAll(PDO::FETCH_ASSOC);$s->closeCursor();
+            $balancePreview=chrono_correction_balance_preview($conn,$user,$ownRecords,(float)$carryIn,$request,time());
+        }
+        break;
+    }
+}
+$conn->commit();
+} catch (Throwable $e) {
+    if ($conn->inTransaction()) { $conn->rollBack(); }
+    throw $e;
+}
+$balancePreviewUrl=static fn(int $id): string=>$queueUrl($requestPage).'&balance_preview='.$id.'#balance-preview-'.$id;
 chrono_page('Korrekturanträge');
 ?>
 <p class="opacity-70">Nachträgliche Änderungen mit Begründung und Freigabe. Originalereignisse bleiben erhalten. Eigene Anträge müssen von einer anderen berechtigten Person freigegeben werden.</p>
@@ -70,7 +98,19 @@ chrono_page('Korrekturanträge');
 <div class="text-sm my-3"><p class="font-semibold">Gespeicherte Netto-Buchungsdauer · kein Kontosaldo</p>
 <p>Vorher: <?= h($preview['before']) ?> · Beantragt: <?= h($preview['after']) ?></p>
 <p><?= h($preview['difference']===null?'Keine verlässliche Dauer-Differenz verfügbar.':'Dauer-Differenz: '.$preview['difference']) ?></p>
-<p class="opacity-70">Nur ausgewählte Zeitfelder des gespeicherten Originals und Antrags. Keine Freigabe- oder Saldozusage; die Entscheidung prüft den aktuellen Datensatz erneut.</p></div><p><?= h($a['reason']) ?></p><?php if($a['review_reason']): ?><p class="opacity-70"><?= $a['status']==='withdrawn'?'Rücknahme':'Entscheidung' ?>: <?= h($a['review_reason']) ?></p><?php endif; ?><?php if($a['status']==='pending'&&(int)$a['user_id']!==$user&&in_array($role,['admin','supervisor'],true)): ?><form method="post"><?= csrf_field() ?><input class="input input-bordered w-full" type="hidden" name="action" value="review"><input class="input input-bordered w-full" type="hidden" name="id" value="<?= (int)$a['id'] ?>"><label class="block text-sm font-semibold mt-4 mb-2" for="review_reason_<?= (int)$a['id'] ?>">Begründung der Entscheidung</label><input class="input input-bordered w-full" id="review_reason_<?= (int)$a['id'] ?>" name="review_reason" minlength="3" maxlength="1000" required><div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary" name="decision" value="approved">Freigeben</button><button name="decision" value="rejected" class="btn btn-outline">Ablehnen</button></div></form><?php endif; ?></section><?php endforeach; ?>
+<p class="opacity-70">Nur ausgewählte Zeitfelder des gespeicherten Originals und Antrags. Keine Freigabe- oder Saldozusage; die Entscheidung prüft den aktuellen Datensatz erneut.</p></div>
+<?php if($a['status']==='pending'&&(int)$a['user_id']===$user): ?>
+<div class="text-sm my-3" id="balance-preview-<?= (int)$a['id'] ?>">
+<?php if($balancePreviewRequestId===(int)$a['id'] && $balancePreview): ?>
+<p class="font-semibold">Eigener Home-Stand · Vorschau</p>
+<?php if($balancePreview['available']): ?>
+<p>Jetzt: <?= h($balancePreview['before']) ?> · Mit diesem Antrag: <?= h($balancePreview['after']) ?> · Änderung: <?= h($balancePreview['difference']) ?></p>
+<?php else: ?><p role="status">Keine verlässliche Vorschau verfügbar. Aktuellen Eintrag und Datenhinweise prüfen.</p><?php endif; ?>
+<p class="opacity-70">Nur dieser Antrag auf dem aktuell gelesenen Stand: Startguthaben plus abgeschlossene Buchungstage minus deren Soll, wie Home. Kein vollständiges Vertragszeitkonto, keine Freigabezusage. Andere offene Anträge sind nicht eingerechnet; vor der Entscheidung wird erneut geprüft.</p>
+<?php else: ?><a class="btn btn-outline btn-sm mt-2" href="<?= h($balancePreviewUrl((int)$a['id'])) ?>">Home-Stand mit Antrag prüfen</a><?php endif; ?>
+</div>
+<?php endif; ?>
+<p><?= h($a['reason']) ?></p><?php if($a['review_reason']): ?><p class="opacity-70"><?= $a['status']==='withdrawn'?'Rücknahme':'Entscheidung' ?>: <?= h($a['review_reason']) ?></p><?php endif; ?><?php if($a['status']==='pending'&&(int)$a['user_id']!==$user&&in_array($role,['admin','supervisor'],true)): ?><form method="post"><?= csrf_field() ?><input class="input input-bordered w-full" type="hidden" name="action" value="review"><input class="input input-bordered w-full" type="hidden" name="id" value="<?= (int)$a['id'] ?>"><label class="block text-sm font-semibold mt-4 mb-2" for="review_reason_<?= (int)$a['id'] ?>">Begründung der Entscheidung</label><input class="input input-bordered w-full" id="review_reason_<?= (int)$a['id'] ?>" name="review_reason" minlength="3" maxlength="1000" required><div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary" name="decision" value="approved">Freigeben</button><button name="decision" value="rejected" class="btn btn-outline">Ablehnen</button></div></form><?php endif; ?></section><?php endforeach; ?>
 <?php if($requestPages>1): ?><nav class="flex flex-wrap gap-3 mb-6" aria-label="Antragsseiten">
 <?php if($requestPage>1): ?><a class="btn btn-outline" href="<?= h($queueUrl($requestPage-1)) ?>">Neuere Anträge</a><?php endif; ?>
 <?php if($requestPage<$requestPages): ?><a class="btn btn-outline" href="<?= h($queueUrl($requestPage+1)) ?>">Ältere Anträge</a><?php endif; ?>
