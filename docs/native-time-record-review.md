@@ -182,3 +182,45 @@ Grenzen: keine App-/Bootstrap-/SQL-/Zulassungs-/Auth-/CSRF-/HTTP-/Browser-/Sicht
 Runtime-/Produktions-/Mehrworker-/Lastabnahme; keine echte DB, Konten, Credentials,
 Schlüssel, Server, Konfiguration oder Deployment. Keine vollständige Diagnose,
 Mapping-/Reparatur-/Migrationsabnahme. #55 bleibt ausdrücklich partiell/offen.
+
+## #55-Nachtrag: strenger Ungültigbefund trotz Laufzeitlesbarkeit
+
+Auf Main `cbf3c06971f4d381637b4c85fbafaa0a6b67a1ea`, Baum
+`8923740804ce0072ca79f4b5ea5a084b5807a30d`, bleibt ein zweiter nachweisbarer
+Unterschied zwischen Laufzeitparser und vorhandener strenger Altzeitdiagnose:
+PHP8.5.12 liest zum Beispiel `+24:00`-Offsets und Jahr0000 ohne Parserwarnung;
+die unveränderte strenge Diagnose liefert dafür `invalid_timestamp`. Bisher
+fehlten sonst laufzeitgültige Zeilen dieser Art im vorhandenen Prüffilter.
+
+Derselbe bestehende Feld-/Kategoriekanal zeigt nun auch diesen vorhandenen
+Befund **nur bei tatsächlich laufzeitlesbarem Feld**. Ein fester feldbezogener
+Altzeit-Prüfhinweis benennt ausdrücklich das Urteil der strengen Diagnose.
+Er ändert nicht das Ergebnis des Laufzeitparsers, behauptet keinen Ersatzwert
+und bestätigt keine Dauer-/Summe neu. Nicht lesbare Felder behalten ihre alte
+Ungültig-Anzeige ohne zusätzlichen Diagnose-Span; NULL-/Leer-Enden bleiben offen.
+Ein bereits aus anderem Grund ungültiger Datensatz bleibt dies unverändert.
+
+Die vorherigen Format-/DST-Meldungen, eigenen Scopes, vollständige Vorfilterung,
+Zehner-Pagination, Reihenfolge, Tageskontext und Korrektur-/Stornolinks bleiben
+bestehen. Kein neuer Parser, neue Kategorie, SQLread, DTOkanal, Rolle, Writer,
+Berechnungs-/Exportblocker, Schema-/Runtime-/Asset-/CI-Delta. Ein Befund ist kein
+Offset-/Zeitreparaturvorschlag und erteilt keine Freigabe. PR #352 sowie #57
+bleiben vollständig unberührt.
+
+Grober synthetischer Journey PHP8.5.12/Laravel13.38.0:60 erfundene Zeilen,
+58 eigene;18 neu auffindbare Zeilen plus32 alte Prüfzeilen, zusammen50.
+Tatsächlicher Helfer, unveränderter Controller mit bereits berechtigtem Fake-
+Own-Row-Port, DTO, kompilierte tatsächliche Bladeansicht in DE/EN/ZH (15 Seiten)
+und exakt extrahierter nativer Zeilenrenderer. +/-24:00,24:01,Jahr0000,
+Start/Ende/beide/offener Marker, gültige +/-23:59-Grenzen und runtimeverweigerte
+Offset-/Tag-/Sekundenformen, zusätzlich ungültige Pause, bisherige Format-/DST-/
+Ungültig-/Konflikthinweise, große ID, Counts/Sortierung/Paging, volle Tageswerte,
+Escaping, ungültiger Query/übergroße Seite, Arrays/Session/Zeitzone geprüft.
+Ohne neuen Befund ist die Native-Ausgabe bytegleich; Entfernen ausschließlich
+neuer Spans stellt sonst exakt die vorherige Zeile her. Keine neue Testsuite
+oder manueller CI-Start; notwendige Syntax-/Erhaltungsprüfung separat.
+
+Grenzen: keine App-/Bootstrap-/SQL-/Auth-/CSRF-/HTTP-/Browser-/Sicht-/Runtime-/
+Produktions-/Konkurrenz-/Lastabnahme, echten Konten/Credentials/Keys/Datei-DB/
+Server/Konfiguration oder Deployment. Kein vollständiger Bestandscheck, keine
+bestätigte Zeitzuordnung/Reparatur/Migration. #55 bleibt partiell/offen.
