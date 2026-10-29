@@ -386,9 +386,18 @@ if ($method === 'POST') {
         case $basePath . '/attendance':
             $tokenData = validateToken();
             attendance_json(function () use ($conn, $tokenData) {
+                // PHP's unnormalized query matches the existing Laravel raw opt-in.
+                if (array_key_exists('workflow', $_GET) && $_GET['workflow'] !== '1') {
+                    throw new AttendanceError('Invalid workflow option.', 400);
+                }
+                $workflowRequested = array_key_exists('workflow', $_GET);
                 $conn->beginTransaction();
                 try {
                     $status = attendance_record_id_string(['success' => true, 'start_metadata_version' => 1] + attendance_status($conn, (int)$tokenData['user_id']));
+                    if ($workflowRequested) {
+                        require_once __DIR__.'/lib/attendance_workflow_status.php';
+                        $status = attendance_workflow_status($status);
+                    }
                     $conn->commit();
                     return $status;
                 } catch (Throwable $error) {

@@ -2,16 +2,18 @@
 
 Basis: veröffentlichter Main `83717e8e56484b45a93c55d2901f054bfdcabdb9`,
 Baum `c177eba798eef8e77f23a0500eb843da6c78dfa6`, 28.10.2026.
-**Nur lokaler Quellfortschritt; #68 bleibt offen.** Keine Benachrichtigung,
+**Historische Paketprovenienz; #68 bleibt offen.** Keine Benachrichtigung,
 neue Freigaberoute, UI, Konto-/V5-Änderung oder neue Runtimeaktivierung.
 
 ## Ausdrücklicher additiver Lesevertrag
 
 Der vorhandene, bereits separat zuzulassende Laravel-GET-Kandidat
-`GET /api.php/attendance?workflow=1` liefert auf ausdrücklichen Wunsch
+`GET /api.php/attendance?workflow=1` und nun der native GET liefern auf ausdrücklichen Wunsch
 zusätzliche Workflowmetadaten. Ohne diesen Parameter bleibt exakt die bestehende
-Vierfeldantwort `success,state,record_id,record_id_string` erhalten.
-Die native PHP-API wird nicht verändert und liefert diese Erweiterung nicht.
+Defaultantwort erhalten (inzwischen mit zusätzlichem `start_metadata_version:1`
+aus #51 neben `success,state,record_id,record_id_string`). Der Native-Teil und
+die mechanische gemeinsame Projektion sind in
+[native-attendance-workflow.md](../native-attendance-workflow.md) abgegrenzt.
 Ein Client muss deshalb `workflow.version === 1` tatsächlich beobachten, statt
 sie aus einer Versions-/Hostannahme zu erfinden.
 
@@ -21,6 +23,7 @@ Beispiel für eine laufende Pause:
 {
   "success": true,
   "state": "paused",
+  "start_metadata_version": 1,
   "record_id": 42,
   "record_id_string": "42",
   "workflow": {
@@ -81,8 +84,8 @@ Laravels Trim-/Nullnormalisierung macht sie nicht gültig. Bestehende
 `AttendanceError`-Status bleiben erhalten; unerwartete Status-/Projektionsfehler
 bleiben die vorhandene feste JSON503-Antwort, ohne Rohdaten oder Exceptions.
 Die Projektion verwirft fehlende/widersprüchliche Zustands-/IDkombinationen,
-statt daraus scheinbar gültige Aktionen zu erfinden. Nur die vier bisherigen
-öffentlichen Statusfelder werden in die optierte Antwort übernommen.
+statt daraus scheinbar gültige Aktionen zu erfinden. Nur die bisherigen öffentlichen Statusfelder einschließlich
+`start_metadata_version` werden in die optierte Antwort übernommen.
 
 ## Tatsächlich geprüfter grober Ablauf
 
