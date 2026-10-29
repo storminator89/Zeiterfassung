@@ -91,7 +91,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         if ($this->userMutationsEnabled()) {
             $supported += LocalWebAdminUserMutations::COMMAND_FIELDS;
         }
-        if ($this->intake?->isV4() === true) {
+        if ($this->intake?->isV4() === true || $this->intake?->isV5() === true) {
             $supported['update_intake_policy'] = ['update_intake_policy', 'revision', 'manual_enabled', 'ldap_sync_enabled', 'registration_enabled'];
             if ($this->ldapHttpEnabled()) { $supported['sync_ldap'] = LocalWebLdapSync::COMMAND_FIELDS; }
         }
@@ -241,7 +241,8 @@ final class LocalWebAdminPauseSettingsController extends Controller
     /** Only the admitted private credential-document branch may expose password editing. */
     private function userMutationsEnabled(): bool
     {
-        return $this->intake?->isV4() === true && $this->config?->get('app.debug') === false
+        return ($this->intake?->isV4() === true || $this->intake?->isV5() === true)
+            && $this->config?->get('app.debug') === false
             && $this->interactions->adminPauseSettings && $this->userMutations !== null;
     }
 
@@ -394,7 +395,8 @@ final class LocalWebAdminPauseSettingsController extends Controller
     private function page(Request $request, ?string $error = null, ?string $errorKey = null, ?string $successKey = null): Response
     {
         $v4 = $this->intake?->isV4() === true;
-        if ($v4 && $this->config?->get('app.debug') !== false) {
+        $v5 = $this->intake?->isV5() === true;
+        if (($v4 || $v5) && $this->config?->get('app.debug') !== false) {
             return $this->ldapFailure('Private non-debug Admin document composition is required.', 503);
         }
         // This reader independently reloads and checks the current local Admin
@@ -485,7 +487,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
                     .'Neue Kontostatusformulare sind nicht verfügbar. Bitte den gespeicherten Stand prüfen; nicht erneut senden.';
             }
         }
-        $nonce = ($v4 || $this->accountLifecycleEnabled()) ? AdminCredentialDocument::nonce() : null;
+        $nonce = ($v4 || $v5 || $this->accountLifecycleEnabled()) ? AdminCredentialDocument::nonce() : null;
         require_once dirname(__DIR__, 4).'/lib/language.php';
         $language = \valid_language($request->query('lang', $request->session()->get('lang', 'de')));
         $request->session()->put('lang', $language);
@@ -507,6 +509,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
                 ldapSyncForm: $ldapForm, ldapSyncOutcome: $ldapOutcome, ldapSyncNotice: $ldapNotice,
                 ldapSessionConfirmations: $ldapSessionConfirmations, ldapSessionNotice: $ldapSessionNotice,
                 lifecycleUsers: $lifecycleUsers, lifecycleNotice: $lifecycleNotice,
+                accountLifecycleV5: $v5,
             ),
         ], 200, ['Cache-Control' => 'no-store']);
         if ($nonce !== null) {

@@ -46,8 +46,9 @@ final class FreshWebServiceProvider extends ServiceProvider
             $profile = $this->app->make(FreshWebConfiguration::class);
             $profile->assertCurrent($config);
             if (! $this->app->bound(RuntimeDatabase::class) || ! $this->app->bound(AttendanceWriter::class)
-                || ! $this->app->make(RuntimeDatabase::class)->isIntakePolicyV4()) {
-                throw new LogicException('Fresh web requires the complete admitted V4 runtime and intake writer.');
+                || (! $this->app->make(RuntimeDatabase::class)->isIntakePolicyV4()
+                    && ! $this->app->make(RuntimeDatabase::class)->isAccountLifecycleV5())) {
+                throw new LogicException('Fresh web requires the complete admitted local runtime and intake writer.');
             }
             $router = $this->app->make(Router::class);
             foreach ($router->getRoutes() as $route) {

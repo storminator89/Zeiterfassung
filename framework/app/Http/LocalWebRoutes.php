@@ -51,6 +51,13 @@ final class LocalWebRoutes
 {
     public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false, bool $includeSetup = false, bool $includeLdapSync = false, bool $useSharedLoginBudget = false, bool $includeTerminalSites = false, bool $includeTerminalCredentialRevocations = false, bool $includeCorrectionWithdrawals = false, bool $includeTerminalDeviceRevocations = false, bool $includeLdapSessionRevocations = false, bool $includeTerminalModuleSettings = false, bool $includeTerminalDevicePairings = false): void
     {
+        if ($app->bound(RuntimeDatabase::class)
+            && ($runtime = $app->make(RuntimeDatabase::class))->isAccountLifecycleV5()) {
+            // Normal immutable Runtime admission, not an alternate opener. The
+            // current V5 hold refuses before this registrar changes anything.
+            // V4 receives no additional read or changed connection lifetime.
+            $runtime->readConnection($app->make('config')->get('database.connections.chrono', []), 'chrono')->disconnect();
+        }
         if ($useSharedLoginBudget !== SharedLoginBudgetServiceProvider::selected($app)) {
             throw new LogicException('Login route and shared budget selection must agree.');
         }
