@@ -178,6 +178,7 @@ define('TABLE_HEADER_ACTIONS', 'Actions');
 define('BUTTON_EDIT', 'Edit');
 define('BUTTON_DELETE', 'Delete');
 define('CONFIRM_DELETE_USER', 'Are you sure you want to delete this user?');
+define('ADMIN_USER_DELETE_HISTORY_LOCKED', 'Deletion blocked: accounts with history are retained.');
 define('DEPARTMENT_MANAGEMENT_TITLE', 'Department Management');
 define('FORM_NEW_DEPARTMENT', 'New Department');
 define('BUTTON_ADD_DEPARTMENT', 'Add Department');
