@@ -354,7 +354,11 @@ final class LocalWebAdminPauseSettingsController extends Controller
     {
         try {
             if (! $this->adminUsers->create(array_diff_key($form, array_flip(['_token', 'csrf_token'])))) {
-                return $this->page($request, errorKey: 'ERROR_ALL_FIELDS_REQUIRED');
+                // Contracted required-field FALSE is before any user mutation.
+                // Do not infer a safe rejection from an exception/unknown outcome.
+                require_once dirname(__DIR__, 4).'/lib/admin_create_user_draft.php';
+                return $this->page($request, errorKey: 'ERROR_ALL_FIELDS_REQUIRED',
+                    createUserDraft: \admin_create_user_rejected_draft(array_diff_key($form, array_flip(['_token', 'csrf_token']))));
             }
 
             // Native create renders after commit; no redirect/retry/credential echo.
@@ -392,7 +396,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         }
     }
 
-    private function page(Request $request, ?string $error = null, ?string $errorKey = null, ?string $successKey = null): Response
+    private function page(Request $request, ?string $error = null, ?string $errorKey = null, ?string $successKey = null, ?array $createUserDraft = null): Response
     {
         $v4 = $this->intake?->isV4() === true;
         $v5 = $this->intake?->isV5() === true;
@@ -510,6 +514,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
                 ldapSessionConfirmations: $ldapSessionConfirmations, ldapSessionNotice: $ldapSessionNotice,
                 lifecycleUsers: $lifecycleUsers, lifecycleNotice: $lifecycleNotice,
                 accountLifecycleV5: $v5,
+                createUserDraft: $createUserDraft,
             ),
         ], 200, ['Cache-Control' => 'no-store']);
         if ($nonce !== null) {
