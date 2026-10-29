@@ -3,6 +3,7 @@
 namespace App\Chrono;
 
 use App\Auth\LegacyUser;
+use App\Auth\AccountLifecycleWebIdentity;
 use App\LegacyDatabase\AttendanceWriter;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -15,7 +16,8 @@ use LogicException;
 final class LegacyLocalWebTerminalModuleSettings implements LocalWebTerminalModuleSettings
 {
     /** @param Closure(): AttendanceWriter $writer Existing trusted operation-scoped resolver. */
-    public function __construct(private readonly Factory $auth, private readonly Closure $writer) {}
+    public function __construct(private readonly Factory $auth, private readonly Closure $writer,
+        private readonly ?AccountLifecycleWebIdentity $lifecycle = null) {}
 
     public function save(array $command): void
     {
@@ -36,12 +38,13 @@ final class LegacyLocalWebTerminalModuleSettings implements LocalWebTerminalModu
         // Only the refreshed web guard selects the actor/version. No request
         // actor/version, generation, pairing code, credential or key is accepted.
         $version = hash('sha256', $actor->getAuthPassword());
+        $authority = $this->lifecycle?->capture($actor);
         $writer = ($this->writer)();
         if (! $writer instanceof AttendanceWriter) {
             throw new LogicException('An admitted operation-scoped terminal module settings writer is required.');
         }
         try {
-            $writer->saveTerminalModuleSettings((int) $actor->getKey(), $version, isset($command['enabled']));
+            $writer->saveTerminalModuleSettings((int) $actor->getKey(), $version, isset($command['enabled']), $authority);
         } catch (\AttendanceError $error) {
             if ($error->status === 401) {
                 throw new AuthenticationException('Unauthenticated.', ['web']);

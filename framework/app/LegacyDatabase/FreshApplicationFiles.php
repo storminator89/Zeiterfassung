@@ -15,6 +15,18 @@ final class FreshApplicationFiles
     /** No database target, schema, secret, account, callback or activation inputs. */
     public static function createNew(string $privateParent): array
     {
+        return self::createNewProfile($privateParent, false);
+    }
+
+    /** Explicit NEW-only V5 file preparation; runtime/setup remain closed. */
+    public static function createNewDormantV5(string $privateParent): array
+    {
+        return self::createNewProfile($privateParent, true);
+    }
+
+    /** Only the two fixed source-owned entry points select a canonical profile. */
+    private static function createNewProfile(string $privateParent, bool $dormantV5): array
+    {
         if (PHP_SAPI !== 'cli' || ! function_exists('posix_geteuid') || ! function_exists('fsync')) {
             throw new RuntimeException('Fresh file preparation requires the local Unix CLI.');
         }
@@ -77,9 +89,9 @@ final class FreshApplicationFiles
 
             $phase = 'canonical empty memory source';
             $mapping = json_decode(file_get_contents($root.'/docs/framework/schema-map.json'), true, 512, JSON_THROW_ON_ERROR);
-            $references = IntakePolicyV4References::build($mapping);
+            $references = $dormantV5 ? AccountLifecycleV5References::build($mapping) : IntakePolicyV4References::build($mapping);
             $source = (new SQLiteConnector)->connect(['database' => ':memory:', 'busy_timeout' => 5000]);
-            $build = require $root.'/framework/database/fixtures/intake_policy_v4.php';
+            $build = require $root.'/framework/database/fixtures/'.($dormantV5 ? 'account_lifecycle_v5.php' : 'intake_policy_v4.php');
             $build($source, $mapping);
             $references->requireFreshLoginBudget($source);
             self::sameFile($path, $databaseHandle, $databaseState);
@@ -92,7 +104,8 @@ final class FreshApplicationFiles
 
             $configuration = [
                 'database' => $path, 'prefix' => '', 'busy_timeout' => 5000,
-                'transaction_mode' => 'IMMEDIATE', 'name' => 'chrono_fresh_intake_policy_v4',
+                'transaction_mode' => 'IMMEDIATE',
+                'name' => $dormantV5 ? 'chrono_fresh_account_lifecycle_v5' : 'chrono_fresh_intake_policy_v4',
                 'options' => [PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, Sqlite::ATTR_OPEN_FLAGS => Sqlite::OPEN_READWRITE],
             ];
             // No CREATE flag: only the just-reserved/materialized identity opens.
@@ -100,7 +113,8 @@ final class FreshApplicationFiles
             $pdo = (new SQLiteConnector)->connect($configuration);
             $guard($pdo);
             $connection = new SQLiteConnection($pdo, $path, '', $configuration);
-            $registered = (new FreshIntakePolicyV4Installation($references))->registerFreshConnection($connection, $guard);
+            $installation = $dormantV5 ? new FreshAccountLifecycleV5Installation($references) : new FreshIntakePolicyV4Installation($references);
+            $registered = $installation->registerFreshConnection($connection, $guard);
             if ($registered['registered'] !== true || $registered['already_registered'] !== false) {
                 throw new RuntimeException;
             }
@@ -112,24 +126,33 @@ final class FreshApplicationFiles
                 'foreign_keys' => $pdo->query('PRAGMA foreign_keys')->fetchColumn(),
                 'journal_mode' => $pdo->query('PRAGMA journal_mode')->fetchColumn(),
                 'synchronous' => $pdo->query('PRAGMA synchronous')->fetchColumn(),
-                'schema_profile' => 'intake-policy-v4',
+                'schema_profile' => $dormantV5 ? 'account-lifecycle-v5' : 'intake-policy-v4',
                 'base_schema_signature' => $registered['base_schema_signature'],
                 'user_audit_schema_signature' => $registered['user_audit_schema_signature'],
             ];
+            if ($dormantV5) {
+                $manifest['intake_policy_schema_signature'] = $registered['intake_policy_schema_signature'];
+            }
             $guard($pdo);
             $connection->disconnect();
             $connection = $pdo = null;
-            $phase = 'closed admitted read verification';
+            $phase = $dormantV5 ? 'closed NEW-only dormant V5 file verification' : 'closed admitted read verification';
             $files = new OfflineFiles([$root, $root.'/framework/public']);
             $closed = $files->snapshot($path);
             $admission = RuntimeAdmission::fromConfiguration($manifest);
-            $reader = (new RuntimeDatabase($admission, $files))->readConnection($admission->configuration(), 'chrono');
-            $read = $reader->getPdo();
-            $read->beginTransaction();
-            $references->requireFreshLoginBudget($read);
-            $read->rollBack();
-            $reader->disconnect();
-            $reader = $read = null;
+            if ($dormantV5) {
+                // This producer owns the exclusively NEW held identity. Use the
+                // existing OFFLINE reader, never bypass or open a Runtime gate.
+                self::verifyClosedNewV5($admission, $files, $references, $guard);
+            } else {
+                $reader = (new RuntimeDatabase($admission, $files))->readConnection($admission->configuration(), 'chrono');
+                $read = $reader->getPdo();
+                $read->beginTransaction();
+                $references->requireFreshLoginBudget($read);
+                $read->rollBack();
+                $reader->disconnect();
+                $reader = $read = null;
+            }
             if ($files->snapshot($path) !== $closed) {
                 throw new RuntimeException;
             }
@@ -170,13 +193,18 @@ final class FreshApplicationFiles
             $databaseHandle = null;
             $complete = true;
 
-            return [
+            $result = [
                 'directory' => $directory, 'database' => $path, 'admission_manifest' => $manifestPath,
                 'runtime_directories' => array_combine(['sessions', 'cache', 'locks', 'compiled'],
                     array_map(static fn (string $child): string => $directory.'/'.$child, ['sessions', 'cache', 'locks', 'compiled'])),
-                'schema_profile' => 'intake-policy-v4', 'empty' => true,
+                'schema_profile' => $dormantV5 ? 'account-lifecycle-v5' : 'intake-policy-v4', 'empty' => true,
                 'activated' => false, 'credentials_created' => false, 'server_started' => false,
             ];
+            if ($dormantV5) {
+                $result += ['dormant' => true, 'runtime_openable' => false, 'setup_provisionable' => false];
+            }
+
+            return $result;
         } catch (Throwable) {
             // Never chain native DSNs, SQL, private paths or diagnostic messages.
             throw new RuntimeException('Fresh file preparation was not confirmed during '.$phase.'. Keep the private parent for operator inspection; no activation or automatic retry.');
@@ -193,6 +221,67 @@ final class FreshApplicationFiles
                 self::discardOwned($privateParent, $parent, $directory, $directoryState, $created);
             }
             umask($oldMask);
+        }
+    }
+
+    /**
+     * Only this producer's own exclusively NEW identity enters here. No path
+     * admission API escapes; no PDO/statement escapes this scope into the
+     * caller's final cold-file comparison. The existing offline opener's own
+     * idle-handle snapshots are unchanged.
+     */
+    private static function verifyClosedNewV5(RuntimeAdmission $admission, OfflineFiles $files,
+        AccountLifecycleV5References $references, \Closure $identityGuard): void
+    {
+        if ($admission->schemaProfile !== 'account-lifecycle-v5' || [
+            'base_schema_signature' => $admission->baseSchemaSignature,
+            'user_audit_schema_signature' => $admission->userAuditSchemaSignature,
+            'intake_policy_schema_signature' => $admission->intakePolicySchemaSignature,
+            'schema_signature' => $admission->schemaSignature,
+        ] !== $references->signatures()) {
+            throw new RuntimeException;
+        }
+        $pdo = $statement = null;
+        try {
+            // OfflineFiles retains its cold/no-sidecar/READONLY/no-CREATE and
+            // main-identity rules. RuntimeDatabase remains V5-closed unchanged.
+            $pdo = $files->openReadOnly($admission->path);
+            $identityGuard($pdo);
+            if (! $pdo instanceof Sqlite || $pdo->getAttribute(PDO::ATTR_ERRMODE) !== PDO::ERRMODE_EXCEPTION
+                || $pdo->inTransaction()
+                || $pdo->query('PRAGMA schema_version')->fetchColumn() !== $admission->schemaVersion
+                || $pdo->query('PRAGMA foreign_keys')->fetchColumn() !== $admission->foreignKeys
+                || $pdo->query('PRAGMA journal_mode')->fetchColumn() !== $admission->journalMode
+                || $pdo->query('PRAGMA synchronous')->fetchColumn() !== $admission->synchronous
+                || $pdo->query('PRAGMA busy_timeout')->fetchColumn() !== 5000
+                || $pdo->query('PRAGMA query_only')->fetchColumn() !== 1
+                || ! $pdo->beginTransaction()) {
+                throw new RuntimeException;
+            }
+            $references->requireFreshLoginBudget($pdo);
+            $statement = $pdo->query('SELECT id,migration,batch FROM framework_migrations ORDER BY id');
+            try {
+                if ($statement->fetchAll(PDO::FETCH_ASSOC) !== $admission->expectedLedgerRows()) { throw new RuntimeException; }
+            } finally {
+                try { if (! $statement->closeCursor()) { throw new RuntimeException; } }
+                finally { $statement = null; }
+            }
+            $statement = $pdo->query("SELECT seq FROM sqlite_sequence WHERE name='framework_migrations'");
+            try {
+                if ($statement->fetchColumn() !== 4 || $statement->fetchColumn() !== false) { throw new RuntimeException; }
+            } finally {
+                try { if (! $statement->closeCursor()) { throw new RuntimeException; } }
+                finally { $statement = null; }
+            }
+            $identityGuard($pdo);
+            if (! $pdo->rollBack() || $pdo->inTransaction()) { throw new RuntimeException; }
+            $identityGuard($pdo);
+        } finally {
+            try {
+                if ($pdo instanceof PDO && $pdo->inTransaction() && ! $pdo->rollBack()) { throw new RuntimeException; }
+            } finally {
+                $statement = $pdo = null;
+            }
         }
     }
 

@@ -58,8 +58,10 @@ final class RuntimeDatabase
         $pdo = $this->open(true);
         try {
             return new AttendanceWriter($pdo, $this->admission->configuration(true), $context, $functions,
-                intakePolicyV4: $this->isIntakePolicyV4(),
-                loginBudgetSchemaVersion: $this->admission->schemaVersion);
+                // V5 retains the V4 policy substrate without becoming isV4().
+                intakePolicyV4: $this->isIntakePolicyV4() || $this->isAccountLifecycleV5(),
+                loginBudgetSchemaVersion: $this->admission->schemaVersion,
+                accountLifecycleV5: $this->isAccountLifecycleV5());
         } catch (Throwable) {
             throw new RuntimeException('Runtime database writer admission refused.');
         }
@@ -287,6 +289,12 @@ final class RuntimeDatabase
             if ($this->admission->schemaProfile === 'intake-policy-v4') {
                 $phase = 'intake policy profile';
                 $this->admission->assertIntakePolicyState(
+                    $pdo->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN),
+                    $pdo->query(RuntimeAdmission::INTAKE_POLICY_SQL)->fetchAll(PDO::FETCH_ASSOC),
+                );
+            } elseif ($this->isAccountLifecycleV5()) {
+                $phase = 'account lifecycle profile';
+                $this->admission->assertAccountLifecycleState(
                     $pdo->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN),
                     $pdo->query(RuntimeAdmission::INTAKE_POLICY_SQL)->fetchAll(PDO::FETCH_ASSOC),
                 );

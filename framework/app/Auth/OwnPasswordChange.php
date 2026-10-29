@@ -2,6 +2,7 @@
 
 namespace App\Auth;
 
+use App\Accounts\AccountLifecycleAuthority;
 use App\LegacyDatabase\AttendanceWriter;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -23,24 +24,35 @@ final class OwnPasswordChange
 {
     /** @param Closure(): AttendanceWriter $writer @param Closure(): bool $isV5 Trusted composition only. */
     public function __construct(private Factory $auth, private Hasher $hasher, private Repository $config,
-        private CacheRepository $attempts, private Closure $writer, private Closure $isV5) {}
+        private CacheRepository $attempts, private Closure $writer, private Closure $isV5,
+        private ?AccountLifecycleWebIdentity $lifecycle = null) {}
 
     public function available(): bool
     {
-        if (($this->isV5)()) { return false; }
+        $v5 = ($this->isV5)();
         $guard = $this->auth->guard('web');
         $user = $guard->user();
 
-        return $guard instanceof SessionGuard && $user instanceof LegacyUser && $user->exists
+        $eligible = $guard instanceof SessionGuard && $user instanceof LegacyUser && $user->exists
             && (int) $user->getKey() > 0 && $user->auth_source === 'local'
             && in_array($user->role, ['user', 'supervisor', 'admin'], true)
             && is_string($user->getAuthPassword()) && $user->getAuthPassword() !== '';
+        if (! $eligible) { return false; }
+        try {
+            $this->authority($user, $v5);
+            return true;
+        } catch (AuthenticationException|LogicException) {
+            return false;
+        }
     }
 
     /** Raw secrets remain request-local; no flash data, DTO, audit field or retained property. */
     public function change(#[\SensitiveParameter] array $form, string $remoteAddress): void
     {
-        if (($this->isV5)()) { throw new LogicException('Own password changes are not admitted for V5.'); }
+        $v5 = ($this->isV5)();
+        if ($v5 && ($this->lifecycle === null || ! $this->lifecycle->requiresGeneration())) {
+            throw new LogicException('A generation-bound V5 web identity is required.');
+        }
         $guard = $this->auth->guard('web');
         $user = $guard->user();
         if (! $guard instanceof SessionGuard || ! $user instanceof LegacyUser || ! $user->exists || (int) $user->getKey() < 1) {
@@ -49,6 +61,7 @@ final class OwnPasswordChange
         if ($user->auth_source !== 'local' || ! in_array($user->role, ['user', 'supervisor', 'admin'], true)) {
             throw new AuthorizationException('Only your own local password can be changed.');
         }
+        $authority = $this->authority($user, $v5);
         if (array_diff(array_keys($form), ['_token', 'csrf_token', 'password_action', 'current_password', 'password', 'password_confirmation']) !== []
             || ($form['password_action'] ?? null) !== 'change') {
             throw new InvalidArgumentException('Passwortfelder prüfen. Andere Einstellungen nicht mitsenden.');
@@ -80,11 +93,31 @@ final class OwnPasswordChange
         $nextHash = $this->hasher->make($password);
         $writer = ($this->writer)();
         if (! $writer instanceof AttendanceWriter) { throw new LogicException('An admitted operation-scoped writer is required.'); }
-        try { $writer->replaceOwnLocalPassword((int) $user->getKey(), $user->role, $version, $nextHash); }
-        catch (\AttendanceError $error) {
+        try {
+            if ($authority !== null) {
+                $writer->replaceOwnLocalPasswordForAccountLifecycle($authority, $nextHash);
+            } else {
+                $writer->replaceOwnLocalPassword((int) $user->getKey(), $user->role, $version, $nextHash);
+            }
+        } catch (\AttendanceError $error) {
             if ($error->status === 401) { throw new AuthenticationException('Unauthenticated.', ['web']); }
             throw $error;
         }
+    }
+
+    /** Profile and refreshed model are trusted composition, never form/session authority fields. */
+    private function authority(LegacyUser $user, bool $v5): ?AccountLifecycleAuthority
+    {
+        if ($v5) {
+            if ($this->lifecycle === null || ! $this->lifecycle->requiresGeneration()) {
+                throw new LogicException('A generation-bound V5 web identity is required.');
+            }
+            return $this->lifecycle->capture($user);
+        }
+        if ($this->lifecycle?->requiresGeneration()) {
+            throw new LogicException('V5 web authority cannot target an older password profile.');
+        }
+        return null;
     }
 
     private function consumeBudget(int $user, string $remoteAddress): void

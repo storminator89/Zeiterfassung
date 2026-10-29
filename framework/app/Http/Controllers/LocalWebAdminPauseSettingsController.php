@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
+use App\Chrono\LocalWebAccountLifecycle;
 use App\Chrono\LocalWebLdapSync;
 use App\Chrono\LocalWebLdapSessionRevocations;
 use App\Http\AdminCredentialDocument;
@@ -46,6 +47,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         private ?LocalWebAdminUserMutations $userMutations = null,
         private ?LocalSession $sessions = null,
         private ?LocalWebLdapSessionRevocations $ldapSessions = null,
+        private ?LocalWebAccountLifecycle $accountLifecycle = null,
     ) {}
 
     public function index(Request $request): Response
@@ -96,6 +98,9 @@ final class LocalWebAdminPauseSettingsController extends Controller
         if ($this->ldapSessionsEnabled()) {
             $supported['revoke_ldap_sessions'] = LocalWebLdapSessionRevocations::COMMAND_FIELDS;
         }
+        if ($this->accountLifecycleEnabled()) {
+            $supported['change_account_lifecycle'] = LocalWebAccountLifecycle::COMMAND_FIELDS;
+        }
         $actions = [];
         foreach ($supported as $flag => $fields) {
             if (isset($form[$flag])) {
@@ -107,6 +112,10 @@ final class LocalWebAdminPauseSettingsController extends Controller
             // Reject all other/mixed Admin actions before reads, writes or preferences.
             return new Response('Diese Verwaltungsaktion ist in der Laravel-Ansicht noch nicht verbunden.', 400,
                 ['Content-Type' => 'text/plain; charset=UTF-8']);
+        }
+
+        if ($actions[0] === 'change_account_lifecycle') {
+            return $this->changeAccountLifecycle($request, $form);
         }
 
         if ($actions[0] === 'revoke_ldap_sessions') {
@@ -146,6 +155,48 @@ final class LocalWebAdminPauseSettingsController extends Controller
             return $this->page($request,
                 'Pauseneinstellungen konnten nicht gespeichert werden. Bitte neu laden und den gespeicherten Stand prüfen.');
         }
+    }
+
+    /** No provider or route binds this capability. Explicit component injection only. */
+    private function accountLifecycleEnabled(): bool
+    {
+        return $this->accountLifecycle !== null && $this->sessions !== null
+            && $this->config?->get('app.debug') === false && $this->interactions->adminPauseSettings;
+    }
+
+    private function changeAccountLifecycle(Request $request, #[\SensitiveParameter] array $form): Response|RedirectResponse
+    {
+        try {
+            $actor = $this->auth->guard('web')->user();
+            $result = $this->accountLifecycle->change(array_diff_key($form, array_flip(['_token', 'csrf_token'])));
+        } catch (AuthenticationException|AuthorizationException $error) {
+            throw $error;
+        } catch (\AttendanceError $error) {
+            return $this->userMutationText($error->getMessage(), $error->status);
+        } catch (InvalidArgumentException $error) {
+            return $this->userMutationText($error->getMessage(), 400);
+        } catch (Throwable) {
+            // Outcome may be unknown; do not issue another form or retry.
+            try { $this->sessions->logout($request); } catch (Throwable) {}
+            return $this->userMutationText('Kontostatusänderung nicht bestätigt. Nicht automatisch wiederholen. Bitte neu anmelden und den gespeicherten Stand prüfen.', 503);
+        }
+        if ($actor === null || $result->target === (int) $actor->getAuthIdentifier()) {
+            try { $this->sessions->logout($request); }
+            catch (Throwable) {
+                return $this->userMutationText('Kontostatus gespeichert; Abmeldung nicht vollständig bestätigt. Bitte erneut anmelden.', 503);
+            }
+            return (new RedirectResponse('login.php', 303))->header('Cache-Control', 'no-store');
+        }
+        try {
+            // Minimal confirmed receipt, no confirmation token, hash or reason.
+            $request->session()->put('chrono_account_lifecycle_saved', [
+                'actor' => (int) $actor->getAuthIdentifier(), 'target' => $result->target,
+                'status' => $result->status,
+            ]);
+        } catch (Throwable) {
+            return $this->userMutationText('Kontostatus gespeichert. Bitte neu laden und den gespeicherten Stand prüfen; nicht erneut senden.', 200);
+        }
+        return (new RedirectResponse('admin.php#user-management', 303))->header('Cache-Control', 'no-store');
     }
 
     private function ldapSessionsEnabled(): bool
@@ -415,7 +466,26 @@ final class LocalWebAdminPauseSettingsController extends Controller
                     .'Neue Bestätigungsformulare sind derzeit nicht verfügbar. Bitte den gespeicherten Stand prüfen; nicht erneut senden.';
             }
         }
-        $nonce = $v4 ? AdminCredentialDocument::nonce() : null;
+        $lifecycleUsers = [];
+        $lifecycleNotice = null;
+        if ($this->accountLifecycleEnabled()) {
+            $receipt = $request->session()->pull('chrono_account_lifecycle_saved');
+            if (is_array($receipt) && array_keys($receipt) === ['actor', 'target', 'status']
+                && $receipt['actor'] === (int) $actor->getAuthIdentifier() && is_int($receipt['target'])
+                && in_array($receipt['status'], ['active', 'inactive', 'departed'], true)) {
+                $lifecycleNotice = 'Kontostatus gespeichert. Der unten angezeigte Stand wird neu gelesen; Historie und offene Arbeitszeiten bleiben erhalten.';
+            }
+            try {
+                $lifecycleUsers = $this->accountLifecycle->forUsers(
+                    array_map(static fn (array $user): int => (int) $user['id'], $users['users']));
+            } catch (AuthenticationException|AuthorizationException $error) {
+                throw $error;
+            } catch (Throwable) {
+                $lifecycleNotice = ($lifecycleNotice === null ? '' : $lifecycleNotice.' ')
+                    .'Neue Kontostatusformulare sind nicht verfügbar. Bitte den gespeicherten Stand prüfen; nicht erneut senden.';
+            }
+        }
+        $nonce = ($v4 || $this->accountLifecycleEnabled()) ? AdminCredentialDocument::nonce() : null;
         require_once dirname(__DIR__, 4).'/lib/language.php';
         $language = \valid_language($request->query('lang', $request->session()->get('lang', 'de')));
         $request->session()->put('lang', $language);
@@ -436,6 +506,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
                 intakePolicy: $intakePolicy,
                 ldapSyncForm: $ldapForm, ldapSyncOutcome: $ldapOutcome, ldapSyncNotice: $ldapNotice,
                 ldapSessionConfirmations: $ldapSessionConfirmations, ldapSessionNotice: $ldapSessionNotice,
+                lifecycleUsers: $lifecycleUsers, lifecycleNotice: $lifecycleNotice,
             ),
         ], 200, ['Cache-Control' => 'no-store']);
         if ($nonce !== null) {

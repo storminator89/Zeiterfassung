@@ -8,12 +8,22 @@ The source is serially reanchored to an explicitly verified Main before any
 publication. Historical Main anchors in the component documents identify their
 development evidence, not the final publication parent.
 
-Current source integration is anchored to published Main
+Historical functional-core integration was anchored to published Main
 `cbf3350be9ecab67024273e581a0e578a923d676`, exact tree
 `3c961ecf1584a64ac250a673d69b27c94b3c1849`, after PR234 (#57).
 Its seven pending-client/asset paths are preserved byte-for-byte; the 28-path
 core delta does not overlap them. This is a source anchor, not a V5 operating
 admission or a claim of real browser acceptance.
+
+## Additional prepared source cohort
+
+The [five-packet prepared cohort](account-lifecycle-v5-prepared-cohort.md) on Main
+`03e46d19777ac1e5415a5f7fe0717784074dc64a` adds the already reviewed dormant
+Runtime-profile propagation, NEW V5 files, five terminal-Admin authority bindings,
+own-password change and the prepared Admin lifecycle user flow. It preserves this
+previously merged functional core and every Runtime/FreshWeb/Setup/Native hold.
+The existing documents' older anchors remain component development provenance;
+they are not a current Main, publication, activation or migration-complete claim.
 
 ## What actually works in bounded component journeys
 
@@ -35,9 +45,11 @@ There is no new transaction manager, guard, service, formula or arbitrary callba
 
 The V5 public Runtime hold remains unchanged. In particular:
 
-1. The physical PDO/native source admission, immutable profile propagation and
-   Runtime writer-factory flags must be composed completely for V5 before its
-   hold is reconsidered. The current factory intentionally cannot open V5.
+1. The [Runtime profile dependency](account-lifecycle-v5-runtime-profile.md)
+   adds the explicit PDO V5 state branch and immutable writer flags. Both remain
+   intentionally unreachable behind the unchanged V5 Runtime hold; static source
+   completion is not executed physical V5 Runtime acceptance. The hold may only
+   be reconsidered with the complete operating and recovery composition below.
 2. Existing NEW-only file preparation, first-admin token/app/API/LDAP-key file
    provisioners, FreshWeb and physical shared-budget providers still require
    their reviewed complete operating profiles. No key/token/account/host setting
@@ -48,9 +60,10 @@ The V5 public Runtime hold remains unchanged. In particular:
 3. Public controller/route/UI selectors that explicitly select V4 remain V4,
    rather than disguising V5 as `isV4()`. Underlying V5 policy/withdrawal cores
    working does not by itself mount their public UI.
-4. Remaining terminal-Admin facades/writers need complete captured-generation
-   handling. The independent V4 terminal-credential-enrollment feature is not a
-   core dependency and is not bundled, although its source overlay was tested.
+4. The [five existing terminal-Admin operations](account-lifecycle-v5-terminal-admin.md)
+   now carry captured-generation authority through their facades and fixed
+   writers. The independent V4 terminal-credential-enrollment feature is not
+   bundled; any additional operation still needs its reviewed V5 composition.
 5. Native-V5 refusal before Native DDL, known-good Laravel replacement and local
    Admin recovery must be established; do not route Native PHP to a new V5 file.
 6. Real setup/login/session/CSRF/browser, worker/request ceilings, filesystem/

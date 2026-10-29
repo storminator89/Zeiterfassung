@@ -25,5 +25,7 @@ final readonly class AdminPauseSettingsPage
         public ?string $ldapSyncNotice = null,
         public array $ldapSessionConfirmations = [],
         public ?string $ldapSessionNotice = null,
+        public array $lifecycleUsers = [],
+        public ?string $lifecycleNotice = null,
     ) {}
 }

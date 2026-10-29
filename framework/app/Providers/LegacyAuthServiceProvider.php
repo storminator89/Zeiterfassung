@@ -29,6 +29,7 @@ final class LegacyAuthServiceProvider extends ServiceProvider
                 return $app->make(\App\LegacyDatabase\AttendanceWriter::class);
             },
             fn (): bool => $app->bound(RuntimeDatabase::class) && $app->make(RuntimeDatabase::class)->isAccountLifecycleV5(),
+            $app->make(AccountLifecycleWebIdentity::class),
         ));
         // Lazy immutable profile metadata only: resolving this service never
         // opens a source or makes the still-closed V5 runtime operational.

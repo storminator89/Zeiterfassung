@@ -2,6 +2,7 @@
 
 namespace App\LegacyDatabase;
 
+use App\Accounts\AccountLifecycleAuthority;
 use LogicException;
 use PDO;
 use RuntimeException;
@@ -35,4 +36,39 @@ trait OwnPasswordWriterOperations
             } finally { $statement->closeCursor(); }
         }, fn (\Closure $transaction): mixed => $this->context->run('web:'.$actor, 'settings.php: own local password change', $transaction));
     }
+
+    /** Explicit V5 operation; the legacy method above still refuses this profile. */
+    public function replaceOwnLocalPasswordForAccountLifecycle(AccountLifecycleAuthority $actor,
+        #[\SensitiveParameter] string $nextHash): void
+    {
+        if (! $this->accountLifecycleV5 || $actor->source !== 'local'
+            || ! in_array($actor->role, ['user', 'supervisor', 'admin'], true)
+            || (password_get_info($nextHash)['algoName'] ?? 'unknown') !== 'bcrypt') {
+            throw new LogicException('An admitted V5 own-local authority and bcrypt hash are required.');
+        }
+        $this->executeLocked(function () use ($actor, $nextHash): void {
+            $this->assertLifecyclePrincipalLocked($actor);
+            $current = att_one($this->pdo,
+                'SELECT id,username,role,auth_source,password,account_status,auth_generation FROM users WHERE id=?', [$actor->id]);
+            if ($current === null || ! $actor->matches($current)) {
+                throw new \AttendanceError('Sitzung nicht mehr gültig. Bitte neu anmelden.', 401);
+            }
+            $replacement = $current;
+            $replacement['password'] = $nextHash;
+            $this->assertLocalRecoveryRetainedLocked($actor->id, $replacement);
+            $statement = $this->pdo->prepare("UPDATE users SET password=? WHERE id=? AND auth_source='local' AND role=? AND password=? AND account_status='active' AND auth_generation=?");
+            try {
+                $statement->bindValue(1, $nextHash, PDO::PARAM_STR);
+                $statement->bindValue(2, $actor->id, PDO::PARAM_INT);
+                $statement->bindValue(3, $actor->role, PDO::PARAM_STR);
+                $statement->bindValue(4, $current['password'], PDO::PARAM_STR);
+                $statement->bindValue(5, $actor->generation, PDO::PARAM_INT);
+                if (! $statement->execute() || $statement->rowCount() !== 1) {
+                    throw new RuntimeException('Own password update was not confirmed.');
+                }
+            } finally { $statement->closeCursor(); }
+        }, fn (\Closure $transaction): mixed => $this->context->run('web:'.$actor->id,
+            'settings.php: own local password change', $transaction), lifecycleReady: true);
+    }
+
 }

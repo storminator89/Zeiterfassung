@@ -3,6 +3,7 @@
 namespace App\Chrono;
 
 use App\Auth\LegacyUser;
+use App\Auth\AccountLifecycleWebIdentity;
 use App\LegacyDatabase\AttendanceWriter;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -15,7 +16,8 @@ use LogicException;
 final class LegacyLocalWebTerminalSites implements LocalWebTerminalSites
 {
     /** @param Closure(): AttendanceWriter $writer Trusted operation-scope resolver. */
-    public function __construct(private readonly Factory $auth, private readonly Closure $writer) {}
+    public function __construct(private readonly Factory $auth, private readonly Closure $writer,
+        private readonly ?AccountLifecycleWebIdentity $lifecycle = null) {}
 
     public function create(array $command): void
     {
@@ -32,11 +34,17 @@ final class LegacyLocalWebTerminalSites implements LocalWebTerminalSites
             || array_diff(array_keys($command), self::COMMAND_FIELDS) !== []) {
             throw new InvalidArgumentException('Diese Terminalaktion ist in der Laravel-Ansicht nicht verbunden.');
         }
+        $authority = $this->lifecycle?->capture($actor);
         $writer = ($this->writer)();
         if (! $writer instanceof AttendanceWriter) {
             throw new LogicException('An admitted operation-scoped terminal site writer is required.');
         }
 
-        $writer->createTerminalSite((int) $actor->getKey(), $command['name'] ?? null);
+        try {
+            $writer->createTerminalSite((int) $actor->getKey(), $command['name'] ?? null, $authority);
+        } catch (\AttendanceError $error) {
+            if ($authority !== null && $error->status === 401) { throw new AuthenticationException('Unauthenticated.', ['web']); }
+            throw $error;
+        }
     }
 }

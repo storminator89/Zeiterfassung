@@ -360,9 +360,11 @@ final class AttendanceWriter
     }
 
     /** Existing site-create only; never module settings, pairing, keys or credentials. */
-    public function createTerminalSite(int $user, mixed $name): void
+    public function createTerminalSite(int $user, mixed $name,
+        ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): void
     {
-        $this->executeLocked(function () use ($user, $name): void {
+        $this->executeLocked(function () use ($user, $name, $lifecycleAuthority): void {
+            $this->assertAdminOperationAuthorityLocked($user, $lifecycleAuthority);
             $actor = att_one($this->pdo, 'SELECT role,auth_source FROM users WHERE id=?', [$user]);
             if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local') {
                 throw new AuthorizationException('Nur die Verwaltung darf Terminal-Standorte anlegen.');
@@ -379,12 +381,14 @@ final class AttendanceWriter
             $statement = $this->pdo->prepare('INSERT INTO terminal_sites(name) VALUES(?)');
             $statement->execute([$name]);
             $statement->closeCursor();
-        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'terminals.php', $transaction));
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'terminals.php', $transaction),
+            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
     }
 
     /** Existing revoke_credential only; no secrets, device/module changes or grant rewrites. */
     public function revokeTerminalCredential(int $admin, #[\SensitiveParameter] string $expectedWebVersion,
-        mixed $userId): void
+        mixed $userId,
+        ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): void
     {
         // A normal hidden form field is a canonical positive decimal ID. Refuse
         // arrays/coercions/overflow instead of native accidental casts to zero.
@@ -392,44 +396,48 @@ final class AttendanceWriter
             || ($target = filter_var($userId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])) === false) {
             throw new \InvalidArgumentException('Ungültiger Terminal-Zugang.');
         }
-        $this->executeLocked(function () use ($admin, $expectedWebVersion, $target): void {
+        $this->executeLocked(function () use ($admin, $expectedWebVersion, $target, $lifecycleAuthority): void {
             // Reuse the existing lock-bound source/role/password-version guard.
             // It re-reads this Admin under the SAME IMMEDIATE mutation lock.
-            $this->assertExpectedWebPrincipal($admin, 'local', $expectedWebVersion, 'admin');
+            $this->assertExpectedWebPrincipal($admin, 'local', $expectedWebVersion, 'admin', $lifecycleAuthority);
             $statement = $this->pdo->prepare('UPDATE employee_credentials SET enabled=0 WHERE user_id=?');
             $statement->execute([$target]);
             $statement->closeCursor();
             // Exact native UPDATE, including zero-row/already-disabled behavior.
             // The existing terminal protocol checks enabled on identify/grant use.
             // No PIN/card value, user field, work row or grant is read or changed.
-        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction));
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction),
+            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
     }
 
     /** Existing revoke_device only; no key reads, pairing creation or credential/module changes. */
     public function revokeTerminalDevice(int $admin, #[\SensitiveParameter] string $expectedWebVersion,
-        mixed $deviceId): void
+        mixed $deviceId,
+        ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): void
     {
         if (! is_string($deviceId) || preg_match('/\A[1-9][0-9]*\z/', $deviceId) !== 1
             || ($target = filter_var($deviceId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])) === false) {
             throw new \InvalidArgumentException('Ungültiges Terminal-Gerät.');
         }
-        $this->executeLocked(function () use ($admin, $expectedWebVersion, $target): void {
+        $this->executeLocked(function () use ($admin, $expectedWebVersion, $target, $lifecycleAuthority): void {
             // The same IMMEDIATE lock protects fresh actor checks and mutation.
-            $this->assertExpectedWebPrincipal($admin, 'local', $expectedWebVersion, 'admin');
+            $this->assertExpectedWebPrincipal($admin, 'local', $expectedWebVersion, 'admin', $lifecycleAuthority);
             $statement = $this->pdo->prepare('UPDATE terminals SET enabled=0,generation=?,pairing_hash=NULL,pairing_expires=NULL WHERE id=?');
             $statement->execute([bin2hex(random_bytes(16)), $target]);
             $statement->closeCursor();
             // Exact native replacement generation, including repeated/zero-row
             // behavior. No existing generation, secret or pairing hash is read.
-        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction));
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction),
+            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
     }
 
     /** Native module toggle only; server permission is re-read, never written. */
     public function saveTerminalModuleSettings(int $admin, #[\SensitiveParameter] string $expectedWebVersion,
-        bool $enabled): void
+        bool $enabled,
+        ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): void
     {
-        $this->executeLocked(function () use ($admin, $expectedWebVersion, $enabled): void {
-            $this->assertExpectedWebPrincipal($admin, 'local', $expectedWebVersion, 'admin');
+        $this->executeLocked(function () use ($admin, $expectedWebVersion, $enabled, $lifecycleAuthority): void {
+            $this->assertExpectedWebPrincipal($admin, 'local', $expectedWebVersion, 'admin', $lifecycleAuthority);
             // Exact native gates on this same IMMEDIATE-locked PDO. Do not trust
             // the displayed status or permit changing APP_TERMINAL_ENABLED here.
             if ($enabled && getenv('APP_TERMINAL_ENABLED') !== '1') {
@@ -445,12 +453,14 @@ final class AttendanceWriter
             $statement = $this->pdo->prepare('UPDATE terminal_settings SET enabled=? WHERE id=1');
             $statement->execute([$enabled ? 1 : 0]);
             $statement->closeCursor();
-        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction));
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction),
+            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
     }
 
     /** Native new-device enrollment only; no signing-key source or protocol response. */
     public function createTerminalDevicePairing(int $admin, #[\SensitiveParameter] string $expectedWebVersion,
-        mixed $name, mixed $siteId): \App\Chrono\TerminalDevicePairing
+        mixed $name, mixed $siteId,
+        ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): \App\Chrono\TerminalDevicePairing
     {
         if (! is_string($name) || trim($name) === '' || strlen(trim($name)) > 100
             || ! is_string($siteId) || preg_match('/\A[1-9][0-9]*\z/', $siteId) !== 1
@@ -459,8 +469,8 @@ final class AttendanceWriter
         }
         $name = trim($name);
 
-        return $this->executeLocked(function () use ($admin, $expectedWebVersion, $name, $site): \App\Chrono\TerminalDevicePairing {
-            $this->assertExpectedWebPrincipal($admin, 'local', $expectedWebVersion, 'admin');
+        return $this->executeLocked(function () use ($admin, $expectedWebVersion, $name, $site, $lifecycleAuthority): \App\Chrono\TerminalDevicePairing {
+            $this->assertExpectedWebPrincipal($admin, 'local', $expectedWebVersion, 'admin', $lifecycleAuthority);
             attendance_require_enabled($this->pdo);
             if (att_one($this->pdo, 'SELECT id FROM terminal_sites WHERE id=?', [$site]) === null) {
                 throw new \AttendanceError('Name und Standort prüfen.', 400);
@@ -474,7 +484,8 @@ final class AttendanceWriter
             $statement->closeCursor();
 
             return new \App\Chrono\TerminalDevicePairing((int) $this->pdo->lastInsertId(), $code, $expires);
-        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction));
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction),
+            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
     }
 
     /** Anonymous self-registration only: fixed ordinary role and no caller actor/privileges. */
