@@ -371,4 +371,11 @@ define('DASHBOARD_CALENDAR_LOADING', 'Preparing the calendar view …');
 define('DASHBOARD_CALENDAR_UNAVAILABLE', 'Calendar view currently unavailable. Reload the page or open your own bookings.');
 define('DASHBOARD_CALENDAR_NO_SCRIPT', 'The calendar view requires JavaScript. The existing attendance page remains available.');
 define('DASHBOARD_CALENDAR_FALLBACK', 'Open your own bookings');
+// Existing own-CSV date range: presentation only; export contract unchanged.
+define('CSV_PERIOD_TITLE', 'Own CSV export for a date range');
+define('CSV_PERIOD_FROM', 'From (Berlin start date)');
+define('CSV_PERIOD_TO', 'To (inclusive)');
+define('CSV_PERIOD_SUBMIT', 'Export range as CSV');
+define('CSV_PERIOD_NOTE', 'Only your own entries by their Berlin start date, regardless of search or list page. Overnight shifts remain entirely on their start date. The quality check still covers all your entries; errors or unresolved overlaps outside the range can also block the download. Not a payroll-software format.');
+
 ?>

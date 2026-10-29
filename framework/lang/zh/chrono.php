@@ -240,4 +240,9 @@ return [
     'ADMIN_USER_DELETE_HISTORY_LOCKED' => '無法刪除：含有歷程記錄的帳戶必須保留。',
     'TIME_RECORD_HISTORY_LINK' => '本条记录的历史（单独打开）',
     'TIME_RECORD_HISTORY_HINT' => '查看本条记录已存的变更及有限的关联信息，不代表完整历史记录。',
+    'CSV_PERIOD_TITLE' => '按日期范围导出自己的 CSV',
+    'CSV_PERIOD_FROM' => '开始日期（柏林开始日）',
+    'CSV_PERIOD_TO' => '结束日期（含当日）',
+    'CSV_PERIOD_SUBMIT' => '将此范围导出为 CSV',
+    'CSV_PERIOD_NOTE' => '仅按柏林开始日期选择您自己的记录，不受搜索条件或列表页码影响。跨夜班次完整归于开始日。质量检查仍覆盖您的全部记录；范围外的错误或尚未解决的重叠也可能阻止下载。此文件不是工资软件格式。',
 ];
