@@ -140,7 +140,8 @@
             <input type="hidden" name="action" value="withdraw">
             <input type="hidden" name="id" value="{{ $a['id'] }}">
             <label class="block text-sm font-semibold mt-4 mb-2" for="withdraw_reason_{{ $a['id'] }}">Begründung der Rücknahme</label>
-            <input class="input input-bordered w-full" id="withdraw_reason_{{ $a['id'] }}" name="withdraw_reason" minlength="5" maxlength="1000" required>
+            <input class="input input-bordered w-full" id="withdraw_reason_{{ $a['id'] }}" name="withdraw_reason" value="{{ ($corrections->withdrawalDraft['id'] ?? null) === $a['id'] ? ($corrections->withdrawalDraft['withdraw_reason'] ?? '') : '' }}" minlength="5" maxlength="1000" required>
+            @if (($corrections->withdrawalDraft['id'] ?? null) === $a['id'])<p class="text-sm opacity-70 mt-3" role="status">Begründung zur Prüfung beibehalten. Aktuellen Antrag prüfen und Rücknahme erneut bewusst wählen; nichts wird automatisch gesendet.</p>@endif
             <p class="text-sm opacity-70 mt-3">Nur diesen offenen Antrag endgültig zurücknehmen. Buchung und bisherige Historie bleiben erhalten; die Rücknahme wird protokolliert. Bei Bedarf einen neuen Antrag stellen.</p>
             <div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-outline" type="submit">Antrag endgültig zurücknehmen</button></div>
         </form>

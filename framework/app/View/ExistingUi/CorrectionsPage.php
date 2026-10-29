@@ -29,6 +29,7 @@ final readonly class CorrectionsPage
         public array $reviewDraft = [],
         public array $metadataDraft = [],
         public bool $metadataEnabled = false,
+        public array $withdrawalDraft = [],
     ) {}
 
     /** Display only after a known request rejection; never a command or stored/flash input. */
@@ -45,6 +46,14 @@ final readonly class CorrectionsPage
         require_once dirname(__DIR__, 4).'/lib/correction_review_draft.php';
 
         return \correction_rejected_review_draft($form);
+    }
+
+    /** Same-response reason only; caller must match the fresh own pending row. */
+    public static function rejectedWithdrawalDraft(array $form): array
+    {
+        require_once dirname(__DIR__, 4).'/lib/correction_withdrawal_draft.php';
+
+        return \correction_rejected_withdrawal_draft($form);
     }
 
     public static function queueUrl(string $status, int $page, array $selection = []): string
