@@ -253,13 +253,13 @@ include 'header.php';
 <script>
     // Funktion zum Aktualisieren des Themes
     function updateTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('theme', theme);
+        // Reuse the standard chrome's single raw-choice/System resolver.
+        setTheme(theme);
     }
 
     // Theme beim Laden der Seite setzen
     document.addEventListener('DOMContentLoaded', function() {
-        const savedTheme = localStorage.getItem('theme') || 'light';
+        const savedTheme = chronoReadPreference('theme') || 'light';
         updateTheme(savedTheme);
     });
 
