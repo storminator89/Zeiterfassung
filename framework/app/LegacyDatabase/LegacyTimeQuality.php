@@ -80,11 +80,12 @@ final class LegacyTimeQuality
         $this->workConflicts($pdo, $add);
         $this->absencePairs($pdo, $add);
         $this->openConflicts($pdo, $add);
+        $this->originalIntervals($pdo, $findings, $counts, $limit);
         ksort($counts);
         $total = array_sum($counts);
 
         return [
-            'report_version' => 5,
+            'report_version' => 6,
             'scope_status' => 'partial_diagnostic_only',
             'read_only' => true,
             'records_checked' => $records,
@@ -97,7 +98,8 @@ final class LegacyTimeQuality
                 'work_work_overlap' => 'checked_only_for_unambiguous_supported_completed_positive_intervals',
                 'absence_absence_overlap' => 'checked_only_for_unambiguous_supported_completed_whole_day_rows',
                 'open_overlap' => 'possible_only_for_unambiguous_supported_rows_no_guessed_end',
-                'event_session_break_projection_reconciliation' => 'not_checked',
+                'original_session_break_boundaries' => 'checked_stored_integer_epochs_only_no_guessed_end',
+                'event_session_break_projection_reconciliation' => 'not_checked_beyond_original_interval_boundaries',
                 'mapping_or_repair' => 'not_performed_requires_separate_confirmation',
             ],
             'offset_free_values_requiring_berlin_mapping_confirmation' => $offsetFree,
@@ -286,6 +288,80 @@ final class LegacyTimeQuality
         }
 
         return ['from' => $from, 'to' => $to, 'open' => $open];
+    }
+
+    /** Original epochs only; no projection comparison, event reconstruction or guessed open end. */
+    private function originalIntervals(PDO $pdo, array &$findings, array &$counts, int $limit): void
+    {
+        $add = static function (string $entity, int $id, string $category, ?string $column = null) use (&$findings, &$counts, $limit): void {
+            $counts[$category] = ($counts[$category] ?? 0) + 1;
+            if (count($findings) < $limit) {
+                // A separate entity discriminator avoids presenting a session or
+                // break ID as a zeiterfassung record ID. IDs remain exact strings.
+                $findings[] = ['entity' => $entity, 'entity_id' => (string) $id,
+                    'category' => $category, 'column' => $column];
+            }
+        };
+        $sessions = $pdo->query('SELECT id,started_at,ended_at FROM work_sessions ORDER BY id');
+        try {
+            while (($session = $sessions->fetch(PDO::FETCH_ASSOC)) !== false) {
+                $valid = true;
+                foreach (['started_at', 'ended_at'] as $column) {
+                    if ($column === 'ended_at' && $session[$column] === null) {
+                        continue;
+                    }
+                    if (!is_int($session[$column])) {
+                        $add('work_sessions', (int) $session['id'], 'original_session_invalid_epoch', $column);
+                        $valid = false;
+                    }
+                }
+                if ($valid && $session['ended_at'] !== null && $session['ended_at'] < $session['started_at']) {
+                    $add('work_sessions', (int) $session['id'], 'original_session_end_before_start');
+                }
+            }
+        } finally {
+            $sessions->closeCursor();
+        }
+
+        // Known-v2 preflight already owns reference/owner/cancellation checks.
+        // Do not reproduce them or compare amended projections to immutable originals.
+        $breaks = $pdo->query('SELECT b.id,b.started_at,b.ended_at,s.started_at AS session_start,s.ended_at AS session_end
+            FROM break_intervals b JOIN work_sessions s ON s.id=b.session_id ORDER BY b.id');
+        try {
+            while (($break = $breaks->fetch(PDO::FETCH_ASSOC)) !== false) {
+                $valid = true;
+                foreach (['started_at', 'ended_at'] as $column) {
+                    if ($column === 'ended_at' && $break[$column] === null) {
+                        continue;
+                    }
+                    if (!is_int($break[$column])) {
+                        $add('break_intervals', (int) $break['id'], 'original_break_invalid_epoch', $column);
+                        $valid = false;
+                    }
+                }
+                if (!$valid) {
+                    continue;
+                }
+                if ($break['ended_at'] !== null && $break['ended_at'] < $break['started_at']) {
+                    $add('break_intervals', (int) $break['id'], 'original_break_end_before_start');
+                    continue; // Do not use a reversed break to infer additional boundaries.
+                }
+                if (!is_int($break['session_start'])
+                    || ($break['session_end'] !== null && (!is_int($break['session_end']) || $break['session_end'] < $break['session_start']))) {
+                    continue; // The session's separate finding is not a usable comparison span.
+                }
+                if ($break['started_at'] < $break['session_start']
+                    || ($break['session_end'] !== null && ($break['started_at'] > $break['session_end']
+                        || ($break['ended_at'] !== null && $break['ended_at'] > $break['session_end'])))) {
+                    $add('break_intervals', (int) $break['id'], 'original_break_outside_session');
+                }
+                if ($break['ended_at'] === null && $break['session_end'] !== null) {
+                    $add('break_intervals', (int) $break['id'], 'original_open_break_in_closed_session');
+                }
+            }
+        } finally {
+            $breaks->closeCursor();
+        }
     }
 
     /** No conversion is returned: in particular a repeated Berlin hour has no chosen instant. */

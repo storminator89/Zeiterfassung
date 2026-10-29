@@ -326,3 +326,65 @@ Dies ist kein Aufruf des Dateiscanners, kein tatsächlicher Bestandsscan und
 keine Performance-, Mapping-, Reparatur-, UI-, Runtime- oder Betriebsabnahme.
 Keine Datei-DB, Konten, Credentials, neue Instanz oder Server wurden erzeugt.
 Offene Überlappungen und bestätigtes Mapping bleiben eigene Gates; #55 bleibt offen.
+
+
+## Additiver Format-6-Schritt: Grenzen gespeicherter Originalintervalle
+
+Quellbasis: Main `53ba78648e4b58a24fcc1202d19bb410215a6dd9`, Baum
+`3b3b4d145b8b411e08c9771401eb9b1a153e6789`.
+Nach allen bisherigen Zeilen-/Paarbefunden prüft dieselbe query-only-Transaktion
+auch die **gespeicherten** UTC-Epochen in `work_sessions` und `break_intervals`:
+
+- `original_session_invalid_epoch` / `original_break_invalid_epoch`: ein
+  vorhandener Start oder ein nicht-NULL-Ende ist kein SQLite-INTEGER. Keine
+  Umwandlung von REAL/Text, kein Zeitzonenparser und kein Null-zu-Nullzeit-Cast.
+- `original_session_end_before_start` / `original_break_end_before_start`:
+  eindeutiges gespeichertes Ende liegt vor dem Start. NULL bleibt offen.
+- `original_break_outside_session`: bei gültigen, nicht umgekehrten Originalen
+  liegt der Pausenstart vor dem Sessionstart oder eine bekannte Pausengrenze
+  nach dem bekannten Sessionende. Gleichheit und Null-Dauer sind zulässig.
+- `original_open_break_in_closed_session`: gültige gespeicherte Session ist
+  geschlossen, die Pause besitzt aber kein gespeichertes Ende. Es wird weder
+  das Sessionende noch die aktuelle Uhrzeit als Pausenende eingesetzt.
+
+Jede ungültige Zeitspalte und jede übrige genannte Verletzung zählt einen
+Befund; dieselbe Pause kann außerhalb liegen **und** noch offen sein. Ungültige
+oder umgekehrte Zeitspannen werden nicht zur Grenzberechnung weiterverwendet.
+Vollständige Zähler bleiben auch bei begrenzter Detailausgabe erhalten. Details
+kommen nach allen alten Befunden, zuerst Sessions nach ID, dann Pausen nach ID.
+
+**Versionierte neue Detailform:** Nur diese Kategorien verwenden
+`{entity: work_sessions|break_intervals, entity_id: <exakte Dezimalzeichenfolge>,
+category, column: started_at|ended_at|null}`. Eine Pausen-/Session-ID wird also
+niemals als `record_id` ausgegeben. Alle bisherigen Kategorien behalten ihre
+bisherigen Felder und Reihenfolge. Keine Konto-/Geräte-ID, Zeitwerte, Notizen,
+Ereignisantworten, Zugangsdaten oder Rohzeilen werden ausgegeben; echte Berichte
+bleiben trotzdem private Betriebsinformationen. Externe Leser müssen Format6
+und die neue diskriminierte Form beachten. Exitcodes bleiben unverändert.
+
+`checks.original_session_break_boundaries` nennt die enge Prüfung ausdrücklich.
+Der bisherige kombinierte Schlüssel steht nun auf
+`not_checked_beyond_original_interval_boundaries`: kein vollständiger Event-/
+Session-/Pausen-/Projektionsabgleich, keine Prüfung tatsächlicher Pausenlage,
+überlappender Pausen oder geschätzter offener Dauern. Die bestehende V2-Vorprüfung
+bleibt allein für Beziehungen, Inhaberschaft und belegte Stornoprojektionen
+zuständig. Insbesondere werden rechtmäßige genehmigte Projektionskorrekturen
+nicht mit unveränderlichen Originalintervallen gleichgesetzt.
+
+Nur zwei Quelldateien ändern sich; Scanner-CLI, Datei-/Offline-/Known-v2-Zulassung,
+Parser, Writer, Schema und Runtime bleiben unverändert. Kein tatsächlicher
+Bestandsscan, Mapping, Reparatur, Ereignisrekonstruktion, Konto-/Credentialzugriff,
+Betriebs-/Browser-/Produktiv- oder Migrationsfreigabe. #55 bleibt offen.
+
+Grober Quellnachweis für Format6: PHP8.5.12 / SQLite3.46.1, tatsächliche Klasse
+und ursprüngliche Migratoren ausschließlich auf erfundenem anonymem Memory.
+Zwölf erwartete neue Befunde über die sechs Kategorien; gültige offene,
+gleiche/Null-Dauer- und signed64-Grenzwerte bleiben ohne erfundene Endzeit.
+Die Quell-ID `9007199254740993` bleibt als Zeichenfolge exakt. Nach Entfernen
+nur der neuen versionierten Felder/Kategorien ist der vollständige frühere
+Bericht identisch; Limit2 begrenzt Details, nicht Zähler. Wiederholung,
+query-only-Transaktion, Originalzeilen, SQLite-Änderungszähler, Sitzung und
+Zeitzone bleiben erhalten. Keine Rohzeiten, Namen, Notizen oder Kontoidentitäten
+im Bericht. Syntax und vollständige Klasseninverse separat geprüft.
+Das ist kein tatsächlicher Aufruf des Dateiscanners oder seiner Preflight-/
+Datei-/Sidecarzulassung, kein Bestandsscan, Lasttest oder Betriebsattest.
