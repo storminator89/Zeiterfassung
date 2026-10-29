@@ -375,7 +375,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_user'])) {
 
     try {
         admin_mutate_existing_user($conn, $user_id, null, function (int $targetId) use ($conn): void {
-            if (att_one($conn, 'SELECT id FROM audit_log WHERE user_id=?', [$targetId])) { throw new AttendanceError('Konten mit Zeithistorie bleiben erhalten. Zugang über Passwortänderung und Terminal-Sperre entziehen.', 409); }
+            if (att_one($conn, 'SELECT id FROM audit_log WHERE user_id=?', [$targetId])) { throw new AttendanceError('Konten mit Änderungshistorie bleiben erhalten. Eine zentrale Kontodeaktivierung ist noch nicht verbunden; ein lokaler Passwortwechsel sperrt LDAP-Anmeldungen und Terminal-Zugänge nicht.', 409); }
             // Statement vorbereiten und ausführen, um den Benutzer zu löschen
             $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
             $stmt->execute([$targetId]);
@@ -522,6 +522,7 @@ include 'header.php';
             <div id="user-management" class="card bg-base-100 shadow-xl mb-8">
                 <div class="card-body">
                     <h2 class="card-title text-2xl mb-4"><?= USER_MANAGEMENT_TITLE ?></h2>
+                    <p id="native-account-access-limits" class="text-sm opacity-70 mb-4" role="note">Diese native Benutzerverwaltung bietet keine zentrale Kontosperre. Lokale Passwortänderungen sperren weder erneute LDAP-Anmeldungen noch Terminal-Zugänge.</p>
                     <button class="btn btn-primary mb-4" id="toggleUserForm">
                         <i class="fas fa-plus mr-2"></i><?= BUTTON_CREATE_USER ?>
                     </button>
