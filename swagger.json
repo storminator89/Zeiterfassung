@@ -703,7 +703,7 @@
       },
       "get": {
         "summary": "Read authoritative own attendance status",
-        "description": "Read-only own status snapshot with existing bearer validation. No query/body user selector, booking, event_id, time or local_time. absent -> record_id null; working/paused -> positive integer. A legacy open reporting row can return working without a managed session; multiple legacy open rows are not diagnosed by this read. Additive record_id_string duplicates the same current ID exactly as a decimal string or null; older clients may ignore it. It is metadata from the same snapshot, not a receipt or another query. Additive start_metadata_version:1 advertises this source contract; it is not authorization or a receipt.",
+        "description": "Read-only own status snapshot with existing bearer validation. No query/body user selector, booking, event_id, time or local_time. absent -> record_id null; working/paused -> positive integer. A legacy open reporting row can return working without a managed session; multiple legacy open rows are not diagnosed by this read. Additive record_id_string duplicates the same current ID exactly as a decimal string or null; older clients may ignore it. It is metadata from the same snapshot, not a receipt or another query. Additive start_metadata_version:1 advertises this source contract; it is not authorization or a receipt. Explicit workflow=1 adds only the already implemented state-level workflow block in the same own read snapshot. Only the exact raw PHP string 1 opts in; malformed present values fail JSON400 after existing bearer validation and before the read transaction. Missing workflow preserves the default response. Hints are state_only, require a later write recheck, are not authorization/receipts, and never replace pending event/payload replay or explicit paused-end confirmation.",
         "security": [
           {
             "bearerAuth": []
@@ -711,7 +711,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Current own state, not a historical acknowledgement.",
+            "description": "Current own state, not a historical acknowledgement. Only explicit workflow=1 adds state-level action hints; no action is reserved or approved.",
             "content": {
               "application/json": {
                 "schema": {
@@ -723,7 +723,8 @@
                       "success": true,
                       "state": "absent",
                       "record_id": null,
-                      "record_id_string": null
+                      "record_id_string": null,
+                      "start_metadata_version": 1
                     }
                   },
                   "working": {
@@ -731,7 +732,8 @@
                       "success": true,
                       "state": "working",
                       "record_id": 42,
-                      "record_id_string": "42"
+                      "record_id_string": "42",
+                      "start_metadata_version": 1
                     }
                   },
                   "paused": {
@@ -739,7 +741,72 @@
                       "success": true,
                       "state": "paused",
                       "record_id": 42,
-                      "record_id_string": "42"
+                      "record_id_string": "42",
+                      "start_metadata_version": 1
+                    }
+                  },
+                  "workflow_absent": {
+                    "summary": "Actual isolated own read with workflow=1: absent",
+                    "value": {
+                      "success": true,
+                      "state": "absent",
+                      "start_metadata_version": 1,
+                      "record_id": null,
+                      "record_id_string": null,
+                      "workflow": {
+                        "version": 1,
+                        "allowed_actions": [
+                          "start"
+                        ],
+                        "action_scope": "state_only",
+                        "requires_write_recheck": true,
+                        "expected_record": null,
+                        "confirmation_required_actions": []
+                      }
+                    }
+                  },
+                  "workflow_working": {
+                    "summary": "Actual isolated own read with workflow=1: working",
+                    "value": {
+                      "success": true,
+                      "state": "working",
+                      "start_metadata_version": 1,
+                      "record_id": 9007199254740994,
+                      "record_id_string": "9007199254740994",
+                      "workflow": {
+                        "version": 1,
+                        "allowed_actions": [
+                          "pause_start",
+                          "end"
+                        ],
+                        "action_scope": "state_only",
+                        "requires_write_recheck": true,
+                        "expected_record": "9007199254740994",
+                        "confirmation_required_actions": []
+                      }
+                    }
+                  },
+                  "workflow_paused": {
+                    "summary": "Actual isolated own read with workflow=1: paused",
+                    "value": {
+                      "success": true,
+                      "state": "paused",
+                      "start_metadata_version": 1,
+                      "record_id": 9007199254740994,
+                      "record_id_string": "9007199254740994",
+                      "workflow": {
+                        "version": 1,
+                        "allowed_actions": [
+                          "pause_end",
+                          "end"
+                        ],
+                        "action_scope": "state_only",
+                        "requires_write_recheck": true,
+                        "expected_record": "9007199254740994",
+                        "confirmation_required_actions": [
+                          "end"
+                        ]
+                      }
                     }
                   }
                 }
@@ -754,8 +821,38 @@
           },
           "500": {
             "$ref": "#/components/responses/UnexpectedFailure"
+          },
+          "400": {
+            "description": "After existing bearer validation, a present workflow value other than the exact scalar string 1 is refused before reading the status snapshot.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Invalid workflow option."
+                }
+              }
+            }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "workflow",
+            "in": "query",
+            "required": false,
+            "description": "Existing explicit opt-in only: raw workflow=1. Omit for the unchanged default status. Empty, other or array-shaped values are invalid after the existing bearer guard. No person/record selector is introduced.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "example": "1"
+          }
+        ],
+        "x-source-commit": "5f826c246baf28cb899961178ae03082c600fa1e"
       }
     }
   },
@@ -828,9 +925,12 @@
               1
             ],
             "description": "Additive start-metadata wire contract version, not a write authority."
+          },
+          "workflow": {
+            "$ref": "#/components/schemas/AttendanceWorkflow"
           }
         },
-        "description": "Read-only status: absent has null record_id; working/paused have a positive integer record_id. No event ID or timestamp is returned. The optional additive record_id_string preserves exact record-ID text for updated clients; malformed present metadata must not be repaired through numeric fallback."
+        "description": "Read-only status: absent has null record_id; working/paused have a positive integer record_id. No event ID or timestamp is returned. The optional additive record_id_string preserves exact record-ID text for updated clients; malformed present metadata must not be repaired through numeric fallback. The optional workflow block is returned only for the exact workflow=1 opt-in; its version-1 values are hints from that same snapshot and not a write capability. Default fields/required list are unchanged."
       },
       "AttendanceReceipt": {
         "type": "object",
@@ -1080,6 +1180,74 @@
             }
           }
         }
+      },
+      "AttendanceWorkflow": {
+        "type": "object",
+        "required": [
+          "version",
+          "allowed_actions",
+          "action_scope",
+          "requires_write_recheck",
+          "expected_record",
+          "confirmation_required_actions"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "enum": [
+              1
+            ],
+            "description": "Observed projection version; do not infer support merely from host or application version."
+          },
+          "allowed_actions": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 2,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "start",
+                "pause_start",
+                "pause_end",
+                "end"
+              ]
+            },
+            "description": "State-only hints: absent -> start; working -> pause_start/end; paused -> pause_end/end. Current auth, expected record, business conflicts and commit are rechecked by the unchanged writer."
+          },
+          "action_scope": {
+            "type": "string",
+            "enum": [
+              "state_only"
+            ]
+          },
+          "requires_write_recheck": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "expected_record": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "maxLength": 19,
+            "nullable": true,
+            "description": "Exact same record_id_string from this snapshot, or null when absent. Use this decimal text rather than a rounded JavaScript numeric ID. This hint is not a receipt, reservation or write authority."
+          },
+          "confirmation_required_actions": {
+            "type": "array",
+            "maxItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "end"
+              ]
+            },
+            "description": "end only while paused; otherwise empty. A client must obtain explicit human confirmation before sending confirm_end_pause:true; this read does not grant that confirmation."
+          }
+        },
+        "description": "Already implemented explicit Native own-read metadata. No user/record selector, approval, notification or writer behavior is added by this schema. Do not create a new event ID or discard pending payloads because of this read."
       }
     },
     "responses": {
