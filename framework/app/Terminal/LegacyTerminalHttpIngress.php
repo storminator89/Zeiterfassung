@@ -3,6 +3,7 @@
 namespace App\Terminal;
 
 use App\Http\Controllers\Terminal\LegacyTerminalController;
+use App\Http\Middleware\CorrelateFrameworkRequest;
 use AttendanceError;
 use Closure;
 use Illuminate\Contracts\Config\Repository;
@@ -67,6 +68,14 @@ final class LegacyTerminalHttpIngress
             ));
         }
 
+        // Only the already enabled, source-captured raw branch enters telemetry.
+        // Closed defaults and early admission refusals keep their original wire.
+        return (new CorrelateFrameworkRequest)->handle($request,
+            fn (Request $request): Response => $this->handleAdmitted($request));
+    }
+
+    private function handleAdmitted(Request $request): Response
+    {
         // Maintenance is the stock operational outer gate, before module/method
         // checks. Do not catch/rewrite its status, headers, templates or exception
         // rendering as a terminal protocol failure, and never bypass artisan down.
