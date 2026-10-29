@@ -22,6 +22,9 @@
     @if ($adminPauseSettings->success)
     <div class="alert alert-success shadow-lg mb-4" role="status"><div><i class="fas fa-check-circle"></i><span>{{ $adminPauseSettings->success }}</span></div></div>
     @endif
+    @if ($holidayRefillEnabled ?? false)
+        @include('chrono.partials.holiday-refill')
+    @endif
     @if (($apiManagement ?? null) !== null)
         @include('chrono.partials.api-management')
     @elseif ($apiManagementUnavailable ?? false)
