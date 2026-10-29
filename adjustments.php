@@ -5,11 +5,13 @@ $user=(int)$_SESSION['user_id'];$role=$_SESSION['role'];$error='';$requestDraft=
 require_once __DIR__.'/lib/corrections.php';
 require_once __DIR__.'/lib/native_correction_withdrawal.php';
 require_once __DIR__.'/lib/correction_selection.php';
+require_once __DIR__.'/lib/correction_queue_filter.php';
 require_once __DIR__.'/lib/correction_presentation.php';
 require_once __DIR__.'/lib/report_ordering.php';
 report_register_start_order($conn);
 $requestStatusLabels=['pending'=>'Offen','all'=>'Alle Status','approved'=>'Freigegeben','rejected'=>'Abgelehnt','withdrawn'=>'Zurückgenommen'];
 $requestStatus=is_string($_GET['request_status']??null)&&isset($requestStatusLabels[$_GET['request_status']])?$_GET['request_status']:'pending';
+$requestLookup=correction_queue_request_filter($_GET);
 $requestedPage=filter_var($_GET['request_page']??1,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]])?:1;
 $records=$conn->prepare('SELECT id,startzeit,endzeit FROM zeiterfassung WHERE user_id=? ORDER BY chrono_report_start_epoch(startzeit) DESC,id DESC LIMIT 200');$records->execute([$user]);$records=$records->fetchAll(PDO::FETCH_ASSOC);
 $selectedRecordId=0;$selectionError='';
@@ -32,6 +34,9 @@ $queueSelection=array_key_exists('record_id',$_GET)?['record_id'=>is_string($_GE
 if ($_SERVER['REQUEST_METHOD']==='POST'&&in_array($_POST['action']??null,['request','request_metadata_v1'],true)) {
     $queueSelection=$selectionError?['record_id'=>'invalid']:($selectedRecordId?['record_id'=>$selectedRecordId]:[]);
 }
+$queueWithoutLookup=$queueSelection;
+if ($requestLookup['invalid'] || $requestLookup['id']!==null) { $queueSelection['request_id']=$requestLookup['invalid']?'invalid':$requestLookup['value']; }
+$queueResetLookupUrl='adjustments.php?'.http_build_query(array_merge(['request_status'=>$requestStatus,'request_page'=>1],$queueWithoutLookup));
 $queueUrl=static fn(int $page): string=>'adjustments.php?'.http_build_query(array_merge(['request_status'=>$requestStatus,'request_page'=>$page],$queueSelection));
 if ($_SERVER['REQUEST_METHOD']==='POST' && (!$selectionError || !in_array($_POST['action']??null,['request','request_metadata_v1'],true))) {
     $requestCommandReturned=false;
@@ -83,13 +88,19 @@ try {
 $requestScope="(a.user_id=? OR ?='admin' OR (?='supervisor' AND u.supervisor_id=?))";
 $requestParams=[$user,$role,$role,$user];
 $requestCounts=array_fill_keys(array_keys($requestStatusLabels),0);
+if ($requestLookup['id']!==null) { $requestScope.=' AND a.id=?';$requestParams[]=$requestLookup['id']; }
+if (!$requestLookup['invalid']) {
 $s=$conn->prepare('SELECT a.status,COUNT(*) AS total FROM time_adjustments a JOIN users u ON u.id=a.user_id WHERE '.$requestScope.' GROUP BY a.status');$s->execute($requestParams);
 foreach($s->fetchAll(PDO::FETCH_ASSOC) as $count) { $requestCounts[$count['status']]=(int)$count['total'];$requestCounts['all']+=(int)$count['total']; }
+}
 $requestTotal=$requestCounts[$requestStatus];$requestPageSize=50;
 $requestPages=max(1,(int)ceil($requestTotal/$requestPageSize));$requestPage=min($requestedPage,$requestPages);$requestOffset=($requestPage-1)*$requestPageSize;
 $requestWhere=$requestScope;
 if ($requestStatus!=='all') { $requestWhere.=' AND a.status=?';$requestParams[]=$requestStatus; }
+$requests=[];
+if (!$requestLookup['invalid']) {
 $s=$conn->prepare('SELECT a.*,u.username FROM time_adjustments a JOIN users u ON u.id=a.user_id WHERE '.$requestWhere.' ORDER BY a.id DESC LIMIT '.$requestPageSize.' OFFSET '.$requestOffset);$s->execute($requestParams);$requests=$s->fetchAll(PDO::FETCH_ASSOC);
+}
 // Display hint in the queue snapshot only; the existing core authorizes again under the writer lock.
 $withdrawalActor=att_one($conn,'SELECT auth_source FROM users WHERE id=?',[$user]);
 // A retained reason belongs only to the same still-withdrawable own visible row.
@@ -118,6 +129,7 @@ $conn->commit();
     throw $e;
 }
 $balancePreviewUrl=static fn(int $id): string=>$queueUrl($requestPage).'&balance_preview='.$id.'#balance-preview-'.$id;
+if ($requestLookup['invalid'] && $_SERVER['REQUEST_METHOD']==='GET') { http_response_code(400); }
 chrono_page('Korrekturanträge');
 ?>
 <p class="opacity-70">Nachträgliche Änderungen mit Begründung und Freigabe. Originalereignisse bleiben erhalten. Eigene Anträge müssen von einer anderen berechtigten Person freigegeben werden.</p>
@@ -140,12 +152,16 @@ chrono_page('Korrekturanträge');
 </form></details></section><?php else: ?><p class="mb-6"><a class="btn btn-outline" href="adjustments.php">Eigene Buchung neu auswählen</a></p><?php endif; ?>
 <section class="card bg-base-100 shadow-xl p-6 mb-6">
 <h2 class="text-xl font-semibold mb-4">Anträge filtern</h2>
-<p class="mb-4">Offene Anträge: <strong><?= $requestCounts['pending'] ?></strong> · innerhalb Ihrer bisherigen Sichtrechte.</p>
+<?php if($requestLookup['invalid']): ?><div class="alert alert-error mb-4" role="alert">Ungültige Antrags-ID. Bitte eine positive ganze ID ohne Leerzeichen oder führende Nullen eingeben. Es werden keine Anträge angezeigt.</div><?php endif; ?>
+<p class="mb-4">Offene Anträge für diese Auswahl: <strong><?= $requestCounts['pending'] ?></strong> · innerhalb Ihrer bisherigen Sichtrechte.</p>
 <form method="get" action="adjustments.php">
-<?php if($queueSelection): ?><input type="hidden" name="record_id" value="<?= h($queueSelection['record_id']) ?>"><?php endif; ?>
+<?php if(array_key_exists('record_id',$queueSelection)): ?><input type="hidden" name="record_id" value="<?= h($queueSelection['record_id']) ?>"><?php endif; ?>
 <label class="block text-sm font-semibold mt-4 mb-2" for="request_status">Status</label>
 <select class="select select-bordered w-full" id="request_status" name="request_status"><?php foreach($requestStatusLabels as $status=>$label): ?><option value="<?= h($status) ?>" <?= $requestStatus===$status?'selected':'' ?>><?= h($label) ?> (<?= $requestCounts[$status] ?>)</option><?php endforeach; ?></select>
-<div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary">Filtern</button></div>
+<label class="block text-sm font-semibold mt-4 mb-2" for="request_id">Antrags-ID (optional)</label>
+<input class="input input-bordered w-full" type="text" inputmode="numeric" id="request_id" name="request_id" value="<?= h($requestLookup['value']) ?>">
+<p class="text-sm opacity-70 mt-3">Status und Antrags-ID gelten gemeinsam, nur innerhalb Ihrer bisherigen Sichtrechte. Ein leeres Ergebnis bestätigt weder Existenz noch Zugriff; auch ein anderer Status kann die Auswahl leeren.</p>
+<div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary">Filtern</button><?php if($requestLookup['invalid']||$requestLookup['id']!==null): ?><a class="btn btn-outline" href="<?= h($queueResetLookupUrl) ?>">Antrags-ID entfernen</a><?php endif; ?></div>
 </form></section>
 <h2 class="text-xl font-semibold mb-4">Anträge: <?= h($requestStatusLabels[$requestStatus]) ?></h2>
 <p class="text-sm opacity-70 mb-4"><?= $requestTotal ?> Anträge · Seite <?= $requestPage ?> von <?= $requestPages ?></p>
