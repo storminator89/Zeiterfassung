@@ -105,8 +105,8 @@ function calculateRemainingHours($workedHours, $expectedHours)
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
     <!-- Toast UI Calendar -->
-    <link rel="stylesheet" href="https://uicdn.toast.com/calendar/latest/toastui-calendar.min.css" />
-    <script src="https://uicdn.toast.com/calendar/latest/toastui-calendar.js"></script>
+    <link rel="stylesheet" href="https://uicdn.toast.com/calendar/v2.1.3/toastui-calendar.min.css" />
+    <script src="https://uicdn.toast.com/calendar/v2.1.3/toastui-calendar.js"></script>
 
     <!-- Custom CSS -->
     <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
