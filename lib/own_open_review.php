@@ -1,6 +1,7 @@
 <?php
 // Definitions only: read stored own-row facts, never create a time or decide a violation.
 require_once __DIR__.'/attendance.php';
+require_once __DIR__.'/correction_selection.php';
 
 /** Internal already-authorized own-user projection within the caller's snapshot. */
 function chrono_own_open_review_snapshot(PDO $pdo, int $user, DateTimeImmutable $loaded): array
