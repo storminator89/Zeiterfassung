@@ -8,18 +8,20 @@ Baum `5f31f4a35d8e17f803a5c0fbc684afd3e0ef0672`, 28.10.2026.
 
 `bootstrap/app.php` ergänzt den bereits verwendeten Laravel-HTTP-/Fehlerpfad.
 Normale Laravel-Anfragen erhalten vor den gewöhnlichen globalen Middlewares
-eine neue zufällige 128-Bit-ID (32 kleine Hexzeichen). Die ID liegt nur als
+bei verfügbarer Zufallsquelle eine neue zufällige 128-Bit-ID (32 kleine Hexzeichen). Die ID liegt nur als
 internes Requestattribut vor; sie wird weder aus Clientheadern noch aus
 Formular, Query, Cookie oder Body übernommen. Auch ein vorhandenes Attribut
 wird beim Middlewareeintritt ersetzt. Es gibt keinen globalen Loggerkontext,
 keine persistente Session-ID und kein personenbezogenes Korrelationsmerkmal.
 
-Die Antwort trägt `X-Request-ID`. Status, Body, Weiterleitung, Cookies und
+Wenn eine ID erzeugt wurde, trägt die Antwort `X-Request-ID`. Status, Body, Weiterleitung, Cookies und
 bestehende API-Fehlerformen werden nicht ersetzt. Laravels abschließender
 Exception-Responsecallback erhält die ID auch bei einer außerhalb der
 Middleware gerenderten Ausnahme. Die bestehende dedizierte Raw-Terminalgrenze
-bleibt **davor**: deren Kurzschluss und Protokoll werden nicht umgebaut und
-erhalten durch dieses Paket keine ID. Native PHP-Einstiege bleiben unverändert.
+bleibt **davor**. Der unten dokumentierte additive Schritt korreliert nur ihren
+bereits ausdrücklich eingeschalteten, quellseitig erfassten Zweig; geschlossene
+Defaults und frühe Zulassungsverweigerungen behalten ihren bisherigen Kurzschluss.
+Native PHP-Einstiege bleiben unverändert.
 
 Der bestehende datensparsame Exceptionreporter behält seine feste Nachricht
 `Framework request failed.` und ergänzt die ID, sofern eine solche Anfrage
@@ -107,3 +109,60 @@ Laufzeitaktivierung, DB-/Schlüssel-/Hoständerung oder neuer CI-Lauf.
 
 Frameworkverträge: [Laravel13 Middleware](https://laravel.com/docs/13.x/middleware),
 [Laravel13 Fehlerbehandlung](https://laravel.com/docs/13.x/errors).
+
+
+## #66: vorhandene Korrelation im zugelassenen Raw-Terminalzweig
+
+Additive Quellbasis: Main `1c04129bdc736bd096e9e2762d47a8861eb8b4e3`, Baum
+`5038c0ab1651fc3b881f9eb9c0879cd3b78c3f22`.
+Nur nach dem unveränderten echten booleschen `chrono_terminal.http_enabled=true`
+und erfolgreichem `requireCaptured` läuft dasselbe vorhandene Korrelationsmiddleware
+um den bisherigen Terminalpfad. Es liest ausschließlich ein internes Attribut,
+keinen Raw-Body, keine HMAC-/Geräte-/PIN-/Karten-/Grantwerte. Jeder Durchlauf erhält
+bei verfügbarer Zufallsquelle eine neue ID; Clientheader und frühere Attribute
+werden nicht übernommen. Kontrollierte Terminal-5xx können dadurch im bestehenden
+privaten Log anhand derselben Antwort-ID gefunden werden. Gewöhnliche 4xx/Erfolge
+erzeugen weiterhin keinen neuen Requestlogeintrag.
+
+Die komplette bisherige Maintenance-/Method-/Controller-/Route-/Fehlerbehandlung
+wird als private Methode bytegleich weiterverwendet. `artisan down`, rohe Capture-
+Identität, Modul-/Method-/Größenreihenfolge, Bodybytes, HMAC, Writer/COMMIT und die
+Responsebody-/Status-/Retryverträge werden nicht umgangen. Die globale Reihenfolge
+bleibt unverändert. Default-aus liefert weiterhin leeren404 **ohne** neue ID oder
+Logzeile; frühe falsche Konfiguration/Captureverweigerung behält unveränderten503
+und tritt nicht in die Korrelation ein. Ein direkt außerhalb dieser äußeren
+Ingresskomposition aufgerufener Controller gewinnt keine Korrelationszusage.
+
+Zusätzlich ist bereits die ID-Erzeugung best-effort: Ein Zufallsquellfehler löscht
+ein vorhandenes Attribut und setzt keine ID, statt den Vorgang zu verhindern oder
+erneut auszuführen. Die ursprüngliche Operation läuft genau einmal. Die feste
+5xx-Antwortsumme kann dann `request_id:null` enthalten; das ist keine korrelierbare
+ID und kein Anlass, Header/Requestdaten als Ersatz zu loggen. Loggingausfälle
+bleiben wie bisher ohne zweiten Zieltransport und verändern keine Antwort.
+
+Keine neue Route, Aktivierung, CORS-/Expose-/Host-/Securityeinstellung, Key-/Account-
+Operation, Loggerdestination, Alarmzustellung oder Agentänderung. Insbesondere
+keine Änderung am #57-Pending-/Event-ID-Vertrag. Eine Support-ID ist weder Quittung
+noch Permission oder Wiederholungs-ID und beweist keinen ausgebliebenen Commit.
+Der vorhandene Exception-Responsecallback kann nach einem geworfenen Maintenance-
+Fehler dieselbe ID verwenden; das neue Paket implementiert keinen zweiten Renderer.
+#66 bleibt offen für tatsächliche Logzustellung/Rotation und Betriebsabnahme.
+
+
+Grober Komponentennachweis auf der genannten aktuellen Basis: PHP8.5.12 und
+Laravel13.38.0, echte Ingress-/Router-/Controller-/Raw-Capsule-/Korrelationsklassen
+und Stock-Maintenancemiddleware. Protokoll und Maintenance-Zustand stammen aus
+reinen Memory-Doubles; die Raw-Bodybytes wurden ausschließlich im Harness in
+ein quellseitig erfasstes Requestobjekt eingesetzt. Keine Betriebszulassung,
+HMAC-, Schlüssel-, Writer- oder Datenbankauflösung. Geschlossen404, ungültiges
+Flag/Capture503, Erfolg200, kontrollierter503, Method405, Modul404 und Stock-
+Maintenanceausnahme behalten Status/Body/Header bzw. Ausnahme/Retry unverändert.
+Kontrollierter503 hat genau eine feste korrelierte Logsumme, Erfolge/4xx keine.
+Zufalls-/Logtransportfehler erhalten die Operation genau einmal ohne geerbte ID
+oder alternative Logdestination. Kein privater synthetischer Input/Exceptiontext
+im Log; Raw-Bodybytes, native Sitzung und Zeitzone unverändert. Die alte direkte
+Korrelationsklasse reproduziert bei absichtlich ausgefallener Zufallsquelle den
+Fehler vor Operationseintritt; die neue liefert die unveränderte Antwort.
+Quellinverse und Syntax separat geprüft. Keine tatsächliche Appbootstrap-/
+Profil-/HTTP-/Cookie-/Kernel-Exceptionrenderer-/Browser-/Geräte-/HMAC-/Betriebs-
+oder Logsinkabnahme; kein neuer Test im Repository oder manueller CI-Start.

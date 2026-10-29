@@ -17,7 +17,13 @@ final class CorrelateFrameworkRequest
     {
         // Always replace any preexisting value. Client headers, cookies, query
         // values and bodies are not consulted, parsed, echoed or logged here.
-        $request->attributes->set(self::ATTRIBUTE, bin2hex(random_bytes(16)));
+        $request->attributes->remove(self::ATTRIBUTE);
+        try {
+            $request->attributes->set(self::ATTRIBUTE, bin2hex(random_bytes(16)));
+        } catch (Throwable) {
+            // Telemetry failure must not replace the wire or execute the request
+            // twice. Leave no ID rather than retain an untrusted prior value.
+        }
 
         $response = $next($request);
         self::addResponseId($response, $request);
