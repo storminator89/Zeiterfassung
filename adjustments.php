@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__.'/config.php'; require_once __DIR__.'/lib/app_ui.php';
 if (!isset($_SESSION['user_id'])) { header('Location: login.php'); exit; }
-$user=(int)$_SESSION['user_id'];$role=$_SESSION['role'];$error='';$requestDraft=[];$metadataDraft=[];
+$user=(int)$_SESSION['user_id'];$role=$_SESSION['role'];$error='';$requestDraft=[];$metadataDraft=[];$reviewDraft=[];
 require_once __DIR__.'/lib/corrections.php';
 require_once __DIR__.'/lib/correction_selection.php';
 require_once __DIR__.'/lib/correction_presentation.php';
@@ -54,6 +54,11 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && (!$selectionError || !in_array($_POST
         if (!$requestCommandReturned && $requestRollbackConfirmed && ($_POST['action']??'')==='request_metadata_v1'
             && $e instanceof AttendanceError && in_array($e->status,[400,409],true)) {
             $metadataDraft=correction_metadata_v1_rejected_draft($_POST);
+        }
+        if (!$requestCommandReturned && $requestRollbackConfirmed && ($_POST['action']??'')==='review'
+            && $e instanceof AttendanceError && in_array($e->status,[400,409],true)) {
+            require_once __DIR__.'/lib/correction_review_draft.php';
+            $reviewDraft=correction_rejected_review_draft($_POST);
         }
     }
 }
@@ -146,7 +151,7 @@ chrono_page('Korrekturanträge');
 <?php else: ?><a class="btn btn-outline btn-sm mt-2" href="<?= h($balancePreviewUrl((int)$a['id'])) ?>">Home-Stand mit Antrag prüfen</a><?php endif; ?>
 </div>
 <?php endif; ?>
-<p><?= h($a['reason']) ?></p><?php if($a['review_reason']): ?><p class="opacity-70"><?= $a['status']==='withdrawn'?'Rücknahme':'Entscheidung' ?>: <?= h($a['review_reason']) ?></p><?php endif; ?><?php if($a['status']==='pending'&&(int)$a['user_id']!==$user&&in_array($role,['admin','supervisor'],true)): ?><form method="post"><?= csrf_field() ?><input class="input input-bordered w-full" type="hidden" name="action" value="review"><input class="input input-bordered w-full" type="hidden" name="id" value="<?= (int)$a['id'] ?>"><label class="block text-sm font-semibold mt-4 mb-2" for="review_reason_<?= (int)$a['id'] ?>">Begründung der Entscheidung</label><input class="input input-bordered w-full" id="review_reason_<?= (int)$a['id'] ?>" name="review_reason" minlength="3" maxlength="1000" required><div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary" name="decision" value="approved">Freigeben</button><button name="decision" value="rejected" class="btn btn-outline">Ablehnen</button></div></form><?php endif; ?></section><?php endforeach; ?>
+<p><?= h($a['reason']) ?></p><?php if($a['review_reason']): ?><p class="opacity-70"><?= $a['status']==='withdrawn'?'Rücknahme':'Entscheidung' ?>: <?= h($a['review_reason']) ?></p><?php endif; ?><?php if($a['status']==='pending'&&(int)$a['user_id']!==$user&&in_array($role,['admin','supervisor'],true)): ?><form method="post"><?= csrf_field() ?><input class="input input-bordered w-full" type="hidden" name="action" value="review"><input class="input input-bordered w-full" type="hidden" name="id" value="<?= (int)$a['id'] ?>"><label class="block text-sm font-semibold mt-4 mb-2" for="review_reason_<?= (int)$a['id'] ?>">Begründung der Entscheidung</label><input class="input input-bordered w-full" id="review_reason_<?= (int)$a['id'] ?>" name="review_reason" value="<?= h(($reviewDraft['id']??null)===(int)$a['id']?($reviewDraft['review_reason']??''):'') ?>" minlength="3" maxlength="1000" required><div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary" name="decision" value="approved">Freigeben</button><button name="decision" value="rejected" class="btn btn-outline">Ablehnen</button></div></form><?php endif; ?></section><?php endforeach; ?>
 <?php if($requestPages>1): ?><nav class="flex flex-wrap gap-3 mb-6" aria-label="Antragsseiten">
 <?php if($requestPage>1): ?><a class="btn btn-outline" href="<?= h($queueUrl($requestPage-1)) ?>">Neuere Anträge</a><?php endif; ?>
 <?php if($requestPage<$requestPages): ?><a class="btn btn-outline" href="<?= h($queueUrl($requestPage+1)) ?>">Ältere Anträge</a><?php endif; ?>
