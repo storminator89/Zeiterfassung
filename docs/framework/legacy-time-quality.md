@@ -456,3 +456,77 @@ Dateiscanner-CLI oder erneuter Datei-/Sidecar-/V2-Zulassungsnachweis, echter
 Bestandsscan, Lasttest, neue Testsuite oder manuell gestartete CI. Keine App-/
 Auth-/HTTP-/Browser-/Runtime-/Produktiv-/Migrationsabnahme, Konten, Credentials,
 Schlüssel oder Daten-/Konfigurationsänderung. #55 bleibt teilweise und offen.
+
+## Format8: abgeschlossene positive Originalsessions desselben Kontos
+
+Auf Main `8032f3fc79f390a64d9196a2aaa588d029adc77b`, Baum
+`01894602696fdb3e056c6fdefcdad24837d33120`, fehlte neben den bestehenden
+Projektions-/Pausenprüfungen eine rein tatsächliche Originalpaarprüfung:
+Zwei abgeschlossene positive `work_sessions` desselben Kontos konnten sich
+überschneiden, während ihre gegenwärtigen Projektionen getrennt lagen. Die
+unveränderte bekannte V2-Vorprüfung lässt solche gültig referenzierten Zeilen
+zu, weil sie Beziehungen/Inhaberschaft, nicht diese Zeitüberschneidung prüft.
+
+Format8 ergänzt `original_session_overlap`. Nur zwei gespeicherte ganzzahlige
+Start-/Endepochen mit **positivem abgeschlossenem** Intervall und demselben
+internen `user_id` nehmen teil. Halboffene Grenzen: Randberührung zählt nicht.
+NULL-Ende, Null-Dauer, umgekehrte oder nichtganzzahlige Werte werden nicht als
+Paar verwendet. Keine Subtraktion, kein Jetzt-Ende, kein Zeitparser oder neue
+Zeitkonversion; Vergleich bleibt auch an signed64-Grenzen ganzzahlig.
+
+Jedes Paar erscheint einmal, geordnet nach kleinerer/größerer Original-ID:
+`entity=work_sessions`, `entity_id` und `related_entity_id` als exakte dezimale
+Strings, `column=null`. Kein `record_id`, der eine effektive Buchung vortäuschen
+würde; kein Konto, Originalzeitwert, Benutzername, Notiz, Eventinhalt oder Pfad
+wird zusätzlich ausgegeben. Die bisherigen Befunde bleiben exakt davor stehen.
+Ein Paar zählt einen Befund, nicht eine einmalig betroffene Session.
+
+Das sind **Originalintervallfakten**, keine Behauptung falscher heutiger Summen,
+Doppelvergütung oder ungültiger inzwischen freigegebener Korrekturen. Projektionen
+können sich nach einer Korrektur bewusst von Originalen unterscheiden. Es gibt
+keinen neuen Original-/Projektionsabgleich, keine automatische Auswahl,
+Rekonstruktion, Reparatur, Migration oder zusätzliche Sperre von Runtimeberichten.
+Kein Session-/Buchungswriter oder aktueller Stempelstatus wird geändert.
+
+`checks.original_session_overlap` benennt den neuen engen Prüfumfang;
+`event_session_break_projection_reconciliation` bleibt ausdrücklich unvollständig
+und verweist nun auf abgeschlossene Originalpaare, nicht auf einen verbundenen
+Event-/Session-/Pausen-/Projektionsablauf. Alle bisherigen Checks/Kategorien
+bleiben erhalten. Die unveränderte `needs_review`-Ableitung berücksichtigt den
+neuen Zähler; eine zuvor in diesem begrenzten Bericht unauffällige Quelle kann
+somit ausdrücklich zur Prüfung stehen. Exitcodes und CLI-/Datei-/Snapshot-/
+V2-Zulassung bleiben unverändert; kein Format8-Ergebnis ist eine Gesamtfreigabe.
+
+Für jede geeignete Session werden höher-IDige Sessions desselben Kontos gestreamt.
+Es entsteht keine Paarliste im Speicher. `--limit` begrenzt weiterhin nur die
+Detailausgabe auf1–1000; Zähler laufen vollständig weiter. Es gibt kein neues
+Laufzeit-/Datenmengenlimit und keinen Leistungsnachweis für große Bestände.
+Keine Index-/Schema-/Dependency-/Test-/CI-Änderung. Fremde externe Leser müssen
+wie bisher die Berichtsversionsnummer beachten; kein Repositoryleser konsumiert
+dieses neue Paarformat als Buchungs- oder Freigabeautorität.
+
+### Grober Format8-Quellnachweis
+
+PHP8.5.12 / SQLite3.46.1 / Laravel13.38.0: tatsächliche alte/neue Klasse und echte
+Sourcefixture/Migratoren auf anonymem query-only Memory; tatsächliche unveränderte
+V2Preflight-Komponente besteht auf beiden synthetischen Snapshots.24 erfundene
+Sessions,4 Pausen,29 Projektionen:12 neue Originalsessionpaare;13 alte Befunde
+bleiben exakt samt Reihenfolge, Kategorien und Zählern erhalten. Verschachtelte,
+verkettete und identische Intervalle, Randberührung/Null/offen/umgekehrt/REAL/TEXT,
+getrennte Konten, signed64-Extrema, IDs über 2^53 sowie PHP_INT_MAX und unabhängig
+geänderte/ungültige Projektionen geprüft. Limit2 behält volle Zähler; Wiederholung,
+Datensparsamkeit, Schema/Zeilen/Änderungszähler, query-only/Transaktion und native
+Session/Zeitzone unverändert. Ein eigener vorher befund- und offsetfrei sauberer
+synthetischer Bericht ohne Originalpaarcheck wird ausschließlich durch ein
+bekanntes Originalpaar zu `needs_review=true` — kein vollständiges Sauberkeitsattest.
+
+Die erste Vorprüfungs-Harnessfassung nutzte generisches `new PDO`; sie musste
+für die bestehende Sourcefixture ausschließlich auf Laravels unveränderten
+SQLiteConnector und dessen konkreten PDO-SQLite-Typ umgestellt werden. Kein
+Produktcode/Zulassungsgate wurde hierfür abgeschwächt. Keine neue Testsuite oder
+manuelle CI; Syntax, vollständige Patch-/Baumerhaltung, inverse/replay, Kaltbundle
+und unabhängiger Quellreview separat. Keine echte Datei-/CLI-/OfflineFiles-/
+Sidecar-/Betriebs-/V5-/App-/Auth-/HTTP-/Browser-/Konkurrenz-/Last-/Produktivabnahme,
+Bestandsprüfung, vollständiger Eventabgleich, Mapping oder Reparatur. Keine realen
+Konten, Credentials/Keys, Datei-DB, Konfiguration, Hosts oder Deployment. #55
+bleibt ausdrücklich teilweise/offen; gehaltene/abgelehnte Pakete bleiben unberührt.
