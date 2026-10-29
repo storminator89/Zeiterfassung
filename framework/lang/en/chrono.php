@@ -243,4 +243,9 @@ return [
     'ADMIN_USER_DELETE_HISTORY_LOCKED' => 'Deletion blocked: accounts with history are retained.',
     'TIME_RECORD_HISTORY_LINK' => 'Booking history (opens separately)',
     'TIME_RECORD_HISTORY_HINT' => 'Open stored changes and bounded references for this booking. Not evidence of a complete history.',
+    'CSV_PERIOD_TITLE' => 'Own CSV export for a date range',
+    'CSV_PERIOD_FROM' => 'From (Berlin start date)',
+    'CSV_PERIOD_TO' => 'To (inclusive)',
+    'CSV_PERIOD_SUBMIT' => 'Export range as CSV',
+    'CSV_PERIOD_NOTE' => 'Only your own entries by their Berlin start date, regardless of search or list page. Overnight shifts remain entirely on their start date. The quality check still covers all your entries; errors or unresolved overlaps outside the range can also block the download. Not a payroll-software format.',
 ];

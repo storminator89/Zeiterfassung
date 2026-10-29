@@ -359,4 +359,11 @@ define('DASHBOARD_CALENDAR_LOADING', '正在準備日曆顯示…');
 define('DASHBOARD_CALENDAR_UNAVAILABLE', '目前無法顯示日曆。請重新載入頁面或開啟本人的打卡紀錄。');
 define('DASHBOARD_CALENDAR_NO_SCRIPT', '日曆顯示需要 JavaScript；原有的出勤頁面仍可開啟。');
 define('DASHBOARD_CALENDAR_FALLBACK', '開啟本人的打卡紀錄');
+// Existing own-CSV date range: presentation only; export contract unchanged.
+define('CSV_PERIOD_TITLE', '按日期范围导出自己的 CSV');
+define('CSV_PERIOD_FROM', '开始日期（柏林开始日）');
+define('CSV_PERIOD_TO', '结束日期（含当日）');
+define('CSV_PERIOD_SUBMIT', '将此范围导出为 CSV');
+define('CSV_PERIOD_NOTE', '仅按柏林开始日期选择您自己的记录，不受搜索条件或列表页码影响。跨夜班次完整归于开始日。质量检查仍覆盖您的全部记录；范围外的错误或尚未解决的重叠也可能阻止下载。此文件不是工资软件格式。');
+
 ?>

@@ -374,4 +374,11 @@ define('DASHBOARD_CALENDAR_LOADING', 'Kalenderdarstellung wird vorbereitet …')
 define('DASHBOARD_CALENDAR_UNAVAILABLE', 'Kalenderdarstellung derzeit nicht verfügbar. Bitte Seite neu laden oder die eigenen Buchungen öffnen.');
 define('DASHBOARD_CALENDAR_NO_SCRIPT', 'Die Kalenderdarstellung benötigt JavaScript. Die vorhandene Anwesenheitsseite bleibt erreichbar.');
 define('DASHBOARD_CALENDAR_FALLBACK', 'Eigene Buchungen öffnen');
+// Existing own-CSV date range: presentation only; export contract unchanged.
+define('CSV_PERIOD_TITLE', 'Eigener CSV-Export für einen Zeitraum');
+define('CSV_PERIOD_FROM', 'Von (Berliner Starttag)');
+define('CSV_PERIOD_TO', 'Bis einschließlich');
+define('CSV_PERIOD_SUBMIT', 'Zeitraum als CSV');
+define('CSV_PERIOD_NOTE', 'Nur eigene Buchungen nach Berliner Startdatum, unabhängig von Suche oder Listenseite. Nachtschichten bleiben vollständig beim Starttag. Die Qualitätsprüfung umfasst weiterhin Ihren gesamten Bestand; auch Fehler oder ungeklärte Überschneidungen außerhalb des Zeitraums können den Download blockieren. Kein Lohnsoftwareformat.');
+
 ?>
