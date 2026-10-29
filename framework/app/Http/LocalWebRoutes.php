@@ -93,10 +93,12 @@ final class LocalWebRoutes
         }
         if ($includeLdapSessionRevocations && (! $includeAdminPauseSettings
             || $app->make('config')->get('app.debug') !== false
-            || ! $app->bound(RuntimeDatabase::class) || ! $app->make(RuntimeDatabase::class)->isIntakePolicyV4()
+            || ! $app->bound(RuntimeDatabase::class)
+            || (! $app->make(RuntimeDatabase::class)->isIntakePolicyV4()
+                && ! $app->make(RuntimeDatabase::class)->isAccountLifecycleV5())
             || ! $app->bound(AttendanceWriter::class)
             || $app->bound(\App\Chrono\LocalWebLdapSessionRevocations::class))) {
-            throw new LogicException('LDAP session revocation requires its explicit non-debug writable V4 Admin composition.');
+            throw new LogicException('LDAP session revocation requires its explicit non-debug writable V4 or V5 Admin composition.');
         }
         $app->make('config')->set('chrono_ldap_sessions.http_enabled', $includeLdapSessionRevocations);
         if ($includeLdapSessionRevocations) {
@@ -136,10 +138,12 @@ final class LocalWebRoutes
         }
         if ($includeLdapSync && (! $includeAdminPauseSettings
             || $app->make('config')->get('app.debug') !== false
-            || ! $app->bound(RuntimeDatabase::class) || ! $app->make(RuntimeDatabase::class)->isIntakePolicyV4()
+            || ! $app->bound(RuntimeDatabase::class)
+            || (! $app->make(RuntimeDatabase::class)->isIntakePolicyV4()
+                && ! $app->make(RuntimeDatabase::class)->isAccountLifecycleV5())
             || ! $app->bound(AttendanceWriter::class)
             || ! $app->make(CacheFactory::class)->store('file')->getStore() instanceof FileStore)) {
-            throw new LogicException('LDAP HTTP sync requires explicit writable V4, non-debug Admin composition and persistent file cache.');
+            throw new LogicException('LDAP HTTP sync requires explicit writable V4 or V5, non-debug Admin composition and persistent file cache.');
         }
         $app->make('config')->set('chrono_ldap_sync.http_enabled', $includeLdapSync);
         self::requireSessionBlocking($app);

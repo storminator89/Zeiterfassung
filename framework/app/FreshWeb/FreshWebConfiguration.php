@@ -8,6 +8,7 @@ use App\LegacyDatabase\AttendanceWriter;
 use App\LegacyDatabase\RuntimeAdmission;
 use App\LegacyDatabase\RuntimeDatabase;
 use App\Setup\FirstAdminSetupFiles;
+use App\Terminal\AdmittedTerminalConfiguration;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Encryption\Encrypter;
@@ -31,6 +32,7 @@ final readonly class FreshWebConfiguration
         private bool $setupOptIn,
         private bool $nonExpiringSessionLock,
         private bool $ldapLogin,
+        private bool $terminalHttp,
         private ?FreshWebLdapSyncProfile $ldapSync,
         private array $overrides,
     ) {}
@@ -64,14 +66,18 @@ final readonly class FreshWebConfiguration
             || $config->get('hashing.driver') !== 'bcrypt'
             || $config->get('auth.defaults.guard') !== 'web'
             || $config->get('auth.guards.web') !== ['driver' => 'session', 'provider' => 'chrono_users']
-            || $config->get('auth.providers.chrono_users') !== ['driver' => 'eloquent', 'model' => LegacyUser::class]
-            || $config->get('chrono_terminal.http_enabled', false) !== false) {
+            || $config->get('auth.providers.chrono_users') !== ['driver' => 'eloquent', 'model' => LegacyUser::class]) {
             throw new LogicException('The explicit fresh local web/runtime profile is not admitted.');
         }
         $keyFingerprint = self::key($config);
         $origin = self::origin($config->get('app.url'));
         $setup = $config->get('chrono_fresh_web.setup_enabled', false);
         if (! is_bool($setup)) { throw new LogicException('Fresh setup requires a separate boolean opt-in.'); }
+        $terminal = $config->get('chrono_terminal');
+        if (! is_array($terminal) || ! is_bool($terminal['http_enabled'] ?? null)
+            || ($terminal['http_enabled'] && ($setup || ($terminal['existing_keys_enabled'] ?? null) !== true))) {
+            throw new LogicException('Fresh terminal HTTP requires separate existing roots and closed setup mode.');
+        }
         $ldap = self::ldapSettings($config->get('chrono_ldap'));
         if ($ldap['enabled'] && $setup) {
             throw new LogicException('Existing LDAP login requires the separate closed setup mode.');
@@ -107,13 +113,10 @@ final readonly class FreshWebConfiguration
             $v5 = $admission->schemaProfile === 'account-lifecycle-v5';
             if (($v5 && $lock !== 0) || (! $v5 && $lock === 0)) { throw new RuntimeException; }
             if ($v5) {
-                // V5 stays local-only and distinct from V4. API still requires its
+                // V5 stays a distinct generation-aware runtime. API retains its
                 // separate exact key/generation/shared-budget admission provider.
-                $syncSettings = $config->get('chrono_ldap_sync.fresh');
                 $apiEnabled = $config->get('chrono_api.enabled', false);
-                if ($ldap['enabled'] !== false || ! is_array($syncSettings)
-                    || ($syncSettings['enabled'] ?? null) !== false
-                    || ! is_bool($apiEnabled)
+                if (! is_bool($apiEnabled)
                     || $config->get('chrono_login_budget.enabled', false) !== true) {
                     throw new RuntimeException;
                 }
@@ -125,14 +128,15 @@ final readonly class FreshWebConfiguration
             $sync = FreshWebLdapSyncProfile::fromConfiguration($config->get('chrono_ldap_sync.fresh'), $admission,
                 [$app->basePath(), dirname($app->basePath()), $app->publicPath()]);
             if ($sync !== null && $setup) { throw new RuntimeException; }
-            if (($ldap['enabled'] || $sync !== null) && ! self::setupClosed($directory)) { throw new RuntimeException; }
+            if (($ldap['enabled'] || $sync !== null || $terminal['http_enabled']) && ! self::setupClosed($directory)) { throw new RuntimeException; }
             self::assets($app->publicPath());
             $namespace = 'chrono_fresh_'.substr(hash('sha256', $directory.'\0'.$admission->device.':'.$admission->inode), 0, 24);
             $overrides = [
                 'chrono_runtime.admission' => $manifest,
-                // Only this reviewed wrapper admits local Admin + existing ordinary LDAP users.
+                // Existing persisted roles; no enrollment, role promotion or source conversion.
                 'auth.providers.chrono_users' => ['driver' => $ldap['enabled'] ? 'chrono-existing' : 'eloquent', 'model' => LegacyUser::class],
                 'chrono_ldap' => $ldap,
+                'chrono_terminal' => $terminal,
                 'chrono_ldap_sync.fresh' => $sync?->configuration() ?? ['enabled' => false],
                 'session.driver' => 'file', 'session.files' => $directory.'/sessions',
                 'session.cookie' => $namespace, 'session.secure' => true, 'session.http_only' => true,
@@ -152,7 +156,7 @@ final readonly class FreshWebConfiguration
                 $overrides += ['chrono_api.enabled' => $apiEnabled, 'chrono_login_budget.enabled' => true];
             }
             $profile = new self($origin, $keyFingerprint, $directory, $directories, $manifest, $manifestHash, $manifestState,
-                $databaseState, $setup, $v5, $ldap['enabled'], $sync, $overrides);
+                $databaseState, $setup, $v5, $ldap['enabled'], $terminal['http_enabled'], $sync, $overrides);
             $profile->assertCurrent($config, false);
             return $profile;
         } catch (Throwable) {
@@ -176,7 +180,7 @@ final readonly class FreshWebConfiguration
         if ($config->get('app.env') !== 'production' || $config->get('app.debug') !== false
             || $config->get('hashing.driver') !== 'bcrypt' || $config->get('auth.defaults.guard') !== 'web'
             || $config->get('auth.guards.web') !== ['driver' => 'session', 'provider' => 'chrono_users']
-            || $config->get('chrono_terminal.http_enabled', false) !== false
+            || $config->get('chrono_terminal') !== $this->overrides['chrono_terminal']
             || ! hash_equals($this->keyFingerprint, self::key($config))) {
             throw new RuntimeException;
         }
@@ -191,7 +195,7 @@ final readonly class FreshWebConfiguration
         foreach ($this->directories as $path => $expected) {
             if (self::directory($path) !== $expected) { throw new RuntimeException; }
         }
-        if (($this->ldapLogin || $this->ldapSync !== null) && ! self::setupClosed($this->directory)) { throw new RuntimeException; }
+        if (($this->ldapLogin || $this->ldapSync !== null || $this->terminalHttp) && ! self::setupClosed($this->directory)) { throw new RuntimeException; }
         if ($checkConfiguration) {
             if ($config->get('chrono_fresh_web.enabled') !== true || self::origin($config->get('app.url')) !== $this->origin
                 || $config->get('chrono_runtime.read_enabled') !== true || $config->get('chrono_runtime.write_enabled') !== true) {
@@ -208,6 +212,18 @@ final readonly class FreshWebConfiguration
 
     /** Pure admitted metadata; does not resolve files, keys or a directory. */
     public function ldapSyncProfile(): ?FreshWebLdapSyncProfile { return $this->ldapSync; }
+
+    public function ldapLoginEnabled(): bool { return $this->ldapLogin; }
+
+    /** Both profiles must select the exact same runtime/root composition. */
+    public function assertTerminalCurrent(Application $app): void
+    {
+        if (! $this->terminalHttp) { return; }
+        if (! $app->bound(AdmittedTerminalConfiguration::class)) {
+            throw new LogicException('Fresh terminal HTTP requires its separately admitted existing roots.');
+        }
+        $app->make(AdmittedTerminalConfiguration::class)->assertCurrent($app);
+    }
 
     /** Closed/expired/malformed setup disables ONLY setup, not ordinary login. */
     public function setupConfiguration(): array

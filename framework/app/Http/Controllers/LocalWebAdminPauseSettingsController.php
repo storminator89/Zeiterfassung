@@ -15,6 +15,7 @@ use App\Chrono\LocalWebDepartments;
 use App\Chrono\LocalWebAdminUsers;
 use App\Chrono\LocalWebAdminUserMutations;
 use App\Auth\LocalSession;
+use App\Auth\LegacyUser;
 use App\Chrono\LocalWebPauseSettings;
 use App\View\ExistingUi\AdminPauseSettingsPage;
 use App\View\ExistingUi\AttendancePage;
@@ -85,6 +86,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
     // Only the separately registered POST route can reach this mutation.
     public function store(Request $request): Response|RedirectResponse
     {
+        $actor = $this->adminActor();
         $form = $request->request->all();
         $supported = ['update_pause_settings' => LocalWebPauseSettings::COMMAND_FIELDS,
             ...LocalWebDepartments::COMMAND_FIELDS, ...LocalWebAdminUsers::COMMAND_FIELDS];
@@ -112,6 +114,14 @@ final class LocalWebAdminPauseSettingsController extends Controller
             // Reject all other/mixed Admin actions before reads, writes or preferences.
             return new Response('Diese Verwaltungsaktion ist in der Laravel-Ansicht noch nicht verbunden.', 400,
                 ['Content-Type' => 'text/plain; charset=UTF-8']);
+        }
+
+        // UI visibility is not authorization. Directory administration keeps
+        // ordinary business controls, never these sensitive local operations.
+        if ($actor->auth_source !== 'local' && ! in_array($actions[0], [
+            'update_pause_settings', 'add_department', 'edit_department', 'delete_department',
+        ], true)) {
+            throw new AuthorizationException('Diese Sicherheitsverwaltung erfordert lokale Administration.');
         }
 
         if ($actions[0] === 'change_account_lifecycle') {
@@ -201,7 +211,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
 
     private function ldapSessionsEnabled(): bool
     {
-        return $this->intake?->isV4() === true && $this->config?->get('app.debug') === false
+        return ($this->intake?->isV4() === true || $this->intake?->isV5() === true) && $this->config?->get('app.debug') === false
             && $this->config?->get('chrono_ldap_sessions.http_enabled', false) === true
             && $this->interactions->adminPauseSettings && $this->interactions->ldapSessionRevocations
             && $this->ldapSessions !== null;
@@ -234,7 +244,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
 
     private function ldapHttpEnabled(): bool
     {
-        return $this->intake?->isV4() === true && $this->ldapSync !== null
+        return ($this->intake?->isV4() === true || $this->intake?->isV5() === true) && $this->ldapSync !== null
             && $this->config?->get('chrono_ldap_sync.http_enabled', false) === true;
     }
 
@@ -396,99 +406,118 @@ final class LocalWebAdminPauseSettingsController extends Controller
         }
     }
 
+    private function adminActor(): LegacyUser
+    {
+        $actor = $this->auth->guard('web')->user();
+        if (! $actor instanceof LegacyUser || ! in_array($actor->auth_source, ['local', 'ldap'], true)) {
+            throw new AuthenticationException('Unauthenticated.', ['web']);
+        }
+        if ($actor->role !== 'admin') {
+            throw new AuthorizationException('Nur die aktuelle Verwaltung darf diese Ansicht verwenden.');
+        }
+        return $actor;
+    }
+
     private function page(Request $request, ?string $error = null, ?string $errorKey = null, ?string $successKey = null, ?array $createUserDraft = null): Response
     {
+        $actor = $this->adminActor();
+        $localSecurityControls = $actor->auth_source === 'local';
         $v4 = $this->intake?->isV4() === true;
         $v5 = $this->intake?->isV5() === true;
         if (($v4 || $v5) && $this->config?->get('app.debug') !== false) {
             return $this->ldapFailure('Private non-debug Admin document composition is required.', 503);
         }
-        // This reader independently reloads and checks the current local Admin
-        // before returning even a read-only configuration row.
+        // Business readers reload current role/source/version/generation before
+        // returning rows. Sensitive local readers are not called for LDAP Admins.
         $rules = $this->reads->adminPauseSettings();
         $departments = $this->reads->adminDepartments();
-        $supervisors = $this->reads->adminSupervisorOptions();
-        $query = $request->query->all();
-        $search = $query['search'] ?? '';
-        $requestedPage = $query['page'] ?? 1;
-        if (! is_string($search) || ! is_scalar($requestedPage)) {
-            return new Response('Ungültige Benutzersuche oder Seite.', 400,
-                ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
-        }
-        // Native scalar cast, including zero/negative/out-of-range pages; no new clamping.
-        $users = $this->reads->adminUsersPage($search, (int) $requestedPage);
-        $policy = $this->intake?->current();
-        $ldapForm = null;
-        $ldapOutcome = null;
-        $ldapNotice = null;
-        if ($policy !== null) {
-            if (! $policy->ldapSyncEnabled) {
-                $ldapNotice = 'disabled'; // All-off Admin recovery must remain reachable, no factory call.
-            } elseif (! $this->ldapHttpEnabled()) {
-                $ldapNotice = 'not_ready';
-            } else {
-                try {
-                    $ldapForm = LdapSyncForm::fromTarget($this->ldapSync->targetForForm());
-                } catch (AuthenticationException $error) {
-                    throw $error;
-                } catch (AuthorizationException $error) {
-                    // Distinguish a policy-off race from lost Admin authority.
-                    $policy = $this->intake->current();
-                    if ($policy === null || $policy->ldapSyncEnabled) { throw $error; }
-                    $ldapNotice = 'disabled';
-                } catch (Throwable) {
-                    $ldapNotice = 'not_ready'; // Fixed text, no private resolver diagnostics.
+        $supervisors = []; $users = []; $intakePolicy = null;
+        $ldapForm = null; $ldapOutcome = null; $ldapNotice = null;
+        $ldapSessionConfirmations = []; $ldapSessionNotice = null;
+        $lifecycleUsers = []; $lifecycleNotice = null;
+        if ($localSecurityControls) {
+            $supervisors = $this->reads->adminSupervisorOptions();
+            $query = $request->query->all();
+            $search = $query['search'] ?? '';
+            $requestedPage = $query['page'] ?? 1;
+            if (! is_string($search) || ! is_scalar($requestedPage)) {
+                return new Response('Ungültige Benutzersuche oder Seite.', 400,
+                    ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
+            }
+            // Native scalar cast, including zero/negative/out-of-range pages; no new clamping.
+            $users = $this->reads->adminUsersPage($search, (int) $requestedPage);
+            $policy = $this->intake?->current();
+            $ldapForm = null;
+            $ldapOutcome = null;
+            $ldapNotice = null;
+            if ($policy !== null) {
+                if (! $policy->ldapSyncEnabled) {
+                    $ldapNotice = 'disabled'; // All-off Admin recovery must remain reachable, no factory call.
+                } elseif (! $this->ldapHttpEnabled()) {
+                    $ldapNotice = 'not_ready';
+                } else {
+                    try {
+                        $ldapForm = LdapSyncForm::fromTarget($this->ldapSync->targetForForm());
+                    } catch (AuthenticationException $error) {
+                        throw $error;
+                    } catch (AuthorizationException $error) {
+                        // Distinguish a policy-off race from lost Admin authority.
+                        $policy = $this->intake->current();
+                        if ($policy === null || $policy->ldapSyncEnabled) { throw $error; }
+                        $ldapNotice = 'disabled';
+                    } catch (Throwable) {
+                        $ldapNotice = 'not_ready'; // Fixed text, no private resolver diagnostics.
+                    }
                 }
             }
-        }
-        $intakePolicy = $policy === null ? null : [
-            'revision' => $policy->revision, 'manual_enabled' => $policy->manualEnabled,
-            'ldap_sync_enabled' => $policy->ldapSyncEnabled, 'registration_enabled' => $policy->registrationEnabled,
-        ];
-        $actor = $this->auth->guard('web')->user();
-        if ($v4) {
-            $result = $request->session()->pull('chrono_ldap_sync_result');
-            if (is_array($result) && count($result) === 2 && ($result['actor_id'] ?? null) === (int) $actor->getAuthIdentifier()
-                && is_array($result['display'] ?? null)) {
-                try { $ldapOutcome = LdapSyncOutcome::fromDisplay($result['display']); }
-                catch (Throwable) { $ldapNotice = 'unconfirmed'; }
+            $intakePolicy = $policy === null ? null : [
+                'revision' => $policy->revision, 'manual_enabled' => $policy->manualEnabled,
+                'ldap_sync_enabled' => $policy->ldapSyncEnabled, 'registration_enabled' => $policy->registrationEnabled,
+            ];
+            if ($v4 || $v5) {
+                $result = $request->session()->pull('chrono_ldap_sync_result');
+                if (is_array($result) && count($result) === 2 && ($result['actor_id'] ?? null) === (int) $actor->getAuthIdentifier()
+                    && is_array($result['display'] ?? null)) {
+                    try { $ldapOutcome = LdapSyncOutcome::fromDisplay($result['display']); }
+                    catch (Throwable) { $ldapNotice = 'unconfirmed'; }
+                }
             }
-        }
-        $ldapSessionConfirmations = [];
-        $ldapSessionNotice = null;
-        if ($this->ldapSessionsEnabled()) {
-            // Preserve a known committed outcome even if a new form cannot be issued.
-            if ($request->session()->pull('chrono_ldap_sessions_revoked') === (int) $actor->getAuthIdentifier()) {
-                $ldapSessionNotice = 'Sitzungswiderruf gespeichert. Bestehende Sitzungen werden beim nächsten autoritativen Check abgewiesen. Erneute LDAP-Anmeldung bleibt möglich; Terminal-Zugänge bleiben unverändert.';
+            $ldapSessionConfirmations = [];
+            $ldapSessionNotice = null;
+            if ($this->ldapSessionsEnabled()) {
+                // Preserve a known committed outcome even if a new form cannot be issued.
+                if ($request->session()->pull('chrono_ldap_sessions_revoked') === (int) $actor->getAuthIdentifier()) {
+                    $ldapSessionNotice = 'Sitzungswiderruf gespeichert. Bestehende Sitzungen werden beim nächsten autoritativen Check abgewiesen. Erneute LDAP-Anmeldung bleibt möglich; Terminal-Zugänge bleiben unverändert.';
+                }
+                try {
+                    // Only server-projected ten-row IDs, never extra request fields.
+                    $ldapSessionConfirmations = $this->ldapSessions->confirmations(
+                        array_map(static fn (array $user): int => (int) $user['id'], $users['users']));
+                } catch (AuthenticationException|AuthorizationException $error) {
+                    throw $error;
+                } catch (Throwable) {
+                    $ldapSessionNotice = ($ldapSessionNotice === null ? '' : $ldapSessionNotice.' ')
+                        .'Neue Bestätigungsformulare sind derzeit nicht verfügbar. Bitte den gespeicherten Stand prüfen; nicht erneut senden.';
+                }
             }
-            try {
-                // Only server-projected ten-row IDs, never extra request fields.
-                $ldapSessionConfirmations = $this->ldapSessions->confirmations(
-                    array_map(static fn (array $user): int => (int) $user['id'], $users['users']));
-            } catch (AuthenticationException|AuthorizationException $error) {
-                throw $error;
-            } catch (Throwable) {
-                $ldapSessionNotice = ($ldapSessionNotice === null ? '' : $ldapSessionNotice.' ')
-                    .'Neue Bestätigungsformulare sind derzeit nicht verfügbar. Bitte den gespeicherten Stand prüfen; nicht erneut senden.';
-            }
-        }
-        $lifecycleUsers = [];
-        $lifecycleNotice = null;
-        if ($this->accountLifecycleEnabled()) {
-            $receipt = $request->session()->pull('chrono_account_lifecycle_saved');
-            if (is_array($receipt) && array_keys($receipt) === ['actor', 'target', 'status']
-                && $receipt['actor'] === (int) $actor->getAuthIdentifier() && is_int($receipt['target'])
-                && in_array($receipt['status'], ['active', 'inactive', 'departed'], true)) {
-                $lifecycleNotice = 'Kontostatus gespeichert. Der unten angezeigte Stand wird neu gelesen; Historie und offene Arbeitszeiten bleiben erhalten.';
-            }
-            try {
-                $lifecycleUsers = $this->accountLifecycle->forUsers(
-                    array_map(static fn (array $user): int => (int) $user['id'], $users['users']));
-            } catch (AuthenticationException|AuthorizationException $error) {
-                throw $error;
-            } catch (Throwable) {
-                $lifecycleNotice = ($lifecycleNotice === null ? '' : $lifecycleNotice.' ')
-                    .'Neue Kontostatusformulare sind nicht verfügbar. Bitte den gespeicherten Stand prüfen; nicht erneut senden.';
+            $lifecycleUsers = [];
+            $lifecycleNotice = null;
+            if ($this->accountLifecycleEnabled()) {
+                $receipt = $request->session()->pull('chrono_account_lifecycle_saved');
+                if (is_array($receipt) && array_keys($receipt) === ['actor', 'target', 'status']
+                    && $receipt['actor'] === (int) $actor->getAuthIdentifier() && is_int($receipt['target'])
+                    && in_array($receipt['status'], ['active', 'inactive', 'departed'], true)) {
+                    $lifecycleNotice = 'Kontostatus gespeichert. Der unten angezeigte Stand wird neu gelesen; Historie und offene Arbeitszeiten bleiben erhalten.';
+                }
+                try {
+                    $lifecycleUsers = $this->accountLifecycle->forUsers(
+                        array_map(static fn (array $user): int => (int) $user['id'], $users['users']));
+                } catch (AuthenticationException|AuthorizationException $error) {
+                    throw $error;
+                } catch (Throwable) {
+                    $lifecycleNotice = ($lifecycleNotice === null ? '' : $lifecycleNotice.' ')
+                        .'Neue Kontostatusformulare sind nicht verfügbar. Bitte den gespeicherten Stand prüfen; nicht erneut senden.';
+                }
             }
         }
         $nonce = ($v4 || $v5 || $this->accountLifecycleEnabled()) ? AdminCredentialDocument::nonce() : null;
@@ -498,7 +527,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         $copy = new Copy($language);
 
         $response = response()->view('chrono.admin-pause-settings', [
-            'managedUsersEnabled' => $this->userMutationsEnabled(),
+            'managedUsersEnabled' => $localSecurityControls && $this->userMutationsEnabled(),
             'page' => new AttendancePage(
                 $copy, (int) $actor->getAuthIdentifier(), $actor->username,
                 $actor->role, $this->reads->attendanceStatus(),
@@ -514,7 +543,8 @@ final class LocalWebAdminPauseSettingsController extends Controller
                 ldapSessionConfirmations: $ldapSessionConfirmations, ldapSessionNotice: $ldapSessionNotice,
                 lifecycleUsers: $lifecycleUsers, lifecycleNotice: $lifecycleNotice,
                 accountLifecycleV5: $v5,
-                createUserDraft: $createUserDraft,
+                createUserDraft: $localSecurityControls ? $createUserDraft : null,
+                localSecurityControls: $localSecurityControls,
             ),
         ], 200, ['Cache-Control' => 'no-store']);
         if ($nonce !== null) {

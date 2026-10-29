@@ -3,13 +3,14 @@
 require_once __DIR__.'/attendance.php';
 
 /** Fixed owner withdrawal, not a review or a change to the original booking. */
-function correction_withdraw_locked(PDO $db, int $user, string $role, #[SensitiveParameter] string $version, mixed $id, mixed $reason, Closure $auditRunner): void {
+function correction_withdraw_locked(PDO $db, int $user, string $role, #[SensitiveParameter] string $version, mixed $id, mixed $reason, Closure $auditRunner, string $expectedSource = 'local'): void {
     if (!$db->inTransaction()) { throw new LogicException('Withdrawal caller must own an active IMMEDIATE transaction on this PDO.'); }
     // Guard-derived fingerprint/role only; re-read under the same writer lock.
     $actor=att_one($db,'SELECT role,auth_source,password FROM users WHERE id=?',[$user]);
     if ($user<1 || !in_array($role,['user','supervisor','admin'],true)
         || preg_match('/\A[a-f0-9]{64}\z/',$version)!==1
-        || !$actor || $actor['auth_source']!=='local' || $actor['role']!==$role
+        || !in_array($expectedSource,['local','ldap'],true)
+        || !$actor || $actor['auth_source']!==$expectedSource || $actor['role']!==$role
         || !is_string($actor['password']) || $actor['password']===''
         || !hash_equals($version,hash('sha256',$actor['password']))) {
         throw new AttendanceError('Sitzung nicht mehr gültig. Bitte neu anmelden.',401);

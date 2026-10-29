@@ -30,5 +30,6 @@ final readonly class AdminPauseSettingsPage
         public ?string $lifecycleNotice = null,
         public bool $accountLifecycleV5 = false,
         public ?array $createUserDraft = null,
+        public bool $localSecurityControls = false,
     ) {}
 }

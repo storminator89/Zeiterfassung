@@ -9,7 +9,6 @@ use App\LegacyDatabase\AttendanceWriter;
 use Closure;
 use Illuminate\Auth\SessionGuard;
 use Illuminate\Auth\AuthenticationException;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Auth\Factory;
 use LogicException;
 
@@ -36,10 +35,6 @@ final class LegacyLocalWebCorrections implements LocalWebCorrections
         }
         if ($profile) {
             $context = $provider->context($actor);
-        }
-
-        if ($context !== null && $context[0] === 'ldap' && ($command['action'] ?? null) !== 'request') {
-            throw new AuthorizationException('Diese LDAP-Slice erlaubt nur eigene Korrekturanträge.');
         }
 
         $authority = $this->lifecycle?->capture($actor);

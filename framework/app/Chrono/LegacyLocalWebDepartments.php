@@ -3,6 +3,8 @@
 namespace App\Chrono;
 
 use App\Auth\LegacyUser;
+use App\Auth\ExistingAccountUserProvider;
+use Illuminate\Auth\SessionGuard;
 use App\Auth\AccountLifecycleWebIdentity;
 use App\LegacyDatabase\AttendanceWriter;
 use Closure;
@@ -12,7 +14,7 @@ use Illuminate\Contracts\Auth\Factory;
 use InvalidArgumentException;
 use LogicException;
 
-/** Current local Admin first; the fixed writer rechecks under its own lock. */
+/** Current business Admin first; the fixed writer rechecks under its own lock. */
 final class LegacyLocalWebDepartments implements LocalWebDepartments
 {
     /** @param Closure(): AttendanceWriter $writer Trusted operation-scope resolver. */
@@ -21,9 +23,12 @@ final class LegacyLocalWebDepartments implements LocalWebDepartments
 
     public function apply(array $command): bool
     {
-        $actor = $this->auth->guard('web')->user();
+        $guard = $this->auth->guard('web');
+        $actor = $guard->user();
+        $provider = $guard instanceof SessionGuard ? $guard->getProvider() : null;
+        $profile = $provider instanceof ExistingAccountUserProvider;
         if (! $actor instanceof LegacyUser || (int) $actor->getKey() < 1
-            || $actor->auth_source !== 'local'
+            || (! $profile && $actor->auth_source !== 'local')
             || ! in_array($actor->role, ['user', 'supervisor', 'admin'], true)) {
             throw new AuthenticationException('Unauthenticated.', ['web']);
         }
@@ -43,6 +48,7 @@ final class LegacyLocalWebDepartments implements LocalWebDepartments
         }
 
         // Never resolve a writer for a nonadmin or an unsupported/mixed command.
+        $context = $profile ? $provider->context($actor) : null;
         $authority = $this->lifecycle?->capture($actor);
         $writer = ($this->writer)();
         if (! $writer instanceof AttendanceWriter) {
@@ -57,7 +63,7 @@ final class LegacyLocalWebDepartments implements LocalWebDepartments
         try {
             return $writer->department(
                 (int) $actor->getKey(), $operation,
-                $command['department_id'] ?? null, $command['department_name'] ?? null, $authority,
+                $command['department_id'] ?? null, $command['department_name'] ?? null, $authority, $context,
             );
         } catch (\AttendanceError $error) {
             if ($authority !== null && $error->status === 401) { throw new AuthenticationException('Unauthenticated.', ['web']); }

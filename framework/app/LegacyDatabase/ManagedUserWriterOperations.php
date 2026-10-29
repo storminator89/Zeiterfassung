@@ -90,12 +90,9 @@ trait ManagedUserWriterOperations
         if ($target === null) {
             throw new InvalidArgumentException('Ungültiger Benutzer.');
         }
-        // Only local accounts can occupy a reachable Admin/Supervisor identity
-        // in the currently admitted Laravel login profile. An old LDAP role can
-        // still be corrected back to user; its source is never converted.
-        if ($nextRole !== null && $nextRole !== 'user' && $target['auth_source'] !== 'local') {
-            throw new InvalidArgumentException('Verzeichniskonten dürfen in diesem Laravel-Profil nur die Benutzerrolle haben.');
-        }
+        // Roles are still assigned only by the existing explicit local-Admin
+        // operation. Directory sync never promotes a role or converts its source;
+        // a directory Admin never substitutes for the retained local recovery Admin.
         if ($this->accountLifecycleV5) {
             $replacement = null;
             if ($nextRole !== null) {

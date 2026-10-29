@@ -65,7 +65,7 @@ final readonly class LegacyLocalWebLdapSessionRevocations implements LocalWebLda
             $targets = [];
             foreach (array_unique($identifiers) as $identifier) {
                 $target = $this->row($pdo, $identifier, $authority !== null);
-                if ($target !== false && $target['auth_source'] === 'ldap' && $target['role'] === 'user'
+                if ($target !== false && $target['auth_source'] === 'ldap' && in_array($target['role'], ['user', 'supervisor', 'admin'], true)
                     && is_string($target['password']) && $target['password'] !== '') {
                     if ($authority !== null && (! in_array($target['account_status'], ['active', 'inactive', 'departed'], true)
                         || ! is_int($target['auth_generation']) || $target['auth_generation'] < 1)) {

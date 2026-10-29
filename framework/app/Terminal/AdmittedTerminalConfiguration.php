@@ -2,6 +2,7 @@
 
 namespace App\Terminal;
 
+use App\FreshWeb\FreshWebConfiguration;
 use App\LegacyDatabase\AttendanceWriter;
 use App\LegacyDatabase\RuntimeAdmission;
 use App\LegacyDatabase\RuntimeDatabase;
@@ -90,7 +91,7 @@ final readonly class AdmittedTerminalConfiguration implements JsonSerializable
 
     public function keys(): AdmittedTerminalKeys { return $this->keys; }
 
-    /** No file/DB read: immutable settings, source objects and operation factories. */
+    /** No DB/root-secret read; optional FreshWeb also rechecks its private metadata. */
     public function assertCurrent(Application $app): void
     {
         if ($app->configurationIsCached() || $app->routesAreCached()
@@ -100,6 +101,9 @@ final readonly class AdmittedTerminalConfiguration implements JsonSerializable
         $config = $app->make('config');
         foreach ($this->settings as $name => $value) {
             if ($config->get($name) !== $value) { throw new LogicException('The selected terminal configuration changed.'); }
+        }
+        if ($app->bound(FreshWebConfiguration::class)) {
+            $app->make(FreshWebConfiguration::class)->assertCurrent($config);
         }
         $bindings = $app->getBindings();
         if (! $app->bound(self::class) || $app->make(self::class) !== $this
