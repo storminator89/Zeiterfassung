@@ -30,6 +30,15 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
 $strictAppUi = true;
 require __DIR__ . '/header.php';
 $state = $attendanceState;
+$ownOpenReview = null;
+$ownOpenReviewUnavailable = false;
+require_once __DIR__.'/lib/own_open_review.php';
+try {
+    $ownOpenReview = chrono_native_own_open_review($conn, (int) $_SESSION['user_id'], (string) ($_SESSION['auth_version'] ?? ''));
+} catch (Throwable) {
+    // A list error never becomes an all-clear, a changed state or an automatic booking.
+    $ownOpenReviewUnavailable = true;
+}
 ?>
 <main class="container mx-auto px-4 py-8 chrono-page">
     <div class="grid md:grid-cols-3 gap-6 items-start">
@@ -92,6 +101,7 @@ $state = $attendanceState;
             </section>
         </div>
         <aside class="min-w-0">
+            <?php require __DIR__.'/lib/own_open_review_view.php'; ?>
             <section class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300">
                 <div class="card-body p-4 sm:p-6">
                     <h2 class="card-title text-2xl mb-4"><i class="fas fa-chart-bar mr-2"></i><?= STATISTICS_WORKING_TIMES ?></h2>

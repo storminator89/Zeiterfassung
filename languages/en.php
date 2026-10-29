@@ -352,4 +352,16 @@ define('TEAM_ABSENCE_PEOPLE', 'Team member pages');
 define('TEAM_ABSENCE_PEOPLE_PREVIOUS', 'Previous people');
 define('TEAM_ABSENCE_PEOPLE_NEXT', 'More people');
 define('TEAM_ABSENCE_UNAVAILABLE', 'Unavailable. Please reload.');
+
+// Own stored open-row facts only, never an inferred rule violation.
+define('OWN_OPEN_REVIEW_TITLE', 'Stored open entries');
+define('OWN_OPEN_REVIEW_COUNT', '%d own entries without a stored end: start before %s (Europe/Berlin), or unreadable.');
+define('OWN_OPEN_REVIEW_NOTE', 'A normal overnight shift may appear here. This does not prove forgotten work or a rule violation.');
+define('OWN_OPEN_REVIEW_ACTION', 'Finish ongoing work normally. Request a reasoned correction or cancellation only if clarification is actually needed; another authorized person decides. No time is added automatically.');
+define('OWN_OPEN_REVIEW_SNAPSHOT', 'Page-load snapshot; reload after bookings:');
+define('OWN_OPEN_REVIEW_UNKNOWN_START', 'Unreadable start time');
+define('OWN_OPEN_REVIEW_LINK', 'View correction / cancellation');
+define('OWN_OPEN_REVIEW_LIMIT', 'At most five entries: unreadable starts first, then oldest starts. More of your own entries are in the time-record list.');
+define('OWN_OPEN_REVIEW_REFRESH', 'Reload stored facts');
+define('OWN_OPEN_REVIEW_UNAVAILABLE', 'Your open-entry list is currently unavailable. Please reload.');
 ?>
