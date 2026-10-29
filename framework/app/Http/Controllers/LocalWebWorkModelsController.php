@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
 use App\Chrono\LocalWebWorkModels;
+use App\Chrono\WorkModelCreditPreviewReads;
 use App\View\ExistingUi\AttendancePage;
 use App\View\ExistingUi\Copy;
 use App\View\ExistingUi\Interactions;
@@ -35,6 +36,34 @@ final class LocalWebWorkModelsController extends Controller
     // Only the POST route calls this method; GET/method override never writes.
     public function store(Request $request): View|Response
     {
+        $form = $request->request->all();
+        $action = array_key_exists('model_action', $form) ? $form['model_action'] : 'save';
+        if (! is_string($action) || ! in_array($action, ['save', 'preview'], true)) {
+            return $this->page($request, 'Unbekannte Modellaktion. Es wurde kein Modell gespeichert.');
+        }
+        if ($action === 'preview') {
+            // An explicit preview can never fall through to the existing writer.
+            if (! $this->reads instanceof WorkModelCreditPreviewReads) {
+                return $this->page($request, 'Gutschriftenvorschau ist in diesem Profil nicht verbunden.');
+            }
+            $command = array_intersect_key($form, array_flip([
+                'user_id', 'valid_from', 'day1', 'day2', 'day3', 'day4', 'day5', 'day6', 'day7', 'reason',
+            ]));
+            try {
+                $preview = $this->reads->workModelCreditPreview($command);
+            } catch (AuthenticationException|AuthorizationException $error) {
+                throw $error;
+            } catch (\AttendanceError $error) {
+                if ($error->status === 401) {
+                    throw new AuthenticationException('Unauthenticated.', ['web']);
+                }
+                return $this->page($request, $error->getMessage(), previewForm: $command);
+            } catch (Throwable) {
+                return $this->page($request, 'Vorschau nicht verfügbar. Es wurde kein Modell gespeichert.', previewForm: $command);
+            }
+
+            return $this->page($request, creditPreview: $preview, previewForm: $command);
+        }
         try {
             // Raw form bag only; user_id is the target, never the actor or audit identity.
             $command = array_intersect_key($request->request->all(), array_flip([
@@ -56,7 +85,7 @@ final class LocalWebWorkModelsController extends Controller
         }
     }
 
-    private function page(Request $request, ?string $error = null): View
+    private function page(Request $request, ?string $error = null, ?array $creditPreview = null, array $previewForm = []): View
     {
         // The opt-in registrar must already have refreshed the local web account.
         $actor = $this->auth->guard('web')->user();
@@ -92,12 +121,15 @@ final class LocalWebWorkModelsController extends Controller
             ),
             'workModels' => new WorkModelsPage(
                 $models, $targets,
-                $projection['today'], $error, $request->query->has('saved'), $this->interactions->workModels,
+                $projection['today'], $error, $request->isMethod('GET') && $request->query->has('saved'), $this->interactions->workModels,
                 total: $projection['total'], page: $projection['page'], pages: $projection['pages'],
                 pageSize: $projection['page_size'], selectedModelId: $projection['selected_model_id'],
                 selectedModel: $projection['selected_model'] === null ? null : $display($projection['selected_model']),
                 effectiveModel: $projection['effective_model'] === null ? null : $display($projection['effective_model']),
                 selectionError: $projection['selection_error'],
+                previewEnabled: $this->reads instanceof WorkModelCreditPreviewReads,
+                previewForm: WorkModelsPage::previewFormValues($previewForm, $projection['today']),
+                creditPreview: $creditPreview,
             ),
         ]);
     }

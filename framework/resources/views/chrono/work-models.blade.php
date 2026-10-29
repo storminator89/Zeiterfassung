@@ -15,26 +15,46 @@
             @csrf
             <fieldset @disabled(! $workModels->enabled)>
                 <label class="block text-sm font-semibold mt-4 mb-2" for="user_id">Person</label>
-                <select class="select select-bordered w-full" id="user_id" name="user_id">
+                <select class="select select-bordered w-full" id="user_id" name="user_id" @required($workModels->previewEnabled)>
+                    @if ($workModels->previewEnabled)<option value="">Person auswählen</option>@endif
                     @foreach ($workModels->targetOptions as $u)
-                    <option value="{{ (int) $u['id'] }}">{{ $u['username'] }}</option>
+                    <option value="{{ (int) $u['id'] }}" @selected(($workModels->previewForm['user_id'] ?? '') === (string) $u['id'])>{{ $u['username'] }}</option>
                     @endforeach
                 </select>
                 <label class="block text-sm font-semibold mt-4 mb-2" for="valid_from">Gültig ab</label>
-                <input class="input input-bordered w-full" type="date" id="valid_from" name="valid_from" value="{{ $workModels->defaultValidFrom }}" required>
+                <input class="input input-bordered w-full" type="date" id="valid_from" name="valid_from" value="{{ $workModels->previewForm['valid_from'] ?? $workModels->defaultValidFrom }}" required>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     @foreach (\App\View\ExistingUi\WorkModelsPage::DAYS as $i => $day)
                     <div>
                         <label for="model-day{{ $i + 1 }}" class="block text-sm font-semibold mt-4 mb-2">{{ $day }} (Minuten)</label>
-                        <input id="model-day{{ $i + 1 }}" class="input input-bordered w-full" name="day{{ $i + 1 }}" type="number" min="0" max="1440" value="0" required>
+                        <input id="model-day{{ $i + 1 }}" class="input input-bordered w-full" name="day{{ $i + 1 }}" type="number" min="0" max="1440" value="{{ $workModels->previewForm['day'.($i + 1)] ?? '0' }}" required>
                     </div>
                     @endforeach
                 </div>
                 <label class="block text-sm font-semibold mt-4 mb-2" for="reason">Begründung</label>
-                <textarea class="textarea textarea-bordered w-full" id="reason" name="reason" minlength="5" maxlength="1000" required></textarea>
-                <div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary">Modell speichern</button></div>
+                <textarea class="textarea textarea-bordered w-full" id="reason" name="reason" minlength="5" maxlength="1000" required>{{ $workModels->previewForm['reason'] ?? '' }}</textarea>
+                <div class="flex flex-wrap gap-3 mt-5">@if ($workModels->previewEnabled)<button class="btn btn-outline" name="model_action" value="preview" formnovalidate>Gutschriften vorab prüfen (ohne Speichern)</button>@endif<button class="btn btn-primary" name="model_action" value="save">Modell speichern</button></div>
             </fieldset>
         </form>
+    </section>
+    @endif
+
+    @if ($workModels->creditPreview !== null)
+    @php($creditPreview = $workModels->creditPreview)
+    <section id="model-credit-preview" class="card bg-base-100 shadow-xl p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">Vorschau – kein Modell gespeichert</h2>
+        <p>{{ $creditPreview['username'] }} · Person #{{ $creditPreview['person_id'] }} · ab {{ $creditPreview['from'] }} (Europe/Berlin){{ $creditPreview['until'] !== null ? ' bis vor '.$creditPreview['until'].' (nächstes vorhandenes Modell)' : '' }}</p>
+        <p class="text-sm opacity-70 mt-3">Hypothetisches Tagessoll des eingegebenen Modells im Vergleich zur gespeicherten Netto-Gutschrift. Bereits erfasste Gutschriften werden weder neu berechnet noch geändert. Die Abweichung ist kein Kontosaldo und kein automatischer Korrekturauftrag. Nur bereits gespeicherte Feiertage werden berücksichtigt; deren Vollständigkeit ist nicht bestätigt.</p>
+        @if ($creditPreview['truncated'] || $creditPreview['unknown'])<p class="mt-3" role="status">Die Vorschau ist begrenzt oder enthält nicht auswertbare Gutschriften. Unbekannte Werte sind nicht null Minuten; es gibt keine abschließende Summe.</p>@endif
+        @if (! $creditPreview['items'])<p class="mt-3" role="status">Keine zuordenbaren gespeicherten Abwesenheiten im betrachteten Modellabschnitt gefunden. Dies ist kein Vollständigkeits- oder Datenqualitätsnachweis.</p>@else
+        <p class="text-sm mt-3">Bis zu 100 gespeicherte Gutschriften, nach Berliner Beginn sortiert. Nicht zuordenbare Datumswerte stehen zuerst.</p>
+        <div class="table-responsive mt-3"><table class="table"><thead><tr><th>Buchung / Historie (neuer Tab)</th><th>Tag (Berlin)</th><th>Gespeicherte Netto-Gutschrift</th><th>Hypothetisches Tagessoll</th><th>Tagessoll minus Gutschrift</th></tr></thead><tbody>
+        @foreach ($creditPreview['items'] as $credit)
+            <tr><td><a class="link link-primary" target="_blank" rel="noopener noreferrer" href="{{ 'history.php?'.http_build_query(['entity'=>'zeiterfassung','user_id'=>$creditPreview['person_id'],'record_id'=>$credit['id']]) }}">#{{ $credit['id'] }}</a></td><td>{{ $credit['day'] ?? 'Nicht zuordenbar' }}</td><td>{{ $credit['stored_minutes'] === null ? 'Nicht auswertbar' : $credit['stored_minutes'].' min' }}</td><td>{{ $credit['hypothetical_target'] === null ? 'Unbekannt' : $credit['hypothetical_target'].' min' }}</td><td>{{ $credit['difference'] === null ? 'Unbekannt' : ($credit['difference'] > 0 ? '+' : '').$credit['difference'].' min' }}</td></tr>
+        @endforeach
+        </tbody></table></div>
+        @endif
+        <p class="mt-4"><a class="link" href="#user_id">Zurück zum Modellformular (ohne Neuladen)</a></p>
     </section>
     @endif
 
