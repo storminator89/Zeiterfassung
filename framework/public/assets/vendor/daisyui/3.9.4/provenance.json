@@ -1,0 +1,39 @@
+{
+  "package": "daisyui",
+  "version": "3.9.4",
+  "scope": "Existing unchanged CSS only; no npm installation, scripts, new version or rebuild.",
+  "official_repository": "https://github.com/saadeghi/daisyui",
+  "source_tag": "v3.9.4",
+  "source_commit": "ff71597b8b299b92fc3fdbfbc5ab06de66b67324",
+  "source_tag_object": "c89b12c2da7e92d1123c508e9048861808a10bf3",
+  "distribution": {
+    "metadata_url": "https://registry.npmjs.org/daisyui/3.9.4",
+    "tarball_url": "https://registry.npmjs.org/daisyui/-/daisyui-3.9.4.tgz",
+    "bytes": 225261,
+    "sha512_integrity": "sha512-fvi2RGH4YV617/6DntOVGcOugOPym9jTGWW2XySb5ZpvdWO4L7bEG77VHirrnbRUEWvIEVXkBpxUz2KFj0rVnA==",
+    "sha1": "84209bfce115505d7b502f7362b8ced6bb3a6cc5",
+    "sha256": "ba567d95ab4e549c9c15a11a3ce59177aec331e77825db16a8b9a8138e6f918a"
+  },
+  "previous_CDN_url": "https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css",
+  "previous_CDN_bytes_equal_distribution_member": true,
+  "transitive_external_CSS_resources": 0,
+  "files": [
+    {
+      "path": "full.css",
+      "bytes": 2223918,
+      "sha256": "86d8fe8d757611ba993276c5b6498ee67f16c0e29fd1955895cd1da063fa61a2"
+    },
+    {
+      "path": "LICENSE.md",
+      "bytes": 1071,
+      "sha256": "8709e3ac65c84637c422dc8082b893d9997fce093751c77b2f1983bf29dbf9ea"
+    }
+  ],
+  "license": "MIT; included copyright/permission notice is byte-identical to the official v3.9.4 tag.",
+  "acquisition_UTC_date": "2026-10-29",
+  "limits": [
+    "This is one browser stylesheet, not a complete offline frontend/dependency bundle.",
+    "Other external fonts/styles/native scripts remain.",
+    "No browser rendering, Docker build, release image or deployment acceptance is claimed."
+  ]
+}
