@@ -18,6 +18,25 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
+// Fixed independent Native holiday command, before any existing Admin mutation.
+require_once __DIR__.'/lib/native_holiday_refill.php';
+if ($_SERVER['REQUEST_METHOD']==='POST' && array_key_exists('refill_holidays',$_POST)) {
+    unset($_SESSION['native_holiday_refill_receipt']); // Never show an older success after a new refused attempt.
+    try {
+        $receipt=native_holiday_refill($conn,(int)$_SESSION['user_id'],$_SESSION['role'],$_SESSION['auth_version']??null,$_POST);
+    } catch (InvalidArgumentException $error) { abort_request(400,$error->getMessage()); }
+    catch (DomainException $error) { abort_request(409,$error->getMessage()); }
+    catch (NativeHolidayRefillError $error) { abort_request($error->status,$error->getMessage()); }
+    catch (Throwable) { abort_request(503,'Feiertagsergänzung nicht bestätigt. Neu laden und gespeichertes Jahr prüfen; nicht automatisch wiederholen.'); }
+    // A minimal own receipt is retained only after a confirmed COMMIT; never the JSON.
+    $_SESSION['native_holiday_refill_receipt']=['actor'=>(int)$_SESSION['user_id'],'result'=>array_intersect_key($receipt,array_flip(['year','inserted','unchanged','conditional_omitted']))];
+    header('Cache-Control: no-store');header('Location: admin.php#holiday-refill',true,303);exit;
+}
+$nativeHolidayActor=att_one($conn,'SELECT auth_source FROM users WHERE id=?',[(int)$_SESSION['user_id']]);
+$nativeHolidayRefillEnabled=native_holiday_refill_available($nativeHolidayActor['auth_source']??null,$_SESSION['role'],$_SESSION['auth_version']??null);
+$holidayRefillReceipt=$_SERVER['REQUEST_METHOD']==='GET'&&$nativeHolidayRefillEnabled?native_holiday_refill_receipt($_SESSION['native_holiday_refill_receipt']??null,(int)$_SESSION['user_id']):null;
+unset($_SESSION['native_holiday_refill_receipt']);
+
 $user_role = isset($_SESSION['role']) ? $_SESSION['role'] : null;
 $theme_mode = $_SESSION['theme_mode'] ?? 'system';
 
@@ -524,6 +543,8 @@ include 'header.php';
                     </div>
                 </div>
             <?php endif; ?>
+
+            <?php require __DIR__.'/lib/native_holiday_refill_view.php'; ?>
 
             <!-- Benutzerverwaltung -->
             <div id="user-management" class="card bg-base-100 shadow-xl mb-8">
