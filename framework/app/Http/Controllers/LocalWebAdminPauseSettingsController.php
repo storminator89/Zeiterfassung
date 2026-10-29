@@ -157,7 +157,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         }
     }
 
-    /** No provider or route binds this capability. Explicit component injection only. */
+    /** Prepared FreshWeb V5 binding follows its unchanged Runtime/route gate; no default binding. */
     private function accountLifecycleEnabled(): bool
     {
         return $this->accountLifecycle !== null && $this->sessions !== null
