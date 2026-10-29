@@ -85,7 +85,7 @@ final class LegacyTimeQuality
         $total = array_sum($counts);
 
         return [
-            'report_version' => 6,
+            'report_version' => 7,
             'scope_status' => 'partial_diagnostic_only',
             'read_only' => true,
             'records_checked' => $records,
@@ -99,7 +99,8 @@ final class LegacyTimeQuality
                 'absence_absence_overlap' => 'checked_only_for_unambiguous_supported_completed_whole_day_rows',
                 'open_overlap' => 'possible_only_for_unambiguous_supported_rows_no_guessed_end',
                 'original_session_break_boundaries' => 'checked_stored_integer_epochs_only_no_guessed_end',
-                'event_session_break_projection_reconciliation' => 'not_checked_beyond_original_interval_boundaries',
+                'original_break_overlap' => 'checked_completed_positive_integer_original_break_pairs_same_session_only',
+                'event_session_break_projection_reconciliation' => 'not_checked_beyond_original_interval_boundaries_and_completed_break_pairs',
                 'mapping_or_repair' => 'not_performed_requires_separate_confirmation',
             ],
             'offset_free_values_requiring_berlin_mapping_confirmation' => $offsetFree,
@@ -293,13 +294,17 @@ final class LegacyTimeQuality
     /** Original epochs only; no projection comparison, event reconstruction or guessed open end. */
     private function originalIntervals(PDO $pdo, array &$findings, array &$counts, int $limit): void
     {
-        $add = static function (string $entity, int $id, string $category, ?string $column = null) use (&$findings, &$counts, $limit): void {
+        $add = static function (string $entity, int $id, string $category, ?string $column = null, ?int $relatedId = null) use (&$findings, &$counts, $limit): void {
             $counts[$category] = ($counts[$category] ?? 0) + 1;
             if (count($findings) < $limit) {
                 // A separate entity discriminator avoids presenting a session or
                 // break ID as a zeiterfassung record ID. IDs remain exact strings.
-                $findings[] = ['entity' => $entity, 'entity_id' => (string) $id,
+                $finding = ['entity' => $entity, 'entity_id' => (string) $id,
                     'category' => $category, 'column' => $column];
+                if ($relatedId !== null) {
+                    $finding['related_entity_id'] = (string) $relatedId;
+                }
+                $findings[] = $finding;
             }
         };
         $sessions = $pdo->query('SELECT id,started_at,ended_at FROM work_sessions ORDER BY id');
@@ -360,6 +365,40 @@ final class LegacyTimeQuality
                 }
             }
         } finally {
+            $breaks->closeCursor();
+        }
+        $this->originalBreakPairs($pdo, $add);
+    }
+
+    /** Stored completed positive breaks in one original session; no inferred end or projection. */
+    private function originalBreakPairs(PDO $pdo, callable $add): void
+    {
+        $breaks = $pdo->query('SELECT id,session_id,started_at,ended_at FROM break_intervals ORDER BY id');
+        $others = $pdo->prepare('SELECT id,started_at,ended_at FROM break_intervals WHERE session_id=? AND id>? ORDER BY id');
+        try {
+            while (($break = $breaks->fetch(PDO::FETCH_ASSOC)) !== false) {
+                if (!is_int($break['started_at']) || !is_int($break['ended_at'])
+                    || $break['ended_at'] <= $break['started_at']) {
+                    continue; // Invalid, reversed, open or empty intervals supply no completed pair.
+                }
+                $others->execute([$break['session_id'], $break['id']]);
+                try {
+                    while (($other = $others->fetch(PDO::FETCH_ASSOC)) !== false) {
+                        if (is_int($other['started_at']) && is_int($other['ended_at'])
+                            && $other['ended_at'] > $other['started_at']
+                            && $break['started_at'] < $other['ended_at']
+                            && $other['started_at'] < $break['ended_at']) {
+                            // Half-open integer comparisons only, safe even at signed64 extremes.
+                            // Each pair appears once, under the lower exact source ID.
+                            $add('break_intervals', (int) $break['id'], 'original_break_overlap', null, (int) $other['id']);
+                        }
+                    }
+                } finally {
+                    $others->closeCursor();
+                }
+            }
+        } finally {
+            $others->closeCursor();
             $breaks->closeCursor();
         }
     }
