@@ -2,9 +2,23 @@
 
 This application stores staff identities, work records, password hashes and optional LDAP credentials. Administrators may manage accounts and restore backups. Users may access only their own records; supervisors may view their assigned staff. Treat the database, backups and private keys as confidential.
 
-## Start with Docker
+## Laravel standard installation
 
-Build with `docker build -t chrono-hardened .`. Use a persistent private volume:
+The root Dockerfile and root Compose service run Laravel by default, using only
+an explicitly prepared NEW local V5 cohort. Follow the [standard installation](docs/framework/laravel-default-installation.md)
+and its unchanged private UID/mount/App-Key/TLS/admission and non-expiring-lock
+requirements. Browser first registration is token-free; whoever reaches an
+unfinished shared local app could register first. Local reachability is not
+identity verification. No source publication authorizes real keys, accounts,
+servers or migration, and no existing native data is adopted automatically.
+
+## Native compatibility operation
+
+The root PHP application remains available for existing native installations,
+not as the default Laravel start path. Never share one DB between both runtimes.
+The following native operation/upgrade instructions do not configure Laravel.
+
+Build with `docker build -f deploy/native/Dockerfile -t chrono-hardened .`. Use a persistent private volume:
 
 ```sh
 docker run -d --name chrono -p 127.0.0.1:8080:80 \
