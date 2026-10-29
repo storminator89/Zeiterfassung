@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
+use App\Chrono\LocalWebApiManagement;
+use App\Api\Management\ApiPolicyChange;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Chrono\DepartmentIntegrityReads;
 use App\Chrono\LocalWebAccountLifecycle;
 use App\Chrono\LocalWebLdapSync;
@@ -50,6 +53,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         private ?LocalSession $sessions = null,
         private ?LocalWebLdapSessionRevocations $ldapSessions = null,
         private ?LocalWebAccountLifecycle $accountLifecycle = null,
+        private ?LocalWebApiManagement $apiManagement = null,
     ) {}
 
     public function index(Request $request): Response
@@ -104,6 +108,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         if ($this->accountLifecycleEnabled()) {
             $supported['change_account_lifecycle'] = LocalWebAccountLifecycle::COMMAND_FIELDS;
         }
+        if ($this->apiManagement !== null) { $supported['api_management'] = ApiPolicyChange::FIELDS; }
         $actions = [];
         foreach ($supported as $flag => $fields) {
             if (isset($form[$flag])) {
@@ -137,6 +142,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
             return $this->synchronizeLdap($request, $form);
         }
 
+        if ($actions[0] === 'api_management') { return $this->changeApi($request, $form); }
         if ($actions[0] === 'update_intake_policy') {
             return $this->intakePolicy($request, $form);
         }
@@ -419,6 +425,22 @@ final class LocalWebAdminPauseSettingsController extends Controller
         return $actor;
     }
 
+    private function changeApi(Request $request, #[\SensitiveParameter] array $form): Response|RedirectResponse
+    {
+        if ($this->apiManagement === null) { throw new AuthorizationException('API-Verwaltung nicht zugelassen.'); }
+        try {
+            $state = $this->apiManagement->change($form, (string) ($request->server('REMOTE_ADDR') ?? 'local'));
+        } catch (AuthenticationException|AuthorizationException|HttpResponseException $error) { throw $error; }
+        catch (InvalidArgumentException $error) { return $this->page($request, error: $error->getMessage())->setStatusCode(400); }
+        catch (DomainException $error) { return $this->page($request, error: $error->getMessage())->setStatusCode(409); }
+        catch (Throwable) {
+            return $this->ldapFailure('API-Ergebnis nicht bestätigt. Schlüssel oder Freigabe können bereits gespeichert sein. Stand neu laden, nicht automatisch wiederholen oder Dateien zurücksetzen.', 503);
+        }
+        // No raw form/password, key metadata or secret is flashed or echoed.
+        $request->session()->flash('chrono_api_notice', $state->enabled ? 'enabled' : 'disabled');
+        return (new RedirectResponse('admin.php#api-management', 303))->header('Cache-Control', 'no-store');
+    }
+
     private function page(Request $request, ?string $error = null, ?string $errorKey = null, ?string $successKey = null, ?array $createUserDraft = null): Response
     {
         $actor = $this->adminActor();
@@ -427,6 +449,16 @@ final class LocalWebAdminPauseSettingsController extends Controller
         $v5 = $this->intake?->isV5() === true;
         if (($v4 || $v5) && $this->config?->get('app.debug') !== false) {
             return $this->ldapFailure('Private non-debug Admin document composition is required.', 503);
+        }
+        $apiManagement = null; $apiManagementUnavailable = false;
+        if ($localSecurityControls && $this->apiManagement !== null) {
+            $notice = $request->session()->pull('chrono_api_notice');
+            $notice = in_array($notice, ['enabled','disabled','unchanged'], true) ? $notice : null;
+            $apiLanguage = $request->session()->get('lang', 'de');
+            $apiLanguage = is_string($apiLanguage) && in_array($apiLanguage, ['de','en','zh'], true) ? $apiLanguage : 'de';
+            try { $apiManagement = $this->apiManagement->status($notice, $apiLanguage); }
+            catch (AuthenticationException|AuthorizationException $error) { throw $error; }
+            catch (Throwable) { $apiManagementUnavailable = true; }
         }
         $departmentIntegrity = null;
         $departmentIntegrityRequested = false;
@@ -557,6 +589,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
 
         $response = response()->view('chrono.admin-pause-settings', [
             'managedUsersEnabled' => $localSecurityControls && $this->userMutationsEnabled(),
+            'apiManagement' => $apiManagement, 'apiManagementUnavailable' => $apiManagementUnavailable,
             'page' => new AttendancePage(
                 $copy, (int) $actor->getAuthIdentifier(), $actor->username,
                 $actor->role, $this->reads->attendanceStatus(),

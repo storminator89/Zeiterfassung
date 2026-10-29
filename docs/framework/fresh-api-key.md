@@ -1,5 +1,11 @@
 # Optional API for a NEW empty Laravel installation
 
+> **Standard NEW-V5:** use [post-setup API administration](api-admin-ui.md).
+> Its explicit local-Admin action can prepare an independent key after browser
+> setup, without this CLI or API overlay. This document retains the older
+> NEW-only/stopped producer alternative; its empty-installation guards are not weakened.
+
+
 This is **source preparation, not an executed installation or API acceptance**.
 No key, database, account, token, server or runtime configuration was created or
 activated to prepare this packet. Existing/native installations and original

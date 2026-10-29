@@ -12,15 +12,20 @@
     @if (! $adminPauseSettings->localSecurityControls)
     <div class="alert alert-info mb-4" role="note">Fachverwaltung für das bestehende Verzeichnis-Administratorkonto: Pausenregeln, Abteilungen und <a class="link" href="work_models.php">Arbeitszeitmodelle</a>. Benutzer-, Zugangs-, Schlüssel- und Wiederherstellungsverwaltung bleiben lokaler Administration vorbehalten.</div>
     @elseif ($managedUsersEnabled)
-    <div class="alert alert-info mb-4" role="note">Die vorhandene Benutzerverwaltung ist in diesem privaten Laravel-{{ $adminPauseSettings->accountLifecycleV5 ? 'V5-Profil' : 'V4-Profil' }} verbunden. Historiengeschützte Konten und die letzte lokale Administration bleiben erhalten. API-Token sind nicht angebunden; LDAP benötigt weiterhin die getrennte HTTP- und Aufnahmefreigabe.</div>
+    <div class="alert alert-info mb-4" role="note">Die vorhandene Benutzerverwaltung ist in diesem privaten Laravel-{{ $adminPauseSettings->accountLifecycleV5 ? 'V5-Profil' : 'V4-Profil' }} verbunden. Historiengeschützte Konten und die letzte lokale Administration bleiben erhalten. Persönliche API-Token werden hier nicht ausgegeben; LDAP benötigt weiterhin die getrennte HTTP- und Aufnahmefreigabe.</div>
     @else
-    <div class="alert alert-info mb-4" role="note">In dieser Laravel-Ansicht sind die vorhandene Pausenregel-, Abteilungsverwaltung und das Erstellen lokaler Benutzer verbunden. Bestehende Benutzerdetails bleiben nur lesend; Änderungen, Löschen, Passwortänderungen, API-Token sind nicht angebunden. LDAP-Synchronisierung erfordert zusätzlich die ausdrücklich zugelassene V4-/V5-HTTP-Komposition und gespeicherte Aufnahmefreigabe.</div>
+    <div class="alert alert-info mb-4" role="note">In dieser Laravel-Ansicht sind die vorhandene Pausenregel-, Abteilungsverwaltung und das Erstellen lokaler Benutzer verbunden. Bestehende Benutzerdetails bleiben nur lesend; Änderungen, Löschen, Passwortänderungen und persönliche API-Token sind nicht angebunden. LDAP-Synchronisierung erfordert zusätzlich die ausdrücklich zugelassene V4-/V5-HTTP-Komposition und gespeicherte Aufnahmefreigabe.</div>
     @endif
     @if ($adminPauseSettings->error)
     <div class="alert alert-error shadow-lg mb-4" role="alert"><div><i class="fas fa-exclamation-circle"></i><span>{{ $adminPauseSettings->error }}</span></div></div>
     @endif
     @if ($adminPauseSettings->success)
     <div class="alert alert-success shadow-lg mb-4" role="status"><div><i class="fas fa-check-circle"></i><span>{{ $adminPauseSettings->success }}</span></div></div>
+    @endif
+    @if (($apiManagement ?? null) !== null)
+        @include('chrono.partials.api-management')
+    @elseif ($apiManagementUnavailable ?? false)
+        <p class="alert alert-warning" role="alert">API-Verwaltung nicht bestätigt. Es wird kein Schlüssel oder Freigabestand automatisch repariert oder zurückgesetzt.</p>
     @endif
     @if ($adminPauseSettings->localSecurityControls && $adminPauseSettings->intakePolicy !== null)
     <div id="user-intake-policy" class="card bg-base-100 shadow-xl mb-8">

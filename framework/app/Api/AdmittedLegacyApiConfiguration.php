@@ -3,6 +3,7 @@
 namespace App\Api;
 
 use App\Auth\WriterLoginBudget;
+use App\Api\Management\ManagedApiCapability;
 use App\FreshWeb\FreshWebConfiguration;
 use App\LegacyDatabase\AttendanceWriter;
 use App\LegacyDatabase\RuntimeAdmission;
@@ -23,6 +24,7 @@ final readonly class AdmittedLegacyApiConfiguration implements JsonSerializable
         private WriterApiLoginBudget $apiBudget,
         private ExistingApiFileSigningKey $key,
         private ?RuntimeDatabase $v5Runtime,
+        private ?ManagedApiCapability $managed = null,
     ) {}
 
     public static function fromApplication(Application $app): ?self
@@ -30,7 +32,9 @@ final readonly class AdmittedLegacyApiConfiguration implements JsonSerializable
         $config = $app->make('config');
         $enabled = $config->get('chrono_api.enabled', false);
         if (! is_bool($enabled)) { throw new LogicException('API composition requires an explicit boolean opt-in.'); }
-        if (! $enabled) { return null; }
+        $managed = ! $enabled && $app->bound(ManagedApiCapability::class) ? $app->make(ManagedApiCapability::class) : null;
+        $managedAdmission = $managed?->admission();
+        if (! $enabled && $managedAdmission === null) { return null; }
         if ($app->configurationIsCached() || $app->routesAreCached()) {
             throw new LogicException('API composition requires uncached configuration and routes.');
         }
@@ -43,7 +47,7 @@ final readonly class AdmittedLegacyApiConfiguration implements JsonSerializable
         $api = $config->get('chrono_api');
         $manifest = $config->get('chrono_runtime.admission');
         if (! is_array($api) || count($api) !== 2 || array_diff(['enabled', 'existing_key_admission'], array_keys($api)) !== []
-            || ! is_array($api['existing_key_admission']) || ! is_array($manifest)
+            || ($managedAdmission === null && ! is_array($api['existing_key_admission'])) || ! is_array($manifest)
             || ! $app->bound(FreshWebConfiguration::class) || ! $app->bound(RuntimeDatabase::class)
             || ! $app->bound(AttendanceWriter::class) || ! SharedLoginBudgetServiceProvider::selected($app)) {
             throw new LogicException('The complete fresh profile, shared budget and existing key metadata are required.');
@@ -72,15 +76,25 @@ final readonly class AdmittedLegacyApiConfiguration implements JsonSerializable
         foreach ($settings as $name => $value) {
             if ($config->get($name) !== $value) { throw new LogicException('The selected API configuration is incomplete.'); }
         }
-        $admission = ExistingApiKeyAdmission::fromConfiguration($api['existing_key_admission'], $database);
+        $admission = $managedAdmission ?? ExistingApiKeyAdmission::fromConfiguration($api['existing_key_admission'], $database);
+        if ($managedAdmission !== null && (! $v5 || $api['enabled'] !== false
+            || $api['existing_key_admission'] !== null
+            || $admission->databaseProfileSha256 !== ExistingApiKeyAdmission::databaseProfileDigest($database))) {
+            throw new LogicException('Managed API requires the exact current V5 key source.');
+        }
         // The existing source is PURE until secret(); never read/adopt/create here.
-        return new self($fresh->origin, $settings, $fresh, $budget, $apiBudget, new ExistingApiFileSigningKey($admission), $v5Runtime);
+        return new self($fresh->origin, $settings, $fresh, $budget, $apiBudget, new ExistingApiFileSigningKey($admission), $v5Runtime, $managed);
     }
 
     /** Pure source object, NOT a key value, liveness check or physical admission. */
     public function key(): ExistingApiFileSigningKey
     {
         return $this->key;
+    }
+
+    public function requiresOperatingPolicy(): bool
+    {
+        return $this->v5Runtime?->isAccountLifecycleV5() ?? false;
     }
 
     /** Pure per-request consistency check; physical DB/key checks stay in existing sources. */
@@ -99,6 +113,7 @@ final readonly class AdmittedLegacyApiConfiguration implements JsonSerializable
             || ! SharedLoginBudgetServiceProvider::selected($app)) {
             throw new LogicException('The selected API service profile changed.');
         }
+        $this->managed?->assertCurrent();
         self::requireAccountProfile($app, $this->v5Runtime !== null, $this->v5Runtime);
     }
 

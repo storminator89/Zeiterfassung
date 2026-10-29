@@ -58,14 +58,19 @@ INSTANCE=/var/lib/chrono-laravel/chrono-fresh-REPLACE_WITH_EXACT_RETURNED_SUFFIX
 docker compose --env-file "$OPERATOR_CONFIG" -f deploy/laravel/compose.yaml run --rm operator chrono:application-key --instance="$INSTANCE" --new-only --stopped
 ```
 
-If a separately admitted API/LDAP integration is planned, follow its exact NEW
-key-preparation contract while still empty and before browser registration; key
-creation needs its own authorization. Do not infer it from the standard Web start.
+No API-key preparation or API environment overlay is needed for the standard
+path. After registration, local administration can explicitly prepare and switch
+the API in **Administration → API verwalten**, with current-password verification
+and separate key-creation confirmation. The signing key is never displayed. See
+[API administration](api-admin-ui.md); real key creation still requires the
+authorized administrator's deliberate action. LDAP remains a separately admitted
+operator integration, not implied by the standard Web start.
 
 Do not run `chrono:setup-token`, `chrono:first-admin`, `key:generate`, seed/migrate,
 route/config cache or an old/native initializer for this path. Leave API, LDAP
-and terminal off through first registration. Their separately admitted keys and
-post-closure profiles are not implicitly enabled by choosing the Web default.
+and terminal off through first registration. The standard enables API UI
+*capability*, not effective API access; that remains off until a confirmed local
+Admin action after closure. LDAP/terminal profiles are not implicitly enabled.
 
 After source review, trusted TLS, real mount/UID/lock behavior and intended-device
 reachability are accepted, deliberately start the **root default Web service**:

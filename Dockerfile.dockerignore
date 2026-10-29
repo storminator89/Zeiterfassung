@@ -35,4 +35,5 @@ framework/storage/**
 **/local-first-user-setup.json
 **/setup-closed
 **/setup-operator.lock
+**/api-management-key.claim
 deploy/native/
