@@ -652,7 +652,7 @@ include 'header.php';
                                         <td><?= h($user->regelarbeitszeit) ?></td>
                                         <td><?= h($user->ueberstunden) ?></td>
                                         <td>
-                                            <button class="btn btn-ghost btn-sm" onclick="editUser(<?= $user->id ?>)" title="<?= BUTTON_EDIT ?>">
+                                            <button class="btn btn-ghost btn-sm" onclick="editUser(<?= h(json_encode((string)$user->id, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>)" title="<?= BUTTON_EDIT ?>">
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                             <?php if ((int)$user->has_audit_history === 1): ?>
@@ -861,6 +861,7 @@ include 'header.php';
     <form method="post" class="modal-box">
 <?= csrf_field() ?>
         <h3 class="font-bold text-lg mb-4"><?= MODAL_TITLE_EDIT_USER ?></h3>
+        <p id="edit_user_detail_error" role="alert"></p>
         <input type="hidden" id="edit_user_id" name="user_id">
         <input type="hidden" name="edit_user" value="1">
         <div class="form-control mb-4">
@@ -1031,31 +1032,141 @@ include 'header.php';
         });
     });
 
-    function editUser(userId) {
-        const modal = document.getElementById('editUserModal');
-        
-        // AJAX-Aufruf, um die Benutzerdaten zu holen
-        fetch(`get_user.php?id=${userId}`)
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('edit_user_id').value = data.id;
-                document.getElementById('edit_username').value = data.username;
-                document.getElementById('edit_email').value = data.email;
-                document.getElementById('edit_role').value = data.role;
-                document.getElementById('edit_department').value = data.department_id;
-                document.getElementById('edit_supervisor').value = data.supervisor_id || '';
-                document.getElementById('edit_regelarbeitszeit').value = data.regelarbeitszeit;
-                document.getElementById('edit_ueberstunden').value = data.ueberstunden;
-                
-                modal.showModal();
-            })
-            .catch(error => console.error('Error:', error));
+    // Exact text carries large IDs; only provably safe legacy numbers may be stringified.
+    function adminIntegerText(value, signed = false) {
+        if (typeof value !== 'string' || value === '') return null;
+        const negative = signed && value[0] === '-';
+        const digits = negative ? value.slice(1) : value;
+        if (digits === '' || /[^0-9]/.test(digits) || (digits.length > 1 && digits[0] === '0')
+            || ((!signed || negative) && digits === '0')) return null;
+        const maximum = negative ? '9223372036854775808' : '9223372036854775807';
+        return digits.length > maximum.length || (digits.length === maximum.length && digits > maximum) ? null : value;
     }
-
+    function adminRequestedId(value) {
+        return typeof value === 'number'
+            ? (Number.isSafeInteger(value) && value > 0 ? String(value) : null)
+            : adminIntegerText(value);
+    }
+    function adminDetailId(data, requested) {
+        if (!data || typeof data !== 'object' || !Object.prototype.hasOwnProperty.call(data, 'id')) throw new Error('Invalid user detail.');
+        const hasText = Object.prototype.hasOwnProperty.call(data, 'id_string');
+        const exact = hasText ? adminIntegerText(data.id_string) : adminRequestedId(data.id);
+        if (exact === null || exact !== requested || (hasText && !(
+            (typeof data.id === 'number' && Number.isInteger(data.id) && Number(exact) === data.id)
+            || (typeof data.id === 'string' && data.id === exact)))) throw new Error('Invalid user detail.');
+        return exact;
+    }
+    function adminDetailAssignment(data, key) {
+        if (!Object.prototype.hasOwnProperty.call(data, key)) throw new Error('Invalid assignment detail.');
+        const raw = data[key], hasText = Object.prototype.hasOwnProperty.call(data, key + '_string');
+        if (!hasText) {
+            if (raw === null || typeof raw === 'string') return raw;
+            if (typeof raw === 'number' && Number.isFinite(raw) && Math.abs(raw) <= Number.MAX_SAFE_INTEGER) return String(raw);
+            throw new Error('Unconfirmed assignment detail.');
+        }
+        const exact = data[key + '_string'];
+        if (raw === null && exact === null) return null;
+        if (typeof exact !== 'string' || raw === null) throw new Error('Invalid assignment detail.');
+        if (typeof raw === 'string') {
+            if (raw !== exact) throw new Error('Inconsistent assignment detail.');
+        } else if (typeof raw === 'number' && Number.isFinite(raw)) {
+            if (Number.isSafeInteger(raw) || !Number.isInteger(raw)) {
+                if (exact !== String(raw)) throw new Error('Inconsistent assignment detail.');
+            } else if (adminIntegerText(exact, true) === null || Number(exact) !== raw) {
+                throw new Error('Unconfirmed assignment detail.');
+            }
+        } else {
+            throw new Error('Invalid assignment detail.');
+        }
+        // Preserve exact stored legacy 0/negative/string references for explicit correction.
+        return exact;
+    }
+    let userDetailRequest = 0;
+    let confirmedUserDetail = null;
+    const userDetailModal = document.getElementById('editUserModal');
+    const userDetailForm = userDetailModal.querySelector('form');
+    const userDetailSave = userDetailForm.querySelector('button[type="submit"]');
+    const userDetailError = document.getElementById('edit_user_detail_error');
+    const userDetailFields = ['edit_username', 'edit_email', 'edit_role', 'edit_department',
+        'edit_supervisor', 'edit_regelarbeitszeit', 'edit_ueberstunden', 'edit_password'];
+    function clearUserDetails() {
+        confirmedUserDetail = null;
+        userDetailSave.disabled = true;
+        userDetailFields.forEach(id => { document.getElementById(id).disabled = true; });
+        ['edit_user_id', 'edit_username', 'edit_email', 'edit_regelarbeitszeit',
+            'edit_ueberstunden', 'edit_password'].forEach(id => { document.getElementById(id).value = ''; });
+        ['edit_role', 'edit_department', 'edit_supervisor'].forEach(id => {
+            const select = document.getElementById(id);
+            select.querySelectorAll('[data-detail-option]').forEach(option => option.remove());
+            select.selectedIndex = -1;
+        });
+    }
+    function selectUserAssignment(id, value) {
+        const select = document.getElementById(id);
+        const exact = value === null ? '' : value;
+        if (!Array.from(select.options).some(option => option.value === exact)) {
+            const option = document.createElement('option');
+            option.value = exact;
+            option.textContent = exact;
+            option.dataset.detailOption = '1';
+            select.appendChild(option);
+        }
+        select.value = exact;
+    }
+    async function editUser(userId) {
+        const request = ++userDetailRequest;
+        clearUserDetails();
+        userDetailError.textContent = '';
+        if (!userDetailModal.open) userDetailModal.showModal();
+        try {
+            const requestedUserId = adminRequestedId(userId);
+            if (requestedUserId === null) throw new Error('Invalid user detail target.');
+            const response = await fetch('get_user.php?id=' + encodeURIComponent(requestedUserId));
+            if (!response.ok) throw new Error('User detail unavailable.');
+            const data = await response.json();
+            if (request !== userDetailRequest || !userDetailModal.open) return;
+            const exactUserId = adminDetailId(data, requestedUserId);
+            const exactDepartmentId = adminDetailAssignment(data, 'department_id');
+            const exactSupervisorId = adminDetailAssignment(data, 'supervisor_id');
+            document.getElementById('edit_user_id').value = exactUserId;
+            document.getElementById('edit_username').value = data.username;
+            document.getElementById('edit_email').value = data.email;
+            document.getElementById('edit_role').value = data.role;
+            selectUserAssignment('edit_department', exactDepartmentId);
+            selectUserAssignment('edit_supervisor', exactSupervisorId);
+            document.getElementById('edit_regelarbeitszeit').value = data.regelarbeitszeit;
+            document.getElementById('edit_ueberstunden').value = data.ueberstunden;
+            userDetailFields.forEach(id => { document.getElementById(id).disabled = false; });
+            confirmedUserDetail = exactUserId;
+            userDetailSave.disabled = false;
+        } catch (error) {
+            if (request !== userDetailRequest || !userDetailModal.open) return;
+            clearUserDetails();
+            userDetailError.textContent = 'Benutzerdetails nicht verfügbar. Bitte neu laden und erneut versuchen.';
+        }
+    }
     function closeEditUserModal() {
-        const modal = document.getElementById('editUserModal');
-        modal.close();
+        ++userDetailRequest;
+        clearUserDetails();
+        userDetailModal.close();
     }
+    userDetailModal.addEventListener('cancel', () => {
+        ++userDetailRequest;
+        clearUserDetails();
+    });
+    userDetailModal.addEventListener('close', () => {
+        // An old queued close event must not clear a newly opened request.
+        if (userDetailModal.open) return;
+        ++userDetailRequest;
+        clearUserDetails();
+    });
+    userDetailForm.addEventListener('submit', event => {
+        if (!userDetailModal.open || confirmedUserDetail === null
+            || document.getElementById('edit_user_id').value !== confirmedUserDetail) {
+            event.preventDefault();
+        }
+    });
+    clearUserDetails();
 
     function editDepartment(departmentId, departmentName) {
         const modal = document.getElementById('editDepartmentModal');

@@ -16,7 +16,7 @@ if (!isset($_GET['id'])) {
 $userId = $_GET['id'];
 
 try {
-    $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+    $stmt = $conn->prepare("SELECT *, CAST(id AS TEXT) AS id_string, CAST(department_id AS TEXT) AS department_id_string, CAST(supervisor_id AS TEXT) AS supervisor_id_string FROM users WHERE id = ?");
     $stmt->execute([$userId]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
