@@ -43,9 +43,10 @@ try {
     $completeDayRows = $totalsStmt->fetchAll(PDO::FETCH_ASSOC);
     $totalsStmt->closeCursor();
     $listConflicts = report_absence_conflicts($completeDayRows);
+    $workOverlapLookup = time_record_work_overlap_lookup($completeDayRows);
     if ($reviewOnly) {
         // Classify the complete own snapshot BEFORE pagination; never the visible page.
-        $reviewRows = time_record_review_rows($completeDayRows, $listConflicts);
+        $reviewRows = time_record_review_rows($completeDayRows, $listConflicts, $workOverlapLookup);
         $totalRecords = count($reviewRows);
         $page = min($page, max(1, (int) ceil($totalRecords / $itemsPerPage)));
         $records = array_slice($reviewRows, ($page - 1) * $itemsPerPage, $itemsPerPage);
@@ -101,7 +102,7 @@ echo '<details class="card bg-base-100 shadow-xl p-4 mb-4">
     <p class="text-sm opacity-70 mt-3">Nur eigene Buchungen nach Berliner Startdatum, unabhängig von Suche oder Listenseite. Nachtschichten bleiben vollständig beim Starttag. Die Qualitätsprüfung umfasst weiterhin Ihren gesamten Bestand; auch Fehler oder ungeklärte Überschneidungen außerhalb des Zeitraums können den Download blockieren. Kein Lohnsoftwareformat.</p>
 </details>';
 
-echo '<div class="flex flex-wrap items-end gap-3 mb-4"><label class="text-sm font-semibold" for="time-record-review">Listenansicht<select id="time-record-review" data-record-review-filter data-page="' . (int)$page . '" class="select select-bordered select-sm block mt-1"><option value="all"' . (!$reviewOnly ? ' selected' : '') . '>Alle eigenen Einträge</option><option value="review"' . ($reviewOnly ? ' selected' : '') . '>Vorhandene Prüfhinweise</option></select></label><p class="text-sm opacity-70">' . ($reviewOnly ? (int)$totalRecords . ' passende eigene Einträge. ' : '') . 'Ungültige Zeiten, bestehende Arbeitszeit-/Abwesenheitskonflikte und erkannte Berliner Zeitlücken oder doppelte Stunden ohne Offset. Kein vollständiger Bestandscheck oder Vollständigkeitsnachweis; ein unmarkierter Eintrag ist keine Freigabe. Bestehende Dauer- und Summenberechnungen bleiben unverändert und bestätigen keine eindeutige Altzeit. Summen berücksichtigen weiterhin den vollständigen eigenen Tageskontext.</p></div>';
+echo '<div class="flex flex-wrap items-end gap-3 mb-4"><label class="text-sm font-semibold" for="time-record-review">Listenansicht<select id="time-record-review" data-record-review-filter data-page="' . (int)$page . '" class="select select-bordered select-sm block mt-1"><option value="all"' . (!$reviewOnly ? ' selected' : '') . '>Alle eigenen Einträge</option><option value="review"' . ($reviewOnly ? ' selected' : '') . '>Vorhandene Prüfhinweise</option></select></label><p class="text-sm opacity-70">' . ($reviewOnly ? (int)$totalRecords . ' passende eigene Einträge. ' : '') . 'Ungültige Zeiten, bestehende Arbeitszeit-/Abwesenheitskonflikte, eindeutig prüfbare Überschneidungen abgeschlossener Arbeitszeiten und erkannte Berliner Zeitlücken oder doppelte Stunden ohne Offset. Kein vollständiger Bestandscheck oder Vollständigkeitsnachweis; ein unmarkierter Eintrag ist keine Freigabe. Bestehende Dauer- und Summenberechnungen bleiben unverändert und bestätigen keine eindeutige Altzeit. Summen berücksichtigen weiterhin den vollständigen eigenen Tageskontext.</p></div>';
 if ($reviewOnly && $totalRecords === 0) {
     echo '<p class="text-sm mb-4" role="status">Keine passenden Prüfhinweise gefunden. Dies bestätigt weder einen fehlerfreien Bestand noch rekonstruierbare Altzeiten.</p>';
 }
@@ -204,7 +205,7 @@ foreach ($recordGroups as $group) {
                         <tbody class="divide-y divide-base-200/50">';
 
     foreach ($dayRecords as $record) {
-        outputRecordRow($record);
+        outputRecordRow($record, isset($workOverlapLookup[report_conflict_key($record)]));
     }
 
     echo '</tbody>
@@ -262,13 +263,14 @@ function outputTableHeaders() {
         </thead>';
 }
 
-function outputRecordRow($record) {
+function outputRecordRow($record, bool $workOverlap = false) {
     $detail = report_time_record_detail($record);
     $startLabel = $detail['start_label'];
     $endLabel = $detail['end_label'];
     $durationLabel = $detail['duration_label'];
     $qualityLabel = $detail['is_invalid'] ? '<span class="block text-sm text-warning">'.h($detail['validation_error']).'</span>' : '';
     $conflictLabel = $detail['is_unresolved'] ? '<span class="block text-sm text-warning">Klärung offen · Überschneidung mit Arbeitszeit / Abwesenheit. Einzelwert unverändert.</span>' : '';
+    $workOverlapLabel = $workOverlap ? '<span class="block text-sm text-warning">Prüfhinweis · Abgeschlossene Arbeitszeiten überschneiden sich. Bruttointervalle, keine Pausenlage; keine automatische Kürzung. Dauer und Summen unverändert. Über Korrektur / Storno manuell klären.</span>' : '';
     $localTimeLabels = '';
     foreach (time_record_local_time_findings($record) as $column => $category) {
         $fieldLabel = $column === 'startzeit' ? 'Start' : 'Ende';
@@ -277,5 +279,5 @@ function outputRecordRow($record) {
             : 'Berliner Zeitlücke ohne Offset. Kein existierender lokaler Zeitpunkt';
         $localTimeLabels .= '<span class="block text-sm text-warning">'.h('DST-Prüfhinweis ('.$fieldLabel.'): '.$findingLabel.'; Dauer/Summen nicht bestätigt.').'</span>';
     }
-    echo '<tr><td>'.h($record['weekNumber']).'</td><td>'.h($startLabel).'</td><td>'.h($endLabel).'</td><td>'.h($durationLabel).$qualityLabel.$conflictLabel.$localTimeLabels.'</td><td>'.h($record['pause']).'</td><td>'.h($record['standort']).'</td><td>'.h($record['beschreibung']).'</td><td><a class="link link-primary" href="adjustments.php?record_id='.(int)$record['id'].'">Korrektur / Storno</a></td></tr>';
+    echo '<tr><td>'.h($record['weekNumber']).'</td><td>'.h($startLabel).'</td><td>'.h($endLabel).'</td><td>'.h($durationLabel).$qualityLabel.$conflictLabel.$workOverlapLabel.$localTimeLabels.'</td><td>'.h($record['pause']).'</td><td>'.h($record['standort']).'</td><td>'.h($record['beschreibung']).'</td><td><a class="link link-primary" href="adjustments.php?record_id='.(int)$record['id'].'">Korrektur / Storno</a></td></tr>';
 }

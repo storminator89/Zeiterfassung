@@ -20,5 +20,7 @@ final readonly class TimeRecordsPage
         public array $localTimeFindings = [],
         /** Existing composition capability only; never a new read authority. */
         public bool $historyLinks = false,
+        /** Visible own-row participant flags only; no counterpart/account data. */
+        public array $workOverlapFindings = [],
     ) {}
 }
