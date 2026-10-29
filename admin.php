@@ -67,13 +67,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_pause_settings'
         $rules = validatePauseSettings($_POST['hours_threshold'] ?? null, $_POST['minimum_pause'] ?? null);
         $conn->beginTransaction();
         $pauseTransactionStarted = true;
-        $stmt = $conn->prepare("DELETE FROM pause_settings");
-        $stmt->execute();
-
-        $stmt = $conn->prepare("INSERT INTO pause_settings (hours_threshold, minimum_pause) VALUES (?, ?)");
-        foreach ($rules as $rule) {
-            $stmt->execute($rule);
-        }
+        replacePauseSettingsLocked($conn, $rules);
         $conn->commit();
 
         $successMessage = "Pauseneinstellungen erfolgreich aktualisiert.";

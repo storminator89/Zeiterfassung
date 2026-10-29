@@ -266,17 +266,9 @@ final class AttendanceWriter
                 throw new AuthorizationException('Nur die Verwaltung darf Pauseneinstellungen ändern.');
             }
 
-            $statement = $this->pdo->prepare('DELETE FROM pause_settings');
-            $statement->execute();
-            $statement->closeCursor();
-            $statement = $this->pdo->prepare('INSERT INTO pause_settings (hours_threshold, minimum_pause) VALUES (?, ?)');
-            foreach ($rules as $rule) {
-                $statement->execute($rule);
-                $statement->closeCursor();
-            }
-            // The existing transaction shell commits the complete list once.
-            // This native table has no audit trigger; do not invent an audit claim.
-        }, lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
+            \replacePauseSettingsLocked($this->pdo, $rules);
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'Pausenregeln ersetzen', $transaction),
+            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
     }
 
     /** Fixed department operations; native wrapper transactions must not nest here. */

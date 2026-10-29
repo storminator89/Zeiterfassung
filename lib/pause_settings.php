@@ -40,3 +40,42 @@ function validatePauseSettings($hoursThresholds, $minimumPauses): array
     }
     return $rules;
 }
+
+/**
+ * Internal complete-list replacement on the caller's already authorized locked
+ * PDO. Keep each old/new rule as one secret-free entity in the same transaction.
+ * No bootstrap, schema/UDF installation, transaction, actor or SQL callback here.
+ */
+function replacePauseSettingsLocked(PDO $db, array $rules): void
+{
+    if (!$db->inTransaction()) {
+        throw new LogicException('Pause-settings replacement requires the caller transaction.');
+    }
+    foreach ($rules as $rule) {
+        if (!is_array($rule) || !array_is_list($rule) || count($rule)!==2) {
+            throw new InvalidArgumentException('Ungültige vollständige Pausenregeln.');
+        }
+    }
+    if (!array_is_list($rules)
+        || $rules!==validatePauseSettings(array_column($rules,0),array_column($rules,1))) {
+        throw new InvalidArgumentException('Ungültige vollständige Pausenregeln.');
+    }
+
+    // Owner zero keeps installation-wide rules out of employee/direct-team
+    // history. Only the existing Admin scope can see these rows. Fixed columns
+    // exclude all user/credential data; DB operators remain trusted.
+    $db->exec("INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json)
+SELECT unixepoch(),audit_actor(),audit_reason(),'pause_settings',id,0,'DELETE',
+json_object('id',id,'hours_threshold',hours_threshold,'minimum_pause',minimum_pause),NULL
+FROM pause_settings ORDER BY id");
+    $db->exec('DELETE FROM pause_settings');
+    $statement=$db->prepare('INSERT INTO pause_settings (hours_threshold, minimum_pause) VALUES (?, ?)');
+    foreach ($rules as $rule) {
+        $statement->execute($rule);
+        $statement->closeCursor();
+    }
+    $db->exec("INSERT INTO audit_log(occurred_at,actor,reason,entity,record_id,user_id,operation,before_json,after_json)
+SELECT unixepoch(),audit_actor(),audit_reason(),'pause_settings',id,0,'INSERT',NULL,
+json_object('id',id,'hours_threshold',hours_threshold,'minimum_pause',minimum_pause)
+FROM pause_settings ORDER BY id");
+}
