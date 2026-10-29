@@ -21,6 +21,7 @@ final class AttendanceWriter
     use AccountLifecycleWriterOperations;
     use AccountLifecycleTerminalWriterOperations;
     use OwnPasswordWriterOperations;
+    use ApiManagementWriterOperations;
 
     private readonly SQLiteConnection $connection;
     private bool $unusable = false;

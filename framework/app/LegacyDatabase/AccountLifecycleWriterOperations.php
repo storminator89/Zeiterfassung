@@ -94,6 +94,7 @@ trait AccountLifecycleWriterOperations
 
         return $this->executeLocked(function () use ($actor, $source, $eventId, $action, $confirm, $expectedRecord, $startMetadata): array {
             $this->assertLifecyclePrincipalLocked($actor);
+            $this->requireApiOperatingPolicyLocked();
 
             return attendance_transition_locked($this->pdo, $actor->id, $source, $eventId, $action, $confirm, $expectedRecord, null, false, $startMetadata);
         }, fn (Closure $transaction): mixed => $this->context->run($source.':user:'.$actor->id,

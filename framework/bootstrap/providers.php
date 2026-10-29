@@ -9,6 +9,7 @@ use App\Providers\LegacyRuntimeDatabaseServiceProvider;
 use App\Providers\FreshWebServiceProvider;
 use App\Providers\SharedLoginBudgetServiceProvider;
 use App\Providers\AdmittedLegacyApiServiceProvider;
+use App\Providers\ApiManagementServiceProvider;
 use App\Providers\AdmittedTerminalServiceProvider;
 
 return [
@@ -20,6 +21,7 @@ return [
     FreshWebServiceProvider::class,
     LegacyRuntimeDatabaseServiceProvider::class,
     SharedLoginBudgetServiceProvider::class,
+    ApiManagementServiceProvider::class,
     AdmittedLegacyApiServiceProvider::class,
     AdmittedTerminalServiceProvider::class,
 ];

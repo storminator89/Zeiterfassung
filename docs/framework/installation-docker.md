@@ -4,6 +4,11 @@ The root Dockerfile and root Compose Web service are now the **Laravel standard*
 start with the [NEW local V5 standard installation](laravel-default-installation.md).
 The detailed profiled compositions below remain explicit alternatives/operator
 tools, not a native-data cutover, old-data importer or deployment acceptance.
+The standard NEW-V5 path now includes post-setup [local API administration](api-admin-ui.md):
+no API-key CLI or API overlay is needed for that path. The older explicitly
+admitted V4/V5 API overlay/NEW-only producer below remains an alternative, not a
+requirement for the standard UI flow.
+
 The original native build is preserved as `deploy/native/Dockerfile`. Never
 point both applications at the same database. Publishing this packet creates
 **no instance, secret, account, listener, TLS certificate, host setting or service**.
@@ -146,7 +151,8 @@ and drain all users and exclude restart; never mix old positive-lease workers
 with new zero-lease workers. The source does not detect such an old process.
 See [V5 session locking and stopped recovery](v5-nonexpiring-session-locks.md).
 
-Do not use `compose.api.yaml` for first-Admin setup: that optional overlay
+For the older explicit API-overlay alternative only (not the root standard UI flow):
+do not use `compose.api.yaml` for first-Admin setup: that optional overlay
 deliberately requires setup=false. If API is planned, prepare its separately
 authorized NEW key while empty and **before** setup-token preparation; select
 the API overlay only after deliberate setup closure.
@@ -160,14 +166,14 @@ INSTANCE=/var/lib/chrono-laravel/chrono-fresh-REPLACE_WITH_RETURNED_BASENAME_SUF
 docker compose --env-file "$OPERATOR_CONFIG" -f deploy/laravel/compose.yaml run --rm operator chrono:application-key --instance="$INSTANCE" --new-only --stopped
 ```
 
-**Only if API is selected and its key creation separately authorized**, run the
+**Only for the older explicit API-overlay alternative, with key creation separately authorized**, run the
 original NEW API-key producer now, before any setup profile/token or user:
 
 ```sh
 docker compose --env-file "$OPERATOR_CONFIG" -f deploy/laravel/compose.yaml run --rm operator chrono:api-key --instance="$INSTANCE" --new-only --stopped
 ```
 
-Otherwise omit that command and leave API off. Complete any other selected NEW
+For the standard NEW-V5 UI flow omit that command; API stays off until the post-setup Admin action. Complete any other selected NEW
 key preparation while the installation is still empty. Then choose exactly one
 first-administrator path:
 
