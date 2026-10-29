@@ -74,7 +74,7 @@ final class LocalWebCorrectionsController extends Controller
         } catch (AuthenticationException $error) {
             throw $error; // Preserve the registrar's protected-route auth response.
         } catch (\AttendanceError|InvalidArgumentException $error) {
-            // Only known domain rejections can retain a request draft.
+            // Only known domain rejections can retain a display-only form draft.
             // Never offer it after a returned command or an unknown write outcome.
             return $this->page($request, $error->getMessage(), ! $commandCompleted
                 && $error instanceof \AttendanceError && in_array($error->status, [400, 409], true));
@@ -83,7 +83,7 @@ final class LocalWebCorrectionsController extends Controller
                 ? 'Rücknahme konnte nicht bestätigt werden. Bitte neu laden und gespeicherten Stand prüfen; nicht automatisch wiederholen.'
                 : (($command['action'] ?? null) === 'request'
                     ? 'Antrag konnte nicht bestätigt werden. Bitte neu laden und gespeicherten Stand prüfen; nicht automatisch wiederholen.'
-                    : 'Antrag konnte nicht verarbeitet werden.'));
+                    : 'Entscheidung konnte nicht bestätigt werden. Bitte neu laden und gespeicherten Stand prüfen; nicht automatisch wiederholen.'));
         }
     }
 
@@ -116,7 +116,7 @@ final class LocalWebCorrectionsController extends Controller
         return $selection;
     }
 
-    private function page(Request $request, ?string $error = null, bool $retainRequestDraft = false): View
+    private function page(Request $request, ?string $error = null, bool $retainRejectedDraft = false): View
     {
         // Definitions only: reuse the native pure display formatter, never its bootstrap.
         require_once dirname(__DIR__, 4).'/lib/attendance.php';
@@ -180,6 +180,20 @@ final class LocalWebCorrectionsController extends Controller
             ];
         }, $queue['records']);
 
+        // Display only for the same still-visible review form after a fresh
+        // scoped read. This never grants permission or retains the decision.
+        $reviewDraft = $retainRejectedDraft && $request->isMethod('POST')
+            ? CorrectionsPage::rejectedReviewDraft($form) : [];
+        $reviewable = $this->interactions->corrections
+            && in_array($actor->role, ['admin', 'supervisor'], true)
+            && array_filter($requests, static fn (array $row): bool =>
+                $row['id'] === ($reviewDraft['id'] ?? null)
+                && $row['status'] === 'pending'
+                && $row['user_id'] !== (int) $actor->getAuthIdentifier());
+        if (! $reviewable) {
+            $reviewDraft = [];
+        }
+
         return view('chrono.corrections', [
             // Reuse the existing shared chrome contract; no legacy header/bootstrap include.
             'page' => new AttendancePage(
@@ -189,7 +203,7 @@ final class LocalWebCorrectionsController extends Controller
             ),
             'corrections' => new CorrectionsPage(
                 $records, $requests, $selectedRecordId, $error,
-                $request->query->has('saved'), $this->interactions->corrections,
+                $error === null && $request->query->has('saved'), $this->interactions->corrections,
                 selectionInvalid: $selectionInvalid,
                 requestCounts: $queue['counts'], requestStatus: $queue['status'],
                 requestTotal: $queue['total'], requestPage: $queue['page'], requestPages: $queue['pages'],
@@ -198,8 +212,9 @@ final class LocalWebCorrectionsController extends Controller
                     && $this->interactions->correctionWithdrawals && $actor->auth_source === 'local',
                 balancePreviewRequestId: $previewRequestId,
                 balancePreview: $queue['balancePreview'] ?? [],
-                requestDraft: $retainRequestDraft && ! $selectionInvalid && $request->isMethod('POST')
+                requestDraft: $retainRejectedDraft && ! $selectionInvalid && $request->isMethod('POST')
                     ? CorrectionsPage::rejectedRequestDraft($form) : [],
+                reviewDraft: $reviewDraft,
             ),
         ]);
     }
