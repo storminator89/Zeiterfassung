@@ -10,7 +10,7 @@
 
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
     @if ($page->cspNonce === null)
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />
+    <link href="assets/vendor/daisyui/3.9.4/full.css" rel="stylesheet" type="text/css" integrity="sha256-htj+jXV2EbqZMnbFtkmO5n8WwOKf0ZVYlc0doGP6YaI=" />
 
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
