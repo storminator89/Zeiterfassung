@@ -27,8 +27,61 @@ if (file_exists($langFile)) {
 $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $userInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+$stmt->closeCursor();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+require_once __DIR__ . '/lib/native_own_password.php';
+$passwordError = '';
+$passwordFormRequested = $_SERVER['REQUEST_METHOD'] === 'POST'
+    && array_intersect(array_keys($_POST), ['password_action', 'current_password', 'password', 'password_confirmation']) !== [];
+if ($passwordFormRequested) {
+    header('Cache-Control: no-store');
+    $passwordChanged = false;
+    $passwordLogoutRequired = false;
+    $passwordStatus = 503;
+    $passwordFailure = SETTINGS_OWN_PASSWORD_UNCONFIRMED;
+    try {
+        native_own_password_change($conn, (int)$user_id, (string)$user_role,
+            (string)($_SESSION['auth_version'] ?? ''), $_POST, (string)($_SERVER['REMOTE_ADDR'] ?? 'local'));
+        $passwordChanged = true;
+    } catch (NativeOwnPasswordError $passwordException) {
+        $passwordStatus = $passwordException->status;
+        $passwordError = match ($passwordException->publicCode) {
+            'invalid_form' => SETTINGS_OWN_PASSWORD_INVALID_FORM,
+            'invalid_current' => SETTINGS_OWN_PASSWORD_INVALID_CURRENT,
+            'rate_limited' => SETTINGS_OWN_PASSWORD_RATE_LIMITED,
+            'not_allowed' => SETTINGS_OWN_PASSWORD_UNAVAILABLE,
+            'unsupported_profile' => SETTINGS_OWN_PASSWORD_PROFILE_UNAVAILABLE,
+            default => SETTINGS_OWN_PASSWORD_STALE,
+        };
+        $passwordLogoutRequired = $passwordStatus === 401 || $passwordStatus === 503;
+        $passwordFailure = $passwordError;
+        http_response_code($passwordStatus);
+    } catch (Throwable $passwordException) {
+        // Outcome may be unknown: no automatic retry, success modal or old identity continuation.
+        $passwordLogoutRequired = true;
+    } finally {
+        unset($_POST['current_password'], $_POST['password'], $_POST['password_confirmation']);
+    }
+    if ($passwordChanged || $passwordLogoutRequired) {
+        $passwordLoggedOut = false;
+        try {
+            $_SESSION = [];
+            $params = session_get_cookie_params();
+            $cookieCleared = setcookie(session_name(), '', ['expires' => time() - 3600, 'path' => $params['path'],
+                'secure' => $params['secure'], 'httponly' => true, 'samesite' => 'Lax']);
+            $sessionDestroyed = session_status() === PHP_SESSION_ACTIVE && session_destroy();
+            $passwordLoggedOut = $cookieCleared && $sessionDestroyed;
+        } catch (Throwable) {}
+        if ($passwordChanged) {
+            if (!$passwordLoggedOut) { abort_request(503, SETTINGS_OWN_PASSWORD_LOGOUT_UNCONFIRMED); }
+            header('Location: login.php', true, 303);
+            exit;
+        }
+        abort_request($passwordStatus, $passwordFailure);
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$passwordFormRequested) {
     if (isset($_POST['lang'])) {
         $lang = valid_language($_POST['lang']);
         $_SESSION['lang'] = $lang;
@@ -57,13 +110,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $theme_mode = $_SESSION['theme_mode'] ?? 'light';
 
 // Check for import messages
-if (isset($_SESSION['import_success'])) {
+if (!$passwordFormRequested && isset($_SESSION['import_success'])) {
     $successMessage = $_SESSION['import_success'];
     unset($_SESSION['import_success']);
     $showSuccessModal = true;
 }
 
-if (isset($_SESSION['import_error'])) {
+if (!$passwordFormRequested && isset($_SESSION['import_error'])) {
     $error = $_SESSION['import_error'];
     unset($_SESSION['import_error']);
 }
@@ -134,6 +187,26 @@ include 'header.php';
                     <button type="submit" class="btn btn-primary w-full md:w-auto"><i class="fas fa-save mr-2"></i><?= BUTTON_SAVE_CHANGES ?></button>
                 </div>
             </form>
+
+            <div class="divider my-8"><?= h(SETTINGS_OWN_PASSWORD_TITLE) ?></div>
+            <?php if ($passwordError !== '') : ?>
+                <div class="alert alert-error mb-4" role="alert"><?= h($passwordError) ?></div>
+            <?php endif; ?>
+            <?php if (is_array($userInfo) && native_own_password_available($userInfo)) : ?>
+                <p class="text-sm opacity-70 mb-4"><?= h(SETTINGS_OWN_PASSWORD_HELP) ?></p>
+                <form method="post" class="space-y-4">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="password_action" value="change">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="form-control"><label class="label" for="current_password"><?= h(SETTINGS_OWN_PASSWORD_CURRENT) ?></label><input class="input input-bordered w-full" type="password" id="current_password" name="current_password" autocomplete="current-password" maxlength="4096" required></div>
+                        <div class="form-control"><label class="label" for="new_password"><?= h(SETTINGS_OWN_PASSWORD_NEW) ?></label><input class="input input-bordered w-full" type="password" id="new_password" name="password" autocomplete="new-password" maxlength="72" required></div>
+                        <div class="form-control"><label class="label" for="password_confirmation"><?= h(SETTINGS_OWN_PASSWORD_CONFIRM) ?></label><input class="input input-bordered w-full" type="password" id="password_confirmation" name="password_confirmation" autocomplete="new-password" maxlength="72" required></div>
+                    </div>
+                    <button class="btn btn-primary" type="submit"><?= h(SETTINGS_OWN_PASSWORD_SUBMIT) ?></button>
+                </form>
+            <?php else : ?>
+                <p class="text-sm opacity-70"><?= h(SETTINGS_OWN_PASSWORD_UNAVAILABLE) ?></p>
+            <?php endif; ?>
 
             <?php if ($user_role === 'admin') : ?>
                 <div class="divider my-8"><?= SETTINGS_BACKUP_OPERATIONS_TITLE ?></div>

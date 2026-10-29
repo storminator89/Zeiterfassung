@@ -321,4 +321,19 @@ define('HOLIDAY_INVENTORY_COUNT', '%d gespeicherte Einträge angezeigt – kein 
 define('HOLIDAY_INVENTORY_DATA_ISSUE', 'Ungültige Datumswerte oder mehr als 366 Einträge: Anzeige begrenzt; bitte den Originalbestand durch die Verwaltung prüfen lassen.');
 define('HOLIDAY_INVENTORY_EMPTY', 'Kein Eintrag für diesen Jahrgang vorhanden. Das bedeutet nicht, dass es keine Feiertage gibt.');
 define('HOLIDAY_INVENTORY_ABSENCE_LINK', 'Vor einer Abwesenheitsgutschrift: Feiertagsbestand für das betreffende Jahr prüfen (neuer Tab).');
+
+define('SETTINGS_OWN_PASSWORD_TITLE', 'Eigenes Passwort ändern');
+define('SETTINGS_OWN_PASSWORD_HELP', 'Nur eigenes lokales Passwort; neu 12–72 Bytes, ohne Steuerzeichen. Erfolg meldet Sie ab. Alte Web-Sitzungen und API-Tokens scheitern bei der nächsten Prüfung; Geräte-PINs bleiben gleich.');
+define('SETTINGS_OWN_PASSWORD_CURRENT', 'Aktuelles Passwort');
+define('SETTINGS_OWN_PASSWORD_NEW', 'Neues Passwort');
+define('SETTINGS_OWN_PASSWORD_CONFIRM', 'Neues Passwort wiederholen');
+define('SETTINGS_OWN_PASSWORD_SUBMIT', 'Passwort ändern und abmelden');
+define('SETTINGS_OWN_PASSWORD_UNAVAILABLE', 'Nur für eigene lokale Konten. Verzeichnispasswörter bitte im Verzeichnis verwalten.');
+define('SETTINGS_OWN_PASSWORD_INVALID_FORM', 'Passwortfelder prüfen: neu 12–72 Bytes, ohne Steuerzeichen, passende Bestätigung und nicht das bisherige Passwort. Keine anderen Einstellungen mitsenden.');
+define('SETTINGS_OWN_PASSWORD_INVALID_CURRENT', 'Aktuelles Passwort und neues Passwort prüfen.');
+define('SETTINGS_OWN_PASSWORD_RATE_LIMITED', 'Zu viele Versuche. Nach spätestens zehn Minuten erneut versuchen.');
+define('SETTINGS_OWN_PASSWORD_STALE', 'Sitzung nicht mehr gültig. Bitte neu anmelden.');
+define('SETTINGS_OWN_PASSWORD_UNCONFIRMED', 'Passwortänderung nicht bestätigt. Nicht automatisch wiederholen. Bitte den Anmeldestand prüfen.');
+define('SETTINGS_OWN_PASSWORD_LOGOUT_UNCONFIRMED', 'Passwort geändert; Abmeldung nicht vollständig bestätigt. Bitte erneut anmelden.');
+define('SETTINGS_OWN_PASSWORD_PROFILE_UNAVAILABLE', 'Passwortwechsel für dieses Datenprofil nicht freigegeben.');
 ?>
