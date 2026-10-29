@@ -380,6 +380,7 @@ final class AttendanceWriter
     public function createTerminalSite(int $user, mixed $name,
         ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): void
     {
+        require_once dirname(__DIR__, 3).'/lib/terminal_configuration.php';
         $this->executeLocked(function () use ($user, $name, $lifecycleAuthority): void {
             $this->assertAdminOperationAuthorityLocked($user, $lifecycleAuthority);
             $actor = att_one($this->pdo, 'SELECT role,auth_source FROM users WHERE id=?', [$user]);
@@ -395,9 +396,7 @@ final class AttendanceWriter
             if ($name === '' || strlen($name) > 100) {
                 throw new \AttendanceError('Standortnamen prüfen.', 400);
             }
-            $statement = $this->pdo->prepare('INSERT INTO terminal_sites(name) VALUES(?)');
-            $statement->execute([$name]);
-            $statement->closeCursor();
+            \terminal_create_site_locked($this->pdo, $name);
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'terminals.php', $transaction),
             lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
     }
@@ -453,6 +452,7 @@ final class AttendanceWriter
         bool $enabled,
         ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): void
     {
+        require_once dirname(__DIR__, 3).'/lib/terminal_configuration.php';
         $this->executeLocked(function () use ($admin, $expectedWebVersion, $enabled, $lifecycleAuthority): void {
             $this->assertExpectedWebPrincipal($admin, 'local', $expectedWebVersion, 'admin', $lifecycleAuthority);
             // Exact native gates on this same IMMEDIATE-locked PDO. Do not trust
@@ -467,9 +467,7 @@ final class AttendanceWriter
                 && att_one($this->pdo, 'SELECT id FROM zeiterfassung WHERE endzeit IS NULL LIMIT 1')) {
                 throw new \AttendanceError('Zuerst vorhandene offene Arbeitszeiten im bisherigen System beenden.');
             }
-            $statement = $this->pdo->prepare('UPDATE terminal_settings SET enabled=? WHERE id=1');
-            $statement->execute([$enabled ? 1 : 0]);
-            $statement->closeCursor();
+            \terminal_save_module_settings_locked($this->pdo, $enabled);
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction),
             lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
     }
