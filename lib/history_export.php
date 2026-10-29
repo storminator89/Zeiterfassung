@@ -13,7 +13,7 @@ function chrono_history_export_mode(array $query): array {
 /** Fixed relative destination; only the existing selected filter/cursor keys survive. */
 function chrono_history_export_url(array $values): string {
     $params=[];
-    foreach (['user_id','from','to','entity','record_id','request_id','before'] as $key) {
+    foreach (['user_id','from','to','entity','operation','record_id','request_id','before'] as $key) {
         if (isset($values[$key]) && is_string($values[$key]) && $values[$key]!=='') { $params[$key]=$values[$key]; }
     }
     $params['export']='selected-json';
@@ -66,7 +66,7 @@ function chrono_history_export_page(array $rows, array $values): array {
             'presentation'=>$presentation,'metadata_limited'=>$limited];
     }
     $selectedFilters=[];
-    foreach (['user_id','from','to','entity','record_id','request_id','before'] as $key) {
+    foreach (['user_id','from','to','entity','operation','record_id','request_id','before'] as $key) {
         if (isset($values[$key]) && is_string($values[$key]) && $values[$key]!=='') { $selectedFilters[$key]=$values[$key]; }
     }
     $body=json_encode(['format'=>'chrono-selected-history-page-v1','filters'=>(object)$selectedFilters,

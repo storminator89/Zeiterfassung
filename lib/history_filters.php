@@ -4,9 +4,13 @@ function chrono_history_entities(): array {
     return ['zeiterfassung'=>'Buchung','work_models'=>'Arbeitszeitmodell','time_adjustments'=>'Korrekturantrag','users'=>'Kontostammdaten','Feiertage'=>'Feiertagskalender','work_sessions'=>'Arbeitsintervall','break_intervals'=>'Pausenintervall'];
 }
 
+function chrono_history_operations(): array {
+    return ['INSERT'=>'Angelegt','UPDATE'=>'Geändert','DELETE'=>'Gelöscht','BASELINE'=>'Übernahmestand'];
+}
+
 function chrono_history_filters(array $query): array {
     $values=[];$errors=[];$ids=[];
-    foreach (['user_id'=>'Person-ID','record_id'=>'Datensatz-ID','request_id'=>'Antrags-ID','before'=>'Seitenmarke','entity'=>'Bereich','from'=>'Von-Datum','to'=>'Bis-Datum'] as $key=>$label) {
+    foreach (['user_id'=>'Person-ID','record_id'=>'Datensatz-ID','request_id'=>'Antrags-ID','before'=>'Seitenmarke','entity'=>'Bereich','operation'=>'Vorgang','from'=>'Von-Datum','to'=>'Bis-Datum'] as $key=>$label) {
         $raw=array_key_exists($key,$query)?$query[$key]:'';
         if (!is_string($raw)||str_contains($raw,"\0")) { $errors[]="$label ist ungültig.";$raw=''; }
         $values[$key]=trim($raw);
@@ -17,6 +21,7 @@ function chrono_history_filters(array $query): array {
         }
     }
     if ($values['entity']!==''&&!isset(chrono_history_entities()[$values['entity']])) { $errors[]='Bereich ist ungültig.'; }
+    if ($values['operation']!==''&&!isset(chrono_history_operations()[$values['operation']])) { $errors[]='Vorgang ist ungültig.'; }
     $dates=[];
     foreach (['from'=>'Von-Datum','to'=>'Bis-Datum'] as $key=>$label) {
         $dates[$key]=null;
@@ -39,6 +44,7 @@ function chrono_history_query(array $filters,int $user,string $role): array {
         if ($filters['ids'][$key]!==null) { $where[]="a.$key=?";$params[]=$filters['ids'][$key]; }
     }
     if ($filters['values']['entity']!=='') { $where[]='a.entity=?';$params[]=$filters['values']['entity']; }
+    if ($filters['values']['operation']!=='') { $where[]='a.operation=?';$params[]=$filters['values']['operation']; }
     // This is the audit row's own request ID, not an inferred booking relation.
     if ($filters['ids']['request_id']!==null) { $where[]="a.entity='time_adjustments' AND a.record_id=?";$params[]=$filters['ids']['request_id']; }
     if ($filters['from_at']!==null) { $where[]='a.occurred_at>=?';$params[]=$filters['from_at']; }

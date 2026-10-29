@@ -21,6 +21,7 @@ final readonly class HistoryPage
      * @param bool $showRelations Explicit HTML opt-in, preserved by filter/paging controls.
      * @param ?array $relations Existing validated public collections only, enriched with fixed display labels.
      * @param ?string $relationsUrl Same filters/cursor with only the display opt-in toggled.
+     * @param array<string, string> $operations Canonical audit-operation labels, not booking actions.
      */
     public function __construct(
         public array $entries,
@@ -35,5 +36,6 @@ final readonly class HistoryPage
         /** Public validated correlation collections only; no internal owners/raw snapshots. */
         public ?array $relations = null,
         public ?string $relationsUrl = null,
+        public array $operations = [],
     ) {}
 }

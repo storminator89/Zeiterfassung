@@ -11,6 +11,8 @@ final readonly class HistoryQuery
 
     public array $entities;
 
+    public array $operations;
+
     public bool $hasBefore;
 
     private function __construct(private array $filters)
@@ -18,6 +20,7 @@ final readonly class HistoryQuery
         $this->values = $filters['values'];
         $this->errors = $filters['errors'];
         $this->entities = \chrono_history_entities();
+        $this->operations = \chrono_history_operations();
         $this->hasBefore = $filters['ids']['before'] !== null;
     }
 
