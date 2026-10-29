@@ -4,6 +4,7 @@
 // never bootstrap, connect, register UDFs, encrypt, query LDAP or nest a BEGIN.
 require_once __DIR__.'/ldap_manager_mapping.php';
 require_once __DIR__.'/native_ldap_session.php';
+require_once __DIR__.'/ldap_settings_audit.php';
 
 /** Legacy import plus reserved local Admin recovery; nonfatal manager conflicts stay. */
 function chrono_ldap_import_locked(PDO $conn, array $entries, string $ldapHost, string $ldapPort, string $ldapUser, string $encryptedLdapPass, string $ldapBaseDN, bool $accountLifecycleV5 = false): array
@@ -41,6 +42,7 @@ function chrono_ldap_import_locked(PDO $conn, array $entries, string $ldapHost, 
             }
         }
     }
+    $settingsBefore = chrono_ldap_settings_audit_read($conn, $ldapBaseDN, $ldapUser);
     $stmt = $conn->prepare("SELECT COUNT(*) FROM ldap_settings");
     $stmt->execute();
     $count = $stmt->fetchColumn();
@@ -52,6 +54,9 @@ function chrono_ldap_import_locked(PDO $conn, array $entries, string $ldapHost, 
         $stmt = $conn->prepare("INSERT INTO ldap_settings (ldap_host, ldap_port, ldap_user, ldap_pass, ldap_base_dn) VALUES (?, ?, ?, ?, ?)");
         $stmt->execute([$ldapHost, $ldapPort, $ldapUser, $encryptedLdapPass, $ldapBaseDN]);
     }
+    $settingsAfter = chrono_ldap_settings_audit_read($conn, $ldapBaseDN, $ldapUser);
+    if ($settingsAfter === null) { throw new RuntimeException('LDAP settings journal unavailable.'); }
+    chrono_ldap_settings_audit_append_locked($conn, $settingsBefore, $settingsAfter);
     $ldapIdentities = [];
     // Pass 1: Identitäten importieren, bestehende Beziehungen nicht anfassen.
     foreach ($entries as $entry) {

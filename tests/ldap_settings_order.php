@@ -62,11 +62,23 @@ final class Statement extends \PDOStatement
             $this->fixture->boundary('save');
             $this->fixture->saved = 'validated-configuration';
             $this->fixture->writes++;
-        } elseif (!str_starts_with($this->sql, 'SELECT COUNT(*) FROM ldap_settings')) {
+        } elseif (str_starts_with($this->sql, 'INSERT INTO audit_log')) {
+            $this->fixture->events[] = 'audit'; // Same transaction; no setting value or credential echo.
+        } elseif (!str_starts_with($this->sql, 'SELECT COUNT(*) FROM ldap_settings')
+            && !str_starts_with($this->sql, 'SELECT id,ldap_host,ldap_port,')) {
             throw new RuntimeException('Unexpected write outside settings boundary');
         }
         return true;
     }
+    public function fetch(int $mode = PDO::FETCH_DEFAULT, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): mixed
+    {
+        if (!str_starts_with($this->sql, 'SELECT id,ldap_host,ldap_port,')) { throw new RuntimeException('Unexpected read outside settings boundary'); }
+        if (($this->fixture->case['existing'] ?? 1) === 0 && $this->fixture->writes === 0) { return false; }
+        return ['id'=>1, 'ldap_host'=>'ldap://synthetic.invalid', 'ldap_port'=>389,
+            'base_dn_present'=>1, 'bind_identity_present'=>1, 'credential_present'=>1,
+            'base_dn_changed'=>0, 'bind_identity_changed'=>0];
+    }
+    public function closeCursor(): bool { return true; }
     public function fetchColumn(int $column = 0): mixed { return $this->fixture->case['existing'] ?? 1; }
     public function fetchAll(int $mode = PDO::FETCH_DEFAULT, mixed ...$args): array { return []; }
 }
