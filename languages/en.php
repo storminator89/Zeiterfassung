@@ -97,7 +97,7 @@ define('DASHBOARD_PROGRESS', 'Progress');
 define('DASHBOARD_CURRENT_WEEK', 'Current Week %s');
 define('DASHBOARD_HOURS_OF', '%s of %s hours');
 define('DASHBOARD_CALENDAR', 'Calendar');
-define('DASHBOARD_OVERTIME_INFO', 'Carry-in plus differences between completed booking days and their targets. Includes work and absence credits. Not a continuous contractual time account or a balance as of today.');
+define('DASHBOARD_OVERTIME_INFO', 'Carry-in plus work/absence credits minus target per completed booking start-day. Total: all stored days; as-of: only through the Berlin date. Missing target days are not deducted; not a complete contractual account.');
 define('DASHBOARD_WEEKLY_PRODUCTIVITY_INFO', 'Work plus absence credits divided by the full weekly target, capped at 0–100%. No positive target: 0%. Not a productivity rating.');
 define('DASHBOARD_PRODUCTIVITY_SCORE_INFO', 'Work plus absence credits divided by the full monthly target, capped at 0–100%. No positive target: 0%. Not a productivity rating.');
 define('BUTTON_PREV_WEEK', 'Previous Week');
@@ -139,7 +139,8 @@ define('DASHBOARD_HOURS_PER_DAY', 'Hours per Day');
 define('DASHBOARD_WEEKS_WORKED', 'Weeks with bookings');
 define('DASHBOARD_FIRST_WEEK', 'First booking week');
 define('DASHBOARD_KEEP_GOING', 'Completed bookings count.');
-define('DASHBOARD_TOTAL_OVERTIME', 'Total Overtime');
+define('DASHBOARD_TOTAL_OVERTIME', 'Recorded-day balance (all)');
+define('DASHBOARD_RECORDED_AS_OF', 'Recorded booking days through %s (Europe/Berlin): %s');
 define('DASHBOARD_OVER_HOURS_YEAR', 'Overtime This Year: %s');
 
 // Days of the Week

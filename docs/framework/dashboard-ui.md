@@ -211,5 +211,10 @@ nur erfundene Arrays und eine leere Layoutgrenze, keinen Appbootstrap, keine DB,
 Accounts, Sessions, HTTP/Server, Browser, GitHub-CI oder Remote-Schreibzugriffe.
 Die getrennten eingefrorenen Nachweise nennen die tatsächlichen Ergebnisse und
 unabhängige Quellenprüfung. Das ist keine geschützte oder visuelle Abnahme.
-Der native Fallback, vollständige #45-Stichtags-/Akzeptanzanforderungen und die
-bisher offenen Kalender-/Migrationsgatter bleiben ausdrücklich offen.
+Der native Fallback wurde inzwischen separat ergänzt. Die bestehende Saldo-Karte
+zeigt nun zusätzlich den Übertrag plus Differenzen nur der erfassten abgeschlossenen
+Buchungsstarttage bis einschließlich des aktuellen Berliner Datums. Der gemeinsame
+Einpasshelfer bewahrt Gesamtwert, Sollformel und SQLzahl; der vorhandene Snapshot-
+Planresolver bleibt nur operationseigen. Beide Werte werden bei unklaren Daten
+maskiert. Fehlende Solltage, Ein-/Austritt und Wertstellung werden nicht erfunden;
+dies ist kein vollständiges Vertragskonto (#40/#61) und keine neue Runtimefreigabe.

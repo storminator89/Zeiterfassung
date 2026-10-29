@@ -25,12 +25,22 @@ function home_working_days(PDO $db, int $user, string $startDate, string $endDat
 /** Native carry-in plus completed report-start-days, not a continuous time account. */
 function home_total_overtime(PDO $db, int $user, array $reportDays, float $previousOvertime, ?Closure $planned = null): float
 {
+    return home_recorded_day_balances($db, $user, $reportDays, $previousOvertime, $planned)['total_hours'];
+}
+
+/** Same recorded-day formula once; optional inclusive Berlin day, never fill missing days. */
+function home_recorded_day_balances(PDO $db, int $user, array $reportDays, float $previousOvertime, ?Closure $planned = null, ?string $asOfDay = null): array
+{
+    if ($asOfDay !== null) { practice_date($asOfDay); }
     $totalOverHours = (float) $previousOvertime;
+    $asOfHours = (float) $previousOvertime;
     foreach ($reportDays as $day => $minutes) {
-        $totalOverHours += ($minutes - ($planned === null ? planned_minutes($db, $user, $day) : $planned($day))) / 60;
+        $difference = ($minutes - ($planned === null ? planned_minutes($db, $user, $day) : $planned($day))) / 60;
+        $totalOverHours += $difference;
+        if ($asOfDay !== null && strcmp((string) $day, $asOfDay) <= 0) { $asOfHours += $difference; }
     }
 
-    return $totalOverHours;
+    return ['total_hours' => $totalOverHours, 'as_of_hours' => $asOfDay === null ? null : $asOfHours, 'as_of_day' => $asOfDay];
 }
 
 /** Stored calendar only. The native caller still owns its existing calendar refresh. */
