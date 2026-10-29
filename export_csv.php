@@ -2,6 +2,7 @@
 require_once 'config.php';
 // Definitions only: export does not need dashboard queries or holiday loading.
 require_once __DIR__ . '/lib/csv_export.php';
+require_once __DIR__ . '/lib/csv_period.php';
 require_once __DIR__ . '/lib/report_ordering.php';
 
 // Ensure user is logged in
@@ -10,6 +11,15 @@ if (!isset($_SESSION['user_id'])) {
     // Preserve the effective native redirect formerly performed by functions.php.
     header("Location: login.php");
     exit();
+}
+
+try {
+    $csvPeriod = chrono_csv_export_period_from_query_string((string) ($_SERVER['QUERY_STRING'] ?? ''));
+} catch (InvalidArgumentException) {
+    http_response_code(400);
+    header('Content-Type: text/plain; charset=UTF-8');
+    echo 'Ungültiger CSV-Zeitraum. Bitte Von/Bis als gültige Berliner Daten (JJJJ-MM-TT) wählen; Von darf nicht nach Bis liegen.';
+    exit;
 }
 
 try {
@@ -52,10 +62,13 @@ try {
     $filenameDate = date('Y-m-d');
     // Existing pure serializer closes its temporary stream even on failure.
     // Only complete bytes may become an attachment; no late streamed callback.
-    $document = report_csv_document($exportRecords);
+    $document = report_csv_document($csvPeriod === null ? $exportRecords
+        : chrono_csv_export_period_select($exportRecords, $csvPeriod['from'], $csvPeriod['to']));
+    $filename = $csvPeriod === null ? 'Arbeitszeiterfassung_' . $filenameDate . '.csv'
+        : 'Arbeitszeiterfassung_' . $csvPeriod['from'] . '_' . $csvPeriod['to'] . '.csv';
 
     header('Content-Type: text/csv; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="Arbeitszeiterfassung_' . $filenameDate . '.csv"');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
     echo $document;
     exit;
 
