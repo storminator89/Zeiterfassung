@@ -61,8 +61,11 @@ The whole resulting journal contains none of the bind/BaseDN/ciphertext canaries
 
 The existing coarse `tests/ldap_settings_order.php` fake was minimally adapted to
 recognize the new fixed safe reads/audit INSERT; its original preflight/encryption/
-cleanup/transaction cases still pass. No new test suite, additional workflow or
-manual CI dispatch. Relevant PHP syntax and exact fresh-Main content preservation
+cleanup/transaction cases still pass. The preexisting `tests/ldap_session.php` tiny
+Memory fixture now supplies the original audit table and fixed synthetic UDF context
+via PHP8.5 PDO::connect; its test cases are unchanged. That credential-generating
+legacy test was not executed for this change. No new test suite, cases, additional
+workflow or manual CI dispatch. Relevant PHP syntax and exact fresh-Main content preservation
 are checked before publication.
 
 No real LDAP transport, secret encryption, account mutation, real data, file DB,
