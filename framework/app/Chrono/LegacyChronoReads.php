@@ -697,7 +697,9 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
             $offset = ($page - 1) * $perPage;
             $statement = $pdo->prepare('SELECT users.id, users.username, users.email, users.role,
                 departments.name AS department_name, supervisors.username AS supervisor_name,
-                users.regelarbeitszeit, users.ueberstunden
+                users.regelarbeitszeit, users.ueberstunden,
+                users.department_id AS reference_department_id, departments.id AS reference_department_match,
+                users.supervisor_id AS reference_supervisor_id, supervisors.id AS reference_supervisor_match
                 FROM users
                 LEFT JOIN departments ON users.department_id = departments.id
                 LEFT JOIN users AS supervisors ON users.supervisor_id = supervisors.id
@@ -709,6 +711,18 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
             $statement->execute();
             $users = $statement->fetchAll(PDO::FETCH_ASSOC);
             $statement->closeCursor();
+            // Same authorized row/JOIN only. Do not expose the extra lookup IDs.
+            require_once dirname(__DIR__, 3).'/lib/admin_reference_status.php';
+            $users = array_map(static function (array $user): array {
+                $user['department_reference_status'] = \admin_reference_status(
+                    $user['reference_department_id'], $user['reference_department_match']);
+                $user['supervisor_reference_status'] = \admin_reference_status(
+                    $user['reference_supervisor_id'], $user['reference_supervisor_match']);
+                unset($user['reference_department_id'], $user['reference_department_match'],
+                    $user['reference_supervisor_id'], $user['reference_supervisor_match']);
+
+                return $user;
+            }, $users);
             $total = (int) $this->rows($pdo,
                 'SELECT COUNT(*) AS total FROM users WHERE username LIKE :search OR email LIKE :search',
                 ['search' => $searchParam],

@@ -156,7 +156,7 @@
                     @foreach (($adminPauseSettings->users['users'] ?? []) as $user)
                         <tr>
                             <td>{{ $user['username'] }}</td><td>{{ $user['email'] }}</td><td>{{ $user['role'] }}</td>
-                            <td>{{ $user['department_name'] ?? '' }}</td><td>{{ $user['supervisor_name'] ?? '' }}</td>
+                            <td>{{ $user['department_name'] ?? '' }}@if (($user['department_reference_status'] ?? null) === 'missing')<small class="block text-warning mt-1">Zugeordnete Abteilung fehlt. Zuordnung über „Bearbeiten“ prüfen.</small>@elseif (in_array($user['department_reference_status'] ?? null, ['invalid', 'unknown'], true))<small class="block text-warning mt-1">Abteilungszuordnung nicht eindeutig prüfbar. Bestand über „Bearbeiten“ prüfen.</small>@endif</td><td>{{ $user['supervisor_name'] ?? '' }}@if (($user['supervisor_reference_status'] ?? null) === 'missing')<small class="block text-warning mt-1">Zugeordnete vorgesetzte Person fehlt. Zuordnung über „Bearbeiten“ prüfen.</small>@elseif (in_array($user['supervisor_reference_status'] ?? null, ['invalid', 'unknown'], true))<small class="block text-warning mt-1">Vorgesetztenzuordnung nicht eindeutig prüfbar. Bestand über „Bearbeiten“ prüfen.</small>@endif</td>
                             <td>{{ $user['regelarbeitszeit'] }}</td><td>{{ $user['ueberstunden'] }}</td>
                             <td>
                                 <button type="button" class="btn btn-ghost btn-sm" data-read-user="{{ $user['id'] }}" title="{{ $page->copy->text('BUTTON_EDIT') }}"><i class="fas fa-edit"></i></button>
