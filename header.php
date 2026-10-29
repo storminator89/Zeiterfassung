@@ -500,6 +500,10 @@ $attendanceLabels = ['absent' => 'Nicht angemeldet', 'working' => 'Arbeitszeit l
             html.setAttribute('data-theme', resolved);
             chronoWritePreference('theme', preference);
             themeToggle.checked = resolved === 'dark';
+            // Settings must show the same raw browser choice, not a stale
+            // server-side preference or the resolved System colour.
+            const settingsTheme = document.getElementById('theme_mode');
+            if (settingsTheme) settingsTheme.value = preference;
         }
 
         // Check for saved theme preference or use the system preference
