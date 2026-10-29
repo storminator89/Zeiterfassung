@@ -138,8 +138,36 @@ original NEW API-key producer now, before any setup profile/token or user:
 docker compose --env-file "$OPERATOR_CONFIG" -f deploy/laravel/compose.yaml run --rm operator chrono:api-key --instance="$INSTANCE" --new-only --stopped
 ```
 
-Otherwise omit that command and leave API off. In either case, provision the
-short setup token only after the selected keys above:
+Otherwise omit that command and leave API off. Complete any other selected NEW
+key preparation while the installation is still empty. Then choose exactly one
+first-administrator path:
+
+### Recommended NEW V5: local interactive setup, no token
+
+Keep all web workers stopped. In the operator's own interactive terminal run:
+
+```sh
+docker compose --env-file "$OPERATOR_CONFIG" -f deploy/laravel/compose.yaml run --rm operator chrono:first-admin --instance="$INSTANCE" --new-only --stopped
+```
+
+Accept or edit the prefilled `admin` username, enter the email, then choose and
+confirm your own password. Both password prompts are hidden, with no visible
+fallback. Never put credentials in command arguments, environment/config files,
+chat, logs or automation input. Noninteractive/piped execution is refused.
+
+This explicit local command admits only canonical empty NEW V5 files with an
+already prepared private App-key, uses the existing first-admin transaction,
+and closes setup after confirmed account creation. It creates **no setup token**,
+opens no browser/listener, and never changes an existing account. On a confirmed
+success receipt leave `CHRONO_LARAVEL_SETUP_ENABLED=false`; after the other
+Phase 3 gates, start Phase 4 directly in closed-setup mode and use normal login.
+The token-handoff gate and Phase 5 token closure do not apply to this path.
+If anything is unconfirmed, keep web stopped and inspect locally; never rerun
+automatically or delete `setup-closed`. See [local first-admin details](local-first-admin.md).
+
+### Alternative browser setup (original V4/V5 token path)
+
+Only for this alternative, provision the short setup token after the selected keys:
 
 ```sh
 docker compose --env-file "$OPERATOR_CONFIG" -f deploy/laravel/compose.yaml run --rm operator chrono:setup-token prepare --instance="$INSTANCE" --stopped
@@ -170,7 +198,8 @@ native startup here. No target/reset/resume option is supplied.
    **do not establish that whole-request bound**, particularly for blocking I/O.
    This composition has no new hard watchdog and does not claim this gate passed.
    Do not enable web writes until that external operational gate is resolved.
-5. Establish the supported **private operator-token handoff** before creating an
+5. **Only for the alternative browser setup**, establish the supported
+   **private operator-token handoff** before creating an
    administrator. The token is only in private `operator-setup-token.txt`0600,
    valid for3600seconds. The operator reads/enters it personally through an
    established private credential flow; no token in chat/URL/log/screenshot,
@@ -188,8 +217,9 @@ work, not something performed by preparing this packet.
 
 ## Phase 4 — deliberately start the separate TLS web candidate
 
-Only after the gates above, set `CHRONO_LARAVEL_SETUP_ENABLED=true` for the short
-first-admin window. The key env file is loaded only by the additional web compose
+Only after the gates above, keep `CHRONO_LARAVEL_SETUP_ENABLED=false` after
+successful local `chrono:first-admin` setup. Only the alternative browser path
+sets it to `true` for its short first-admin window. The key env file is loaded only by the additional web compose
 file; the base operator never loads it. Start just this candidate explicitly:
 
 ```sh
@@ -203,13 +233,20 @@ provisioner. Remaining deep admission is enforced by FreshWeb on requests.
 There is **no automatic healthcheck/readiness assertion**; a running container
 or `/up` does not mean setup/login or a usable installation succeeded.
 
-Open the exact configured HTTPS origin's `/setup.php` through the supported
+After local setup, open the exact configured HTTPS origin's `/login.php` and
+sign in with the username and own password just chosen; there is no setup token
+to enter or change. For the alternative browser path, open the origin's
+`/setup.php` through the supported
 private flow. The user chooses their password privately; submit only with the
 applicable account-creation authorization. Confirm normal password login after
 setup; no autologin/session injection. If anything fails or is uncertain, do not
 regenerate tokens, reset the instance or assume a database operation rolled back.
 
 ## Phase 5 — close setup and return to normal local-admin mode
+
+The local `chrono:first-admin` path already closed setup; do not prepare a token
+or reopen setup. Keep its closure marker and use normal password login. The
+following stop/close sequence is only for the alternative browser-token path.
 
 Stop/drain **all** requests and verify workers exited; a stop timeout/SIGKILL is
 not proof every operation committed or rolled back:
