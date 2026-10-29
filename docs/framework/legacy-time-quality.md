@@ -21,6 +21,14 @@ manuelle Klärungshinweise anhand der bestehenden halboffenen Intervallsemantik.
 Abwesenheit/Abwesenheit, offene Überlappungen, Mapping, Reparatur und UI bleiben
 offen. Registrierung, Authentifizierung und alle Laufzeitpfade bleiben unberührt.
 
+**Additiver Format-4-Quellschritt:** Auch zwei eindeutig lesbare, gültige
+abgeschlossene Abwesenheiten desselben Nutzers werden nun paarweise geprüft.
+`booking_span` liefert dafür unverändert den ganzen Berliner Kalendertag des
+Startinstants. Unterschiedliche Abwesenheitsarten, Null-Gutschrift und zeitlich
+getrennte Kompatibilitätsintervalle können deshalb denselben Tag belegen. Der
+Befund fordert manuelle Klärung, ohne eine Zeile, Sollzeit oder Gutschrift zu
+ändern. Offene Überschneidungen, Mapping, Reparatur und UI bleiben weiterhin offen.
+
 ## Expliziter Aufruf, keine Dateisuche
 
 Installierte gelockte Frameworkabhängigkeiten und PHP 8.5 vorausgesetzt:
@@ -74,7 +82,7 @@ Kein Export von Namen, Notizen, Originalzeittexten, Hashes, Zugangsdaten
 oder Pfaden. Befunde enthalten nur Datensatz-ID, Kategorie und ggf. Spaltenname.
 Die Paarkategorien ergänzen `related_record_id`: Bei `work_absence_overlap`
 ist `record_id` die Arbeitszeit, `related_record_id` die Abwesenheit; bei
-`work_work_overlap` ist `record_id` die kleinere, `related_record_id` die größere
+`work_work_overlap` und `absence_absence_overlap` ist `record_id` die kleinere, `related_record_id` die größere
 Datensatz-ID. Jeder Befund zählt ein Paar, nicht eine einmalige betroffene
 Zeile; alte Kategorien behalten ihre Form. Die bisherigen Details stehen
 weiterhin vor den neuen Arbeit/Arbeit-Details.
@@ -93,6 +101,7 @@ nicht als GitHub-Nachweis hochladen.
 | `multiple_open_records` | Mehrere Null-/Leer-Endmarker desselben Nutzers; alle beteiligten IDs werden gemeldet. |
 | `work_absence_overlap` | Eine eindeutig prüfbare abgeschlossene Arbeitszeit überschneidet den ganzen Berliner Kalendertag einer gültigen abgeschlossenen Abwesenheit desselben Nutzers; Einzelwerte bleiben unverändert. |
 | `work_work_overlap` | Zwei eindeutig prüfbare gültige abgeschlossene Arbeitszeiten desselben Nutzers haben sich überschneidende positive Bruttointervalle; reine Randberührung zählt nicht. Keine automatische Kürzung, Pausenverteilung oder Aussage über doppelte Vergütung. |
+| `absence_absence_overlap` | Zwei eindeutig prüfbare gültige abgeschlossene Abwesenheiten desselben Nutzers belegen nach der bestehenden Buchungssemantik denselben ganzen Berliner Kalendertag; auch verschiedene Arten oder getrennte Kompatibilitätsintervalle. Keine automatische Auswahl, Löschung oder Neuberechnung. |
 
 Diagnoseformat: `YYYY-MM-DD HH:MM:SS` oder `YYYY-MM-DDTHH:MM:SS`, optional
 `Z` oder numerischer `±HH:MM`-Offset. Freitext, relative Angaben, Zeitzonennamen,
@@ -124,19 +133,19 @@ Historienbehauptungen erzeugt.
 - **1:** gestoppt, kein vollständiger Diagnosebericht; nur redigierte Phase.
 - **64:** fehlende/ungültige/mehrfach angegebene Argumente.
 
-`scope_status` bleibt immer `partial_diagnostic_only`. Format 3 setzt
-`checks.overlap=partial_completed_work_work_and_work_whole_day_absence_only`
+`scope_status` bleibt immer `partial_diagnostic_only`. Format 4 setzt
+`checks.overlap=partial_completed_work_work_and_whole_day_absence_pairs_only`
 und behält die separate `work_whole_day_absence_overlap`-Angabe. Die neue Angabe
 `work_work_overlap=checked_only_for_unambiguous_supported_completed_positive_intervals`
 benennt ihre enge Prüfgrenze. Der bisherige kombinierte Schlüssel
-`work_work_absence_absence_and_open_overlap` entfällt im versionierten Format 3;
-stattdessen bleibt `absence_absence_and_open_overlap=not_checked` ausdrücklich
-sichtbar. Es gibt im Repository keinen weiteren Leser dieses Diagnoseformats;
+`work_work_absence_absence_and_open_overlap` entfiel im versionierten Format 3.
+Format 4 ersetzt dessen verbleibenden Schlüssel `absence_absence_and_open_overlap`
+durch `absence_absence_overlap=checked_only_for_unambiguous_supported_completed_whole_day_rows`
+und das weiterhin ausdrückliche `open_overlap=not_checked`. Es gibt im Repository keinen weiteren Leser dieses Diagnoseformats;
 externe Verbraucher müssen die Berichtsversionsnummer und die neuen Kategorien
 beachten.
 
-Abwesenheit/Abwesenheit und offene Überschneidungen werden weiterhin **nicht
-geprüft**. Mehrdeutige, nicht unterstützte oder ungültige Zeilen werden auch für
+Offene Überschneidungen werden weiterhin **nicht geprüft**. Mehrdeutige, nicht unterstützte oder ungültige Zeilen werden auch für
 diesen Teil nicht normalisiert/verwendet. Weitere Session-/Event-/Pausen-/
 Projektionsabgleiche sind `not_checked`, Mapping und Reparatur
 `not_performed_requires_separate_confirmation`. Diese offenen Gatter bleiben
@@ -180,6 +189,18 @@ Zeilen noch Laufzeit; Zähler laufen auch bei voller Ausgabe weiter. Erneutes
 Lesen kann quadratische Laufzeit verursachen, auch bei wenigen Befunden. Keine
 neue Performance-/Betriebsfreigabe, kein Index-/Schemawechsel oder versteckter
 Aufruf des Offlinewerkzeugs.
+
+Abwesenheit/Abwesenheit verwendet dieselbe beschränkte Paarfolge wie
+Arbeit/Arbeit: gleicher Nutzer und größere zweite ID, stets nur ein Zeilenpaar,
+ohne Kandidatenliste. Die unveränderte gemeinsame `booking_is_absence`-Erkennung
+beachtet auch die drei exakten deutschen Legacy-Abwesenheitsmarker. Erst nach
+enger Form-/DST- und gültiger Completed-Prüfung wird `booking_span` aufgerufen;
+kein historischer Fold-Instant wird geraten. Der ganze lokale Tag kann bei DST
+23 oder 25 Stunden umfassen. Benachbarte Tage berühren sich nur und sind kein
+neuer Paarbefund. Die neuen Details folgen nach sämtlichen bisherigen Details,
+geordnet nach kleinerer und dann größerer ID. Die begrenzte Detailausgabe stoppt
+keine Zähler; quadratische Laufzeit bleibt möglich. Aus einem Paarbefund folgt
+keine Behauptung einer Doppelvergütung oder eine Freigabe zur Datenreparatur.
 
 ## Grober synthetischer Nachweis, keine reale Datenabnahme
 
@@ -263,3 +284,23 @@ oder Lastabnahme, kein Mapping, keine Reparatur, Registrierung, Authentifizierun
 HTTP-/Browser-/UI-/Runtime-/Deploymentaktion. #55 bleibt teilweise und offen;
 kein Attest tatsächlicher Bestandsdaten wird aus dem synthetischen Befund
 abgeleitet.
+
+### Additiver grober Quellnachweis für Format 4
+
+Ein grober anonymer SQLite-Memory-Journey mit 19 erfundenen Zeilen unter PHP
+8.5.12 liefert genau sieben zusätzliche Abwesenheitspaare. Verschiedene Arten,
+deutsche Legacy-Erkennung, Null-Dauer, getrennte Kompatibilitätsintervalle,
+explizite Offset-/Z-Starttage sowie 23-/25-Stunden-Tage sind enthalten. Andere
+Nutzer, benachbarte Tage, Arbeitszeilen, offene, ungültige oder mehrdeutige Zeilen
+erzeugen keine neuen Abwesenheitspaare. Alle früheren Befunde, Zähler und ihre
+Detailreihenfolge stimmen mit der tatsächlich ausgeführten unveränderten
+Basisklasse überein; Limit 2 begrenzt nur Details, nicht die sieben Paarzählungen.
+Wiederholung, Query-only-Transaktion und Originalzeilen bleiben gleich. Keine
+Notizen, Nutzer-IDs oder Zeittexte erscheinen im Bericht. Die vollständige
+Klasseninverse stellt den alten Source exakt wieder her; gemeinsame Parser und
+Buchungs-/Reporthelper sowie Scanner-CLI sind unverändert.
+
+Dies ist kein Aufruf des Dateiscanners, kein tatsächlicher Bestandsscan und
+keine Performance-, Mapping-, Reparatur-, UI-, Runtime- oder Betriebsabnahme.
+Keine Datei-DB, Konten, Credentials, neue Instanz oder Server wurden erzeugt.
+Offene Überlappungen und bestätigtes Mapping bleiben eigene Gates; #55 bleibt offen.
