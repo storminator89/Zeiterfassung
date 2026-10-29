@@ -13,7 +13,7 @@
     <link href="assets/vendor/daisyui/3.9.4/full.css" rel="stylesheet" type="text/css" integrity="sha256-htj+jXV2EbqZMnbFtkmO5n8WwOKf0ZVYlc0doGP6YaI=" />
 
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="assets/vendor/fontawesome/6.4.2/css/all.min.css" integrity="sha256-CTSx/A06dm1B063156EVh15m6Y67pAjZZaQc89LLSrU=">
     <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600&display=swap" rel="stylesheet">
 
 

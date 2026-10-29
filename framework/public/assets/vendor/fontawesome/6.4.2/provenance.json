@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "package": "@fortawesome/fontawesome-free",
+  "version": "6.4.2",
+  "authoritative_byte_source": "Official exact-version npm distribution, matched to existing exact-version CDN resources",
+  "registry_metadata_url": "https://registry.npmjs.org/@fortawesome/fontawesome-free/6.4.2",
+  "archive_url": "https://registry.npmjs.org/@fortawesome/fontawesome-free/-/fontawesome-free-6.4.2.tgz",
+  "archive_bytes": 4864384,
+  "archive_sha256": "a41c66ad259947764abd3aff8fcd4d49fbed5561601ad6744703ce7a9eeb90af",
+  "archive_sha512_integrity": "sha512-m5cPn3e2+FDCOgi1mz0RexTUvvQibBebOUlUlW0+YrMjDTPkiJ6VTKukA1GRsvRw+12KyJndNjj0O4AgTxm2Pg==",
+  "archive_sha1": "36b6a9cb5ffbecdf89815c94d0c0ffa489ac5ecb",
+  "stylesheet_integrity": "sha256-CTSx/A06dm1B063156EVh15m6Y67pAjZZaQc89LLSrU=",
+  "files": [
+    {
+      "path": "css/all.min.css",
+      "bytes": 102217,
+      "sha256": "0934b1fc0d3a766d41d3adf5e7a115875e66e98ebba408d965a41cf3d2cb4ab5",
+      "distribution_git_blob": "d949e4f2867ba3c48d75c09f40b6dc0b56a59aa9",
+      "official_tag_blob": "d949e4f2867ba3c48d75c09f40b6dc0b56a59aa9",
+      "distribution_equals_official_tag": true,
+      "existing_CDN_url": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+    },
+    {
+      "path": "LICENSE.txt",
+      "bytes": 7427,
+      "sha256": "0aa8f86525273b2efa4f40f4272a188e187704252170e979dc06879adf68d43c",
+      "distribution_git_blob": "39e18e3d30767f5a321f87d338f911906aa88da9",
+      "official_tag_blob": "39e18e3d30767f5a321f87d338f911906aa88da9",
+      "distribution_equals_official_tag": true,
+      "existing_CDN_url": null
+    },
+    {
+      "path": "webfonts/fa-brands-400.woff2",
+      "bytes": 109808,
+      "sha256": "faae6fc0aa94cc5bde5076647c817a23206096a1cbeda10d1c6f3d89d6163ed1",
+      "distribution_git_blob": "8a480d9b1fef0ec5b862df5446201c25b3f420e1",
+      "official_tag_blob": "15086bbf1dcef34a069da8197d326d692ded6df2",
+      "distribution_equals_official_tag": false,
+      "existing_CDN_url": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/webfonts/fa-brands-400.woff2"
+    },
+    {
+      "path": "webfonts/fa-brands-400.ttf",
+      "bytes": 189684,
+      "sha256": "003f11541856a649a6c8235c6266c8936224c5d609e51442da24dc5556d14fbf",
+      "distribution_git_blob": "30f55b7435491ed4c2b11de8ab5e5c7e1e1ed669",
+      "official_tag_blob": "f10a07db7cc295bafe4e9a0ceea8417433ecbb20",
+      "distribution_equals_official_tag": false,
+      "existing_CDN_url": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/webfonts/fa-brands-400.ttf"
+    },
+    {
+      "path": "webfonts/fa-regular-400.woff2",
+      "bytes": 24488,
+      "sha256": "9169d8be7a8177e5a92a4d04b6de7f6504b938573bf4da5889871c4f376d3849",
+      "distribution_git_blob": "059a94e2fd7a6144d1496157ce0c21e39fcde121",
+      "official_tag_blob": "ccfb785344b6d9a9f360ab5517496a0951b4a9cb",
+      "distribution_equals_official_tag": false,
+      "existing_CDN_url": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/webfonts/fa-regular-400.woff2"
+    },
+    {
+      "path": "webfonts/fa-regular-400.ttf",
+      "bytes": 63348,
+      "sha256": "7d81a1a7cc07e1ab196e40496d3f4359e9759f79d8ec883a46675ee69912950b",
+      "distribution_git_blob": "c79589d83dd5569afad3a4bf7dd96d97cfd52e57",
+      "official_tag_blob": "6a4c99ff95e35b18ff6db89926e9d16b59b88654",
+      "distribution_equals_official_tag": false,
+      "existing_CDN_url": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/webfonts/fa-regular-400.ttf"
+    },
+    {
+      "path": "webfonts/fa-solid-900.woff2",
+      "bytes": 150020,
+      "sha256": "886c86112a804ef1ddd1cb206af4c8c40e34b73c26652ca231404aa35a6b30d9",
+      "distribution_git_blob": "88b0367aae421f51483c07ad7ae3ebc5251e48e5",
+      "official_tag_blob": "034deca0bfe391fa60ff46d0c31e7d38c7aaa160",
+      "distribution_equals_official_tag": false,
+      "existing_CDN_url": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/webfonts/fa-solid-900.woff2"
+    },
+    {
+      "path": "webfonts/fa-solid-900.ttf",
+      "bytes": 394668,
+      "sha256": "cea79b345caf49d6223098b8a2b04d70273e8d7c6b9e3d03cf7f7a267793e9aa",
+      "distribution_git_blob": "e479fb29349a12b564516c40aa529276c6c5e12d",
+      "official_tag_blob": "175b96f41048ee497bcde2678d0021f5c5c89adf",
+      "distribution_equals_official_tag": false,
+      "existing_CDN_url": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/webfonts/fa-solid-900.ttf"
+    },
+    {
+      "path": "webfonts/fa-v4compatibility.woff2",
+      "bytes": 4568,
+      "sha256": "335fd7d9af58c44df12132fc9fd760b04af779b6d8580beb74ab5672f4526e77",
+      "distribution_git_blob": "23b1c47ba29581512bbffdf82a9d88fb898faee6",
+      "official_tag_blob": "2e22c38550cef5989264e23ed0bc39463d656529",
+      "distribution_equals_official_tag": false,
+      "existing_CDN_url": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/webfonts/fa-v4compatibility.woff2"
+    },
+    {
+      "path": "webfonts/fa-v4compatibility.ttf",
+      "bytes": 10172,
+      "sha256": "455e8e7241eece00643d05d78bfb2cee0380d7d58b030db2a5ddf6603f66220e",
+      "distribution_git_blob": "ba6cb258e0f33ffddffd24b18d7162a32cb9a6da",
+      "official_tag_blob": "fdcc621e7fc288cdbc56cb56c1c693d3e9eb97f1",
+      "distribution_equals_official_tag": false,
+      "existing_CDN_url": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/webfonts/fa-v4compatibility.ttf"
+    }
+  ],
+  "official_repository": "https://github.com/FortAwesome/Font-Awesome",
+  "official_tag_commit": "f0c25837a3fe0e03783b939559e088abcbfb3c4b",
+  "CSS_and_license_match_official_tag": true,
+  "fonts_do_not_match_official_tag": true,
+  "npm_gitHead": "c85df5af6abc698707f3c9c0f6a8f78ec2cdf5f7",
+  "npm_gitHead_public_source_unresolved": true,
+  "historical_CDN_pipeline_or_reproducible_source_build_attested": false,
+  "cdnjs_current_npm_autoupdate_config": {
+    "commit": "334566b7d74f780cbeac7c06219ab29b2bb77e53",
+    "tree": "698cc89037f019c316ce91ac0675fd4c8c34c87b",
+    "file": {
+      "path": "font-awesome.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3b427117d8a8fad0b50a40b4d731855e8b438c55",
+      "size": 900,
+      "url": "https://api.github.com/repos/cdnjs/packages/git/blobs/3b427117d8a8fad0b50a40b4d731855e8b438c55"
+    },
+    "sha256": "1bd1ca641995154f079e840589a9a9b0c6c7815f170738701572c8bb24da773a",
+    "pinned_url": "https://github.com/cdnjs/packages/blob/334566b7d74f780cbeac7c06219ab29b2bb77e53/packages/f/font-awesome.json",
+    "current_config_not_historical_pipeline_attestation": true
+  },
+  "license": "Font Awesome Free: fonts SIL OFL 1.1, icons CC BY 4.0, code MIT",
+  "notice": "LICENSE.txt is preserved in full; existing CSS attribution is unchanged.",
+  "no_runtime_downloader_or_CDN_fallback": true
+}
