@@ -5,11 +5,22 @@
 require_once __DIR__.'/ldap_manager_mapping.php';
 require_once __DIR__.'/native_ldap_session.php';
 
-/** Exact legacy import policy, including local-name conversion and nonfatal manager conflicts. */
+/** Legacy import plus reserved local Admin recovery; nonfatal manager conflicts stay. */
 function chrono_ldap_import_locked(PDO $conn, array $entries, string $ldapHost, string $ldapPort, string $ldapUser, string $encryptedLdapPass, string $ldapBaseDN, bool $accountLifecycleV5 = false): array
 {
     if (!$conn->inTransaction()) {
         throw new LogicException('LDAP import requires an owned transaction.');
+    }
+    if (!$accountLifecycleV5) {
+        // Check the WHOLE materialized stage in the existing transaction,
+        // before settings or any earlier identity can change. V5 keeps its
+        // already stricter retained-identity preflight below unchanged.
+        foreach ($entries as $entry) {
+            if (!isset($entry['uid'][0], $entry['mail'][0])) { continue; }
+            if (native_local_recovery_admin($conn, $entry['uid'][0])) {
+                throw new DomainException('LDAP import refused for a local recovery identity.');
+            }
+        }
     }
     if ($accountLifecycleV5) {
         // Separate trusted Laravel V5 operation only. Preflight the WHOLE stage

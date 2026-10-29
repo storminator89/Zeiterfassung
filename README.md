@@ -48,7 +48,9 @@ Ohne Docker benötigt die native Anwendung PHP **8.5** mit PDO SQLite, SQLite3, 
 
 ### Separater Laravel-Kandidat
 
-Unter [`framework/`](framework/) liegt eine Laravel-13-Implementierung mit vorbereiteten Web-, API- und Betriebsbausteinen. Sie ersetzt **nicht** die native Standardinstallation. Die Account-Lifecycle-V5-Runtime ist weiterhin gesperrt; vorhandener Quellcode und Komponentenprüfungen sind keine allgemeine Betriebs- oder Browserfreigabe.
+Unter [`framework/`](framework/) liegt ein separater Laravel-13-Kandidat. Er ersetzt **nicht** die native Standardinstallation. Sein V5-Profil lässt nur die kanonische, private **NEW-Laravel-Kohorte** mit vollständiger Zulassung und ausdrücklichen Opt-ins zu; ein allgemeines Öffnen vorhandener Datenbanken oder eine native Bestandsmigration ist damit nicht verbunden.
+
+Isolierte Prüfungen der ursprünglichen NEW-only-Komposition mit echtem PHP-CGI/Laravel-HttpKernel belegen Einrichtung, Anmeldung/CSRF, Buchungen, API/JWT sowie Kontosperrung und Nicht-Wiederaufleben alter Sitzungen/Tokens. Neuere Main-Korrekturen bleiben beim additiven Abgleich erhalten; der neue Gesamtstand wird dadurch nicht als nochmals vollständig end-to-end geprüft ausgegeben. Die Belege sind **keine Browser-, TLS- oder JavaScript-Abnahme** und keine Produktions-/Deploymentfreigabe. Die gesonderte Browserabnahme übernimmt der Betreiber; HTTPS-, Cookie- und Betriebsvoraussetzungen werden dadurch nicht gelockert. Wiederherstellung ist nur kalt unter erhaltenen Dateiidentitäten geprüft; andere Inodes/Datenträger und bestehende Installationen werden nicht automatisch übernommen.
 
 Nur gemäß [separatem Docker-/Operatorvertrag](docs/framework/installation-docker.md) einrichten, niemals beide Anwendungen auf dieselbe Datenbank richten. [Architektur und Verträge](docs/framework/README.md) · [V5-Runtime-Grenze](docs/framework/account-lifecycle-v5-runtime-profile.md).
 

@@ -44,9 +44,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if (!empty($username) && !empty($password)) {
             throttle_login($conn, $username);
             // LDAP-Verbindungsdetails aus der Datenbank abrufen
-            $stmt = $conn->prepare("SELECT * FROM ldap_settings ORDER BY id DESC LIMIT 1");
-            $stmt->execute();
-            $ldapSettings = $stmt->fetch(PDO::FETCH_OBJ);
+            $ldapSettings = null;
+            // Existing local Admins remain reachable without directory liveness.
+            // This only selects the old local-password path below; it grants no login.
+            if (!native_local_recovery_admin($conn, $username)) {
+                $stmt = $conn->prepare("SELECT * FROM ldap_settings ORDER BY id DESC LIMIT 1");
+                $stmt->execute();
+                $ldapSettings = $stmt->fetch(PDO::FETCH_OBJ);
+            }
 
             if ($ldapSettings && function_exists('ldap_connect')) {
                 $ldapHost = $ldapSettings->ldap_host;
