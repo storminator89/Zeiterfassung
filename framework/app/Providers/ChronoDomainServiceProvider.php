@@ -101,6 +101,11 @@ final class ChronoDomainServiceProvider extends ServiceProvider
             if (! $app->bound(AdmittedTerminalKeys::class) || ! $app->bound(AttendanceWriter::class)) {
                 throw new LogicException('Explicit terminal key sources and an admitted operation writer are required.');
             }
+            $profile = null;
+            if ($app->bound(\App\Terminal\AdmittedTerminalConfiguration::class)) {
+                $profile = $app->make(\App\Terminal\AdmittedTerminalConfiguration::class);
+                $profile->assertCurrent($app);
+            }
             $keys = $app->make(AdmittedTerminalKeys::class);
             if (! $keys instanceof AdmittedTerminalKeys) {
                 throw new LogicException('Explicit existing terminal key sources are required.');
@@ -110,7 +115,8 @@ final class ChronoDomainServiceProvider extends ServiceProvider
                 throw new LogicException('An admitted operation-scoped terminal writer is required.');
             }
 
-            return new LegacyTerminalProtocol($writer, $keys);
+            return new LegacyTerminalProtocol($writer, $keys,
+                $profile === null ? null : static fn () => $profile->assertCurrent($app));
         });
     }
     public function boot(): void

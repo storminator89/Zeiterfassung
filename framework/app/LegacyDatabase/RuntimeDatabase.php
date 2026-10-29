@@ -26,6 +26,12 @@ final class RuntimeDatabase
         private readonly OfflineFiles $files,
     ) {}
 
+    /** Pure exact manifest identity; no filesystem, connection or writer access. */
+    public function matchesAdmission(RuntimeAdmission $admission): bool
+    {
+        return (array) $this->admission === (array) $admission;
+    }
+
     public function readConnection(array $configuration, string $name): SQLiteConnection
     {
         if ($name !== 'chrono' || $configuration !== $this->admission->configuration()) {
