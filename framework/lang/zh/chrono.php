@@ -234,4 +234,6 @@ return [
     'HOLIDAY_INVENTORY_UNAVAILABLE' => '目前無法取得已保存的假日清單。請稍後重新查看；未匯入或變更任何年度資料。',
     'CSV_EXPORT_NEW_CONTEXT_HINT' => 'CSV 下载或错误信息将在单独的页面打开；您选择的日期会保留在本页。',
     'ADMIN_USER_DELETE_HISTORY_LOCKED' => '無法刪除：含有歷程記錄的帳戶必須保留。',
+    'TIME_RECORD_HISTORY_LINK' => '本条记录的历史（单独打开）',
+    'TIME_RECORD_HISTORY_HINT' => '查看本条记录已存的变更及有限的关联信息，不代表完整历史记录。',
 ];
