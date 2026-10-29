@@ -109,6 +109,24 @@ Record only its exact returned basename. This prepares dormant files, not
 Runtime activation, credentials, migration or source acceptance. A pre-NEW-V5
 image still refuses through its original Runtime hold.
 
+### Local NEW V5 installation with browser-only first registration
+
+For the explicitly selected **local** first-user-Admin policy, the installation
+process uses this single NEW preparation command instead of either command above:
+
+```sh
+docker compose --env-file "$OPERATOR_CONFIG" -f deploy/laravel/compose.yaml run --rm operator chrono:prepare-fresh --private-parent=/var/lib/chrono-laravel --new-only --local-browser-first-admin
+```
+
+It prepares the same canonical empty V5 files and a bound nonsecret
+`local-first-user-setup.json` policy. No account, password, token, key or server is
+created. It cannot target/reopen an existing installation; do not add this file
+by hand. The application user has **no terminal or token step**: after the normal
+installation/key/TLS gates below, opening Login or Register leads directly to
+the existing first-setup card. The first successful registration becomes Admin.
+See [browser first-user setup](browser-first-user-admin.md) for the local-network
+risk and the exact boundary; local reachability does not prove personal identity.
+
 Before Web setup on an admitted NEW V5 source, explicitly set
 `CHRONO_LARAVEL_SHARED_LOGIN_BUDGET_ENABLED=true` in the private **operator
 configuration**, and keep it true afterwards. V5 requires the existing shared
@@ -149,7 +167,27 @@ Otherwise omit that command and leave API off. Complete any other selected NEW
 key preparation while the installation is still empty. Then choose exactly one
 first-administrator path:
 
-### Recommended NEW V5: local interactive setup, no token
+### Recommended local NEW V5: first registration in the browser
+
+For the NEW local-browser policy above, do not run `chrono:first-admin` or
+`chrono:setup-token`. Prepare the already required App-key and any selected keys
+while empty, keep API/LDAP/terminal off during first setup, and leave
+`CHRONO_LARAVEL_SETUP_ENABLED=false`. Start Phase 4 only after its existing gates.
+The canonical HTTPS origin must be localhost/`.localhost` or a loopback/RFC1918
+IPv4 address, with a certificate already trusted by the browser; no public-origin,
+HTTP or certificate-warning fallback is added.
+
+The user opens the installed local address in the browser, accepts/edits `admin`,
+enters email and chooses/confirms their own password. There is no token or
+separate operator approval per browser. First successful commit creates the only
+initial Admin and closes setup; subsequent users cannot become Admin through it.
+An unknown result is not permission to repeat/reset. **Anyone able to reach an
+unfinished local installation could be first**: complete it on a trusted computer
+and network, never through public forwarding. Browser/device reachability still
+has to be established for the actual installation; an iOS chat surface alone
+does not prove access to the host's localhost address.
+
+### Optional operator CLI alternative, no token
 
 Keep all web workers stopped. In the operator's own interactive terminal run:
 
@@ -227,8 +265,9 @@ work, not something performed by preparing this packet.
 
 ## Phase 4 — deliberately start the separate TLS web candidate
 
-Only after the gates above, keep `CHRONO_LARAVEL_SETUP_ENABLED=false` after
-successful local `chrono:first-admin` setup. Only the alternative browser path
+Only after the gates above, keep `CHRONO_LARAVEL_SETUP_ENABLED=false` for the
+NEW local first-user browser profile, or after successful `chrono:first-admin`
+setup. Only the alternative token-browser path
 sets it to `true` for its short first-admin window. The key env file is loaded only by the additional web compose
 file; the base operator never loads it. Start just this candidate explicitly:
 
@@ -243,7 +282,10 @@ provisioner. Remaining deep admission is enforced by FreshWeb on requests.
 There is **no automatic healthcheck/readiness assertion**; a running container
 or `/up` does not mean setup/login or a usable installation succeeded.
 
-After local setup, open the exact configured HTTPS origin's `/login.php` and
+For a NEW local first-user browser profile, open `/login.php` or `/register.php`;
+the existing setup card appears automatically, without a token/terminal step.
+After successful registration, use normal password login. For the optional
+operator CLI path, open the exact configured HTTPS origin's `/login.php` and
 sign in with the username and own password just chosen; there is no setup token
 to enter or change. For the alternative browser path, open the origin's
 `/setup.php` through the supported
@@ -254,7 +296,8 @@ regenerate tokens, reset the instance or assume a database operation rolled back
 
 ## Phase 5 — close setup and return to normal local-admin mode
 
-The local `chrono:first-admin` path already closed setup; do not prepare a token
+The local browser-first-user and `chrono:first-admin` paths close setup
+automatically after confirmed account creation; do not prepare a token
 or reopen setup. Keep its closure marker and use normal password login. The
 following stop/close sequence is only for the alternative browser-token path.
 
@@ -269,8 +312,9 @@ docker compose --env-file "$OPERATOR_CONFIG" -f deploy/laravel/compose.yaml run 
 
 Require confirmed closure, keep the monotone marker even on partial cleanup, and
 set `CHRONO_LARAVEL_SETUP_ENABLED=false` before recreating the web container with
-the Phase4 command. The entrypoint refuses closed-mode startup without a closure
-marker; the marker alone is still **not** proof an admin exists. No key rotation,
+the Phase4 command. The entrypoint refuses missing closure unless the separately
+selected NEW local-browser policy exists; that policy is deeply rechecked by
+FreshWeb. A marker alone is still **not** proof an admin exists. No key rotation,
 backup deletion, database adoption or native-host switch occurs. If closure is
 unconfirmed, keep web stopped and inspect locally.
 

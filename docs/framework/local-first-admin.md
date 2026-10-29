@@ -1,5 +1,9 @@
 # Local first administrator — NEW V5, no setup token
 
+The user-facing recommendation is now [first registration in the local browser](browser-first-user-admin.md):
+no token or terminal for the application user. This page describes the preserved
+**optional operator CLI alternative**, not a required browser setup step.
+
 This is an explicit local operator command, not a seeded/default credential,
 public first-visitor setup, existing-account reset or executed installation.
 No live account, password, token, key or web process is created by source review.
@@ -70,8 +74,11 @@ Any other late error can follow a committed account or an uncertain outcome. The
 command returns only a generic unconfirmed result, never raw exception/SQL/input,
 and makes no rollback claim. Keep web stopped and inspect the saved state locally;
 do not automatically retry, regenerate keys, reset the DB or remove a closure
-marker. A missing closure marker prevents the existing closed-mode web entrypoint
-from starting. The existing separately authorized revoke-only close command can
+marker. Without the separately selected NEW browser policy, a missing closure
+marker prevents the existing closed-mode web entrypoint from starting. A running
+browser-policy installation instead still refuses another account via the
+unchanged zero-user writer; marker absence never proves rollback. The existing
+separately authorized revoke-only close command can
 finish closure after the operator has established the account state; this new
 command never supplies a reset/recovery bypass. Preserve closure in full backups
 and restores; no irreversible consumption across restoring an old empty entire

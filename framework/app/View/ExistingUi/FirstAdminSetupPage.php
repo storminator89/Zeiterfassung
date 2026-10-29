@@ -8,5 +8,5 @@ final readonly class FirstAdminSetupPage
     /** Presentation-only preset, never an existing account or login credential. */
     public const STANDARD_USERNAME = 'admin';
 
-    public function __construct(public Copy $copy, public ?string $error = null) {}
+    public function __construct(public Copy $copy, public ?string $error = null, public bool $requiresOperatorToken = true) {}
 }

@@ -129,6 +129,14 @@ final readonly class FreshWebConfiguration
                 [$app->basePath(), dirname($app->basePath()), $app->publicPath()]);
             if ($sync !== null && $setup) { throw new RuntimeException; }
             if (($ldap['enabled'] || $sync !== null || $terminal['http_enabled']) && ! self::setupClosed($directory)) { throw new RuntimeException; }
+            if (@lstat($directory.'/'.FirstAdminSetupFiles::LOCAL_BROWSER_PROFILE) !== false && ! self::setupClosed($directory)) {
+                // An open local first-user installation is not the closed setup
+                // prerequisite of API/LDAP/terminal composition, even though the
+                // separate historical token opt-in remains false.
+                if (! $v5 || $setup || $ldap['enabled'] || $sync !== null || $terminal['http_enabled']
+                    || $apiEnabled) { throw new RuntimeException; }
+                FirstAdminSetupFiles::localBrowserConfiguration($directory, $origin);
+            }
             self::assets($app->publicPath());
             $namespace = 'chrono_fresh_'.substr(hash('sha256', $directory.'\0'.$admission->device.':'.$admission->inode), 0, 24);
             $overrides = [
@@ -229,12 +237,23 @@ final readonly class FreshWebConfiguration
     public function setupConfiguration(): array
     {
         $disabled = ['enabled' => false, 'token_sha256' => null];
-        if (! $this->setupOptIn) { return $disabled; }
         try {
             if (self::directory($this->directory) !== $this->directories[$this->directory]) { return $disabled; }
             if (self::setupClosed($this->directory)) {
                 return $disabled; // Any existence wins BEFORE profile read, including symlink/wrong type.
             }
+            if (@lstat($this->directory.'/'.FirstAdminSetupFiles::LOCAL_BROWSER_PROFILE) !== false) {
+                // Installation policy, not proof of a visitor's identity. Only a
+                // NEW V5 local-origin profile can select the first-user path.
+                if ($this->setupOptIn || $this->ldapLogin || $this->ldapSync !== null || $this->terminalHttp
+                    || ($this->overrides['chrono_api.enabled'] ?? false) === true) { return $disabled; }
+                $configuration = FirstAdminSetupFiles::localBrowserConfiguration($this->directory, $this->origin);
+                if (self::setupClosed($this->directory)
+                    || self::directory($this->directory) !== $this->directories[$this->directory]) { return $disabled; }
+
+                return $configuration;
+            }
+            if (! $this->setupOptIn) { return $disabled; }
             [$profile] = self::json($this->directory.'/'.FirstAdminSetupFiles::PROFILE);
             $configuration = FirstAdminSetupFiles::configuration($profile, $this->manifestHash, false, time());
             if (self::setupClosed($this->directory)
