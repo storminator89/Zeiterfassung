@@ -189,6 +189,8 @@ return [
     'SETUP_LINK' => 'Ersten Administrator einrichten',
     'SETUP_NOTICE' => 'Nur für die erste lokale Administration einer leeren Installation. Die geheime Setup-Freigabe muss der Betreiber separat bereitstellen. Es wird kein vorhandenes Konto geändert und keine automatische Anmeldung ausgeführt.',
     'SETUP_TOKEN_LABEL' => 'Geheime Setup-Freigabe',
+    'SETUP_STANDARD_ADMIN_NOTICE' => 'Der Benutzername admin ist vorbelegt und kann hier geändert werden. Lege vor dem Anlegen dein eigenes Admin-Passwort fest. Es gibt kein verwendbares Standardpasswort.',
+    'SETUP_NEW_PASSWORD_LABEL' => 'Eigenes Admin-Passwort festlegen',
     'SETUP_CONFIRM_PASSWORD' => 'Passwort bestätigen',
     'SETUP_PASSWORD_HINT' => 'Passwort: 12 bis 72 Bytes, keine Steuerzeichen; beide Eingaben müssen übereinstimmen.',
     'SETUP_CREATE_ADMIN' => 'Ersten lokalen Administrator anlegen',

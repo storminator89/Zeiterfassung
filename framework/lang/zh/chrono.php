@@ -186,6 +186,8 @@ return [
     'SETUP_LINK' => '設定第一位管理員',
     'SETUP_NOTICE' => '僅限尚無使用者的安裝環境，建立第一個本機管理員。營運者必須另外提供秘密設定授權。不會修改現有帳戶，也不會自動登入。',
     'SETUP_TOKEN_LABEL' => '秘密設定授權',
+    'SETUP_STANDARD_ADMIN_NOTICE' => '使用者名稱已預填為 admin，可在此修改。建立帳戶前，必須設定您自己的管理員密碼。系統沒有可直接使用的預設密碼。',
+    'SETUP_NEW_PASSWORD_LABEL' => '設定您自己的管理員密碼',
     'SETUP_CONFIRM_PASSWORD' => '確認密碼',
     'SETUP_PASSWORD_HINT' => '密碼須為 12 至 72 位元組，不可包含控制字元；兩次輸入必須相同。',
     'SETUP_CREATE_ADMIN' => '建立第一位本機管理員',

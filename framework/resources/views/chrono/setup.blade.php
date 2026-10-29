@@ -41,12 +41,13 @@
                     <label class="label" for="setup-username">
                         <span class="label-text text-gray-700">{{ $page->copy->text('USERNAME_LABEL') }}</span>
                     </label>
-                    <input type="text" id="setup-username" name="username" autocomplete="username" maxlength="100" class="input input-bordered w-full bg-gray-50 focus:bg-white transition-colors duration-300" required />
+                    <input type="text" id="setup-username" name="username" value="{{ $page::STANDARD_USERNAME }}" autocomplete="username" aria-describedby="setup-standard-admin" maxlength="100" class="input input-bordered w-full bg-gray-50 focus:bg-white transition-colors duration-300" required />
+                    <p id="setup-standard-admin" class="text-xs text-gray-600">{{ $page->copy->text('SETUP_STANDARD_ADMIN_NOTICE') }}</p>
                 </div>
 
                 <div class="form-control">
                     <label class="label" for="setup-password">
-                        <span class="label-text text-gray-700">{{ $page->copy->text('PASSWORD_LABEL') }}</span>
+                        <span class="label-text text-gray-700">{{ $page->copy->text('SETUP_NEW_PASSWORD_LABEL') }}</span>
                     </label>
                     <input type="password" id="setup-password" name="password" autocomplete="new-password" class="input input-bordered w-full bg-gray-50 focus:bg-white transition-colors duration-300" required />
                 </div>

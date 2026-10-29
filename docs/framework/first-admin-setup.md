@@ -5,6 +5,20 @@ A separate `setup.php` form creates only the first local administrator of an
 reset or an automatic privilege grant. Native `register.php`/`APP_SETUP_TOKEN`,
 ordinary registration, LDAP admission, existing accounts and schema remain exact.
 
+## Simple first-installation administrator preset
+
+The first-admin form now starts with the editable username **`admin`**. This is
+only a visible form preset, not a seeded account. The user must choose and confirm
+their own password during initial setup, before any account can be created. No
+shared/default password, automatic sign-in or password-change exemption is added.
+The existing server-side password rules remain authoritative. The normal login,
+registration and existing-account settings forms are unchanged.
+
+This source-only simplification creates no account or credential, changes no
+existing installation, and does not enable setup or start a NEW-V5 instance. The
+operator authorization below remains required; the preset is not proof that the
+browser belongs to the installation owner.
+
 ## Explicit operator authorization
 
 `chrono_setup.php` ships as `enabled=false`, `token_sha256=null`. No environment
