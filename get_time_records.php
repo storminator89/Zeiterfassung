@@ -28,7 +28,6 @@ if ($reviewOnly && $_GET['review'] !== '1') {
 // Pagination
 $itemsPerPage = 10;
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-$offset = ($page - 1) * $itemsPerPage;
 
 // Sort actual instants before pagination; equal instants use the stable row ID.
 report_register_start_order($conn);
@@ -37,20 +36,6 @@ report_register_start_order($conn);
 // belong to another day or page. functions.php has finished its native reads.
 $conn->beginTransaction();
 try {
-    if (!$reviewOnly) {
-    $stmt = $conn->prepare("
-    SELECT *,
-           NULL AS weekNumber,
-           substr(startzeit,1,10) as workDate
-    FROM zeiterfassung
-    WHERE user_id = ?
-    ORDER BY chrono_report_start_epoch(startzeit) DESC, id DESC
-    LIMIT ? OFFSET ?
-");
-    $stmt->execute([$user_id, $itemsPerPage, $offset]);
-    $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    $stmt->closeCursor();
-    }
     $totalsStmt = $conn->prepare('SELECT * FROM zeiterfassung WHERE user_id = ?'
         . ($reviewOnly ? ' ORDER BY chrono_report_start_epoch(startzeit) DESC, id DESC' : ''));
     $totalsStmt->bindValue(1, (int)$user_id, PDO::PARAM_INT);
@@ -65,7 +50,23 @@ try {
         $page = min($page, max(1, (int) ceil($totalRecords / $itemsPerPage)));
         $records = array_slice($reviewRows, ($page - 1) * $itemsPerPage, $itemsPerPage);
     } else {
-    $totalRecords = count($completeDayRows);
+        $totalRecords = count($completeDayRows);
+        // A stale or oversized page must not hide the last existing own rows
+        // or overflow OFFSET. Count and page use this same existing snapshot.
+        $page = min($page, max(1, (int) ceil($totalRecords / $itemsPerPage)));
+        $offset = ($page - 1) * $itemsPerPage;
+    $stmt = $conn->prepare("
+    SELECT *,
+           NULL AS weekNumber,
+           substr(startzeit,1,10) as workDate
+    FROM zeiterfassung
+    WHERE user_id = ?
+    ORDER BY chrono_report_start_epoch(startzeit) DESC, id DESC
+    LIMIT ? OFFSET ?
+");
+    $stmt->execute([$user_id, $itemsPerPage, $offset]);
+    $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt->closeCursor();
     }
     $conn->commit();
 } catch (Throwable $error) {
