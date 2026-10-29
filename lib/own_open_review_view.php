@@ -11,9 +11,12 @@ if ($ownOpenReviewUnavailable) : ?>
         <p class="text-sm opacity-70"><?= h(OWN_OPEN_REVIEW_ACTION) ?></p>
         <p class="text-xs opacity-70"><?= h(OWN_OPEN_REVIEW_SNAPSHOT) ?> <time datetime="<?= h($ownOpenReview['loaded_at']) ?>"><?= h($ownOpenReview['loaded_at']) ?></time></p>
         <ul class="space-y-2 my-3">
-            <?php foreach ($ownOpenReview['rows'] as $row) : ?>
+            <?php foreach ($ownOpenReview['rows'] as $row) :
+                try { $ownOpenCorrectionId = correction_selection_id($row['record_id']); }
+                catch (InvalidArgumentException) { $ownOpenCorrectionId = null; }
+            ?>
             <li class="text-sm"><?= h($row['start_label'] ?? OWN_OPEN_REVIEW_UNKNOWN_START) ?> · #<?= h($row['record_id']) ?>
-                <a class="link link-primary" href="adjustments.php?record_id=<?= h(rawurlencode($row['record_id'])) ?>"><?= h(OWN_OPEN_REVIEW_LINK) ?></a>
+                <?php if ($ownOpenCorrectionId !== null) : ?><a class="link link-primary" href="adjustments.php?record_id=<?= h(rawurlencode($row['record_id'])) ?>"><?= h(OWN_OPEN_REVIEW_LINK) ?></a><?php endif; ?>
             </li>
             <?php endforeach; ?>
         </ul>
