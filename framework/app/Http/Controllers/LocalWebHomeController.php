@@ -19,21 +19,40 @@ final class LocalWebHomeController extends Controller
 {
     public function __construct(private ChronoReads $reads, private LocalWebAbsences $absences, private Router $router) {}
 
-    public function records(Request $request): View
+    public function records(Request $request): View|Response
     {
         // Pure shared native presentation definitions, not functions.php/config.php.
         require_once dirname(__DIR__, 4).'/lib/home_projection.php';
+        require_once dirname(__DIR__, 4).'/lib/time_record_review.php';
+        $query = $request->query->all();
+        $reviewOnly = array_key_exists('review', $query);
+        if ($reviewOnly && $query['review'] !== '1') {
+            return new Response('Ungültige Listenansicht. Bitte Alle oder Prüfhinweise wählen.', 400,
+                ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
+        }
         $language = $request->session()->get('lang', 'de');
         $language = is_string($language) && in_array($language, ['de', 'en', 'zh'], true) ? $language : 'de';
         $page = max(1, intval($request->query('page', 1)));
         $records = $this->reads->reportRows(chronological: true);
+        $listConflicts = \report_absence_conflicts($records);
+        // Classify the complete already-own-scoped snapshot before slicing it.
+        $visible = $reviewOnly ? \time_record_review_rows($records, $listConflicts) : $records;
+        $totalRecords = count($visible);
+        // Both native modes clamp to this same own snapshot's matching count.
+        $page = min($page, max(1, (int) ceil($totalRecords / 10)));
+        $pagedRows = array_slice($visible, ($page - 1) * 10, 10);
+        $localTimeFindings = [];
+        foreach ($pagedRows as $row) {
+            $localTimeFindings[(string) $row['id']] = \time_record_local_time_findings($row);
+        }
 
         // Native ten-RAW-row pagination precedes grouping, but totals and
         // conflict evidence use the complete own rows from that same snapshot.
         return view('chrono.time-records', ['records' => new TimeRecordsPage(
-            new Copy($language), \report_time_record_groups(array_slice($records, ($page - 1) * 10, 10), $records),
-            $page, (int) ceil(count($records) / 10),
+            new Copy($language), \report_time_record_groups($pagedRows, $records, $listConflicts),
+            $page, (int) ceil($totalRecords / 10),
             csvExport: $this->router->has('chrono.export-csv'),
+            reviewOnly: $reviewOnly, totalRecords: $totalRecords, localTimeFindings: $localTimeFindings,
         )]);
     }
 
