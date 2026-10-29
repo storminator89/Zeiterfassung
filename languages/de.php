@@ -367,4 +367,10 @@ define('OWN_OPEN_REVIEW_LINK', 'Korrektur / Storno ansehen');
 define('OWN_OPEN_REVIEW_LIMIT', 'Höchstens fünf Einträge: unlesbare zuerst, danach älteste Starts. Weitere eigene Einträge stehen in der Arbeitszeitliste.');
 define('OWN_OPEN_REVIEW_REFRESH', 'Sachstand neu laden');
 define('OWN_OPEN_REVIEW_UNAVAILABLE', 'Eigene Liste offener Einträge derzeit nicht verfügbar. Bitte neu laden.');
+
+// Fixed representation-only calendar states; never reflect runtime exceptions.
+define('DASHBOARD_CALENDAR_LOADING', 'Kalenderdarstellung wird vorbereitet …');
+define('DASHBOARD_CALENDAR_UNAVAILABLE', 'Kalenderdarstellung derzeit nicht verfügbar. Bitte Seite neu laden oder die eigenen Buchungen öffnen.');
+define('DASHBOARD_CALENDAR_NO_SCRIPT', 'Die Kalenderdarstellung benötigt JavaScript. Die vorhandene Anwesenheitsseite bleibt erreichbar.');
+define('DASHBOARD_CALENDAR_FALLBACK', 'Eigene Buchungen öffnen');
 ?>
