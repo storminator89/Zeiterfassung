@@ -54,6 +54,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         private ?LocalWebLdapSessionRevocations $ldapSessions = null,
         private ?LocalWebAccountLifecycle $accountLifecycle = null,
         private ?LocalWebApiManagement $apiManagement = null,
+        private ?\App\Chrono\LocalWebHolidayRefill $holidayRefill = null,
     ) {}
 
     public function index(Request $request): Response
@@ -109,6 +110,9 @@ final class LocalWebAdminPauseSettingsController extends Controller
             $supported['change_account_lifecycle'] = LocalWebAccountLifecycle::COMMAND_FIELDS;
         }
         if ($this->apiManagement !== null) { $supported['api_management'] = ApiPolicyChange::FIELDS; }
+        if ($this->holidayRefill !== null && $this->interactions->adminPauseSettings) {
+            $supported['refill_holidays'] = \App\Chrono\LocalWebHolidayRefill::COMMAND_FIELDS;
+        }
         $actions = [];
         foreach ($supported as $flag => $fields) {
             if (isset($form[$flag])) {
@@ -129,6 +133,8 @@ final class LocalWebAdminPauseSettingsController extends Controller
         ], true)) {
             throw new AuthorizationException('Diese Sicherheitsverwaltung erfordert lokale Administration.');
         }
+
+        if ($actions[0] === 'refill_holidays') { return $this->refillHolidays($request, $form); }
 
         if ($actions[0] === 'change_account_lifecycle') {
             return $this->changeAccountLifecycle($request, $form);
@@ -172,6 +178,30 @@ final class LocalWebAdminPauseSettingsController extends Controller
             return $this->page($request,
                 'Pauseneinstellungen konnten nicht gespeichert werden. Bitte neu laden und den gespeicherten Stand prüfen.');
         }
+    }
+
+    private function refillHolidays(Request $request, array $form): Response|RedirectResponse
+    {
+        try {
+            $receipt = $this->holidayRefill->apply(array_diff_key($form, array_flip(['_token', 'csrf_token'])));
+        } catch (AuthenticationException|AuthorizationException $error) {
+            throw $error;
+        } catch (InvalidArgumentException $error) {
+            return $this->page($request, $error->getMessage())->setStatusCode(400);
+        } catch (DomainException $error) {
+            return $this->page($request, $error->getMessage())->setStatusCode(409);
+        } catch (Throwable) {
+            return $this->userMutationText('Feiertagsergänzung nicht bestätigt. Neu laden und gespeichertes Jahr prüfen; nicht automatisch wiederholen.', 503);
+        }
+        // Only after confirmed COMMIT. Fixed minimal receipt; no raw source or
+        // old form/session state is retained and no automatic replay is offered.
+        try {
+            $actor = $this->auth->guard('web')->user();
+            $request->session()->flash('chrono_holiday_refill_receipt', ['actor' => (int) $actor->getAuthIdentifier(), 'result' => $receipt]);
+        } catch (Throwable) {
+            return $this->userMutationText('Feiertagsergänzung gespeichert. Gespeicherten Jahrgang prüfen; nicht erneut senden.', 200);
+        }
+        return (new RedirectResponse('admin.php#holiday-refill', 303))->header('Cache-Control', 'no-store');
     }
 
     /** Prepared FreshWeb V5 binding follows its unchanged Runtime/route gate; no default binding. */
@@ -450,6 +480,20 @@ final class LocalWebAdminPauseSettingsController extends Controller
         if (($v4 || $v5) && $this->config?->get('app.debug') !== false) {
             return $this->ldapFailure('Private non-debug Admin document composition is required.', 503);
         }
+        $holidayRefillReceipt = null;
+        $holidayReceipt = $request->session()->pull('chrono_holiday_refill_receipt');
+        if ($localSecurityControls && is_array($holidayReceipt) && ($holidayReceipt['actor'] ?? null) === (int) $actor->getAuthIdentifier()
+            && is_array($holidayReceipt['result'] ?? null)) {
+            $value = $holidayReceipt['result'];
+            if (is_int($value['year'] ?? null) && $value['year'] >= 1 && $value['year'] <= 9999
+                && ($value['region'] ?? null) === 'BW') {
+                $valid = true;
+                foreach (['inserted', 'unchanged', 'conditional_omitted'] as $field) {
+                    $valid = $valid && is_int($value[$field] ?? null) && $value[$field] >= 0 && $value[$field] <= 366;
+                }
+                if ($valid) { $holidayRefillReceipt = array_intersect_key($value, array_flip(['year', 'inserted', 'unchanged', 'conditional_omitted'])); }
+            }
+        }
         $apiManagement = null; $apiManagementUnavailable = false;
         if ($localSecurityControls && $this->apiManagement !== null) {
             $notice = $request->session()->pull('chrono_api_notice');
@@ -590,6 +634,8 @@ final class LocalWebAdminPauseSettingsController extends Controller
         $response = response()->view('chrono.admin-pause-settings', [
             'managedUsersEnabled' => $localSecurityControls && $this->userMutationsEnabled(),
             'apiManagement' => $apiManagement, 'apiManagementUnavailable' => $apiManagementUnavailable,
+            'holidayRefillReceipt' => $holidayRefillReceipt,
+            'holidayRefillEnabled' => $localSecurityControls && $this->holidayRefill !== null && $this->interactions->adminPauseSettings,
             'page' => new AttendancePage(
                 $copy, (int) $actor->getAuthIdentifier(), $actor->username,
                 $actor->role, $this->reads->attendanceStatus(),

@@ -148,6 +148,15 @@ class AppServiceProvider extends ServiceProvider
                 return $app->make(AttendanceWriter::class);
             }, $app->make(AccountLifecycleWebIdentity::class),
         ));
+        $this->app->scoped(\App\Chrono\LocalWebHolidayRefill::class, fn ($app) => new \App\Chrono\LegacyLocalWebHolidayRefill(
+            $app->make('auth'),
+            function () use ($app): AttendanceWriter {
+                if (! $app->bound(AttendanceWriter::class)) {
+                    throw new LogicException('No admitted operation-scoped attendance writer is configured.');
+                }
+                return $app->make(AttendanceWriter::class);
+            }, $app->make(AccountLifecycleWebIdentity::class),
+        ));
         $this->app->scoped(LocalWebDepartments::class, fn ($app) => new LegacyLocalWebDepartments(
             $app->make('auth'),
             function () use ($app): AttendanceWriter {
