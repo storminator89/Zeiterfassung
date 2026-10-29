@@ -8,6 +8,7 @@
         ? document.addEventListener('DOMContentLoaded', callback, {once: true}) : callback();
     const expandedDates = new Set();
     let tableRequest = 0;
+    let requestedReview = null, requestedPage = null;
 
     function prepareTimeRecords(container) {
         container.querySelectorAll('.summary-row').forEach(row => {
@@ -43,27 +44,52 @@
     }
 
     // Used by the existing server-rendered pagination buttons and attendance.js.
-    window.updateTimeRecordsTable = async function(page) {
+    window.updateTimeRecordsTable = async function(page, review) {
         const container = document.getElementById('timeRecordsContainer');
         if (!container) return true;
-        const selectedPage = Math.max(1, Number.parseInt(page ?? container.dataset.page ?? '1', 10) || 1);
+        const confirmedReview = container.dataset.review ?? 'all';
+        const selectedReview = review ?? requestedReview ?? confirmedReview;
+        if (!['all', 'review'].includes(selectedReview)) {
+            tableMessage(container, 'Ungültige Listenansicht. Bitte Alle oder Prüfhinweise wählen.');
+            return false;
+        }
+        // A refresh or old pagination click must not replace an in-flight
+        // filter choice with the last confirmed view or an old-view page.
+        const switchingView = selectedReview !== confirmedReview;
+        const selectedPage = Math.max(1, Number.parseInt(switchingView ? '1'
+            : page ?? requestedPage ?? container.dataset.page ?? '1', 10) || 1);
+        requestedReview = selectedReview;
+        requestedPage = selectedPage;
         const request = ++tableRequest;
         container.setAttribute('aria-busy', 'true');
         try {
-            const response = await fetch(`get_time_records.php?page=${selectedPage}`, {cache: 'no-store', redirect: 'error'});
+            const response = await fetch(`get_time_records.php?page=${selectedPage}${selectedReview === 'review' ? '&review=1' : ''}`, {cache: 'no-store', redirect: 'error'});
             if (!response.ok) throw new Error('Arbeitszeiten konnten nicht geladen werden. Bitte erneut versuchen.');
             const html = await response.text();
             if (request !== tableRequest) return true;
             const restorePaginationFocus = container.contains(document.activeElement)
                 && document.activeElement.matches('.btn-group button');
+            const restoreFilterFocus = container.contains(document.activeElement)
+                && document.activeElement.matches('[data-record-review-filter]');
             container.innerHTML = html;
-            container.dataset.page = String(selectedPage);
+            const reviewControl = container.querySelector('[data-record-review-filter]');
+            container.dataset.page = reviewControl?.dataset.page ?? String(selectedPage);
+            container.dataset.review = selectedReview;
+            requestedReview = selectedReview;
+            requestedPage = container.dataset.page;
             prepareTimeRecords(container);
             if (restorePaginationFocus) container.querySelector('[aria-current="page"]')?.focus();
+            if (restoreFilterFocus) reviewControl?.focus();
             tableMessage(container, '');
             return true;
         } catch (error) {
-            if (request === tableRequest) tableMessage(container, error.message || 'Arbeitszeiten konnten nicht geladen werden.');
+            if (request === tableRequest) {
+                const reviewControl = container.querySelector('[data-record-review-filter]');
+                if (reviewControl) reviewControl.value = container.dataset.review ?? 'all';
+                requestedReview = container.dataset.review ?? 'all';
+                requestedPage = container.dataset.page ?? '1';
+                tableMessage(container, error.message || 'Arbeitszeiten konnten nicht geladen werden.');
+            }
             return false;
         } finally {
             if (request === tableRequest) container.removeAttribute('aria-busy');
@@ -98,6 +124,11 @@
 
         const container = document.getElementById('timeRecordsContainer');
         if (container) {
+            container.addEventListener('change', event => {
+                if (event.target.matches('[data-record-review-filter]')) {
+                    void window.updateTimeRecordsTable(1, event.target.value);
+                }
+            });
             container.addEventListener('click', event => {
                 if (event.target.closest('a, button, input, select, textarea')) return;
                 const row = event.target.closest('.summary-row');
