@@ -6,6 +6,7 @@ use App\Api\LegacyApiResponse;
 use App\Chrono\ApiTimeEntriesQuery;
 use App\Chrono\AttendanceWorkflowStatus;
 use App\Chrono\ChronoReads;
+use App\Chrono\OwnApiCorrectionStatusReads;
 use AttendanceError;
 use Illuminate\Contracts\Validation\Factory;
 use Illuminate\Http\Request;
@@ -48,6 +49,25 @@ final class LegacyApiReadController
                 'success' => false,
                 'message' => 'Buchung nicht bestätigt. Verbindung prüfen und denselben Vorgang erneut versuchen.',
             ], 503);
+        }
+    }
+
+    public function corrections(Request $request): Response
+    {
+        parse_str($request->server('QUERY_STRING', ''), $query);
+        require_once dirname(__DIR__, 5).'/lib/api_correction_status.php';
+        try {
+            $page = \api_correction_status_query($query);
+        } catch (\InvalidArgumentException $error) {
+            return LegacyApiResponse::json(['success' => false, 'message' => $error->getMessage()], 400);
+        }
+        if (! $this->reads instanceof OwnApiCorrectionStatusReads) {
+            return LegacyApiResponse::json(['success' => false, 'message' => 'Correction status unavailable.'], 503);
+        }
+        try {
+            return LegacyApiResponse::json($this->reads->ownApiCorrectionStatus($page['status'], $page['limit'], $page['offset']));
+        } catch (Throwable) {
+            return LegacyApiResponse::json(['success' => false, 'message' => 'Correction status unavailable.'], 503);
         }
     }
 
