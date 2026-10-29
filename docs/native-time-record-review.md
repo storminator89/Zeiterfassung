@@ -135,3 +135,50 @@ Der vorhandene native Bootstrap kann weiterhin seine bisherigen Nebenwirkungen
 haben; dieser Slice führt keinen Import oder Writer ein und attestiert keine
 global schreibfreie Seite. Kein vollständiger Diagnostik-, Reparatur- oder
 Migrationsabschluss, kein neuer Dienst und kein Deployment.
+
+## #55-Nachtrag: lesbar ist nicht durch das Altzeitformat geprüft
+
+Mainbasis `79a31ae9d6cde340598a70bd65691273a41424ad`, Baum
+`49d9a54ecf9f79c722e5d39be8967e2639c27e03`. Die unveränderte strenge
+Altzeitdiagnose meldet etwa für Sekundenbruchteile, benannte Zeitzonen oder
+numerische Offsets ohne Doppelpunkt `unsupported_timestamp_shape`. Einige
+solche absoluten Zeiten sind durch den bestehenden Laufzeitparser dennoch
+lesbar. Bisher fand die eigene Prüfliste diese sonst gültigen Zeilen nicht.
+
+Derselbe vorhandene Feld-/Kategoriekanal übernimmt jetzt diese Kategorie **nur
+bei tatsächlich laufzeitlesbarem Feld**. Ein fester Format-Prüfhinweis benennt
+Start oder Ende in derselben Zeile; beide Felder ergeben weiterhin nur einen
+Listentreffer. Er behauptet weder Ungültigkeit noch eine bestimmte historische
+Zeitzone und liefert keinen Ersatzwert. Nicht lesbare Werte behalten die
+bisherige Ungültig-Anzeige ohne zusätzlichen Formattext; NULL-/Leer-Enden
+bleiben offen. Der bisherige DST-Meldungstext bleibt unverändert.
+
+Die bestehende Auswahl findet diese Zeilen vor Count und Zehner-Pagination im
+vollständigen bereits berechtigten eigenen Kontext. Native und Laravel nutzen
+denselben unveränderten Diagnosekern und Runtimeparser. Kein neuer DTOkanal,
+Filter, Dialog, eigener Parser, SQLread oder zusätzlicher Listenmodus. Dauer,
+Tagessummen, Konflikt-/Exportblocker, Grenzen und Originale bleiben unverändert.
+Manuelle Prüfung erfolgt weiter über den vorhandenen Korrektur-/Stornolink mit
+Vier-Augen-Freigabe; es wird nicht automatisch normalisiert oder repariert.
+
+**Abgrenzung:** Dies ist kein Abwesenheit/Abwesenheit-Überschneidungshinweis.
+Kein Code/Delta des nicht freigegebenen PR #352 wird übernommen. Der vorhandene
+Arbeit/Arbeit-Helfer sowie bisherige Arbeitszeit-/Abwesenheitskonflikte bleiben
+unverändert. Keine #57-Reconciliation oder andere gehaltene Operation.
+
+Grober synthetischer Journey unter PHP8.5.12/Laravel13.38.0: 32 erfundene
+Zeilen, davon31 eigene;16 neu auffindbare Formatzeilen plus9 unveränderte alte
+Prüfzeilen. Tatsächlicher gemeinsamer Helfer, unveränderter Controller mit
+Fakeport für bereits berechtigte eigene Zeilen, DTO, kompilierte tatsächliche
+Bladeansicht in DE/EN/ZH (9 Seiten) und exakt extrahierter nativer Zeilenrenderer.
+Baseline-Lücke, Start/Ende/beide, offene Marker, bekannte valide/DST/ungültige
+Werte, bestehende Konflikte, exakte große ID, vollständige Reihenfolge/Counts,
+Seitengrenze, volle Tagesberechnung, Escaping, übergroße Seite/ungültiger Query,
+Originalarrays und Session/Zeitzone geprüft. Native Ausgabe ohne neuen Befund
+bytegleich; bei Befund ergibt Entfernen nur des neuen Spans exakt alte Ausgabe.
+Keine neue Repositorytestsuite und kein manueller CI-Start.
+
+Grenzen: keine App-/Bootstrap-/SQL-/Zulassungs-/Auth-/CSRF-/HTTP-/Browser-/Sicht-/
+Runtime-/Produktions-/Mehrworker-/Lastabnahme; keine echte DB, Konten, Credentials,
+Schlüssel, Server, Konfiguration oder Deployment. Keine vollständige Diagnose,
+Mapping-/Reparatur-/Migrationsabnahme. #55 bleibt ausdrücklich partiell/offen.
