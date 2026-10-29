@@ -88,6 +88,8 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
             $today = new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin'));
             $summary = home_summary($pdo, (int) $actor->getKey(), $days, (float) ($userData['ueberstunden'] ?? 0.0), $today);
             $summary['invalid_records'] = $invalidRecords;
+            require_once dirname(__DIR__, 3).'/lib/own_invalid_record_links.php';
+            $summary['invalid_record_ids'] = \own_invalid_record_links($invalidRecords, $records, (int) $actor->getKey());
             $summary['absence_conflicts'] = $conflicts;
             $summary['report_finality'] = $this->reportFinality($conflicts, $today);
             if ($invalidRecords !== [] || $conflicts !== []) {

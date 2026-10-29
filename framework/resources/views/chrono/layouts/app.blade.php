@@ -410,10 +410,20 @@
         </div>
         @if ($page->reportInvalidCount > 0)
         <div class="alert alert-warning mb-4" role="alert">
-            <span><strong>Datenqualität: {{ $page->reportInvalidCount }} ungültige eigene Zeiteinträge.</strong>
+            <div><p><strong>Datenqualität: {{ $page->reportInvalidCount }} ungültige eigene Zeiteinträge.</strong>
             Arbeitszeit-, Überstunden- und Berichtssummen sind unvollständig und nicht zur Abrechnung geeignet; auch die Kalenderdarstellung kann unvollständig sein.
             Bitte die betroffenen Einträge in der Arbeitszeitliste über „Korrektur / Storno“ prüfen. Es wurden keine Bestandsdaten geändert.
-            <a class="link" href="adjustments.php">Korrekturanträge</a></span>
+            <a class="link" href="adjustments.php">Korrekturanträge</a></p>
+            @if ($page->interactions->corrections && $page->reportInvalidRecordIds !== [])
+            <details class="mt-2"><summary class="cursor-pointer font-semibold">Betroffene eigene Einträge direkt prüfen (max. 10)</summary>
+                <ul class="list-disc pl-5 mt-2">
+                @foreach ($page->reportInvalidRecordIds as $qualityId)
+                    <li><a class="link" target="_blank" rel="noopener noreferrer" href="adjustments.php?record_id={{ rawurlencode((string) $qualityId) }}">Eintrag #{{ $qualityId }} prüfen (neuer Tab)</a></li>
+                @endforeach
+                </ul>
+                @if ($page->reportInvalidCount > 10)<p class="text-sm mt-2">Weitere betroffene Einträge sind hier nicht aufgeführt. Die Arbeitszeitliste und der bisherige Korrekturweg bleiben verfügbar.</p>@endif
+            </details>
+            @endif</div>
         </div>
         @endif
         @yield('content')

@@ -51,6 +51,7 @@ final class LocalWebAttendanceController extends Controller
             ], $summary['holidays_this_week']),
             interactions: $this->interactions,
             reportInvalidCount: count($summary['invalid_records'] ?? []),
+            reportInvalidRecordIds: $summary['invalid_record_ids'] ?? [],
             reportUnresolved: $summary['report_finality']['all'] ?? false,
         )]);
     }

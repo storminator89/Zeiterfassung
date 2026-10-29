@@ -35,6 +35,8 @@ final readonly class AttendancePage
         public int $reportInvalidCount = 0,
         bool $reportUnresolved = false,
         public ?string $cspNonce = null,
+        /** @var list<positive-int> Bounded own IDs from the same authorized report snapshot, never raw diagnostic text. */
+        public array $reportInvalidRecordIds = [],
     ) {
         if ($userId < 1 || ! in_array($role, ['user', 'supervisor', 'admin'], true)
             || ! in_array($theme, ['light', 'dark'], true)
