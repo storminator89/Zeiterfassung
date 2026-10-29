@@ -1,6 +1,6 @@
 <?php
 
-/** Shared fixed SQL only. Native callers retain their existing floatval/execute path. */
+/** Shared fixed SQL only; callers keep their existing connection/transaction ownership. */
 function settings_carry_in_prepare(PDO $conn): PDOStatement
 {
     $updateSql = "UPDATE users SET ueberstunden = :ueberstunden WHERE id = :id";
@@ -8,7 +8,7 @@ function settings_carry_in_prepare(PDO $conn): PDOStatement
 }
 
 /**
- * Laravel raw-form contract only; NEVER invoked by the native Settings handler.
+ * Shared raw-form contract for Laravel and the explicitly connected Native own-admin field.
  * No whitespace/comma/coercion, business rounding, magnitude policy or data repair.
  * REAL remains binary64, not exact decimal accounting. Keep the original text for binding.
  * @return array{text: string, value: float}

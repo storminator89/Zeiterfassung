@@ -13,6 +13,7 @@ $user_role = $_SESSION['role'] ?? null;
 $error = '';
 $successMessage = '';
 $showSuccessModal = false;
+$carryInError = '';
 
 // Resolve the existing explicit choices before defining any locale constants.
 // The unchanged security/CSRF bootstrap and signed-in guard have already run.
@@ -41,6 +42,7 @@ $stmt->execute([$user_id]);
 $userInfo = $stmt->fetch(PDO::FETCH_ASSOC);
 $stmt->closeCursor();
 
+require_once __DIR__ . '/lib/settings_carry_in.php';
 require_once __DIR__ . '/lib/native_own_password.php';
 $passwordError = '';
 if ($passwordFormRequested) {
@@ -93,18 +95,27 @@ if ($passwordFormRequested) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$passwordFormRequested) {
     if (isset($_POST['ueberstunden']) && $user_role === 'admin') {
-        require_once __DIR__ . '/lib/settings_carry_in.php';
-        $ueberstunden = floatval($_POST['ueberstunden']);
-        $stmt = settings_carry_in_prepare($conn);
-        $stmt->execute([':ueberstunden' => $ueberstunden, ':id' => $user_id]);
-        $userInfo['ueberstunden'] = $ueberstunden;
+        try {
+            $carryIn = settings_carry_in_value($_POST['ueberstunden']);
+        } catch (InvalidArgumentException $carryInException) {
+            $carryInError = $carryInException->getMessage();
+            http_response_code(400);
+        }
+        if ($carryInError === '') {
+            $stmt = settings_carry_in_prepare($conn);
+            // Preserve validated raw text; float-to-string would lose precision.
+            $stmt->execute([':ueberstunden' => $carryIn['text'], ':id' => $user_id]);
+            $userInfo['ueberstunden'] = $carryIn['value'];
+        }
     }
-    if (isset($_POST['theme_mode'])) {
-        $theme_mode = in_array($_POST['theme_mode'], ['light', 'dark', 'system'], true) ? $_POST['theme_mode'] : 'light';
-        $_SESSION['theme_mode'] = $theme_mode;
+    if ($carryInError === '') {
+        if (isset($_POST['theme_mode'])) {
+            $theme_mode = in_array($_POST['theme_mode'], ['light', 'dark', 'system'], true) ? $_POST['theme_mode'] : 'light';
+            $_SESSION['theme_mode'] = $theme_mode;
+        }
+        $successMessage = 'Einstellungen erfolgreich aktualisiert!';
+        $showSuccessModal = true;
     }
-    $successMessage = 'Einstellungen erfolgreich aktualisiert!';
-    $showSuccessModal = true;
 }
 
 $theme_mode = $_SESSION['theme_mode'] ?? 'light';
@@ -119,6 +130,12 @@ if (!$passwordFormRequested && isset($_SESSION['import_success'])) {
 if (!$passwordFormRequested && isset($_SESSION['import_error'])) {
     $error = $_SESSION['import_error'];
     unset($_SESSION['import_error']);
+}
+
+if ($carryInError !== '') {
+    $error = $carryInError;
+    $successMessage = '';
+    $showSuccessModal = false;
 }
 
 include 'header.php';
@@ -167,7 +184,7 @@ include 'header.php';
                             <label class="label" for="ueberstunden">
                                 <span class="label-text"><i class="fas fa-hourglass mr-2"></i><?= SETTINGS_OVERTIME ?></span>
                             </label>
-                            <input type="number" step="0.1" id="ueberstunden" name="ueberstunden" value="<?= $userInfo['ueberstunden'] ?>" min="0" class="input input-bordered w-full">
+                            <input type="number" step="any" id="ueberstunden" name="ueberstunden" value="<?= h(settings_carry_in_display($userInfo['ueberstunden'])) ?>" class="input input-bordered w-full">
                         </div>
                     <?php endif; ?>
 
