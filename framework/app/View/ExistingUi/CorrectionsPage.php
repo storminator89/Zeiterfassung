@@ -26,6 +26,7 @@ final readonly class CorrectionsPage
         public array $requestDraft = [],
         public ?int $balancePreviewRequestId = null,
         public array $balancePreview = [],
+        public array $reviewDraft = [],
     ) {}
 
     /** Display only after a known request rejection; never a command or stored/flash input. */
@@ -34,6 +35,14 @@ final readonly class CorrectionsPage
         require_once dirname(__DIR__, 4).'/lib/correction_request_draft.php';
 
         return \correction_rejected_request_draft($form);
+    }
+
+    /** Same-request display text only; never retain/select the decision. */
+    public static function rejectedReviewDraft(array $form): array
+    {
+        require_once dirname(__DIR__, 4).'/lib/correction_review_draft.php';
+
+        return \correction_rejected_review_draft($form);
     }
 
     public static function queueUrl(string $status, int $page, array $selection = []): string

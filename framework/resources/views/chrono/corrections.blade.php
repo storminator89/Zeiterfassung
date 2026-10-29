@@ -120,7 +120,8 @@
                 <input class="input input-bordered w-full" type="hidden" name="action" value="review">
                 <input class="input input-bordered w-full" type="hidden" name="id" value="{{ $a['id'] }}">
                 <label class="block text-sm font-semibold mt-4 mb-2" for="review_reason_{{ $a['id'] }}">Begründung der Entscheidung</label>
-                <input class="input input-bordered w-full" id="review_reason_{{ $a['id'] }}" name="review_reason" minlength="3" maxlength="1000" required>
+                <input class="input input-bordered w-full" id="review_reason_{{ $a['id'] }}" name="review_reason" value="{{ ($corrections->reviewDraft['id'] ?? null) === $a['id'] ? ($corrections->reviewDraft['review_reason'] ?? '') : '' }}" minlength="3" maxlength="1000" required>
+                @if (($corrections->reviewDraft['id'] ?? null) === $a['id'])<p class="text-sm opacity-70 mt-3" role="status">Begründung zur Prüfung beibehalten. Aktuellen Antrag prüfen und Entscheidung erneut bewusst wählen; nichts wird automatisch gesendet.</p>@endif
                 <div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary" name="decision" value="approved">Freigeben</button><button name="decision" value="rejected" class="btn btn-outline">Ablehnen</button></div>
             </fieldset>
         </form>
