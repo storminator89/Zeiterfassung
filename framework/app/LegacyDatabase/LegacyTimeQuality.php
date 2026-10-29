@@ -79,11 +79,12 @@ final class LegacyTimeQuality
         $this->absenceConflicts($pdo, $add);
         $this->workConflicts($pdo, $add);
         $this->absencePairs($pdo, $add);
+        $this->openConflicts($pdo, $add);
         ksort($counts);
         $total = array_sum($counts);
 
         return [
-            'report_version' => 4,
+            'report_version' => 5,
             'scope_status' => 'partial_diagnostic_only',
             'read_only' => true,
             'records_checked' => $records,
@@ -91,11 +92,11 @@ final class LegacyTimeQuality
                 'timestamp_shape_calendar_and_berlin_dst' => 'checked',
                 'closed_order_and_pause' => 'checked_only_for_unambiguous_supported_timestamps',
                 'multiple_open_records' => 'checked',
-                'overlap' => 'partial_completed_work_work_and_whole_day_absence_pairs_only',
+                'overlap' => 'partial_completed_pairs_and_possible_open_pairs_only',
                 'work_whole_day_absence_overlap' => 'checked_only_for_unambiguous_supported_completed_rows',
                 'work_work_overlap' => 'checked_only_for_unambiguous_supported_completed_positive_intervals',
                 'absence_absence_overlap' => 'checked_only_for_unambiguous_supported_completed_whole_day_rows',
-                'open_overlap' => 'not_checked',
+                'open_overlap' => 'possible_only_for_unambiguous_supported_rows_no_guessed_end',
                 'event_session_break_projection_reconciliation' => 'not_checked',
                 'mapping_or_repair' => 'not_performed_requires_separate_confirmation',
             ],
@@ -225,6 +226,66 @@ final class LegacyTimeQuality
         }
 
         return \report_record_calculation($row)['status'] === 'completed';
+    }
+
+    /** Possible conflicts only: an open work row has no known end or credited duration. */
+    private function openConflicts(PDO $pdo, callable $add): void
+    {
+        $columns = 'id,user_id,startzeit,endzeit,pause,absence_kind,beschreibung';
+        $rows = $pdo->query('SELECT '.$columns.' FROM zeiterfassung ORDER BY id');
+        $others = $pdo->prepare('SELECT '.$columns.' FROM zeiterfassung WHERE user_id=? AND id>? AND (CAST(? AS INTEGER)=1 OR endzeit IS NULL OR endzeit=\'\') ORDER BY id');
+        try {
+            while (($row = $rows->fetch(PDO::FETCH_ASSOC)) !== false) {
+                $span = $this->possibleSpan($row);
+                if ($span === null) {
+                    continue;
+                }
+                $others->execute([$row['user_id'], $row['id'], (int) $span['open']]);
+                try {
+                    while (($other = $others->fetch(PDO::FETCH_ASSOC)) !== false) {
+                        $otherSpan = $this->possibleSpan($other);
+                        if ($otherSpan !== null
+                            && ($span['to'] === null || $otherSpan['from'] < $span['to'])
+                            && ($otherSpan['to'] === null || $span['from'] < $otherSpan['to'])) {
+                            $add((int) $row['id'], 'possible_open_overlap', null, (int) $other['id']);
+                        }
+                    }
+                } finally {
+                    $others->closeCursor();
+                }
+            }
+        } finally {
+            $others->closeCursor();
+            $rows->closeCursor();
+        }
+    }
+
+    private function possibleSpan(array $row): ?array
+    {
+        $open = $row['endzeit'] === null || $row['endzeit'] === '';
+        foreach (['startzeit', 'endzeit'] as $column) {
+            if ($column === 'endzeit' && $open) {
+                continue;
+            }
+            if ($this->timestamp($row[$column])['category'] !== null) {
+                return null;
+            }
+        }
+        $calculation = \report_record_calculation($row);
+        if ($calculation['status'] === 'invalid') {
+            return null;
+        }
+        if (\booking_is_absence($row)) {
+            [$from, $to] = \booking_span($row); // Existing whole-start-day semantics, not a guessed work end.
+        } else {
+            $from = $calculation['start'];
+            $to = $open ? null : $calculation['end'];
+            if ($to !== null && $to <= $from) {
+                return null;
+            }
+        }
+
+        return ['from' => $from, 'to' => $to, 'open' => $open];
     }
 
     /** No conversion is returned: in particular a repeated Berlin hour has no chosen instant. */
