@@ -64,12 +64,14 @@ final class LocalWebWorkModelsController extends Controller
 
             return $this->page($request, creditPreview: $preview, previewForm: $command);
         }
+        $commandCompleted = false;
         try {
             // Raw form bag only; user_id is the target, never the actor or audit identity.
             $command = array_intersect_key($request->request->all(), array_flip([
                 'user_id', 'valid_from', 'day1', 'day2', 'day3', 'day4', 'day5', 'day6', 'day7', 'reason',
             ]));
             $this->workModels->apply($command);
+            $commandCompleted = true;
 
             return new RedirectResponse('work_models.php?saved=1');
         } catch (AuthenticationException $error) {
@@ -79,9 +81,12 @@ final class LocalWebWorkModelsController extends Controller
             // Native work_models.php likewise aborts before BEGIN, outside its HTML catch.
             return new Response($error->getMessage(), 403, ['Content-Type' => 'text/plain; charset=UTF-8']);
         } catch (\AttendanceError $error) {
-            return $this->page($request, $error->getMessage());
+            // The existing writer preserves these refusals only before COMMIT
+            // attempt with confirmed cleanup. Unknown outcomes are Throwable.
+            return $this->page($request, $error->getMessage(), previewForm: ! $commandCompleted
+                && in_array($error->status, [400, 409], true) ? $command : []);
         } catch (Throwable) {
-            return $this->page($request, 'Modell konnte nicht gespeichert werden.');
+            return $this->page($request, 'Modell konnte nicht bestätigt werden. Bitte neu laden und den gespeicherten Stand prüfen; nicht automatisch wiederholen.');
         }
     }
 
