@@ -7,9 +7,11 @@ Laravel entdeckt den neuen Consolebefehl im bestehenden Commands-Verzeichnis.
 
 ## Ein beobachteter Zustand, kein Freigabeattest
 
-Der Befehl liefert genau einen JSONbericht mit neuer zufälliger
-`diagnostic_id` (32 kleine Hexzeichen), Zeitpunkt, festen Fehlercodes und
-Messwerten. Keine Eingabe wird als ID übernommen. Keine URLs, Namen, Benutzer- oder
+Der Befehl liefert genau einen JSONbericht (`schema_version=2`) mit neuer
+zufälliger `diagnostic_id` (32 kleine Hexzeichen), sofern die Zufallsquelle
+verfügbar ist, Zeitpunkt, festen Fehlercodes und Messwerten. Bei Ausfall bleibt
+die ID ausdrücklich `null`; `diagnostic_id_unavailable` wird ergänzt. Keine
+Eingabe wird als ID übernommen. Keine URLs, Namen, Benutzer- oder
 Geräte-IDs, privaten Pfade, Exceptiontexte/Stacks, SQL, Bindings, PINs, Hashes,
 Schlüssel, Tokens oder Dateiinhalte werden ausgegeben oder zusätzlich geloggt.
 Warnungen innerhalb der synchronen Diagnose werden ebenfalls generisch behandelt;
@@ -17,7 +19,7 @@ der vorherige PHP-Errorhandler wird wiederhergestellt. Frühere Bootstrapfehler
 können den Befehl verhindern und besitzen deshalb keinen erfundenen Diagnosebericht.
 
 - Exit **0 / healthy**: ausschließlich die ausgewählten Beobachtungen sind innerhalb
-  der angegebenen Grenzen. `scope=read_only_runtime_observations`,
+  der angegebenen Grenzen und eine neue Diagnose-ID ist verfügbar. `scope=read_only_runtime_observations`,
   `readiness=not_assessed` bleiben ausdrücklich im Bericht.
 - Exit **1 / degraded**: eine Messung ist ungünstig, unvollständig oder verweigert.
 - Exit **2 / invalid**: ungültige Optionen bzw. kein echtes boolesches Read-Flag.
@@ -115,3 +117,57 @@ oder Standard-Composer-Autoload abgenommen. Keine tatsächliche Host-/Docker-/TL
 Produktions-, Alarmzustellungs-, Hardware- oder Disaster-Recoveryabnahme. Keine
 Konten, Passwörter/Hashes, Schlüssel oder Tokens erzeugt; keine Runtime-/Hostflags
 geändert. Echte Betriebsgrenzen/Empfänger/Logrotation bleiben Operatorentscheidung.
+
+
+## #66: Diagnosebericht bei nicht verfügbarer Zufalls-ID
+
+Additive Quellbasis: Main `703556fffb01bae4b17424c6e6b6a744cade021a`, Baum
+`996fa9e72e9409f81fc46b80f8591abe00ff6557`.
+Bisher lag `random_bytes` vor der lokalen Fehlerbehandlung. Ein Fehler der
+Zufallsquelle verhinderte dadurch auch für geschlossene Defaults oder ungültige
+Optionen den gesamten redigierten Bericht. Jetzt erfolgt genau ein Versuch
+innerhalb derselben lokalen Fehlergrenze; fehlende Entropie wird weder mit ihrem
+Exceptiontext ausgegeben noch geloggt. Keine schwächere Zufallsquelle, Uhrzeit,
+frühere ID, Benutzer-/Requesteingabe oder automatischer zweiter Versuch ersetzt
+sie. Die JSONversion steigt auf2, weil `diagnostic_id` nun ausdrücklich nullable
+ist; externe Leser müssen diesen fehlenden Korrelationswert beachten.
+
+Die eigentliche Diagnose läuft weiterhin nur durch die bisherigen Options-/
+Readflag-/Admissiongrenzen, höchstens einmal und ausschließlich lesend.
+`diagnostic_id_unavailable` steht zusätzlich hinter den bisherigen Fehlercodes.
+Geschlossen3/disabled, ungültig2/invalid und bestehende ungünstige oder verweigerte
+Beobachtungen1/degraded behalten ihren Zustand/Exitcode. Eine sonst ausschließlich
+günstige Messung wird bei fehlender ID **1/degraded**, nie unkorrelierbar gesund.
+Messwerte, `readiness=not_assessed`, übrige Grenzen und der wiederhergestellte
+vorherige PHP-Errorhandler bleiben erhalten. Frühe Appbootstrapfehler oder ein
+Ausfall des Ausgabekanals werden dadurch nicht pauschal abgedeckt.
+
+Bei `diagnostic_id_unavailable` den vorhandenen privaten Operator-/PHPkontext
+auf Verfügbarkeit der Systemzufallsquelle prüfen. Kein erneutes Buchen,
+Reprovisionieren, schwacher Seed, geändertes Admissionmanifest oder neuer
+Logtransport wird daraus abgeleitet. Die fehlende Support-ID sagt insbesondere
+nichts über den Ausgang einer früheren Schreiboperation aus. Das Paket ändert
+keine System-/Host-/Alarm-/Sicherheitskonfiguration und behebt keine tatsächliche
+Betriebsursache der Zufallsquelle.
+
+**Grober Komponentennachweis:** PHP8.5.12 / Laravel13.38.0, tatsächlicher aktueller
+Command/Symfony-CommandTester und originaler zugelassener query-only V5-Reader
+mit vollständig leerer erfundener privater Fixture. Ein nur im Harness injizierter
+Zufallsfehler reproduziert bei der alten Klasse in allen geprüften Zweigen den
+Abbruch vor Bericht und Runtimeauflösung. Die neue Klasse liefert genau einen
+JSONbericht mit null-ID/festem Zusatzcode: geschlossen/ungültig ohne Runtime,
+günstige Messung degradiert, ungünstige Messung und verweigerte Runtime behalten
+ihre ursprünglichen Ergebnisse. Kein Writer wird aufgelöst; normale Berichte
+sind bis auf neue Schema-ID und volatile ID/Zeit gleich zur ausgeführten alten
+Klasse. Originaldateibytes/Identitäten/Modi, vorheriger Errorhandler, Session und
+Zeitzone bleiben erhalten; eigene leere Fixture danach entfernt. Keine
+Entropie-Exception, privaten Pfade oder andere Canarywerte im Bericht. Syntax
+und vollständige Quellinverse werden gesondert geprüft.
+
+Keine komplette Artisan-/Appbootstrap-/Standardautoload-, Host-/Docker-/TLS-/
+Browser-/Logsink-/Alarm-/Produktiv-/Recoveryabnahme oder reale Entropiestörung
+behauptet. Keine Accounts, Credentials, Schlüssel oder Tokens erzeugt; keine
+Betriebsdaten oder Konfiguration verändert. Keine neue Testsuite oder manuell
+gestartete CI. Die frühere HTTP-/Terminalkorrelation bleibt unverändert.
+**#66 bleibt teilweise und offen** für tatsächliche Logzustellung/Rotation,
+Alarmierungsregeln und Betriebsabnahme.
