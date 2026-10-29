@@ -102,6 +102,9 @@ final class LegacyTerminalHttpIngress
                 return self::closed();
             }
             $this->requireCaptured($request);
+            if ($this->container->bound(AdmittedTerminalConfiguration::class)) {
+                $this->container->make(AdmittedTerminalConfiguration::class)->assertCurrent($this->container);
+            }
             // Resolve only after HTTP admission. The backend in turn requires
             // explicit existing-key sources before resolving its one writer.
             $response = ($this->container->make(LegacyTerminalController::class))($request);
