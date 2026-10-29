@@ -106,6 +106,7 @@
     @include('chrono.partials.csv-period', ['copy' => $page->copy])
     @endif
     @if ($page->interactions->home)
+    @include('chrono.partials.own-month-review')
     <section id="timeRecordsContainer" class="mt-8" aria-label="Erfasste Arbeitszeiten"><p role="status">Arbeitszeiten werden geladen …</p></section>
     @else
     <section class="mt-8" aria-label="Erfasste Arbeitszeiten"><p role="status">Die bestehende Arbeitszeittabelle wird erst nach Freigabe des authentifizierten Laravel-HTML-Fragments verbunden. Hier wird noch nichts geladen.</p></section>
