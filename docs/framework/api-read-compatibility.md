@@ -141,9 +141,13 @@ Cross-Request-Snapshotgarantie.
 Die übrigen Änderungen aus
 [#25](https://github.com/storminator89/Zeiterfassung/issues/25) müssen separat
 abgestimmt werden, nicht als Carbon-/Paginatornebenwirkung entstehen.
-Strukturell nichtskalare Datumsquerys werden im Kandidaten ebenfalls als
-ungültige Form 400 verweigert; der Legacy-Pfad kann stattdessen einen PHP-TypeError
-500 erzeugen. Dieser explizite Unterschied ist vor jedem Cutover zu entscheiden.
+**Explizite Vertragskorrektur #77:** Nichtskalare `start_date`-/`end_date`-
+Querys werden in beiden Adaptern vor dem Lesesnapshot als ungültige Form mit
+identischem JSON-400 verweigert. Der native Pfad prüft dazu den Stringtyp vor
+`preg_match`, statt einen TypeError/JSON-500 auszulösen. Die bisher hier offene
+Statusabweichung ist damit aufgehoben; gültige Stringfilter, Auslassung,
+Format-only-Prüfung, Pagination, Auth und Buchungstags-/SQL-Semantik bleiben
+unverändert. Details: [kanonischer API-Vertrag](../API-CONTRACT.md).
 
 ## Offene Gates, keine erfundene vollständige API
 
