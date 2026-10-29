@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/attendance.php';
+require_once __DIR__.'/correction_metadata.php';
 
 function correction_time(string $text): int {
     if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?[+-]\d{2}:\d{2}$/D',$text)) { throw new AttendanceError('Zeit mit Zeitzone angeben, z. B. 2026-10-25T09:00+01:00.',400); }
@@ -24,7 +25,9 @@ function correction_apply_locked(PDO $db, int $user, string $role, array $comman
         $GLOBALS['audit_reason']=$reason;
         $operation();
     };
-    if (($command['action']??'')==='request') {
+    if (($command['action']??'')==='request_metadata_v1') {
+        correction_metadata_v1_request_locked($db,$user,$command,$auditRunner);
+    } elseif (($command['action']??'')==='request') {
         $record=(int)($command['record_id']??0); $r=$record?att_one($db,'SELECT * FROM zeiterfassung WHERE id=? AND user_id=?',[$record,$user]):null;
         if ($record && !$r) { throw new AttendanceError('Nur eigene Arbeitszeiten korrigieren.'); }
         if ($record && att_one($db,'SELECT id FROM work_sessions WHERE record_id=? AND ended_at IS NULL',[$record])) { throw new AttendanceError('Laufende Arbeitszeit zuerst ausstempeln.'); }
@@ -51,9 +54,17 @@ function correction_apply_locked(PDO $db, int $user, string $role, array $comman
         if (!in_array($decision,['approved','rejected'],true)||strlen($reason)<3||strlen($reason)>1000) { throw new AttendanceError('Entscheidung und Begründung erforderlich.',400); }
         $auditRunner('Korrektur #'.$a['id'].': '.$reason, static function () use ($db,$user,$a,$decision,$reason): void {
             if ($decision==='approved') {
+                $metadata=correction_metadata_v1_parse($a['original_json']??null);
+                // Valid legacy new-entry requests have no original at all. A lost
+                // record ID must never turn a damaged metadata/snapshot into new work.
+                if (!$a['record_id'] && $a['original_json']!==null) { throw new AttendanceError('Antrag enthält einen unerwarteten Original-Snapshot.',409); }
                 $old=$a['record_id']?att_one($db,'SELECT * FROM zeiterfassung WHERE id=? AND user_id=?',[$a['record_id'],$a['user_id']]):null;
-                if ($a['record_id'] && (!$old || json_encode($old)!==$a['original_json'])) { throw new AttendanceError('Datensatz wurde inzwischen geändert. Neuen Antrag stellen.'); }
+                if ($a['record_id'] && (!$old || json_encode($old)!==($metadata['original_json']??$a['original_json']))) { throw new AttendanceError('Datensatz wurde inzwischen geändert. Neuen Antrag stellen.'); }
                 if ($old && att_one($db,'SELECT id FROM work_sessions WHERE record_id=? AND ended_at IS NULL',[$a['record_id']])) { throw new AttendanceError('Laufende Arbeitszeit zuerst ausstempeln.'); }
+                if ($metadata!==null) {
+                    if (!$old) { throw new AttendanceError('Metadaten erfordern eine bestehende Buchung.',409); }
+                    correction_metadata_v1_apply_locked($db,$a,$old,$metadata['metadata']);
+                } else {
                 if (!$a['cancel']) {
                     booking_validate_correction($old,(int)$a['proposed_start'],(int)$a['proposed_end'],(int)$a['proposed_pause'],time());
                     $proposal=['startzeit'=>attendance_local((int)$a['proposed_start']),'endzeit'=>attendance_local((int)$a['proposed_end']),'absence_kind'=>$old['absence_kind']??null,'beschreibung'=>$old['beschreibung']??''];
@@ -74,6 +85,7 @@ function correction_apply_locked(PDO $db, int $user, string $role, array $comman
                     $id=(int)$db->lastInsertId();
                     att_exec($db,'INSERT INTO work_sessions(user_id,record_id,started_at,ended_at) VALUES(?,?,?,?)',[$a['user_id'],$id,$a['proposed_start'],$a['proposed_end']]);
                     att_exec($db,'UPDATE time_adjustments SET record_id=? WHERE id=?',[$id,$a['id']]);
+                }
                 }
             }
             att_exec($db,'UPDATE time_adjustments SET status=?,reviewer_id=?,reviewed_at=?,review_reason=? WHERE id=?',[$decision,$user,time(),$reason,$a['id']]);

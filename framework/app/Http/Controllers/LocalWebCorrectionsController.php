@@ -45,6 +45,7 @@ final class LocalWebCorrectionsController extends Controller
             $command = array_intersect_key($request->request->all(), array_flip([
                 'action', 'record_id', 'cancel', 'start', 'end', 'pause', 'reason',
                 'id', 'decision', 'review_reason',
+                'location', 'note', 'metadata_confirm',
             ]));
             if (($command['action'] ?? null) === 'withdraw') {
                 if (! $this->withdrawalsEnabled()) {
@@ -57,10 +58,10 @@ final class LocalWebCorrectionsController extends Controller
                 return new RedirectResponse(CorrectionsPage::queueUrl($status, $requestedPage, $this->queueSelection($request, false, 0)).'&saved=1');
             }
             $selectedRecordId = 0;
-            if (($command['action'] ?? null) === 'request') {
+            if (in_array($command['action'] ?? null, ['request', 'request_metadata_v1'], true)) {
                 // Native request-only parser: explicit new entry 0 is valid only in POST.
                 try {
-                    $selectedRecordId = \correction_selection_id($command['record_id'] ?? null, true);
+                    $selectedRecordId = \correction_selection_id($command['record_id'] ?? null, ($command['action'] ?? null) === 'request');
                 } catch (\InvalidArgumentException $selectionError) {
                     return $this->page($request, $selectionError->getMessage());
                 }
@@ -81,7 +82,7 @@ final class LocalWebCorrectionsController extends Controller
         } catch (Throwable) {
             return $this->page($request, ($command['action'] ?? null) === 'withdraw'
                 ? 'Rücknahme konnte nicht bestätigt werden. Bitte neu laden und gespeicherten Stand prüfen; nicht automatisch wiederholen.'
-                : (($command['action'] ?? null) === 'request'
+                : (in_array($command['action'] ?? null, ['request', 'request_metadata_v1'], true)
                     ? 'Antrag konnte nicht bestätigt werden. Bitte neu laden und gespeicherten Stand prüfen; nicht automatisch wiederholen.'
                     : 'Entscheidung konnte nicht bestätigt werden. Bitte neu laden und gespeicherten Stand prüfen; nicht automatisch wiederholen.'));
         }
@@ -109,7 +110,7 @@ final class LocalWebCorrectionsController extends Controller
         $selection = array_key_exists('record_id', $query)
             ? ['record_id' => is_string($query['record_id']) ? $query['record_id'] : 'invalid'] : [];
         $form = $request->request->all();
-        if ($request->isMethod('POST') && ($form['action'] ?? null) === 'request') {
+        if ($request->isMethod('POST') && in_array($form['action'] ?? null, ['request', 'request_metadata_v1'], true)) {
             $selection = $invalid ? ['record_id' => 'invalid'] : ($selectedId ? ['record_id' => $selectedId] : []);
         }
 
@@ -122,6 +123,7 @@ final class LocalWebCorrectionsController extends Controller
         require_once dirname(__DIR__, 4).'/lib/attendance.php';
         require_once dirname(__DIR__, 4).'/lib/correction_presentation.php';
         require_once dirname(__DIR__, 4).'/lib/correction_selection.php';
+        require_once dirname(__DIR__, 4).'/lib/correction_metadata.php';
         $actor = $this->auth->guard('web')->user();
         $language = $request->query('lang', $request->session()->get('lang', 'de'));
         $language = is_string($language) && in_array($language, ['de', 'en', 'zh'], true) ? $language : 'de';
@@ -136,8 +138,8 @@ final class LocalWebCorrectionsController extends Controller
         $form = $request->request->all();
         $query = $request->query->all();
         try {
-            if ($request->isMethod('POST') && ($form['action'] ?? null) === 'request') {
-                $selectedRecordId = \correction_selection_id($form['record_id'] ?? null, true);
+            if ($request->isMethod('POST') && in_array($form['action'] ?? null, ['request', 'request_metadata_v1'], true)) {
+                $selectedRecordId = \correction_selection_id($form['record_id'] ?? null, ($form['action'] ?? null) === 'request');
             } elseif ($request->isMethod('GET') && array_key_exists('record_id', $query)) {
                 $selectedRecordId = \correction_selection_id($query['record_id']);
             }
@@ -177,6 +179,7 @@ final class LocalWebCorrectionsController extends Controller
                 'review_reason' => $row['review_reason'],
                 // Selected time fields only; no original snapshot is passed to Blade.
                 'preview' => $preview,
+                'metadata_preview' => \correction_metadata_v1_preview($row),
             ];
         }, $queue['records']);
 
@@ -215,6 +218,10 @@ final class LocalWebCorrectionsController extends Controller
                 requestDraft: $retainRejectedDraft && ! $selectionInvalid && $request->isMethod('POST')
                     ? CorrectionsPage::rejectedRequestDraft($form) : [],
                 reviewDraft: $reviewDraft,
+                metadataDraft: $retainRejectedDraft && ! $selectionInvalid && $request->isMethod('POST')
+                    ? \correction_metadata_v1_rejected_draft($form) : [],
+                // Main PR318 admits the same scoped business actions for existing LDAP roles.
+                metadataEnabled: $this->interactions->corrections,
             ),
         ]);
     }

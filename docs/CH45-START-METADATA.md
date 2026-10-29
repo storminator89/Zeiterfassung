@@ -49,13 +49,52 @@ Logout/Konto-/Serverwechsel setzt Eingabewerte und Capability zurück. Eigene al
 Pending-Objekte werden nur über die bestehende Konto-/Zielprüfung wiederhergestellt.
 Nach bestätigtem Start werden die Eingabewerte für den nächsten Start zurückgesetzt.
 
-## Noch offen
+## Nachträglicher Ort/Notiz-Antrag — Ergänzung auf Main e5ad8f64
 
-**Auditiertes nachträgliches Ändern** von Ort/Notiz ist nicht implementiert; der
-bestehende Vier-Augen-Zeitkorrekturpfad ändert diese Metadaten nicht. Projektabrechnung,
-Notizrichtlinien für reale personenbezogene Angaben, neue Korrektur-UI, Terminal-
-Metadaten und operative Migration sind ausdrücklich außerhalb dieses Ausschnitts.
-Issue #51 darf deshalb nicht als erledigt oder produktiv abgenommen markiert werden.
+Im vorhandenen Korrekturbereich ergänzt ein eingeklappter Formularteil die neue
+Aktion `request_metadata_v1`. Nur eine bestehende eigene abgeschlossene
+Arbeitsbuchung ist zulässig, keine Abwesenheit, laufende Buchung oder Stornierung.
+Beide Felder verwenden unverändert den obigen sprachunabhängigen Vertrag.
+Eine explizite Bestätigung verlangt das Ersetzen beider Werte; leer löscht die
+Notiz. Eine Begründung und die bisherige fremde Admin-/Direktvorgesetztenentscheidung
+bleiben zwingend. Selbstfreigabe ist ausgeschlossen. Zeiten, Pause, Gutschriften,
+Sessions und Originalereignisse werden nicht verändert.
+
+Keine Schemaänderung: Der Antrags-Snapshot `original_json` enthält die vollständige
+unveränderte Originalzeile und zusätzlich ausschließlich das reservierte Feld
+`_chrono_metadata_request_v1` mit exakt `version:1`, `location`, `note`.
+Bei Freigabe wird genau dieses Feld entfernt und der übrige Snapshot ohne weitere
+Normalisierung bytegleich mit der aktuellen Zeile verglichen. Metadaten, unveränderte
+Zeitvorschläge und `cancel=0` werden unter demselben Writerlock erneut geprüft.
+Unbekannte/fehlerhafte reservierte Formate oder eine Markerkollision verweigern die
+Freigabe; es gibt keinen Rückfall auf einen normalen Zeitrequest. Alte Anträge
+bleiben unverändert. Ein alter Core verweigert die neue Action mit 400 und eine
+Genehmigung des erweiterten Snapshots mit 409 vor Buchungsmutation. **Ablehnen**
+bleibt auch dort möglich und ändert nur Antragsstatus/Audit, nicht die Buchung.
+Ein Rollback auf alte Software macht neue offene Metadatenanträge daher nicht
+genehmigungsfähig; nichts wird automatisch konvertiert oder erneut gesendet.
+
+Antragskarten und die feste Historienprojektion zeigen typisierte alte/beantragte
+Ort-/Notizwerte statt beliebiger JSONfelder. Der bestehende Änderungsjournaltrigger
+erfasst bei Freigabe Akteur, Grund, Serverzeit und die tatsächlichen Alt-/Neuwerte
+atomar mit dem Status. Keine Rückschreibung historischer Quittungen. Bei ungewissem
+Commitausgang keine abgelehnte/erfolgreiche Speicherung behaupten und keinen Draft
+oder automatischen Retry anbieten. Vorhandene Erweiterungs-, Web-/API-Leser und CSV
+lesen weiterhin dieselben Spalten; neue Korrekturendpunkte für API/Terminal sind
+nicht Teil dieser Ergänzung. LDAP nutzt die mit PR318 bereits freigegebene normale
+Business-Fassade, keine zusätzliche Auth-/Writer-/Verzeichnisänderung.
+
+Grob geprüft: ursprünglicher Alt-Core und reale Memory-Migrationen/Audittrigger;
+Pending → unabhängige Freigabe → Nur-Metadaten-Diff → Journal → CSV; unveränderte
+normale Zeitkorrektur und begrenzte Format-/Scope-/Stale-Verweigerungen. PHP8.5.12,
+SQLite3.46.1, Laravel13.38.0: tatsächliche Provider/SessionGuard/Fassade/Writer/Reads/
+Controller/kompilierte Blade mit ausdrücklich gesetzten **unbrauchbaren Fixture-Usern**
+für V4/V5 local und LDAP, einschließlich Direktvorgesetzten-/Adminfreigabe und
+post-physical-commit Throwable. Kein Credentiallogin, echter Directory, Middleware-/
+HTTP-/Browser-/Runtimezulassungs- oder Produktionsnachweis; keine Credentials,
+Passworthashes oder Schlüssel erzeugt. Projektabrechnung, Terminal-Metadaten und
+betriebliche Datenschutzregeln werden dadurch nicht eingeführt. Historische
+Nachweisgrenzen unten bleiben historisch, eine Veröffentlichung ist separat zu belegen.
 
 ## Lokale Nachweise und Grenzen
 

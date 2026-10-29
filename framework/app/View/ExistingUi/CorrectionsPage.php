@@ -27,6 +27,8 @@ final readonly class CorrectionsPage
         public ?int $balancePreviewRequestId = null,
         public array $balancePreview = [],
         public array $reviewDraft = [],
+        public array $metadataDraft = [],
+        public bool $metadataEnabled = false,
     ) {}
 
     /** Display only after a known request rejection; never a command or stored/flash input. */
