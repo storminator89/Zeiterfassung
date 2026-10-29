@@ -125,6 +125,7 @@ final class LocalWebHistoryController extends Controller
                 ! $errors ? \chrono_history_correlated_export_url($query->values) : null,
                 showRelations: $showRelations, relations: $relations,
                 relationsUrl: ! $errors ? ($showRelations ? $pageUrl : $withRelations($pageUrl)) : null,
+                operations: $query->operations,
             ),
         ], $errors ? 400 : 200, $showRelations ? ['Cache-Control' => 'no-store', 'X-Content-Type-Options' => 'nosniff'] : []);
     }
