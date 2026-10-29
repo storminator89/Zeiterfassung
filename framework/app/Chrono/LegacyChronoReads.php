@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiWorkModelReads
+final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiWorkModelReads, OwnSettingsProfileReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -291,6 +291,15 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
 
             return \api_own_work_model_snapshot($pdo, (int) $actor->getKey(), $day);
         }, false);
+    }
+
+    public function ownSettingsProfile(): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
+            require_once dirname(__DIR__, 3).'/lib/own_settings_profile.php';
+
+            return \own_settings_profile_snapshot($pdo, (int) $actor->getKey());
+        });
     }
 
     public function apiTimeEntries(ApiTimeEntriesQuery $query): array

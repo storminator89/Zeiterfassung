@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
 use App\Chrono\LocalWebCarryIn;
+use App\Chrono\OwnSettingsProfileReads;
 use App\Auth\LegacyUser;
 use App\Auth\OwnPasswordChange;
 use App\Auth\LocalSession;
@@ -13,6 +14,7 @@ use App\View\ExistingUi\AttendancePage;
 use App\View\ExistingUi\Copy;
 use App\View\ExistingUi\Interactions;
 use App\View\ExistingUi\SettingsPage;
+use App\View\ExistingUi\OwnSettingsProfile;
 use Illuminate\Contracts\Auth\Factory;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -120,6 +122,17 @@ final class LocalWebSettingsController extends Controller
         // Select only own display fields, never pass a complete model to the view.
         $actor = $this->auth->guard('web')->user();
 
+        $profile = null;
+        if ($this->reads instanceof OwnSettingsProfileReads) {
+            try {
+                $profile = new OwnSettingsProfile($this->reads->ownSettingsProfile(), $language);
+            } catch (AuthenticationException|AuthorizationException $error) {
+                throw $error; // Never turn loss of current authority into cached own-profile data.
+            } catch (Throwable) {
+                $profile = new OwnSettingsProfile(null, $language);
+            }
+        }
+
         return response()->view('chrono.settings', [
             'page' => new AttendancePage(
                 new Copy($language), (int) $actor->getAuthIdentifier(), $actor->username,
@@ -130,6 +143,7 @@ final class LocalWebSettingsController extends Controller
                 $theme, $actor->regelarbeitszeit, $actor->role === 'admin'
                     ? ($savedCarryIn ?? \settings_carry_in_display($actor->ueberstunden)) : null,
                 $error, $saved, $this->passwords->available(), $language,
+                profile: $profile,
             ),
         ], $status, ['Cache-Control' => 'no-store']);
     }

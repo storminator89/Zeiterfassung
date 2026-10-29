@@ -2,7 +2,7 @@
 
 namespace App\View\ExistingUi;
 
-/** Own display/session preference values only; no model, query or account mutation. */
+/** Own display/session/profile values only; no account model, query or mutation. */
 final readonly class SettingsPage
 {
     private array $passwordLabels;
@@ -15,6 +15,7 @@ final readonly class SettingsPage
         public bool $saved = false,
         public bool $passwordAvailable = false,
         public string $language = 'de',
+        public ?OwnSettingsProfile $profile = null,
     ) {
         if (! in_array($language, ['de', 'en', 'zh'], true)) { throw new \InvalidArgumentException('Unsupported settings language.'); }
         $this->passwordLabels = require dirname(__DIR__, 3).'/lang/'.$language.'/settings.php';

@@ -75,6 +75,8 @@
                 </div>
             </form>
 
+            @include('chrono.partials.settings-profile')
+
             @if ($settings->passwordAvailable)
                 <div class="divider my-8">{{ $settings->passwordText('title') }}</div>
                 <section aria-labelledby="own-password-title">
