@@ -102,6 +102,9 @@
         </div>
     </section>
     @endif
+    @if ($page->interactions->home && app()->bound('router') && app('router')->has('chrono.export-csv'))
+    @include('chrono.partials.csv-period', ['copy' => $page->copy])
+    @endif
     @if ($page->interactions->home)
     <section id="timeRecordsContainer" class="mt-8" aria-label="Erfasste Arbeitszeiten"><p role="status">Arbeitszeiten werden geladen …</p></section>
     @else

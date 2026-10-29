@@ -232,4 +232,5 @@ return [
     'HOLIDAY_INVENTORY_EMPTY' => '该年份没有已存储记录。这并不表示该年没有公共假日。',
     'HOLIDAY_INVENTORY_ABSENCE_LINK' => '计入缺勤时数前，请核对相关年份的已存储公共假日（新标签页）。',
     'HOLIDAY_INVENTORY_UNAVAILABLE' => '目前無法取得已保存的假日清單。請稍後重新查看；未匯入或變更任何年度資料。',
+    'CSV_EXPORT_NEW_CONTEXT_HINT' => 'CSV 下载或错误信息将在单独的页面打开；您选择的日期会保留在本页。',
 ];
