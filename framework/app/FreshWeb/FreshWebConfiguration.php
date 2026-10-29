@@ -98,8 +98,19 @@ final readonly class FreshWebConfiguration
             }
             [$manifest, $manifestHash, $manifestState] = self::json($directory.'/runtime-admission.json');
             $admission = RuntimeAdmission::fromConfiguration($manifest);
-            if ($admission->schemaProfile !== 'intake-policy-v4' || $admission->path !== $directory.'/application.sqlite') {
+            if (! in_array($admission->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5'], true)
+                || $admission->path !== $directory.'/application.sqlite') {
                 throw new RuntimeException;
+            }
+            if ($admission->schemaProfile === 'account-lifecycle-v5') {
+                // Prepared local-only composition, never a V4 alias or an LDAP/API admission.
+                $syncSettings = $config->get('chrono_ldap_sync.fresh');
+                if ($ldap['enabled'] !== false || ! is_array($syncSettings)
+                    || ($syncSettings['enabled'] ?? null) !== false
+                    || $config->get('chrono_api.enabled', false) !== false
+                    || $config->get('chrono_login_budget.enabled', false) !== true) {
+                    throw new RuntimeException;
+                }
             }
             $databaseState = self::file($admission->path);
             if ($databaseState['dev'] !== $admission->device || $databaseState['ino'] !== $admission->inode) {
@@ -130,6 +141,10 @@ final readonly class FreshWebConfiguration
                 // A route/display capability only: current DB policy and locked writer stay authoritative.
                 'chrono_registration.enabled' => true,
             ];
+            if ($admission->schemaProfile === 'account-lifecycle-v5') {
+                // These selected capabilities are rechecked with all other overrides.
+                $overrides += ['chrono_api.enabled' => false, 'chrono_login_budget.enabled' => true];
+            }
             $profile = new self($origin, $directory, $directories, $manifest, $manifestHash, $manifestState,
                 $databaseState, $setup, $ldap['enabled'], $sync, $overrides);
             $profile->assertCurrent($config, false);

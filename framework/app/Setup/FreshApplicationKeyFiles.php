@@ -2,6 +2,7 @@
 
 namespace App\Setup;
 
+use App\LegacyDatabase\AccountLifecycleV5References;
 use App\LegacyDatabase\IntakePolicyV4References;
 use App\LegacyDatabase\OfflineFiles;
 use App\LegacyDatabase\RuntimeAdmission;
@@ -31,7 +32,8 @@ final class FreshApplicationKeyFiles
             if (@lstat($path) !== false) { throw new RuntimeException; }
             [$manifest, $hash, $manifestState] = self::manifest($instance);
             $admission = RuntimeAdmission::fromConfiguration($manifest);
-            if ($admission->schemaProfile !== 'intake-policy-v4' || $admission->path !== $instance.'/application.sqlite') {
+            if (! in_array($admission->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5'], true)
+                || $admission->path !== $instance.'/application.sqlite') {
                 throw new RuntimeException;
             }
             $root = dirname(__DIR__, 3);
@@ -112,7 +114,13 @@ final class FreshApplicationKeyFiles
                 }
             }
             // Nested preflight returns metadata only, never the target handle.
+            if ($admission->schemaProfile === 'account-lifecycle-v5') {
+                // Future admitted V5 must be canonical and physically budget-ready.
+                // The unchanged Runtime hold above still refuses before this branch.
+                AccountLifecycleV5References::build($mapping)->requireFreshLoginBudget($pdo);
+            } else {
             IntakePolicyV4References::build($mapping)->requireFresh($pdo);
+            }
             if (! $pdo->rollBack() || $pdo->inTransaction()) { throw new RuntimeException; }
         } finally {
             // Cleanup failure propagates, so the caller cannot continue to cold

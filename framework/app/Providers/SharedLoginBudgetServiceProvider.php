@@ -36,7 +36,7 @@ final class SharedLoginBudgetServiceProvider extends ServiceProvider
         }
         $manifest = $config->get('chrono_runtime.admission');
         if (! is_array($manifest)) {
-            throw new LogicException('Shared login budget requires the complete admitted V4 runtime.');
+            throw new LogicException('Shared login budget requires the complete admitted local runtime.');
         }
         $admission = RuntimeAdmission::fromConfiguration($manifest);
         self::requireProfile($this->app, $admission, $manifest);
@@ -82,10 +82,12 @@ final class SharedLoginBudgetServiceProvider extends ServiceProvider
         if ($config->get('chrono_login_budget.enabled') !== true
             || $config->get('chrono_fresh_web.enabled') !== true || ! $app->bound(FreshWebConfiguration::class)
             || $config->get('chrono_runtime.read_enabled') !== true || $config->get('chrono_runtime.write_enabled') !== true
-            || $config->get('chrono_runtime.admission') !== $manifest || $admission->schemaProfile !== 'intake-policy-v4'
+            || $config->get('chrono_runtime.admission') !== $manifest || ! in_array($admission->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5'], true)
             || ! $app->bound(RuntimeDatabase::class) || ! $app->bound(AttendanceWriter::class)
+            || ($admission->schemaProfile === 'account-lifecycle-v5'
+                && ! $app->make(RuntimeDatabase::class)->isAccountLifecycleV5())
             || $config->get('database.connections.chrono') !== $admission->configuration()) {
-            throw new LogicException('Shared login budget requires the complete selected fresh V4 read/write profile.');
+            throw new LogicException('Shared login budget requires the complete selected fresh local read/write profile.');
         }
     }
 }

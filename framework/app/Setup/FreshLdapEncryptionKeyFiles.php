@@ -2,6 +2,7 @@
 
 namespace App\Setup;
 
+use App\LegacyDatabase\AccountLifecycleV5References;
 use App\LegacyDatabase\IntakePolicyV4References;
 use App\LegacyDatabase\OfflineFiles;
 use App\LegacyDatabase\RuntimeAdmission;
@@ -38,7 +39,8 @@ final class FreshLdapEncryptionKeyFiles
             self::requireUnstarted($instance); // Includes any link/type/partial artifact, without reading it.
             [$manifest, $hash, $manifestState] = self::manifest($instance);
             $admission = RuntimeAdmission::fromConfiguration($manifest);
-            if ($admission->schemaProfile !== 'intake-policy-v4' || $admission->path !== $instance.'/application.sqlite') {
+            if (! in_array($admission->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5'], true)
+                || $admission->path !== $instance.'/application.sqlite') {
                 throw new RuntimeException;
             }
             $root = dirname(__DIR__, 3);
@@ -60,8 +62,14 @@ final class FreshLdapEncryptionKeyFiles
                     throw new RuntimeException;
                 }
             }
-            // Exact canonical empty V4 and default policy/seeds, not merely zero users.
+            // Exact canonical empty selected profile/default policy, not merely zero users.
+            if ($admission->schemaProfile === 'account-lifecycle-v5') {
+                // Future admitted V5 must be canonical and physically budget-ready.
+                // The unchanged Runtime hold above still refuses before this branch.
+                AccountLifecycleV5References::build($mapping)->requireFreshLoginBudget($pdo);
+            } else {
             IntakePolicyV4References::build($mapping)->requireFresh($pdo);
+            }
             $pdo->rollBack();
             $reader->disconnect();
             $pdo = $reader = null;

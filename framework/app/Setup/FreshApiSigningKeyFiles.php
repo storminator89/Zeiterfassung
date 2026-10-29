@@ -3,6 +3,7 @@
 namespace App\Setup;
 
 use App\Api\ExistingApiKeyAdmission;
+use App\LegacyDatabase\AccountLifecycleV5References;
 use App\LegacyDatabase\IntakePolicyV4References;
 use App\LegacyDatabase\OfflineFiles;
 use App\LegacyDatabase\RuntimeAdmission;
@@ -33,7 +34,8 @@ final class FreshApiSigningKeyFiles
             self::requireUnstarted($instance);
             [$manifest, $manifestHash, $manifestState] = self::manifest($instance);
             $admission = RuntimeAdmission::fromConfiguration($manifest);
-            if ($admission->schemaProfile !== 'intake-policy-v4' || $admission->path !== $instance.'/application.sqlite') {
+            if (! in_array($admission->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5'], true)
+                || $admission->path !== $instance.'/application.sqlite') {
                 throw new RuntimeException;
             }
             $root = dirname(__DIR__, 3);
@@ -138,7 +140,13 @@ final class FreshApiSigningKeyFiles
             }
             // Physical canonical countertable + EMPTY counters, not optional-table
             // signature normalization or merely an empty users table.
+            if ($admission->schemaProfile === 'account-lifecycle-v5') {
+                // Future admitted V5 must be canonical and physically budget-ready.
+                // The unchanged Runtime hold above still refuses before this branch.
+                AccountLifecycleV5References::build($mapping)->requireFreshLoginBudget($pdo);
+            } else {
             IntakePolicyV4References::build($mapping)->requireFreshLoginBudget($pdo);
+            }
             if (! $pdo->rollBack() || $pdo->inTransaction()) { throw new RuntimeException; }
         } finally {
             try {

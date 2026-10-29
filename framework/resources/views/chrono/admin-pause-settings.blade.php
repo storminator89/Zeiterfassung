@@ -10,7 +10,7 @@
 </style>
 <main class="container mx-auto px-4 py-8 chrono-page">
     @if ($managedUsersEnabled)
-    <div class="alert alert-info mb-4" role="note">Die vorhandene Benutzerverwaltung ist in diesem privaten Laravel-V4-Profil verbunden. Historiengeschützte Konten und die letzte lokale Administration bleiben erhalten. API-Token sind nicht angebunden; LDAP benötigt weiterhin die getrennte HTTP- und Aufnahmefreigabe.</div>
+    <div class="alert alert-info mb-4" role="note">Die vorhandene Benutzerverwaltung ist in diesem privaten Laravel-{{ $adminPauseSettings->accountLifecycleV5 ? 'V5-Lokalprofil' : 'V4-Profil' }} verbunden. Historiengeschützte Konten und die letzte lokale Administration bleiben erhalten. API-Token sind nicht angebunden; LDAP benötigt weiterhin die getrennte HTTP- und Aufnahmefreigabe.</div>
     @else
     <div class="alert alert-info mb-4" role="note">In dieser Laravel-Ansicht sind die vorhandene Pausenregel-, Abteilungsverwaltung und das Erstellen lokaler Benutzer verbunden. Bestehende Benutzerdetails bleiben nur lesend; Änderungen, Löschen, Passwortänderungen, API-Token sind nicht angebunden. LDAP-Synchronisierung erfordert zusätzlich die ausdrücklich zugelassene V4-HTTP-Komposition und gespeicherte Aufnahmefreigabe.</div>
     @endif
@@ -23,8 +23,11 @@
     @if ($adminPauseSettings->intakePolicy !== null)
     <div id="user-intake-policy" class="card bg-base-100 shadow-xl mb-8">
         <div class="card-body">
-            <h2 class="card-title text-2xl mb-4">Benutzeraufnahme · Laravel V4</h2>
+            <h2 class="card-title text-2xl mb-4">Benutzeraufnahme · Laravel {{ $adminPauseSettings->accountLifecycleV5 ? 'V5 lokal' : 'V4' }}</h2>
             <p class="mb-4">Aufnahmewege unabhängig freigeben. Bestehende Konten und Anmeldungen bleiben unverändert; die Erst-Admin-Einrichtung ist davon getrennt. LDAP benötigt zusätzlich einen zugelassenen Connector; Speichern startet keinen Verzeichnislauf.</p>
+            @if ($adminPauseSettings->accountLifecycleV5)
+            <p class="alert alert-info mb-4" role="note">Dieses vorbereitete V5-Profil ist lokal. LDAP-Anmeldung, LDAP-Synchronisierung und API sind nicht zugelassen; die Aufnahmeauswahl allein aktiviert diese Kanäle nicht.</p>
+            @endif
             <form method="post" class="space-y-4">
                 @csrf
                 <input type="hidden" name="update_intake_policy" value="1">
