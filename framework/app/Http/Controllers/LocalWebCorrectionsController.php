@@ -53,6 +53,7 @@ final class LocalWebCorrectionsController extends Controller
                 }
                 $withdrawal = array_diff_key($request->request->all(), array_flip(['_token', 'csrf_token']));
                 $this->withdrawals->withdraw($withdrawal);
+                $commandCompleted = true;
                 [$status, $requestedPage] = $this->queueFilters($request);
 
                 return new RedirectResponse(CorrectionsPage::queueUrl($status, $requestedPage, $this->queueSelection($request, false, 0)).'&saved=1');
@@ -197,6 +198,21 @@ final class LocalWebCorrectionsController extends Controller
             $reviewDraft = [];
         }
 
+        $withdrawalDraft = $retainRejectedDraft && $request->isMethod('POST')
+            ? CorrectionsPage::rejectedWithdrawalDraft($form) : [];
+        $withdrawable = $this->withdrawalsEnabled() && $this->interactions->corrections
+            && $this->interactions->correctionWithdrawals
+            && array_filter($queue['records'], static fn (array $row): bool =>
+                (int) $row['id'] === ($withdrawalDraft['id'] ?? null)
+                && (int) $row['user_id'] === (int) $actor->getAuthIdentifier()
+                && $row['status'] === 'pending'
+                && array_key_exists('reviewer_id', $row) && $row['reviewer_id'] === null
+                && array_key_exists('reviewed_at', $row) && $row['reviewed_at'] === null
+                && array_key_exists('review_reason', $row) && $row['review_reason'] === null);
+        if (! $withdrawable) {
+            $withdrawalDraft = [];
+        }
+
         return view('chrono.corrections', [
             // Reuse the existing shared chrome contract; no legacy header/bootstrap include.
             'page' => new AttendancePage(
@@ -222,6 +238,7 @@ final class LocalWebCorrectionsController extends Controller
                     ? \correction_metadata_v1_rejected_draft($form) : [],
                 // Main PR318 admits the same scoped business actions for existing LDAP roles.
                 metadataEnabled: $this->interactions->corrections,
+                withdrawalDraft: $withdrawalDraft,
             ),
         ]);
     }

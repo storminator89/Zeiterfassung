@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__.'/config.php'; require_once __DIR__.'/lib/app_ui.php';
 if (!isset($_SESSION['user_id'])) { header('Location: login.php'); exit; }
-$user=(int)$_SESSION['user_id'];$role=$_SESSION['role'];$error='';$requestDraft=[];$metadataDraft=[];$reviewDraft=[];
+$user=(int)$_SESSION['user_id'];$role=$_SESSION['role'];$error='';$requestDraft=[];$metadataDraft=[];$reviewDraft=[];$withdrawalDraft=[];
 require_once __DIR__.'/lib/corrections.php';
 require_once __DIR__.'/lib/native_correction_withdrawal.php';
 require_once __DIR__.'/lib/correction_selection.php';
@@ -65,6 +65,11 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && (!$selectionError || !in_array($_POST
             require_once __DIR__.'/lib/correction_review_draft.php';
             $reviewDraft=correction_rejected_review_draft($_POST);
         }
+        if (!$requestCommandReturned && $requestRollbackConfirmed && ($_POST['action']??'')==='withdraw'
+            && $e instanceof AttendanceError && in_array($e->status,[400,409],true)) {
+            require_once __DIR__.'/lib/correction_withdrawal_draft.php';
+            $withdrawalDraft=correction_rejected_withdrawal_draft($_POST);
+        }
     }
 }
 $balancePreviewRequestId=null;$balancePreview=[];
@@ -87,6 +92,12 @@ if ($requestStatus!=='all') { $requestWhere.=' AND a.status=?';$requestParams[]=
 $s=$conn->prepare('SELECT a.*,u.username FROM time_adjustments a JOIN users u ON u.id=a.user_id WHERE '.$requestWhere.' ORDER BY a.id DESC LIMIT '.$requestPageSize.' OFFSET '.$requestOffset);$s->execute($requestParams);$requests=$s->fetchAll(PDO::FETCH_ASSOC);
 // Display hint in the queue snapshot only; the existing core authorizes again under the writer lock.
 $withdrawalActor=att_one($conn,'SELECT auth_source FROM users WHERE id=?',[$user]);
+// A retained reason belongs only to the same still-withdrawable own visible row.
+if ($withdrawalDraft && !array_filter($requests,static fn(array $request): bool =>
+    (int)$request['id']===$withdrawalDraft['id']
+    && native_correction_can_withdraw($request,$user,$withdrawalActor['auth_source']??null,$_SESSION['auth_version']??null))) {
+    $withdrawalDraft=[];
+}
 // At most one explicit own pending request on this already-scoped visible page.
 if ($balancePreviewRequestId!==null) {
     foreach ($requests as $request) {
@@ -159,10 +170,11 @@ chrono_page('Korrekturanträge');
 </div>
 <?php endif; ?>
 <p><?= h($a['reason']) ?></p><?php if($a['review_reason']): ?><p class="opacity-70"><?= $a['status']==='withdrawn'?'Rücknahme':'Entscheidung' ?>: <?= h($a['review_reason']) ?></p><?php endif; ?><?php if(native_correction_can_withdraw($a,$user,$withdrawalActor['auth_source']??null,$_SESSION['auth_version']??null)): ?>
-<details class="mt-4"><summary class="cursor-pointer font-semibold">Eigenen offenen Antrag zurücknehmen</summary>
+<details class="mt-4" <?= ($withdrawalDraft['id']??null)===(int)$a['id']?'open':'' ?>><summary class="cursor-pointer font-semibold">Eigenen offenen Antrag zurücknehmen</summary>
 <p class="text-sm opacity-70 mt-2">Die Rücknahme beendet nur diesen Antrag endgültig. Buchung, Zeiten, Arbeitsort und Notiz bleiben unverändert. Ein neuer Korrekturantrag ist weiterhin möglich; dieser Antrag wird nicht wieder geöffnet.</p>
 <form method="post" class="mt-3"><?= csrf_field() ?><input type="hidden" name="action" value="withdraw"><input type="hidden" name="id" value="<?= (int)$a['id'] ?>">
-<label class="block text-sm font-semibold mb-2" for="withdraw_reason_<?= (int)$a['id'] ?>">Begründung der Rücknahme</label><input class="input input-bordered w-full" id="withdraw_reason_<?= (int)$a['id'] ?>" name="withdraw_reason" minlength="5" maxlength="1000" required>
+<label class="block text-sm font-semibold mb-2" for="withdraw_reason_<?= (int)$a['id'] ?>">Begründung der Rücknahme</label><input class="input input-bordered w-full" id="withdraw_reason_<?= (int)$a['id'] ?>" name="withdraw_reason" value="<?= h(($withdrawalDraft['id']??null)===(int)$a['id']?($withdrawalDraft['withdraw_reason']??''):'') ?>" minlength="5" maxlength="1000" required>
+<?php if(($withdrawalDraft['id']??null)===(int)$a['id']): ?><p class="text-sm opacity-70 mt-3" role="status">Begründung zur Prüfung beibehalten. Aktuellen Antrag prüfen und Rücknahme erneut bewusst wählen; nichts wird automatisch gesendet.</p><?php endif; ?>
 <button class="btn btn-outline mt-3" type="submit">Antrag endgültig zurücknehmen</button></form></details>
 <?php endif; ?><?php if($a['status']==='pending'&&(int)$a['user_id']!==$user&&in_array($role,['admin','supervisor'],true)): ?><form method="post"><?= csrf_field() ?><input class="input input-bordered w-full" type="hidden" name="action" value="review"><input class="input input-bordered w-full" type="hidden" name="id" value="<?= (int)$a['id'] ?>"><label class="block text-sm font-semibold mt-4 mb-2" for="review_reason_<?= (int)$a['id'] ?>">Begründung der Entscheidung</label><input class="input input-bordered w-full" id="review_reason_<?= (int)$a['id'] ?>" name="review_reason" value="<?= h(($reviewDraft['id']??null)===(int)$a['id']?($reviewDraft['review_reason']??''):'') ?>" minlength="3" maxlength="1000" required><div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary" name="decision" value="approved">Freigeben</button><button name="decision" value="rejected" class="btn btn-outline">Ablehnen</button></div></form><?php endif; ?></section><?php endforeach; ?>
 <?php if($requestPages>1): ?><nav class="flex flex-wrap gap-3 mb-6" aria-label="Antragsseiten">
