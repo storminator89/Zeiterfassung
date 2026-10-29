@@ -1,5 +1,12 @@
 # Existing Admin edit/delete boundary — inactive integrated source
 
+**Follow-up #31:** The historical no-new-master-data-validation statement below
+is superseded by the [shared field contract](../admin-user-assignment-integrity.md):
+edit now checks required name/email and finite daily hours/opening balance in the
+same existing writer, and target IDs use the existing canonical positive parser.
+Authority, active/local recovery, last-Admin guards and transaction/SQL/password
+branches are unchanged. No runtime activation follows from this validation.
+
 Base: reviewed local LDAP/Admin freeze
 `dd2f89f6cc99c5ed059446d12987291773ed2c62`, not a claim of remote Main or complete
 application activation. The isolated six-file core `f3bbbbbf` was independently

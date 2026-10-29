@@ -1,5 +1,11 @@
 # #79 – vorhandenen lokalen Benutzer-Anlegebogen verbinden
 
+**Folgeänderung #31:** Die damalige reine Native-Werteparität unten wird durch
+die [gemeinsame Stammdatenvalidierung](../admin-user-assignment-integrity.md)
+ergänzt: Name, E-Mail und endliche Tagesstunden/Anfangsguthaben werden am selben
+Writer-Einstieg geprüft, ohne die bisherige Pflichtfeld-/Transaktions-/Hash-/
+Authority-/SQL-Komposition zu ersetzen. Der neue Helper normalisiert keine Werte.
+
 Begrenzter Folgeschritt der [nur lesenden Benutzerverwaltung](admin-users-readonly.md):
 Nur `add_user` ist jetzt über die bereits optionale Laravel-Adminseite verbunden.
 Bestehende URL, Karte, Feldnamen/IDs, Klassen, Icons, Rollenoptionen und ausgewählte

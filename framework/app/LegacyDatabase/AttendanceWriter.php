@@ -314,6 +314,7 @@ final class AttendanceWriter
             if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local') {
                 throw new AuthorizationException('Nur die Verwaltung darf Benutzer erstellen.');
             }
+            \admin_validate_user_fields($username, $email, $regularHours, $carryIn);
             // Existing exact role/department/supervisor/chain validation on this
             // same locked PDO. Never call the native raw-BEGIN wrapper here.
             $assignment = \validateUserAssignment($this->pdo, $role, $supervisor, $department);
