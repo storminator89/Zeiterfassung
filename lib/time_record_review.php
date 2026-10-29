@@ -55,16 +55,46 @@ function time_record_work_overlap_lookup(array $authorizedRows): array
     return $lookup;
 }
 
+/**
+ * Own positive completed absence participants on the same whole Berlin day.
+ * A hint, not entitlement, approval, duplicate payment or a changed credit total.
+ */
+function time_record_absence_overlap_lookup(array $authorizedRows): array
+{
+    $first = $lookup = [];
+    foreach ($authorizedRows as $row) {
+        if (!booking_is_absence($row)) { continue; }
+        foreach (['startzeit', 'endzeit'] as $column) {
+            if (legacy_timestamp_assessment($row[$column] ?? null)['category'] !== null) { continue 2; }
+        }
+        $span = report_record_calculation($row);
+        if ($span['status'] !== 'completed' || $span['minutes'] <= 0) { continue; }
+        $owner = filter_var($row['user_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $id = filter_var($row['id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($owner === false || $id === false) { continue; }
+        // Existing booking_span semantics: each absence occupies its entire
+        // Berlin start day, regardless of its compatibility clock interval.
+        $key = report_conflict_key($row);
+        $day = $span['day'];
+        if (isset($first[$owner][$day]) && $first[$owner][$day] !== $key) {
+            $lookup[$key] = $lookup[$first[$owner][$day]] = true;
+        } else { $first[$owner][$day] = $key; }
+    }
+    return $lookup;
+}
+
 /** Preserve caller order and original rows. Not a complete quality/availability scan. */
-function time_record_review_rows(array $authorizedRows, array $absenceConflicts, ?array $workOverlapLookup = null): array
+function time_record_review_rows(array $authorizedRows, array $absenceConflicts, ?array $workOverlapLookup = null, ?array $absenceOverlapLookup = null): array
 {
     $lookup = report_conflict_lookup($absenceConflicts);
     $workOverlapLookup ??= time_record_work_overlap_lookup($authorizedRows);
+    $absenceOverlapLookup ??= time_record_absence_overlap_lookup($authorizedRows);
     $selected = [];
     foreach ($authorizedRows as $row) {
         if (report_record_calculation($row)['status'] === 'invalid'
             || isset($lookup[report_conflict_key($row)])
             || isset($workOverlapLookup[report_conflict_key($row)])
+            || isset($absenceOverlapLookup[report_conflict_key($row)])
             || time_record_local_time_findings($row) !== []) {
             $selected[] = $row;
         }
