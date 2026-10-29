@@ -768,8 +768,10 @@ final class AttendanceWriter
                 $this->assertIdle();
             } catch (Throwable) {
                 $this->unusable = true;
-                // Preserve the primary failure. The caller must discard this
-                // adapter/PDO, not continue or guess a successful commit.
+                // A known domain refusal is no longer a confirmed outcome when
+                // cleanup/idle state is unknown. Never expose either failure or
+                // let callers treat it as safe validation/replay feedback.
+                throw new RuntimeException('Writer outcome could not be confirmed. Do not retry automatically.');
             }
             throw $error;
         } finally {
