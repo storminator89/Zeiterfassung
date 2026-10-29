@@ -1,19 +1,18 @@
 # #29: explicit local LDAP session revocation — default-off Admin source action
 
-Source anchor: `a0af8524830b79c1ecaf2b423ac7626c16734a9a`.
 This is a small Laravel source workflow in the existing Quodara-Chrono Admin
 page, **not account deactivation, directory administration or production
-activation**. #29 browser/real-revocation acceptance and all of #30 remain OPEN.
+activation**. This local hash action is distinct from V5 account lifecycle and real directory rollout.
 
 ## Stable login, deliberately scoped revocation
 
-The unchanged `ExistingAccountUserProvider` delegates persisted ordinary LDAP
-users to `ExistingLdapUserProvider`. Successful LDAP login and forced rehash do
+The `ExistingAccountUserProvider` delegates persisted LDAP User/Supervisor/Admin
+accounts to `ExistingLdapUserProvider`. Successful LDAP login and forced rehash do
 not save a directory password or rotate the persisted random placeholder. Two
 Laravel sessions therefore retain stock `SessionGuard` / `AuthenticateSession`
 bindings across another successful login. There is no new provider, guard,
-session engine or auth-version schema. Native `login.php` remains unchanged and
-still rotates its placeholder on login. Concurrent Native/Laravel operation and
+session engine or auth-version schema. The separate native stable-hash implementation also preserves repeated-login
+versions; it is not changed by this Laravel role patch. Concurrent Native/Laravel operation and
 Native cutover are not approved by this packet.
 
 The optional action is visibly named **“LDAP-Sitzungen beenden”**, never “disable
@@ -24,23 +23,23 @@ and grants are independent and remain unchanged.
 ## Explicit source capability, protected existing UI
 
 `LocalWebRoutes::register(..., includeLdapSessionRevocations: true)` requires its
-existing Admin page, non-debug mode, the explicitly admitted writable V4 runtime
+existing Admin page, non-debug mode, the explicitly admitted writable V4 or NEW V5 runtime
 and writer. It installs only a lazy scoped facade; route registration opens no
 DB, directory or key file. A second/replacement facade is refused. The separate
 `Interactions(..., ldapSessionRevocations: true, adminPauseSettings: true)` display
-capability must also be selected. Both flags default false; FreshWeb does not
-select either automatically. No config/env default, listener, account, key,
+capability must also be selected. Both flags default false; the explicit FreshWeb LDAP-login profile now selects
+this existing local-Admin workflow for all three known LDAP target roles. No config/env default, listener, account, key,
 host/security setting or native route is created or activated.
 
 The action shares existing `POST admin.php` and its complete unchanged protected
 stack: raw native form handling, Laravel session/cookies, `LegacyFormCsrf`,
 identity refresh, `auth:web`, stock `auth.session`, and configured session blocking.
-The controller requires V4, both capabilities and the facade. Mixed Admin
+The controller requires V4 or V5, both capabilities and the facade. Mixed Admin
 actions/extra fields are rejected before dispatch. Manual/LDAP-intake flags do
 not gate revoking an already-persisted account's local sessions.
 
 The existing ten-row table, navigation, colors, typography and dialog patterns
-are retained. Only eligible ordinary LDAP rows gain a checkbox naming the row
+are retained. Only eligible known-role LDAP rows gain a checkbox naming the row
 and a native-style action. The checkbox is required server-side as exact `1`;
 JavaScript additionally asks for explicit confirmation and blocks repeated
 submissions. Cancellation performs no request. Without JavaScript, the explicit
@@ -53,9 +52,11 @@ existing `get_user.php` projection.
 `confirmations()` accepts only at most ten server-projected integer IDs. On the
 already-admitted named read connection, one fixed snapshot rechecks the local
 Admin's current source, role and password fingerprint before selecting eligible
-`auth_source=ldap`, `role=user` targets with nonempty placeholders. It returns
+`auth_source=ldap`, known `user`/`supervisor`/`admin` targets with nonempty placeholders. It returns
 only opaque tickets keyed by ID, never hashes/fingerprints or account models.
-The snapshot closes before standard Laravel authenticated encryption; there is
+V5 also captures actor and target status/generation and rechecks them under the
+writer lock, so deactivate/reactivate cannot revive an old ticket. The snapshot
+closes before standard Laravel authenticated encryption; there is
 no new crypto protocol, key source or secret file. Tickets use the existing
 framework encrypter, a fixed purpose, actor and target IDs/versions and a ten-minute
 expiry. They are not login/session/terminal credentials and are not saved in the

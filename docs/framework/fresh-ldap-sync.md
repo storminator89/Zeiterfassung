@@ -2,17 +2,21 @@
 
 This slice connects the already reviewed Admin Sync mount to the explicit FreshWeb profile. It does not create accounts, keys, an operational profile or directory connections. Default remains off. This is not Native cutover, a running installation, or real LDAP acceptance.
 
-## Exact source composition
+## Current shared composition
 
-Actual observed Main is `e8178933cb89a0a7e425ef37aec0bfe945fc4e3e` / tree `8effdf7e70fceca64599121ab305f4f98f941e6d`. The **local-only** prerequisite `538368f1cef4c667f922ec616b2b2a43289c7bbd` / tree `51b179c3c232ba88bdc98631035b5e2edd4a2dde` adds exact reviewed Login4 `a42c408e`, Form5 `f8c8536e`, Mount16 `dd2f89f6`; these are not silently called Main. Existing Setup/Auth, corrected policy, V4 admission and guarded Writer remain from actual Main. Routes/Provider contain an explicitly documented mechanical union of the exact Setup and Mount hunks; assembled independent review remains required.
-
-The new delta is seven paths: `FreshWebLdapSyncProfile`, `LdapSyncFileSources`, `PinnedLdapSyncTransport`, existing `FreshWebConfiguration`, `FreshWebServiceProvider`, `chrono_ldap_sync.php`, and this document. No Auth/login/guard, Admin controller/UI/CSP/CSRF/throttle, Writer/schema/policy, fixtures, provisioning, API key or Native code changes. AppKey4, API, Denial/Latest, user mutations and held #197 changes are not bundled as dependencies or authorization.
+The sync transport/root metadata can be selected in the same FreshWeb Application
+as existing-account LDAP login and admitted terminal roots, for exact V4 or NEW
+V5 runtimes. Defaults remain off. See [the role/composition contract](fresh-ldap-login.md)
+for business-role parity, local security administration and the integrated
+V5 non-expiring session-lock contract. V5 retains its fourth lineage
+signature in the DB-bound metadata digest and its active/generation authority;
+it is never aliased to V4. The package/version decision is unchanged.
 
 ## Explicit enablement and local break-glass
 
 `chrono_ldap_sync.fresh` is trusted operator metadata, independent of `chrono_ldap` LOGIN metadata. It defaults to `['enabled' => false]`; disabled metadata is not used to discover files or targets. No environment secret, request field, settings-table row or inherited Native constant selects a Sync source.
 
-Enabled metadata requires the existing writable V4 FreshWeb profile, setup opt-in **false**, and the monotone setup-closed marker at initial and every existing FreshWeb request admission. The original marker contract (any existence closes) is preserved. The marker is **not** proof that a local Admin exists: before an operator performs the cold post-setup switch, they must independently verify ordinary local Admin login and a recovery path. LDAP Sync is mounted by the existing registrar only from the captured profile; HTTP/registration capabilities alone do not grant intake permission.
+Enabled metadata requires the existing writable V4 or NEW V5 FreshWeb profile, setup opt-in **false**, and the monotone setup-closed marker at initial and every existing FreshWeb request admission. The original marker contract (any existence closes) is preserved. The marker is **not** proof that a local Admin exists: before an operator performs the cold post-setup switch, they must independently verify ordinary local Admin login and a recovery path. LDAP Sync is mounted by the existing registrar only from the captured profile; HTTP/registration capabilities alone do not grant intake permission.
 
 No CA/key read, extension check or directory liveness probe occurs while loading configuration, admitting this metadata, constructing bindings, target-only Admin GET, or logging in locally. A missing/changed CA or root denies only an actual Sync operation after its fresh local Admin/persisted LDAP policy check. The unchanged local account provider still validates local hashes locally; directory failure does not become local-hash fallback for an LDAP account. Enabling Sync does not enable LDAP login, and disabling intake does not disable existing-account login. Bad **operator metadata** intentionally fails profile admission; local break-glass liveness independence is not a promise to ignore corrupt configuration.
 
@@ -33,14 +37,14 @@ Reads use only `rb`, never create/open-for-write, chmod, repair, fallback, boots
 
 ## Operation ordering and preservation
 
-FreshWeb captures the exact normalized Sync metadata as a per-request configuration invariant. The new transport/cipher bindings are lazy and refuse to overwrite another admitted binding. GET calls only the pure immutable target getter, never files/cipher/collector. Existing orchestration reads the current local Admin/password version and persisted LDAP flag/revision before resolving sources. Collection then revalidates CA, performs the bounded official operation, and revalidates CA. The existing cipher reads the pinned existing root only when encrypting the submitted bind password. Writer rechecks current principal, explicit V4 profile, exact policy revision, enabled LDAP flag and all local-name collisions under its existing lock before any native import/settings write.
+FreshWeb captures the exact normalized Sync metadata as a per-request configuration invariant. The new transport/cipher bindings are lazy and refuse to overwrite another admitted binding. GET calls only the pure immutable target getter, never files/cipher/collector. Existing orchestration reads the current local Admin/password version and persisted LDAP flag/revision before resolving sources. Collection then revalidates CA, performs the bounded official operation, and revalidates CA. The existing cipher reads the pinned existing root only when encrypting the submitted bind password. Writer rechecks current principal, explicit V4/V5 profile and V5 generation where selected, exact policy revision, enabled LDAP flag and all local-name collisions under its existing lock before any native import/settings write.
 
 All-off Admin recovery, explicit policy CAS, CSRF, raw password bytes, persistent LDAP throttle, encrypted private sessions, local nonce/CSP credential document, blank bind fields, fixed no-store errors and bounded actor-bound result PRG remain unchanged from the reviewed prerequisites. No automatic retries, scheduler, automatic sync-on-login, local-to-LDAP conversion or first-visitor Admin path is added.
 
 ## Operational gates still open
 
-* Fresh NEW preparation currently **does not create `encryption.key`**. This package deliberately cannot fill that gap by including `security.php`/`app_secret`: they create missing Native roots. A separately authorized private initial-root/provenance procedure is still required; until then Sync must remain off/unavailable. Never copy production keys into a synthetic test installation by implication.
+* This existing-root composition never creates `encryption.key`. A matching root must already have been separately authorized/prepared; otherwise Sync remains off/unavailable. Never invoke native `security.php`/`app_secret` as a missing-key fallback or copy production keys into synthetic fixtures.
 * An authorized operator must separately admit exact metadata, CA provenance, matching existing root, private DB/profile identity and ordinary local Admin recovery; choose HTTPS/private runtime paths and request/worker/session-lock durations that cover the bounded directory operation. No claim of global deadline or lock-TTL/concurrency acceptance is made.
 * Stop/drain before changing file identities, root, CA, admission or configuration. No long-lived-worker/config-cache support or live rotation is introduced. Recheck consistent DB/key backups and closures after restore; never reuse stale identity descriptors blindly.
 * Actual LDAP extension/TLS/certificate/referral/size-limit/cleanup, HTTP/CSRF/auth/browser/mobile/visual and real account-effect acceptance remain separately authorized. No real file/secret/profile provisioning or such acceptance is performed here.
-* Native V4/open_basedir and cutover holds, #29 LastLoginWins/auth-version gap, #30 central directory disable/session revocation gap, and held #197 remain unchanged. Constituent SOURCE CLEAR is not assembled runtime readiness or security certification.
+* Stable LDAP login and explicit local session revocation are implemented separately; local V5 lifecycle does not imply directory-group polling or approved real-directory rollout. Synthetic shared-provider/sync/terminal proof is not production, lock-concurrency, cutover or security certification.

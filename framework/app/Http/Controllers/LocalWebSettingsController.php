@@ -68,7 +68,7 @@ final class LocalWebSettingsController extends Controller
         $hasCarryIn = array_key_exists('ueberstunden', $form);
         if ($hasCarryIn) {
             $actor = $this->auth->guard('web')->user();
-            if (! $actor instanceof LegacyUser || (int) $actor->getKey() < 1 || $actor->auth_source !== 'local') {
+            if (! $actor instanceof LegacyUser || (int) $actor->getKey() < 1 || ! in_array($actor->auth_source, ['local', 'ldap'], true)) {
                 throw new AuthenticationException('Unauthenticated.', ['web']);
             }
             if ($actor->role !== 'admin') {

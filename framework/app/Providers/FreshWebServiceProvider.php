@@ -48,6 +48,7 @@ final class FreshWebServiceProvider extends ServiceProvider
             $config = $this->app->make('config');
             $profile = $this->app->make(FreshWebConfiguration::class);
             $profile->assertCurrent($config);
+            $profile->assertTerminalCurrent($this->app);
             if (! $this->app->bound(RuntimeDatabase::class) || ! $this->app->bound(AttendanceWriter::class)
                 || (! $this->app->make(RuntimeDatabase::class)->isIntakePolicyV4()
                     && ! $this->app->make(RuntimeDatabase::class)->isAccountLifecycleV5())) {
@@ -72,13 +73,15 @@ final class FreshWebServiceProvider extends ServiceProvider
                 login: true, attendance: true, logout: true, corrections: true, home: true, absences: true,
                 workModels: true, history: true, supervisor: true, dashboard: true, adminPauseSettings: true,
                 correctionWithdrawals: $includeCorrectionWithdrawals,
+                ldapSessionRevocations: $profile->ldapLoginEnabled(),
             ));
-            // Terminal protocol/key and secret-bearing DB-download capabilities are NOT inferred.
+            // Terminal keys still require their separate exact admission; no DB-download capability is inferred.
             $router->group(['middleware' => [RequireFreshWebProfile::class]], function () use ($config, $profile, $includeCorrectionWithdrawals): void {
                 LocalWebRoutes::register($this->app, includeHistory: true, includeSupervisor: true, includeDashboard: true,
                     includeCsv: true, includeSettings: true, includeAdminPauseSettings: true,
                     includeRegistration: true, includeSetup: $config->get('chrono_setup.enabled') === true,
                     includeLdapSync: $profile->ldapSyncProfile() !== null,
+                    includeLdapSessionRevocations: $profile->ldapLoginEnabled(),
                     useSharedLoginBudget: SharedLoginBudgetServiceProvider::selected($this->app),
                     includeCorrectionWithdrawals: $includeCorrectionWithdrawals);
             });

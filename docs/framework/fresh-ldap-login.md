@@ -1,118 +1,109 @@
-# FreshWeb: local Admin plus existing ordinary LDAP login (default off)
+# FreshWeb: existing LDAP roles and local recovery (default off)
 
-This narrow source composition reuses the existing **stock SessionGuard** and
-`ExistingAccountUserProvider`; it is not a new guard/provider, LDAP sync,
-provisioning endpoint, native session bridge or activated directory. No source
-changes to those auth/guard/read/write contracts, Setup, UI, schema, API, key
-sources or sync settings are part of this packet. Defaults remain local-only.
+The explicit existing-account provider uses Laravel's stock `SessionGuard`,
+`LocalSession`, `RefreshLocalAccount` and `AuthenticateSession`. Existing persisted
+`user`, `supervisor` and `admin` roles are admitted for both local and LDAP
+accounts; no directory group mapping, automatic promotion, source conversion or
+account creation occurs at login. This is source composition, not deployment or
+real directory acceptance. All login/sync/terminal flags still default off.
 
-## Explicit trusted login metadata
+## Package, transport and secret transition
 
-The existing `chrono_ldap` config gains only four explicit operator inputs:
+The maintained-package decision and version evidence remain in
+[LDAP provider boundary](ldap-provider-boundary.md): the reviewed LdapRecord
+v4.1.1 password transformation was not suitable for literal native password
+bytes; the supported PHP 8.5/OpenLDAP extension boundary is used instead. Verified
+StartTLS, certificate/name checking, explicit CA/target, timeouts, filter/DN
+escaping and bounded complete collection are not weakened by role admission.
 
-| Environment input | Default |
-| --- | --- |
-| `FRAMEWORK_CHRONO_LDAP_LOGIN_ENABLED` | boolean false |
-| `FRAMEWORK_CHRONO_LDAP_LOGIN_URI` | null |
-| `FRAMEWORK_CHRONO_LDAP_LOGIN_BASE_DN` | null |
-| `FRAMEWORK_CHRONO_LDAP_LOGIN_CA_FILE` | null |
+Login-only operator inputs remain `FRAMEWORK_CHRONO_LDAP_LOGIN_ENABLED` (false),
+`FRAMEWORK_CHRONO_LDAP_LOGIN_URI`, `FRAMEWORK_CHRONO_LDAP_LOGIN_BASE_DN` and
+`FRAMEWORK_CHRONO_LDAP_LOGIN_CA_FILE` (null). They never come from a request,
+settings-table fallback, sync credentials or native bootstrap. Metadata loading
+and local login do not read a CA or test directory reachability. Corrupt operator
+metadata fails profile admission; directory outage never turns into local-password
+fallback for an LDAP identity. Local recovery does not contact LDAP.
 
-These are **login-only** operator settings, never request fields, admin-sync
-settings, discovery from the DB/environment, service-bind credentials or a key
-admission. No actual values are supplied/changed by this source packet. No
-fallback from native LDAP config, sync target/CA, encryption.key, bind password or
-browser data is installed. Config loading performs no network/CA/extension work.
-An enabled FreshWeb profile reads the strict boolean before auth resolution;
-disabled LDAP metadata does not require any directory or CA validation.
+The independently admitted sync profile reads the **existing** native
+`encryption.key` only for the explicitly submitted bind password, keeping native
+v2 AES-256-GCM, binary `hex2bin` root, 12-byte IV and 16-byte tag. No Laravel Crypt
+reinterpretation, root regeneration or legacy ciphertext acceptance is added.
+As in the original native form, sync requires a newly supplied bind password;
+this is not a new stored-password decrypt/reuse endpoint. See
+[the exact sync contract](fresh-ldap-sync.md).
 
-Enabled login metadata must be exactly those four config keys, with nonempty
-scalar strings, one explicit `ldap://host:port` URI, a fixed base DN, and a
-canonical absolute CA-path spelling. The unchanged verifier supports mandatory
-verified **StartTLS**, not LDAPS, AD/UPN discovery, failover or arbitrary mapping.
-This composition checks syntax only. It deliberately does NOT resolve/open/stat
-the CA, test the optional LDAP extension, bind, search or probe liveness at boot.
-Missing extension/CA/TLS/network failure matters only when an actual LDAP user's
-password is verified; local Admin login does not contact the directory.
+## Roles are business authority, not security administration
 
-## Separate setup mode and cold profile selection
+| Operation | Existing LDAP account | Local security boundary |
+| --- | --- | --- |
+| Own attendance, absences, history and correction requests/withdrawal | User, Supervisor, Admin, unchanged own scope | Same source/hash and V5 generation checks |
+| Current direct-team reads and correction review | Supervisor; no self-review or foreign team | Existing domain policies unchanged |
+| Business-wide review/reads, pause rules, departments, work models and own carry-in | Admin; no self-review | Current Admin role/source/hash under snapshot/writer lock |
+| User/role/password CRUD, intake policy, lifecycle changes, LDAP sync/session revocation | Not a directory-Admin capability | Current local Admin only |
+| Terminal/key administration, secret-bearing DB snapshot and recovery | Not a directory-Admin capability | Existing local actor guards unchanged |
+| Own local password change | Not an LDAP password operation | Existing local-only service unchanged |
 
-First complete ordinary Eloquent-local setup and verify normal local-Admin login.
-With workers stopped/drained, close setup through the existing monotone operator
-flow and remove the separate Fresh setup opt-in. Only then select the LDAP login
-profile. `chrono_fresh_web.setup_enabled=true` and LDAP login together are
-refused. The fixed `setup-closed` marker must exist under the already-admitted
-private instance; any existence closes setup, including wrong type/symlink.
-Its removal is refused on subsequent profile admission as well. The marker
-proves only closed mode, NOT that an Admin was actually created; no account query
-or credential check is manufactured at boot. The operator's prior ordinary
-local-Admin check is a separate mandatory operational gate.
+The Admin document loads only business fields for LDAP Admins: no user table,
+security forms, confirmation tickets or sensitive user-data JavaScript are
+fetched/rendered. Direct sensitive POSTs are also denied before services/writers.
+A local Admin can explicitly assign a known role to an existing LDAP row. Sync
+never promotes roles and never converts local name collisions. The last usable
+local recovery Admin is protected independently of any LDAP Admin count.
 
-`FirstAdminSetup::tokenDigest` and all first-admin guards remain byte-identical:
-they are not loosened to accept a directory provider. Closed/disabled setup does
-not become an alternative account-creation route. No automatic source conversion,
-reset/reopen, secret receipt read, login or role assignment occurs here.
+For V2–V4, current source/role/hash are checked in the same read snapshot or writer
+transaction. Explicit V5 additionally binds active status and integer auth
+generation throughout provider/session/reader/writer. Reactivation does not revive
+old authority. The business-Admin writer context requires an exact source plus
+64-hex fingerprint; null-pair compatibility cannot authorize an LDAP actor.
 
-FreshWeb still requires the exact stock initial auth config. Before any auth,
-hash, session, cache or limiter resolution it selects only
-`['driver'=>'chrono-existing','model'=>LegacyUser::class]` when the login flag is
-true; otherwise it retains Eloquent. The already-registered lazy auth factory
-constructs the existing wrapper and verifier without directory I/O. Per-request
-admission snapshots the exact selected provider/settings and closure state. No
-`forgetGuards`, provider replacement after resolution, session reset, limiter
-reset, new cookie/token or live config mutation is used to switch profiles.
-Use ordinary request lifetime with uncached routes/config, as required by
-[FreshWeb composition](fresh-web-composition.md). Do not alter existing sessions
-or operating settings as a side effect of source preparation.
+## Shared application composition
 
-## Existing account and permission semantics retained
+After closed setup, FreshWeb can compose the exact admitted V4 or NEW V5 runtime
+with LDAP login, separately admitted sync, and separately admitted terminal roots
+in one Application. V5 is not aliased to V4. Its canonical cohort/manifest,
+shared login budget, local recovery eligibility and generation-aware writers
+remain mandatory. LDAP login and the persisted LDAP intake flag are independent.
+When login is selected, the existing local-Admin LDAP session-revocation workflow
+is mounted for all three known target roles, with its existing confirmation CAS.
 
-- Existing local user/supervisor/Admin accounts keep their normal local hasher,
-  remember=false and disabled automatic rehash. A local password rejection never
-  falls through to LDAP. Directory availability is not a local break-glass probe.
-- Only an already-persisted `auth_source=ldap`, `role=user` account is eligible
-  through the wrapper. LDAP supervisor/Admin roles are refused, not demoted or
-  relabelled. Never select the broader direct `ExistingLdapUserProvider` instead.
-- Unknown users are not provisioned. Matching local names are never converted,
-  linked or claimed by LDAP. Username equality is not identity-link authority.
-- LDAP credentials are never checked against/stored as a local password hash;
-  operational LDAP errors remain the existing unconfirmed503, not local fallback
-  or confirmed bad credentials. No remember-me or credential output is added.
-- Existing source marker and stock password_hash_web middleware bind sessions to
-  current source/role/DB-hash. Reader and own attendance/absence/correction writer
-  checks remain same-snapshot/same-lock; LDAP review/Admin/model/snapshot/terminal
-  rights are NOT broadened. Local Admin's policy/manual/registration rights remain
-  local and the authoritative V4 intake gates stay intact.
-- LDAP **login is independent** of the `ldap_sync` intake flag. Disabling sync
-  does not silently disable existing LDAP login; enabling login does not admit
-  sync/transport/keys or new users. Manual and ordinary local registration may
-  coexist under their separately persisted policy flags; no UI or writer changed.
+Terminal HTTP additionally requires `existing_keys_enabled=true` and its exact
+root profile. FreshWeb freezes all terminal metadata and checks the bound terminal
+profile before web session middleware. The terminal profile also rechecks a
+selected FreshWeb profile before protocol dispatch/key use, including a cached
+backend. No keys, device rows, native fallback or new public authorization are
+inferred by enabling the other channel. See [terminal admission](existing-terminal-root-admission.md).
 
-## Explicit unresolved session/deactivation gates
+Cold profile changes require stopped/drained workers, uncached configuration and
+routes, and closed setup (`setup_enabled=false` plus the existing closure marker).
+The marker alone does not prove a real recovery login. No local/new account,
+secret, descriptor, host setting or running instance is created by this patch.
 
-The existing Laravel LDAP login is read-only and **does not rotate** the random
-DB placeholder on successful login. Native login does, producing a Last-Login-
-Wins effect for its hash-bound sessions/JWTs. This packet neither reproduces that
-side effect nor quietly calls it identical. It leaves both
-[#29 stable auth version / deliberate single-session policy](https://github.com/storminator89/Zeiterfassung/issues/29)
-and [#30 central account deactivation](https://github.com/storminator89/Zeiterfassung/issues/30)
-OPEN. Current source/request role/source/DB-hash revocation does not mean a remote
-password/group change immediately revokes a session, or that changing a local
-placeholder/password centrally disables future LDAP login. No invented active
-field, schema/auth-version patch, periodic bind or fake approval toggle is added.
+The integrated [V5 session-lock contract](v5-nonexpiring-session-locks.md)
+remains unchanged: explicit V5 uses the exact stock FileStore, global lock zero
+(non-expiring), positive wait and no route-level lock/wait override; V4 keeps its
+positive lease. The guard still rejects overrides before session middleware.
+No timeout now purports to bound a directory operation. Crash recovery stays
+fail-closed and requires the separately documented global stopped-maintenance
+process; this composition does not clear locks or infer operator stop proof.
+These source guarantees are not an actual production concurrency/deployment pass.
 
-Real activation requires separate approval of this scoped profile's lifecycle
-limits or the reviewed corresponding lifecycle implementation, plus real
-LDAP/TLS/CA/worker and protected browser acceptance. It is not native/V4 cutover,
-API/JWT/terminal revocation or production readiness. No issue is closed by this
-small composition packet; no real account/directory/key/setting/host is touched.
+## Bounded evidence and limits
 
-## Bounded evidence
+Two coarse synthetic journeys on PHP 8.5.12 / Laravel 13.38.0 exercise V4 and V5:
+stock session/source/hash/generation refresh, all three LDAP roles through fake
+credential verification, direct-team review/self-denial, business facades and
+writers, actual reader/controller/Blade separation, explicit local role assignment,
+last-local-Admin retention and all-role LDAP hash revocation. A second standard
+provider boot uses one disposable cohort for local recovery/shared-budget login,
+pinned fake sync collection through the actual root/cipher/writer, target tickets
+and a signed terminal heartbeat; config drift rejects before terminal mutation.
+Only the external collector is substituted in the sync journey. All fixtures are
+owned synthetic temporary data and removed afterwards.
 
-Syntax, exact four-path/reverse preservation and one coarse pure metadata plus
-invented model/fake-hasher/fake-directory contract journey are appropriate here.
-They do not authenticate anyone or open an account DB, resolve an actual guard,
-hash a real password, invoke LDAP, start a listener, inspect a CA/key/receipt,
-or enter browser credentials. No real login/LDAP/HTTP/session/CSRF/cutover/parallel-
-session/remote-deactivation claim follows. Other source packets (including
-Denial3 routes and AppKey4) still need separate serial mapping/review; #197 and
-all operational/browser/native gates stay unchanged.
+Existing official-extension/TLS and import/cipher interop evidence remains
+separate. No real LDAP server, device, browser, HTTP/cookie integration,
+concurrent request/crash recovery, production root/account or deployment is
+claimed. The user performs browser acceptance; real directory rollout remains
+its separately authorized gate (#63). Remote group/password changes are not
+polled inside sessions. Local hash revocation is not directory deactivation;
+V5 local lifecycle and terminal-generation rules retain their distinct contracts.

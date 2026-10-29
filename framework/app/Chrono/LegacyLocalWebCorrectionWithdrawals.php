@@ -3,6 +3,8 @@
 namespace App\Chrono;
 
 use App\Auth\LegacyUser;
+use App\Auth\ExistingAccountUserProvider;
+use Illuminate\Auth\SessionGuard;
 use App\Auth\AccountLifecycleWebIdentity;
 use App\LegacyDatabase\AttendanceWriter;
 use Closure;
@@ -11,7 +13,7 @@ use Illuminate\Contracts\Auth\Factory;
 use InvalidArgumentException;
 use LogicException;
 
-/** Lazy fixed operation. LDAP remains request-only; no credentials are accepted. */
+/** Lazy fixed own-request operation; no credentials or requested actor are accepted. */
 final class LegacyLocalWebCorrectionWithdrawals implements LocalWebCorrectionWithdrawals
 {
     /** @param Closure(): AttendanceWriter $writer Trusted operation-scope resolver. */
@@ -20,8 +22,11 @@ final class LegacyLocalWebCorrectionWithdrawals implements LocalWebCorrectionWit
 
     public function withdraw(array $command): void
     {
-        $actor = $this->auth->guard('web')->user();
-        if (! $actor instanceof LegacyUser || (int) $actor->getKey() < 1 || $actor->auth_source !== 'local'
+        $guard = $this->auth->guard('web');
+        $actor = $guard->user();
+        $provider = $guard instanceof SessionGuard ? $guard->getProvider() : null;
+        $profile = $provider instanceof ExistingAccountUserProvider;
+        if (! $actor instanceof LegacyUser || (int) $actor->getKey() < 1 || (! $profile && $actor->auth_source !== 'local')
             || ! in_array($actor->role, ['user', 'supervisor', 'admin'], true)
             || ! is_string($actor->getAuthPassword()) || $actor->getAuthPassword() === '') {
             throw new AuthenticationException('Unauthenticated.', ['web']);
@@ -30,6 +35,7 @@ final class LegacyLocalWebCorrectionWithdrawals implements LocalWebCorrectionWit
             || array_diff(array_keys($command), self::COMMAND_FIELDS) !== []) {
             throw new InvalidArgumentException('Ungültige Rücknahmeaktion.');
         }
+        $context = $profile ? $provider->context($actor) : null;
         $user = (int) $actor->getKey();
         $role = $actor->role;
         $version = hash('sha256', $actor->getAuthPassword());
@@ -42,7 +48,7 @@ final class LegacyLocalWebCorrectionWithdrawals implements LocalWebCorrectionWit
             if ($authority !== null) {
                 $writer->withdrawCorrectionWeb($authority, $version, $command['id'] ?? null, $command['withdraw_reason'] ?? null);
             } else {
-                $writer->withdrawCorrection($user, $role, $version, $command['id'] ?? null, $command['withdraw_reason'] ?? null);
+                $writer->withdrawCorrection($user, $role, $version, $command['id'] ?? null, $command['withdraw_reason'] ?? null, $context[0] ?? 'local');
             }
         } catch (\AttendanceError $error) {
             if ($error->status === 401) { throw new AuthenticationException('Unauthenticated.', ['web']); }

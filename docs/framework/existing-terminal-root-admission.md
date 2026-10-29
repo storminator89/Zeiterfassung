@@ -48,6 +48,19 @@ files or publicly readable EnvironmentFiles. There is no request-supplied path,
 path discovery, metadata-generation command, or configuration-cache workflow.
 This change does not set any installation environment variables.
 
+## Same Application as FreshWeb/LDAP
+
+A selected closed-setup FreshWeb profile may now retain `http_enabled=true` only
+with the separate existing-key opt-in and admitted terminal profile. Both
+profiles bind the same RuntimeDatabase metadata; FreshWeb freezes terminal
+settings and checks the profile before web session work, while terminal dispatch
+rechecks a selected FreshWeb profile before a nonce/limiter or booking mutation.
+Standalone default-off/existing-root compositions keep their original behavior.
+No key, account, terminal or operating instance is created by this union.
+The integrated V5 non-expiring session-lock/route-override contract is preserved;
+see [roles and composition](fresh-ldap-login.md). Synthetic shared-provider boot
+and signed heartbeat are not safe operating activation or device acceptance.
+
 ## Read-only physical boundary
 
 Each use checks the immutable configuration, selected runtime/key objects,

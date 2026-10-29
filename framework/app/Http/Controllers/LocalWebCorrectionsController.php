@@ -209,7 +209,7 @@ final class LocalWebCorrectionsController extends Controller
                 requestTotal: $queue['total'], requestPage: $queue['page'], requestPages: $queue['pages'],
                 queueSelection: $this->queueSelection($request, $selectionInvalid, $selectedRecordId),
                 withdrawalsEnabled: $this->withdrawalsEnabled() && $this->interactions->corrections
-                    && $this->interactions->correctionWithdrawals && $actor->auth_source === 'local',
+                    && $this->interactions->correctionWithdrawals,
                 balancePreviewRequestId: $previewRequestId,
                 balancePreview: $queue['balancePreview'] ?? [],
                 requestDraft: $retainRejectedDraft && ! $selectionInvalid && $request->isMethod('POST')

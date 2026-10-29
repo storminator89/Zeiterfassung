@@ -9,10 +9,12 @@
     #account-lifecycle-tooltip[hidden] { display:none; }
 </style>
 <main class="container mx-auto px-4 py-8 chrono-page">
-    @if ($managedUsersEnabled)
-    <div class="alert alert-info mb-4" role="note">Die vorhandene Benutzerverwaltung ist in diesem privaten Laravel-{{ $adminPauseSettings->accountLifecycleV5 ? 'V5-Lokalprofil' : 'V4-Profil' }} verbunden. Historiengeschützte Konten und die letzte lokale Administration bleiben erhalten. API-Token sind nicht angebunden; LDAP benötigt weiterhin die getrennte HTTP- und Aufnahmefreigabe.</div>
+    @if (! $adminPauseSettings->localSecurityControls)
+    <div class="alert alert-info mb-4" role="note">Fachverwaltung für das bestehende Verzeichnis-Administratorkonto: Pausenregeln, Abteilungen und <a class="link" href="work_models.php">Arbeitszeitmodelle</a>. Benutzer-, Zugangs-, Schlüssel- und Wiederherstellungsverwaltung bleiben lokaler Administration vorbehalten.</div>
+    @elseif ($managedUsersEnabled)
+    <div class="alert alert-info mb-4" role="note">Die vorhandene Benutzerverwaltung ist in diesem privaten Laravel-{{ $adminPauseSettings->accountLifecycleV5 ? 'V5-Profil' : 'V4-Profil' }} verbunden. Historiengeschützte Konten und die letzte lokale Administration bleiben erhalten. API-Token sind nicht angebunden; LDAP benötigt weiterhin die getrennte HTTP- und Aufnahmefreigabe.</div>
     @else
-    <div class="alert alert-info mb-4" role="note">In dieser Laravel-Ansicht sind die vorhandene Pausenregel-, Abteilungsverwaltung und das Erstellen lokaler Benutzer verbunden. Bestehende Benutzerdetails bleiben nur lesend; Änderungen, Löschen, Passwortänderungen, API-Token sind nicht angebunden. LDAP-Synchronisierung erfordert zusätzlich die ausdrücklich zugelassene V4-HTTP-Komposition und gespeicherte Aufnahmefreigabe.</div>
+    <div class="alert alert-info mb-4" role="note">In dieser Laravel-Ansicht sind die vorhandene Pausenregel-, Abteilungsverwaltung und das Erstellen lokaler Benutzer verbunden. Bestehende Benutzerdetails bleiben nur lesend; Änderungen, Löschen, Passwortänderungen, API-Token sind nicht angebunden. LDAP-Synchronisierung erfordert zusätzlich die ausdrücklich zugelassene V4-/V5-HTTP-Komposition und gespeicherte Aufnahmefreigabe.</div>
     @endif
     @if ($adminPauseSettings->error)
     <div class="alert alert-error shadow-lg mb-4" role="alert"><div><i class="fas fa-exclamation-circle"></i><span>{{ $adminPauseSettings->error }}</span></div></div>
@@ -20,13 +22,13 @@
     @if ($adminPauseSettings->success)
     <div class="alert alert-success shadow-lg mb-4" role="status"><div><i class="fas fa-check-circle"></i><span>{{ $adminPauseSettings->success }}</span></div></div>
     @endif
-    @if ($adminPauseSettings->intakePolicy !== null)
+    @if ($adminPauseSettings->localSecurityControls && $adminPauseSettings->intakePolicy !== null)
     <div id="user-intake-policy" class="card bg-base-100 shadow-xl mb-8">
         <div class="card-body">
             <h2 class="card-title text-2xl mb-4">Benutzeraufnahme · Laravel {{ $adminPauseSettings->accountLifecycleV5 ? 'V5 lokal' : 'V4' }}</h2>
             <p class="mb-4">Aufnahmewege unabhängig freigeben. Bestehende Konten und Anmeldungen bleiben unverändert; die Erst-Admin-Einrichtung ist davon getrennt. LDAP benötigt zusätzlich einen zugelassenen Connector; Speichern startet keinen Verzeichnislauf.</p>
             @if ($adminPauseSettings->accountLifecycleV5)
-            <p class="alert alert-info mb-4" role="note">Dieses vorbereitete V5-Profil ist lokal. LDAP-Anmeldung, LDAP-Synchronisierung und API sind nicht zugelassen; die Aufnahmeauswahl allein aktiviert diese Kanäle nicht.</p>
+            <p class="alert alert-info mb-4" role="note">V5 bewahrt Status- und Generationsbindung. LDAP-Anmeldung, LDAP-Synchronisierung, API und Terminal benötigen jeweils ihre getrennte Quellenzulassung; die Aufnahmeauswahl allein aktiviert keinen dieser Kanäle.</p>
             @endif
             <form method="post" class="space-y-4">
                 @csrf
@@ -49,9 +51,10 @@
         </div>
     </div>
     @endif
-    @if ($adminPauseSettings->intakePolicy !== null)
+    @if ($adminPauseSettings->localSecurityControls && $adminPauseSettings->intakePolicy !== null)
         @include('chrono.partials.ldap-sync', ['ldap' => $adminPauseSettings])
     @endif
+    @if ($adminPauseSettings->localSecurityControls)
     <div id="user-management" class="card bg-base-100 shadow-xl mb-8">
         <div class="card-body">
             <h2 class="card-title text-2xl mb-4">{{ $page->copy->text('USER_MANAGEMENT_TITLE') }}
@@ -198,6 +201,7 @@
             </div>
         </div>
     </div>
+    @endif
     <div id="pause-settings" class="card bg-base-100 shadow-xl mb-8">
         <div class="card-body">
             <h2 class="card-title text-2xl mb-4">{{ $page->copy->text('PAUSE_SETTINGS_TITLE') }}</h2>
@@ -269,6 +273,7 @@
 @if ($adminPauseSettings->lifecycleUsers !== [])
 @include('chrono.partials.account-lifecycle-dialog')
 @endif
+@if ($adminPauseSettings->localSecurityControls)
 <dialog id="editUserModal" class="modal">
     @if ($managedUsersEnabled)
     <form method="post" class="modal-box" id="managed-user-form">
@@ -309,6 +314,7 @@
         </div>
     @if ($managedUsersEnabled) </form> @else </div> @endif
 </dialog>
+@endif
 <dialog id="editDepartmentModal" class="modal">
     <form method="post" class="modal-box">
         @csrf
@@ -353,9 +359,11 @@
         @if ($page->cspNonce !== null)
         document.querySelectorAll('[data-local-close-department]').forEach(function (button) { button.addEventListener('click', closeEditDepartmentModal); });
         @endif
+        @if ($adminPauseSettings->localSecurityControls)
         document.getElementById('toggleUserForm').addEventListener('click', function () {
             document.getElementById('userForm').classList.toggle('hidden');
         });
+        @endif
         document.getElementById('departmentSearch').addEventListener('input', function () {
             const searchTerm = this.value.toLowerCase();
             document.querySelectorAll('#department-management table tbody tr').forEach(function (row) {
@@ -383,6 +391,7 @@
         document.getElementById('editDepartmentModal').close();
     }
 </script>
+@if ($adminPauseSettings->localSecurityControls)
 <script @if ($page->cspNonce !== null) nonce="{{ $page->cspNonce }}" @endif>
     // Display-only help: keyboard/touch access, hover persistence and Escape dismissal.
     const lifecycleHelp = document.getElementById('account-lifecycle-help');
@@ -586,4 +595,5 @@
         if (event.persisted) closeEditUserModal();
     });
 </script>
+@endif
 @endsection

@@ -29,7 +29,7 @@ final class ExistingAccountUserProvider extends EloquentUserProvider
         }
 
         return ($user->auth_source === 'local' && in_array($user->role, self::ROLES, true))
-            || ($user->auth_source === 'ldap' && $user->role === 'user');
+            || ($user->auth_source === 'ldap' && in_array($user->role, self::ROLES, true));
     }
 
     /** Trusted source and DB-hash fingerprint only; never the directory password or raw DB hash. */

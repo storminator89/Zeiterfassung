@@ -28,6 +28,7 @@ final class RequireFreshWebProfile
             if (! $route instanceof Route || ! $this->canonicalRequest($request, $route, $profile->origin)) { return $this->closed(); }
             $profile->assertCurrent($config);
             $this->requireSessionPolicy($profile, $route);
+            $profile->assertTerminalCurrent($this->app);
             $setup = $profile->setupConfiguration();
             $config->set('chrono_setup', $setup);
             // Controller identity covers EVERY router-accepted setup URI, not only raw path text.

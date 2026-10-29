@@ -49,9 +49,6 @@ trait AccountLifecycleWriterOperations
         require_once dirname(__DIR__, 3).'/lib/corrections.php';
         $this->executeLocked(function () use ($actor, $command): void {
             $this->assertLifecycleWebPrincipalLocked($actor);
-            if ($actor->source === 'ldap' && ($command['action'] ?? null) !== 'request') {
-                throw new \AttendanceError('Keine Freigabeberechtigung.', 403);
-            }
             correction_apply_locked($this->pdo, $actor->id, $actor->role, $command,
                 fn (string $reason, Closure $operation): mixed => $this->context->run('web:'.$actor->id, $reason, $operation));
         }, lifecycleReady: true);
@@ -64,11 +61,11 @@ trait AccountLifecycleWriterOperations
         require_once dirname(__DIR__, 3).'/lib/correction_withdrawal.php';
         $this->executeLocked(function () use ($actor, $version, $id, $reason): void {
             $this->assertLifecycleWebPrincipalLocked($actor);
-            if (! $actor->binds($actor->id, 'local', $version, $actor->role)) {
+            if (! $actor->binds($actor->id, $actor->source, $version, $actor->role)) {
                 throw new \AttendanceError('Sitzung nicht mehr gültig. Bitte neu anmelden.', 401);
             }
             correction_withdraw_locked($this->pdo, $actor->id, $actor->role, $version, $id, $reason,
-                fn (string $auditReason, Closure $operation): mixed => $this->context->run('web:'.$actor->id, $auditReason, $operation));
+                fn (string $auditReason, Closure $operation): mixed => $this->context->run('web:'.$actor->id, $auditReason, $operation), $actor->source);
         }, lifecycleReady: true);
     }
 
@@ -82,10 +79,8 @@ trait AccountLifecycleWriterOperations
     private function assertLifecycleWebPrincipalLocked(AccountLifecycleAuthority $actor): void
     {
         $this->assertLifecyclePrincipalLocked($actor);
-        // Keep the existing Web profile's LDAP eligibility: ordinary users only.
-        if ($actor->source === 'ldap' && $actor->role !== 'user') {
-            throw new \AttendanceError('Sitzung nicht mehr gültig. Bitte neu anmelden.', 401);
-        }
+        // Stored source/role/hash/generation remain current under this same lock.
+        // Existing business scopes are decided by the unchanged domain operation.
     }
 
     /** Fixed API actor/namespace; no target/source/generation supplied by command data. */

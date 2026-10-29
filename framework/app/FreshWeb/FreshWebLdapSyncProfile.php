@@ -26,7 +26,7 @@ final readonly class FreshWebLdapSyncProfile implements JsonSerializable
             if (! $settings['enabled']) { return null; } // Ignore unused metadata, preserve local break-glass.
             $keys = ['enabled', 'version', 'uri', 'base_dn', 'max_entries', 'ca', 'settings_root', 'database_profile_sha256'];
             if (count($settings) !== count($keys) || array_diff($keys, array_keys($settings)) !== []
-                || $settings['version'] !== 1 || $database->schemaProfile !== 'intake-policy-v4'
+                || $settings['version'] !== 1 || ! in_array($database->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5'], true)
                 || ! is_string($settings['uri']) || ! is_string($settings['base_dn'])
                 || ! is_int($settings['max_entries']) || $settings['max_entries'] < 1 || $settings['max_entries'] > 10000
                 || ! is_array($settings['ca']) || ! is_array($settings['settings_root'])

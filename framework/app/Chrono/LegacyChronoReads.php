@@ -488,8 +488,8 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
         if (! $authenticated instanceof LegacyUser || (int) $authenticated->getKey() < 1) {
             throw new AuthenticationException;
         }
-        if ($authenticated->role !== 'admin' || $authenticated->auth_source !== 'local') {
-            throw new AuthorizationException('Nur die lokale Verwaltung darf Gutschriften vorab prüfen.');
+        if ($authenticated->role !== 'admin') {
+            throw new AuthorizationException('Nur die aktuelle Verwaltung darf Gutschriften vorab prüfen.');
         }
         $password = $authenticated->getAuthPassword();
         if (! is_string($password) || $password === '') {
@@ -502,8 +502,8 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
         unset($password);
 
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($command, $version, $actorId): array {
-            if ((int) $actor->getKey() !== $actorId || $actor->role !== 'admin' || $actor->auth_source !== 'local') {
-                throw new AuthorizationException('Nur die lokale Verwaltung darf Gutschriften vorab prüfen.');
+            if ((int) $actor->getKey() !== $actorId || $actor->role !== 'admin') {
+                throw new AuthorizationException('Nur die aktuelle Verwaltung darf Gutschriften vorab prüfen.');
             }
             require_once dirname(__DIR__, 3).'/lib/work_model_credit_preview.php';
 
@@ -562,7 +562,7 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
     public function adminPauseSettings(): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
-            if ($actor->role !== 'admin' || $actor->auth_source !== 'local') {
+            if ($actor->role !== 'admin') {
                 throw new AuthorizationException('Nur die Verwaltung darf Pauseneinstellungen ändern.');
             }
 
@@ -574,7 +574,7 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
     public function adminDepartments(): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
-            if ($actor->role !== 'admin' || $actor->auth_source !== 'local') {
+            if ($actor->role !== 'admin') {
                 throw new AuthorizationException('Nur die Verwaltung darf Abteilungen ändern.');
             }
 

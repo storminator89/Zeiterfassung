@@ -31,9 +31,9 @@ trait LdapSessionWriterOperations
             $user = \att_one($this->pdo, $this->accountLifecycleV5
                 ? 'SELECT auth_source,role,password,account_status,auth_generation FROM users WHERE id=?'
                 : 'SELECT auth_source,role,password FROM users WHERE id=?', [$target]);
-            if ($user === null || $user['auth_source'] !== 'ldap' || $user['role'] !== 'user'
+            if ($user === null || $user['auth_source'] !== 'ldap' || ! in_array($user['role'], ['user', 'supervisor', 'admin'], true)
                 || ! is_string($user['password']) || $user['password'] === '') {
-                throw new InvalidArgumentException('Nur bestehende gewöhnliche Verzeichniskonten sind zulässig.');
+                throw new InvalidArgumentException('Nur bestehende Verzeichniskonten mit bekannter Rolle sind zulässig.');
             }
 
             if (! hash_equals($expectedTargetVersion, hash('sha256', $user['password']))
@@ -48,7 +48,7 @@ trait LdapSessionWriterOperations
             if (! is_string($placeholder) || $placeholder === '' || hash_equals($user['password'], $placeholder)) {
                 throw new RuntimeException('Die Sitzungsänderung wurde nicht bestätigt.');
             }
-            $statement = $this->pdo->prepare("UPDATE users SET password=? WHERE id=? AND auth_source='ldap' AND role='user'");
+            $statement = $this->pdo->prepare("UPDATE users SET password=? WHERE id=? AND auth_source='ldap' AND role IN ('user','supervisor','admin')");
             $statement->execute([$placeholder, $target]);
             $changed = $statement->rowCount();
             $statement->closeCursor();

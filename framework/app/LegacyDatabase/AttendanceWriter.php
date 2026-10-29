@@ -169,12 +169,13 @@ final class AttendanceWriter
     }
 
     /** Fixed owner-only terminal transition; uses the existing single-attempt lifecycle. */
-    public function withdrawCorrection(int $user, string $role, #[\SensitiveParameter] string $version, mixed $id, mixed $reason): void
+    public function withdrawCorrection(int $user, string $role, #[\SensitiveParameter] string $version, mixed $id, mixed $reason, string $expectedWebSource = 'local'): void
     {
         require_once dirname(__DIR__, 3).'/lib/correction_withdrawal.php';
-        $this->executeLocked(function () use ($user, $role, $version, $id, $reason): void {
+        $this->executeLocked(function () use ($user, $role, $version, $id, $reason, $expectedWebSource): void {
+            $this->assertExpectedWebPrincipal($user, $expectedWebSource, $version, $role);
             correction_withdraw_locked($this->pdo, $user, $role, $version, $id, $reason,
-                fn (string $auditReason, Closure $operation): mixed => $this->context->run('web:'.$user, $auditReason, $operation));
+                fn (string $auditReason, Closure $operation): mixed => $this->context->run('web:'.$user, $auditReason, $operation), $expectedWebSource);
         });
     }
 
@@ -187,9 +188,6 @@ final class AttendanceWriter
             // New-profile correction privileges use the same-lock role, never a
             // pre-demotion admin role. Null/null retains the exact old path.
             $this->assertExpectedWebPrincipal($user, $expectedWebSource, $expectedWebVersion, $role);
-            if ($expectedWebSource === 'ldap' && ($command['action'] ?? null) !== 'request') {
-                throw new \AttendanceError('Keine Freigabeberechtigung.', 403);
-            }
             correction_apply_locked($this->pdo, $user, $role, $command,
                 fn (string $reason, Closure $operation): mixed => $this->context->run('web:'.$user, $reason, $operation),
             );
@@ -211,14 +209,39 @@ final class AttendanceWriter
         $this->assertLifecyclePrincipalLocked($authority, localAdmin: true);
     }
 
+    /** Existing business administration only; security administration stays local. */
+    private function assertBusinessAdminAuthorityLocked(int $user,
+        ?\App\Accounts\AccountLifecycleAuthority $authority, ?array $webContext): void
+    {
+        if ($webContext !== null) {
+            if (array_keys($webContext) !== [0, 1]
+                || ! in_array($webContext[0], ['local', 'ldap'], true)
+                || ! is_string($webContext[1]) || preg_match('/\A[a-f0-9]{64}\z/', $webContext[1]) !== 1) {
+                throw new \AttendanceError('Sitzung nicht mehr gültig. Bitte neu anmelden.', 401);
+            }
+            // Only the verified existing-account provider supplies this source/hash.
+            // Current role/source/hash and V5 generation are checked under this lock.
+            $this->assertExpectedWebPrincipal($user, $webContext[0], $webContext[1], 'admin', $authority);
+            return;
+        }
+        $this->assertAdminOperationAuthorityLocked($user, $authority);
+        $actor = att_one($this->pdo, 'SELECT role,auth_source FROM users WHERE id=?', [$user]);
+        if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local') {
+            throw new AuthorizationException('Nur die aktuelle Verwaltung darf diese Facheinstellung ändern.');
+        }
+    }
+
     /** Trusted admin identity/role only; command user_id is the model target. */
     public function workModel(int $user, string $role, array $command,
-        ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): void
+        ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null, ?array $webContext = null): void
     {
+        if ($role !== 'admin') {
+            throw new AuthorizationException('Nur die aktuelle Verwaltung darf Arbeitszeitmodelle ändern.');
+        }
         require_once dirname(__DIR__, 3).'/lib/practice.php';
 
-        $this->executeLocked(function () use ($user, $role, $command, $lifecycleAuthority): void {
-            $this->assertAdminOperationAuthorityLocked($user, $lifecycleAuthority, $role);
+        $this->executeLocked(function () use ($user, $role, $command, $lifecycleAuthority, $webContext): void {
+            $this->assertBusinessAdminAuthorityLocked($user, $lifecycleAuthority, $webContext);
             practice_work_model_apply_locked($this->pdo, $user, $role, $command,
                 fn (string $reason, Closure $operation): mixed => $this->context->run('web:'.$user, $reason, $operation),
             );
@@ -227,18 +250,18 @@ final class AttendanceWriter
 
     /** One fixed Admin operation; no caller-supplied role, PDO or SQL callback. */
     public function pauseSettings(int $user, mixed $hoursThresholds, mixed $minimumPauses,
-        ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): void
+        ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null, ?array $webContext = null): void
     {
         require_once dirname(__DIR__, 3).'/lib/pause_settings.php';
         // Exact native complete-list validation before any DELETE/INSERT or transaction.
         $rules = \validatePauseSettings($hoursThresholds, $minimumPauses);
 
-        $this->executeLocked(function () use ($user, $rules, $lifecycleAuthority): void {
-            $this->assertAdminOperationAuthorityLocked($user, $lifecycleAuthority);
+        $this->executeLocked(function () use ($user, $rules, $lifecycleAuthority, $webContext): void {
+            $this->assertBusinessAdminAuthorityLocked($user, $lifecycleAuthority, $webContext);
             // Re-authorize under the existing IMMEDIATE writer lock, not against
             // a request role or an earlier rendered/refreshed guard snapshot.
             $actor = att_one($this->pdo, 'SELECT role,auth_source FROM users WHERE id=?', [$user]);
-            if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local') {
+            if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || ! in_array($actor['auth_source'], ['local', 'ldap'], true)) {
                 throw new AuthorizationException('Nur die Verwaltung darf Pauseneinstellungen ändern.');
             }
 
@@ -257,7 +280,7 @@ final class AttendanceWriter
 
     /** Fixed department operations; native wrapper transactions must not nest here. */
     public function department(int $user, string $operation, mixed $departmentId, mixed $departmentName,
-        ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): bool
+        ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null, ?array $webContext = null): bool
     {
         require_once dirname(__DIR__, 3).'/lib/departments.php';
         if (! in_array($operation, ['create', 'rename', 'delete'], true)) {
@@ -270,10 +293,10 @@ final class AttendanceWriter
         }
         $targetId = $operation === 'delete' ? \department_delete_id($departmentId) : $departmentId;
 
-        return $this->executeLocked(function () use ($user, $operation, $targetId, $departmentName, $lifecycleAuthority): bool {
-            $this->assertAdminOperationAuthorityLocked($user, $lifecycleAuthority);
+        return $this->executeLocked(function () use ($user, $operation, $targetId, $departmentName, $lifecycleAuthority, $webContext): bool {
+            $this->assertBusinessAdminAuthorityLocked($user, $lifecycleAuthority, $webContext);
             $actor = att_one($this->pdo, 'SELECT role,auth_source FROM users WHERE id=?', [$user]);
-            if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local') {
+            if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || ! in_array($actor['auth_source'], ['local', 'ldap'], true)) {
                 throw new AuthorizationException('Nur die Verwaltung darf Abteilungen ändern.');
             }
 
@@ -573,15 +596,15 @@ final class AttendanceWriter
     }
 
     /** Own Admin identity only; no request target/role/reason or general account mutation. */
-    public function ownCarryIn(int $user, mixed $raw, ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): string
+    public function ownCarryIn(int $user, mixed $raw, ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null, ?array $webContext = null): string
     {
         require_once dirname(__DIR__, 3).'/lib/settings_carry_in.php';
         $parsed = \settings_carry_in_value($raw);
 
-        return $this->executeLocked(function () use ($user, $parsed, $lifecycleAuthority): string {
-            $this->assertAdminOperationAuthorityLocked($user, $lifecycleAuthority);
+        return $this->executeLocked(function () use ($user, $parsed, $lifecycleAuthority, $webContext): string {
+            $this->assertBusinessAdminAuthorityLocked($user, $lifecycleAuthority, $webContext);
             $actor = att_one($this->pdo, 'SELECT role,auth_source FROM users WHERE id=?', [$user]);
-            if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local') {
+            if ($user < 1 || $actor === null || $actor['role'] !== 'admin' || ! in_array($actor['auth_source'], ['local', 'ldap'], true)) {
                 throw new AuthorizationException('Nur die Verwaltung darf den eigenen Überstunden-Übertrag ändern.');
             }
 
@@ -713,7 +736,6 @@ final class AttendanceWriter
         $actor = att_one($this->pdo, 'SELECT role,auth_source,password FROM users WHERE id=?', [$user]);
         if ($user < 1 || $actor === null || $actor['auth_source'] !== $source
             || ! in_array($actor['role'], ['user', 'supervisor', 'admin'], true)
-            || ($source === 'ldap' && $actor['role'] !== 'user')
             || ($role !== null && $actor['role'] !== $role)
             || ! is_string($actor['password']) || ! $actor['password']
             || ! hash_equals($version, hash('sha256', $actor['password']))) {
