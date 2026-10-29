@@ -455,10 +455,12 @@ $supervisors = $stmt->fetchAll(PDO::FETCH_OBJ);
 $search = isset($_GET['search']) ? $_GET['search'] : '';
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $perPage = 10; // Anzahl der Benutzer pro Seite
+require_once __DIR__.'/lib/admin_reference_status.php';
 
 // Benutzer aus der Datenbank abrufen (mit Suche und Paginierung)
 $stmt = $conn->prepare("
     SELECT users.*, departments.name as department_name, supervisors.username as supervisor_name,
+           departments.id as resolved_department_id, supervisors.id as resolved_supervisor_id,
            EXISTS (SELECT 1 FROM audit_log WHERE audit_log.user_id = users.id) AS has_audit_history
     FROM users
     LEFT JOIN departments ON users.department_id = departments.id
@@ -622,13 +624,13 @@ include 'header.php';
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($users as $user): ?>
+                                <?php foreach ($users as $user): $departmentReference=admin_reference_status($user->department_id,$user->resolved_department_id);$supervisorReference=admin_reference_status($user->supervisor_id,$user->resolved_supervisor_id); ?>
                                     <tr>
                                         <td><?= htmlspecialchars($user->username) ?></td>
                                         <td><?= htmlspecialchars($user->email) ?></td>
                                         <td><?= htmlspecialchars($user->role) ?></td>
-                                        <td><?= htmlspecialchars($user->department_name ?? '') ?></td>
-                                        <td><?= htmlspecialchars($user->supervisor_name ?? '') ?></td>
+                                        <td><?= htmlspecialchars($user->department_name ?? '') ?><?php if($departmentReference==='missing'): ?><small class="block text-warning mt-1">Abteilungs-ID #<?= (int)$user->department_id ?> fehlt. Zuordnung über „Bearbeiten“ klären.</small><?php elseif($departmentReference==='invalid'||$departmentReference==='unknown'): ?><small class="block text-warning mt-1">Abteilungszuordnung nicht eindeutig prüfbar. Bestand über „Bearbeiten“ klären.</small><?php endif; ?></td>
+                                        <td><?= htmlspecialchars($user->supervisor_name ?? '') ?><?php if($supervisorReference==='missing'): ?><small class="block text-warning mt-1">Vorgesetzten-ID #<?= (int)$user->supervisor_id ?> fehlt. Zuordnung über „Bearbeiten“ klären.</small><?php elseif($supervisorReference==='invalid'||$supervisorReference==='unknown'): ?><small class="block text-warning mt-1">Vorgesetztenzuordnung nicht eindeutig prüfbar. Bestand über „Bearbeiten“ klären.</small><?php endif; ?></td>
                                         <td><?= h($user->regelarbeitszeit) ?></td>
                                         <td><?= h($user->ueberstunden) ?></td>
                                         <td>
