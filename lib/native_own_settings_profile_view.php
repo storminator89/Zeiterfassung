@@ -26,6 +26,7 @@
                                 <tr><td><?= h($ownSettingsProfile->weekday($index)) ?></td><td><?= h($ownSettingsProfile->duration($minutes)) ?></td></tr>
                             <?php endforeach; ?>
                         </tbody>
+                        <tfoot><tr><th scope="row"><?= h($ownSettingsProfile->text('weekly_total')) ?></th><td><?= h($ownSettingsProfile->weeklyDuration()) ?></td></tr></tfoot>
                     </table>
                 </div>
             <?php endif; ?>
