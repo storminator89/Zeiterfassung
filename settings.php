@@ -67,7 +67,7 @@ if ($passwordFormRequested) {
         try {
             $_SESSION = [];
             $params = session_get_cookie_params();
-            $cookieCleared = setcookie(session_name(), '', ['expires' => time() - 3600, 'path' => $params['path'],
+            $cookieCleared = setcookie(session_name(), '', ['expires' => time() - 3600, 'path' => $params['path'], 'domain' => $params['domain'],
                 'secure' => $params['secure'], 'httponly' => true, 'samesite' => 'Lax']);
             $sessionDestroyed = session_status() === PHP_SESSION_ACTIVE && session_destroy();
             $passwordLoggedOut = $cookieCleared && $sessionDestroyed;
