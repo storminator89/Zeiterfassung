@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads
+final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, DepartmentIntegrityReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -735,6 +735,18 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
 
             return ['users' => $users, 'search' => $search, 'page' => $page,
                 'per_page' => $perPage, 'total' => $total, 'total_pages' => (int) ceil($total / $perPage)];
+        });
+    }
+
+    public function departmentIntegrity(mixed $after = null): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($after): array {
+            if ($actor->role !== 'admin' || $actor->auth_source !== 'local') {
+                throw new AuthorizationException('Nur lokale Administration darf Benutzerzuordnungen prüfen.');
+            }
+            require_once dirname(__DIR__, 3).'/lib/department_integrity.php';
+
+            return \department_integrity_snapshot($pdo, $after);
         });
     }
 

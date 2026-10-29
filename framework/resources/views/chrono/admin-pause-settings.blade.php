@@ -143,6 +143,7 @@
                     <button class="btn btn-square" type="submit"><i class="fas fa-search"></i></button>
                 </div></div>
             </form>
+            @include('chrono.partials.department-integrity')
             <div class="overflow-x-auto">
                 <table class="table w-full">
                     <thead><tr>

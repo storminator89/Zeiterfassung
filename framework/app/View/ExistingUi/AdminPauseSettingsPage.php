@@ -31,5 +31,7 @@ final readonly class AdminPauseSettingsPage
         public bool $accountLifecycleV5 = false,
         public ?array $createUserDraft = null,
         public bool $localSecurityControls = false,
+        public ?array $departmentIntegrity = null,
+        public bool $departmentIntegrityRequested = false,
     ) {}
 }
