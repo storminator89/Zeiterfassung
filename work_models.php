@@ -1,14 +1,28 @@
 <?php
 require_once __DIR__.'/config.php';require_once __DIR__.'/lib/app_ui.php';
 if (!isset($_SESSION['user_id'])) { header('Location: login.php');exit; }
-$user=(int)$_SESSION['user_id'];$admin=$_SESSION['role']==='admin';$error='';
+$user=(int)$_SESSION['user_id'];$admin=$_SESSION['role']==='admin';$error='';$creditPreview=null;
+require_once __DIR__.'/lib/work_model_credit_preview.php';
+$modelForm=work_model_preview_form_values($_SERVER['REQUEST_METHOD']==='POST'?$_POST:[],date('Y-m-d'));
 if ($_SERVER['REQUEST_METHOD']==='POST') {
     if (!$admin) { abort_request(403,'Nur die Verwaltung darf Arbeitszeitmodelle festlegen.'); }
+    $modelAction=$_POST['model_action']??'save';
+    if(!is_string($modelAction)||!in_array($modelAction,['save','preview'],true)){
+        $error='Modellaktion prüfen. Es wurde kein Modell gespeichert.';
+    } elseif($modelAction==='preview') {
+        $conn->beginTransaction();
+        try {
+            $candidatePreview=work_model_credit_preview_locked($conn,$user,$_SESSION['auth_version']??null,$_POST);
+            if(!$conn->commit()){throw new RuntimeException('Preview snapshot could not close.');}
+            $creditPreview=$candidatePreview;
+        } catch(Throwable $e) { if($conn->inTransaction()){$conn->rollBack();}if($e instanceof AttendanceError&&$e->status===401){abort_request(401,'Bitte erneut anmelden.');}$error=$e instanceof AttendanceError?$e->getMessage():'Vorschau nicht verfügbar. Es wurde kein Modell gespeichert.'; }
+    } else {
     $conn->exec('BEGIN IMMEDIATE');
     try {
         practice_work_model_apply_locked($conn,$user,$_SESSION['role'],$_POST);
         $conn->exec('COMMIT');header('Location: work_models.php?saved=1');exit;
     } catch(Throwable $e) { $conn->exec('ROLLBACK');$error=$e instanceof AttendanceError?$e->getMessage():'Modell konnte nicht gespeichert werden.'; }
+    }
 }
 // The version list is a fresh, paged view; it never determines the effective model.
 $modelToday=(new DateTimeImmutable('now',new DateTimeZone('Europe/Berlin')))->format('Y-m-d');
@@ -43,8 +57,21 @@ $days=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'
 ?>
 <p>Das jüngste Modell mit passendem Gültigkeitsdatum bestimmt die Sollzeit. Feiertage aus dem hinterlegten Feiertagskalender haben null Sollminuten. Bereits erfasste Abwesenheitsgutschriften bleiben unverändert und können über einen Korrekturantrag angepasst werden.</p>
 <?php if($error): ?><div class="alert alert-error mb-6" role="alert"><?= h($error) ?></div><?php endif; ?>
-<?php if(isset($_GET['saved'])): ?><div class="alert alert-success mb-6">Arbeitszeitmodell gespeichert.</div><?php endif; ?>
-<?php if($admin): ?><section class="card bg-base-100 shadow-xl p-6 mb-6"><h2 class="text-xl font-semibold mb-4">Neues Modell hinterlegen</h2><p class="opacity-70">Ein neues Modell ersetzt keine Historie. Bei gleichem Gültigkeitsdatum gilt die zuletzt gespeicherte Version. Rückwirkende Modelle ändern Sollzeit-Auswertungen, aber keine gebuchten Gutschriften.</p><form method="post"><?= csrf_field() ?><label class="block text-sm font-semibold mt-4 mb-2" for="user_id">Person</label><select class="select select-bordered w-full" id="user_id" name="user_id"><?php foreach($users as $u): ?><option value="<?= (int)$u['id'] ?>"><?= h($u['username']) ?></option><?php endforeach; ?></select><label class="block text-sm font-semibold mt-4 mb-2" for="valid_from">Gültig ab</label><input class="input input-bordered w-full" type="date" id="valid_from" name="valid_from" value="<?= date('Y-m-d') ?>" required><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><?php foreach($days as $i=>$day): ?><div><label for="model-day<?= $i+1 ?>" class="block text-sm font-semibold mt-4 mb-2"><?= h($day) ?> (Minuten)</label><input id="model-day<?= $i+1 ?>" class="input input-bordered w-full" name="day<?= $i+1 ?>" type="number" min="0" max="1440" value="0" required></div><?php endforeach; ?></div><label class="block text-sm font-semibold mt-4 mb-2" for="reason">Begründung</label><textarea class="textarea textarea-bordered w-full" id="reason" name="reason" minlength="5" maxlength="1000" required></textarea><div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary">Modell speichern</button></div></form></section><?php endif; ?>
+<?php if($_SERVER['REQUEST_METHOD']==='GET'&&isset($_GET['saved'])): ?><div class="alert alert-success mb-6">Arbeitszeitmodell gespeichert.</div><?php endif; ?>
+<?php if($admin): ?><section class="card bg-base-100 shadow-xl p-6 mb-6"><h2 class="text-xl font-semibold mb-4">Neues Modell hinterlegen</h2><p class="opacity-70">Ein neues Modell ersetzt keine Historie. Bei gleichem Gültigkeitsdatum gilt die zuletzt gespeicherte Version. Rückwirkende Modelle ändern Sollzeit-Auswertungen, aber keine gebuchten Gutschriften.</p><form method="post"><?= csrf_field() ?><label class="block text-sm font-semibold mt-4 mb-2" for="user_id">Person</label><select class="select select-bordered w-full" id="user_id" name="user_id" required><option value="">Person auswählen</option><?php foreach($users as $u): ?><option value="<?= (int)$u['id'] ?>" <?= $modelForm['user_id']===(string)$u['id']?'selected':'' ?>><?= h($u['username']) ?></option><?php endforeach; ?></select><label class="block text-sm font-semibold mt-4 mb-2" for="valid_from">Gültig ab</label><input class="input input-bordered w-full" type="date" id="valid_from" name="valid_from" value="<?= h($modelForm['valid_from']) ?>" required><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><?php foreach($days as $i=>$day): ?><div><label for="model-day<?= $i+1 ?>" class="block text-sm font-semibold mt-4 mb-2"><?= h($day) ?> (Minuten)</label><input id="model-day<?= $i+1 ?>" class="input input-bordered w-full" name="day<?= $i+1 ?>" type="number" min="0" max="1440" value="<?= h($modelForm['day'.($i+1)]) ?>" required></div><?php endforeach; ?></div><label class="block text-sm font-semibold mt-4 mb-2" for="reason">Begründung</label><textarea class="textarea textarea-bordered w-full" id="reason" name="reason" minlength="5" maxlength="1000" required><?= h($modelForm['reason']) ?></textarea><div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-outline" name="model_action" value="preview" formnovalidate>Gutschriften vorab prüfen (ohne Speichern)</button><button class="btn btn-primary" name="model_action" value="save">Modell speichern</button></div></form></section><?php endif; ?>
+<?php if($creditPreview!==null): ?><section id="model-credit-preview" class="card bg-base-100 shadow-xl p-6 mb-6">
+<h2 class="text-xl font-semibold mb-4">Vorschau – kein Modell gespeichert</h2>
+<p><?= h($creditPreview['username']) ?> · Person #<?= (int)$creditPreview['person_id'] ?> · ab <?= h($creditPreview['from']) ?> (Europe/Berlin)<?= h($creditPreview['until']!==null?' bis vor '.$creditPreview['until'].' (nächstes vorhandenes Modell)':'') ?></p>
+<p class="text-sm opacity-70 mt-3">Hypothetisches Tagessoll des eingegebenen Modells im Vergleich zur gespeicherten Netto-Gutschrift. Bereits erfasste Gutschriften werden weder neu berechnet noch geändert. Die Abweichung ist kein Kontosaldo und kein automatischer Korrekturauftrag. Nur bereits gespeicherte Feiertage werden berücksichtigt; deren Vollständigkeit ist nicht bestätigt.</p>
+<?php if($creditPreview['truncated']||$creditPreview['unknown']): ?><p class="mt-3" role="status">Die Vorschau ist begrenzt oder enthält nicht auswertbare Gutschriften. Unbekannte Werte sind nicht null Minuten; es gibt keine abschließende Summe.</p><?php endif; ?>
+<?php if(!$creditPreview['items']): ?><p class="mt-3" role="status">Keine zuordenbaren gespeicherten Abwesenheiten im betrachteten Modellabschnitt gefunden. Dies ist kein Vollständigkeits- oder Datenqualitätsnachweis.</p><?php else: ?>
+<p class="text-sm mt-3">Bis zu 100 gespeicherte Gutschriften, nach Berliner Beginn sortiert. Nicht zuordenbare Datumswerte stehen zuerst.</p>
+<div class="table-responsive mt-3"><table class="table"><thead><tr><th>Buchung / Historie (neuer Tab)</th><th>Tag (Berlin)</th><th>Gespeicherte Netto-Gutschrift</th><th>Hypothetisches Tagessoll</th><th>Tagessoll minus Gutschrift</th></tr></thead><tbody>
+<?php foreach($creditPreview['items'] as $credit): ?><tr><td><a class="link link-primary" target="_blank" rel="noopener noreferrer" href="<?= h('history.php?'.http_build_query(['entity'=>'zeiterfassung','user_id'=>$creditPreview['person_id'],'record_id'=>$credit['id']])) ?>">#<?= (int)$credit['id'] ?></a></td><td><?= h($credit['day']??'Nicht zuordenbar') ?></td><td><?= $credit['stored_minutes']===null?'Nicht auswertbar':(int)$credit['stored_minutes'].' min' ?></td><td><?= $credit['hypothetical_target']===null?'Unbekannt':(int)$credit['hypothetical_target'].' min' ?></td><td><?= $credit['difference']===null?'Unbekannt':(int)$credit['difference'].' min' ?></td></tr><?php endforeach; ?>
+</tbody></table></div><?php endif; ?>
+<p class="text-sm opacity-70 mt-3">Die bestehende Buchung bleibt maßgeblich. Eine erforderliche Gutschriftenkorrektur muss die betroffene Person separat beantragen; die Vier-Augen-Freigabe bleibt erhalten. Speichern des Modells ist ein eigener bewusster Schritt im vorhandenen Speicherweg; die Vorschau friert dessen Datenstand nicht ein.</p>
+<p class="mt-3"><a class="link link-primary" href="#user_id">Zur Modellmaske – Eingaben bleiben erhalten</a></p>
+</section><?php endif; ?>
 <?php if($modelSelectionError): ?><div class="alert alert-error mb-6" role="alert"><?= h($modelSelectionError) ?> <a href="<?= h($modelUrl($modelPage)) ?>">Auswahl zurücksetzen</a></div>
 <?php else: ?><section class="card bg-base-100 shadow-xl p-6 mb-6">
 <h2 class="text-xl font-semibold mb-4"><?= $selectedModel?'Ausgewählte Version und heute maßgebliches Modell':'Heute maßgebliches eigenes Modell' ?></h2>
