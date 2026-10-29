@@ -21,8 +21,9 @@ $passwordFormRequested = $_SERVER['REQUEST_METHOD'] === 'POST'
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$passwordFormRequested && isset($_POST['lang'])) {
     $_SESSION['lang'] = valid_language($_POST['lang']);
 }
-// Preserve header.php's existing final priority when GET and POST both name a language.
-if (!$passwordFormRequested && isset($_GET['lang'])) {
+// Resolve header.php's existing GET priority before defining any dictionary,
+// including a password form that may redisplay after a known refusal.
+if (isset($_GET['lang'])) {
     $_SESSION['lang'] = valid_language($_GET['lang']);
 }
 
