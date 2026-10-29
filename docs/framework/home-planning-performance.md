@@ -50,3 +50,71 @@ Daten in der nächsten Operation. Drei SELECT-Ausführungen laden die Planungsda
 mit unverändertem Wochenfeiertags-Read benötigt `home_summary` konstant vier.
 Die Assertions messen keine Produktionslatenz und ersetzen **keine** legitime
 Laravel-Login-, HTTP-/UI- oder produktive Lastabnahme. Kein neuer CI-Lauf.
+
+## #56-Nachtrag: vorhandene Kalenderstatistiken verwenden denselben Resolver
+
+Isolierter Quellschritt auf Main `67a22db805f9e73a7a50d31e3f53316d7a15b649`,
+Baum `4293e4cf603e757a960bf5669190e59654bf482d` nach #68/#258. Der bestehende
+`LegacyChronoReads::calendarWeek()`-Read besitzt bereits dieselbe frisch
+autorisierte Lesetransaktion. Seine fünf Planungswerte (Wochen-/Monats-/Jahressoll,
+formatiertes Tages-Soll und erfasste-Tage-Saldo mit Übertrag) führten bislang
+trotzdem für jeden angefragten Tag wieder die bisherigen einzelnen SQL-Reads aus.
+
+Vor der Änderung wurde dieser **Teilpfad**, nicht die ganze Kalenderseite, an
+erfundenen kanonischen SQLite-Memorytabellen gemessen. Ein grober Vorher-/Nachher-
+Durchlauf unter PHP 8.5.12 / SQLite 3.46.1 bestätigt exakt gleiche Zahlen und
+formatierte Werte, einschließlich der bisherigen Fließkomma-Akkumulationsfolge:
+
+| Erfasste Tage | Konfiguration | SELECT-Ausführungen vorher | Nachher |
+| ---: | --- | ---: | ---: |
+| 30 | Modellhistorie | 860 | 3 |
+| 365 | Modellhistorie | 1530 | 3 |
+| 3650 | Modellhistorie | 8099 | 3 |
+| 10000 | Modellhistorie, davor Fallback | 21001 | 3 |
+| 3650 | Werktagsfallback | 12144 | 3 |
+
+Zeit und zusätzliche PHP-Heapspitze wurden ebenfalls beobachtet: im gespeicherten
+Vergleich für 10000 Tage ungefähr 154 auf 31 Millisekunden, bei ungefähr 5,3 auf
+7,8 KB zusätzlichem PHP-Heap. Dies sind einzelne synthetische Beobachtungen ohne
+Messschwelle, belastbares Produktionsprofil oder Ganzseiten-/Speicherzusage.
+Weitere bestehende Kalender-, Historien-, Auth- und Statusreads sind in diesen
+fünf Planwerten **nicht** enthalten. Die ganze Seite liest weiterhin die bisherige
+Historie; kein bereits eingetretener Produktionsengpass wird behauptet.
+
+Der Read baut einmal den unveränderten `planned_minutes_snapshot()` für aktuelle
+Berichtsperioden und alle gelieferten Bericht-Starttage auf. Die Grenzen umfassen
+auch eine aktuelle ISO-Woche über den Jahreswechsel. Historisches Blättern bleibt
+wie bisher unabhängig von den aktuellen Statistikperioden. Derselbe Resolver
+wird synchron an die vorhandenen drei Summen-, Tages- und Saldohelfer gegeben und
+nicht im DTO, global, statisch oder in einer Session behalten. Kein neuer Cache
+für Identität, Teams, Rollen, Verbindungen oder spätere Operationen.
+
+`planned_hours()` erhält ausschließlich einen optionalen vertrauenswürdigen
+Resolver-Endparameter. Bestehende Vierargumentaufrufe behalten ihren bisherigen
+Einzel-SQL-Pfad, Schleife und Sollformel. Feiertagsvorrang, wirksames Modell nach
+Datum/höchster ID, Fallback/Rundung/Begrenzung, gespeicherte Gutschriften,
+Startdatumszuordnung, Diagnosen und abschließende Nullsetzung ungeklärter oder
+unvollständiger Statistikfelder ändern sich nicht. Kein neuer Berichtswert,
+Index, Writer, UI, JSONfeld, Featureflag oder Runtime-/V5-Zugang.
+
+Der eine grobe Vergleich umfasst zusätzlich sieben kombinierte Randfälle:
+unsortierte alte/zukünftige Berichtstage, Jahres-/ISO-Wochenwechsel, Schaltjahr,
+beide DST-Grenzen, leere Berichte und vorhandene/fehlende/negative/begrenzte/
+null-Fallbackwerte. Quellzeilen, Audit-/Sessionglobals und Defaultzeitzone bleiben
+unverändert; eine nachfolgende Operation sieht ein neu gespeichertes Modell.
+Der Resolver besitzt weiterhin nicht die Transaktionslebensdauer. Notwendige
+PHP-Syntax, definitions-only Klassenkomposition mit gleichem Composerlock und
+vollständige Quellerhaltung sind separat geprüft. Nach dem Reanchor wurde die
+bereits integrierte Einpass-`report_days`-Quelle unverändert mitgeprüft: Ein grober
+Vergleich führt den tatsächlichen extrahierten Kalendercallback samt originalen
+`rows`-/`reportFinality`-Methoden gegen dieselben erfundenen Memoryzeilen aus.
+Nur Uhr und Include-Wurzel sind injiziert; Auth-/Snapshotwrapper laufen nicht.
+Alle vollständigen DTO-Hashes sowie Statistik-/Diagnose-/Finalitätswerte sind vor
+und nach der Änderung identisch: Mischbestand mit Arbeit/Gutschrift, aktuelle und
+historische Navigation, bekannte/unbekannte ungültige Zeit, Nachtkonflikt,
+ISO-Jahreswechsel, Fallback und leerer Bestand. Quellzeilen/Globals/Zeitzone bleiben
+erhalten. Dies ist ein enger Quellenkompositionsnachweis, keine echte
+Laravel-Request-/Berechtigungsabnahme. Keine kleinteilige neue
+Repo-Testsuite, App-/HTTP-/Browser-/reale Daten-/Produktionsabnahme, neue CI,
+Remoteaktion oder Deployment. #56 bleibt für echte Last-/UI-/Betriebsabnahme und
+die übrigen Vollhistorienpfade offen.
