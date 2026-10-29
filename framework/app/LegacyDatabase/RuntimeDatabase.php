@@ -19,6 +19,8 @@ use Throwable;
 /** Opens only the already admitted existing identity; never creates/adopts it. */
 final class RuntimeDatabase
 {
+    private ?array $accountLifecycleCohort = null;
+
     public function __construct(
         private readonly RuntimeAdmission $admission,
         private readonly OfflineFiles $files,
@@ -48,7 +50,11 @@ final class RuntimeDatabase
     private function requireImplementedRuntime(): void
     {
         if ($this->isAccountLifecycleV5()) {
-            throw new LogicException('Account-lifecycle-v5 runtime is closed until complete cross-channel enforcement and recovery admission.');
+            $current = AccountLifecycleRuntimeCohort::requireCurrent($this->admission, $this->files);
+            if ($this->accountLifecycleCohort !== null && $current !== $this->accountLifecycleCohort) {
+                throw new LogicException('The admitted NEW V5 runtime cohort changed.');
+            }
+            $this->accountLifecycleCohort = $current;
         }
     }
 
@@ -311,6 +317,9 @@ final class RuntimeDatabase
 
     private function identity(bool $write): void
     {
+        // Reconfirm the Native-refused NEW namespace/manifest across every
+        // existing source identity boundary, never from mutable request flags.
+        $this->requireImplementedRuntime();
         $path = $this->files->validate($this->admission->path);
         $stat = lstat($path);
         if ($stat === false || $stat['dev'] !== $this->admission->device || $stat['ino'] !== $this->admission->inode
