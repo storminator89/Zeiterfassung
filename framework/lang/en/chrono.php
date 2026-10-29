@@ -209,4 +209,8 @@ return [
     'LOCATION_OFFICE' => 'Office',
     'LOCATION_HOME_OFFICE' => 'Home Office',
     'LOCATION_BUSINESS_TRIP' => 'Business Trip',
+    'DASHBOARD_CALENDAR_LOADING' => 'Preparing the calendar view …',
+    'DASHBOARD_CALENDAR_UNAVAILABLE' => 'Calendar view currently unavailable. Reload the page or open your own bookings.',
+    'DASHBOARD_CALENDAR_NO_SCRIPT' => 'The calendar view requires JavaScript. The existing attendance page remains available.',
+    'DASHBOARD_CALENDAR_FALLBACK' => 'Open your own bookings',
 ];
