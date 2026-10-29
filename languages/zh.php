@@ -306,5 +306,19 @@ define('HOLIDAY_INVENTORY_COUNT', '显示 %d 条已存储记录，不代表数�
 define('HOLIDAY_INVENTORY_DATA_ISSUE', '存在无效日期或记录超过 366 条：显示已受限，请管理员核对原始数据。');
 define('HOLIDAY_INVENTORY_EMPTY', '该年份没有已存储记录。这并不表示该年没有公共假日。');
 define('HOLIDAY_INVENTORY_ABSENCE_LINK', '计入缺勤时数前，请核对相关年份的已存储公共假日（新标签页）。');
-?>
 
+define('SETTINGS_OWN_PASSWORD_TITLE', '更改自己的密碼');
+define('SETTINGS_OWN_PASSWORD_HELP', '僅限自己的本機密碼；新密碼為 12–72 位元組，不含控制字元。成功後登出。舊網頁工作階段與 API 權杖將無法通過下一次檢查；裝置 PIN 不變。');
+define('SETTINGS_OWN_PASSWORD_CURRENT', '目前密碼');
+define('SETTINGS_OWN_PASSWORD_NEW', '新密碼');
+define('SETTINGS_OWN_PASSWORD_CONFIRM', '再次輸入新密碼');
+define('SETTINGS_OWN_PASSWORD_SUBMIT', '更改密碼並登出');
+define('SETTINGS_OWN_PASSWORD_UNAVAILABLE', '僅限自己的本機帳戶。目錄密碼請在目錄系統管理。');
+define('SETTINGS_OWN_PASSWORD_INVALID_FORM', '請檢查密碼欄位：新密碼為 12–72 位元組、不含控制字元、兩次輸入一致，且不同於目前密碼。請勿同時傳送其他設定。');
+define('SETTINGS_OWN_PASSWORD_INVALID_CURRENT', '請檢查目前密碼及新密碼。');
+define('SETTINGS_OWN_PASSWORD_RATE_LIMITED', '嘗試次數過多。請等待最多十分鐘後再試。');
+define('SETTINGS_OWN_PASSWORD_STALE', '工作階段已失效，請重新登入。');
+define('SETTINGS_OWN_PASSWORD_UNCONFIRMED', '尚未確認密碼變更。請勿自動重試，請檢查登入狀態。');
+define('SETTINGS_OWN_PASSWORD_LOGOUT_UNCONFIRMED', '密碼已更改，但尚未確認完整登出。請重新登入。');
+define('SETTINGS_OWN_PASSWORD_PROFILE_UNAVAILABLE', '此資料設定尚未獲准更改密碼。');
+?>

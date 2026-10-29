@@ -318,4 +318,19 @@ define('HOLIDAY_INVENTORY_COUNT', '%d stored entries shown – not evidence of c
 define('HOLIDAY_INVENTORY_DATA_ISSUE', 'Invalid dates or more than 366 entries: the display is limited; ask your administrator to review the original data.');
 define('HOLIDAY_INVENTORY_EMPTY', 'No entry is stored for this year. This does not mean there are no public holidays.');
 define('HOLIDAY_INVENTORY_ABSENCE_LINK', 'Before crediting an absence: check the stored holidays for the relevant year (new tab).');
+
+define('SETTINGS_OWN_PASSWORD_TITLE', 'Change your own password');
+define('SETTINGS_OWN_PASSWORD_HELP', 'Your own local password only; new: 12–72 bytes, no control characters. Success signs you out. Old web sessions and API tokens fail their next check; device PINs stay unchanged.');
+define('SETTINGS_OWN_PASSWORD_CURRENT', 'Current password');
+define('SETTINGS_OWN_PASSWORD_NEW', 'New password');
+define('SETTINGS_OWN_PASSWORD_CONFIRM', 'Repeat new password');
+define('SETTINGS_OWN_PASSWORD_SUBMIT', 'Change password and sign out');
+define('SETTINGS_OWN_PASSWORD_UNAVAILABLE', 'Own local accounts only. Manage directory passwords in the directory.');
+define('SETTINGS_OWN_PASSWORD_INVALID_FORM', 'Check password fields: new 12–72 bytes, no control characters, matching confirmation and different from the current password. Do not include other settings.');
+define('SETTINGS_OWN_PASSWORD_INVALID_CURRENT', 'Check the current and new passwords.');
+define('SETTINGS_OWN_PASSWORD_RATE_LIMITED', 'Too many attempts. Try again after ten minutes.');
+define('SETTINGS_OWN_PASSWORD_STALE', 'Session no longer valid. Please sign in again.');
+define('SETTINGS_OWN_PASSWORD_UNCONFIRMED', 'Password change not confirmed. Do not retry automatically. Check your sign-in status.');
+define('SETTINGS_OWN_PASSWORD_LOGOUT_UNCONFIRMED', 'Password changed; complete sign-out not confirmed. Please sign in again.');
+define('SETTINGS_OWN_PASSWORD_PROFILE_UNAVAILABLE', 'Password changes are not admitted for this data profile.');
 ?>
