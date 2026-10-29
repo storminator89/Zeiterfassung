@@ -209,4 +209,8 @@ return [
     'LOCATION_OFFICE' => 'Büro',
     'LOCATION_HOME_OFFICE' => 'Home Office',
     'LOCATION_BUSINESS_TRIP' => 'Dienstreise',
+    'DASHBOARD_CALENDAR_LOADING' => 'Kalenderdarstellung wird vorbereitet …',
+    'DASHBOARD_CALENDAR_UNAVAILABLE' => 'Kalenderdarstellung derzeit nicht verfügbar. Bitte Seite neu laden oder die eigenen Buchungen öffnen.',
+    'DASHBOARD_CALENDAR_NO_SCRIPT' => 'Die Kalenderdarstellung benötigt JavaScript. Die vorhandene Anwesenheitsseite bleibt erreichbar.',
+    'DASHBOARD_CALENDAR_FALLBACK' => 'Eigene Buchungen öffnen',
 ];

@@ -206,4 +206,8 @@ return [
     'LOCATION_OFFICE' => '辦公室',
     'LOCATION_HOME_OFFICE' => '居家辦公',
     'LOCATION_BUSINESS_TRIP' => '出差',
+    'DASHBOARD_CALENDAR_LOADING' => '正在準備日曆顯示…',
+    'DASHBOARD_CALENDAR_UNAVAILABLE' => '目前無法顯示日曆。請重新載入頁面或開啟本人的打卡紀錄。',
+    'DASHBOARD_CALENDAR_NO_SCRIPT' => '日曆顯示需要 JavaScript；原有的出勤頁面仍可開啟。',
+    'DASHBOARD_CALENDAR_FALLBACK' => '開啟本人的打卡紀錄',
 ];

@@ -234,6 +234,8 @@
                     <a id="todayBtn" href="{{ $dashboard->link($dashboard->range['today']) }}" class="btn btn-secondary btn-sm"><i class="fas fa-calendar-day mr-2"></i>{{ $page->copy->text('BUTTON_TODAY') }}</a>
                     <a id="nextWeekBtn" href="{{ $dashboard->link($dashboard->range['next']) }}" class="btn btn-primary btn-sm">{{ $page->copy->text('BUTTON_NEXT_WEEK') }}<i class="fas fa-arrow-right ml-2"></i></a>
                 </div>
+                <p id="calendarLoadStatus" class="text-sm opacity-70 mb-3" role="status"><span id="calendarLoadStatusText">{{ $page->copy->text('DASHBOARD_CALENDAR_LOADING') }}</span> <a class="link" href="attendance.php">{{ $page->copy->text('DASHBOARD_CALENDAR_FALLBACK') }}</a></p>
+                <noscript><p class="text-sm opacity-70 mb-3">{{ $page->copy->text('DASHBOARD_CALENDAR_NO_SCRIPT') }}</p></noscript>
                 <div id="calendar" class="calendar-container"></div>
             </div>
         </div>
@@ -261,12 +263,27 @@
     <script src="vendor/fullcalendar/7.1.3/locales/zh-tw/global.js"></script>
     <script src="assets/js/chrono-calendar.js"></script>
     <script>
+        (function () {
+        const calendarRoot = document.getElementById('calendar');
+        const calendarStatus = document.getElementById('calendarLoadStatus');
+        const calendarStatusText = document.getElementById('calendarLoadStatusText');
+        try {
+        if (!window.ChronoCalendar || typeof window.ChronoCalendar.mount !== 'function') {
+            throw new Error('Calendar renderer unavailable.');
+        }
         window.ChronoCalendar.mount(document.getElementById('calendar'), {
             weekStart: {!! \Illuminate\Support\Js::from($dashboard->range['start']->format('Y-m-d')) !!},
             language: {!! \Illuminate\Support\Js::from($page->copy->language === 'zh' ? 'zh-tw' : $page->copy->language) !!},
             theme: {!! \Illuminate\Support\Js::from($page->theme) !!},
             events: {!! \Illuminate\Support\Js::from($dashboard->calendarEvents()) !!},
         });
+        if (calendarStatus) { calendarStatus.hidden = true; }
+        } catch {
+            try { if (calendarRoot) { calendarRoot.replaceChildren(); } } catch {}
+            if (calendarStatusText) { calendarStatusText.textContent = {!! \Illuminate\Support\Js::from($page->copy->text('DASHBOARD_CALENDAR_UNAVAILABLE')) !!}; }
+            if (calendarStatus) { calendarStatus.hidden = false; }
+        }
+        }());
     </script>
 
 @endsection
