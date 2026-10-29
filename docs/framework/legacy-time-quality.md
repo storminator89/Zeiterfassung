@@ -29,6 +29,13 @@ getrennte Kompatibilitätsintervalle können deshalb denselben Tag belegen. Der
 Befund fordert manuelle Klärung, ohne eine Zeile, Sollzeit oder Gutschrift zu
 ändern. Offene Überschneidungen, Mapping, Reparatur und UI bleiben weiterhin offen.
 
+**Additiver Format-5-Quellschritt:** Für eindeutig lesbare gültige Paare mit
+mindestens einer Null-/Leer-Endmarkierung gibt es nun `possible_open_overlap`.
+Das ist ausdrücklich ein möglicher Konflikt, kein Nachweis einer tatsächlichen
+Überlappung: Ein offenes Arbeitsende bleibt unbekannt, ohne Jetzt-Ende, Dauer,
+Gutschrift oder Obergrenzenwert im Bericht. Die bestehende ganztägige Semantik
+einer Abwesenheit bleibt erhalten. Mapping, Reparatur und UI bleiben offen.
+
 ## Expliziter Aufruf, keine Dateisuche
 
 Installierte gelockte Frameworkabhängigkeiten und PHP 8.5 vorausgesetzt:
@@ -102,6 +109,7 @@ nicht als GitHub-Nachweis hochladen.
 | `work_absence_overlap` | Eine eindeutig prüfbare abgeschlossene Arbeitszeit überschneidet den ganzen Berliner Kalendertag einer gültigen abgeschlossenen Abwesenheit desselben Nutzers; Einzelwerte bleiben unverändert. |
 | `work_work_overlap` | Zwei eindeutig prüfbare gültige abgeschlossene Arbeitszeiten desselben Nutzers haben sich überschneidende positive Bruttointervalle; reine Randberührung zählt nicht. Keine automatische Kürzung, Pausenverteilung oder Aussage über doppelte Vergütung. |
 | `absence_absence_overlap` | Zwei eindeutig prüfbare gültige abgeschlossene Abwesenheiten desselben Nutzers belegen nach der bestehenden Buchungssemantik denselben ganzen Berliner Kalendertag; auch verschiedene Arten oder getrennte Kompatibilitätsintervalle. Keine automatische Auswahl, Löschung oder Neuberechnung. |
+| `possible_open_overlap` | Gleiches Konto, mindestens eine offene Zeile: Die vorhandenen Startwerte und bekannten End-/ganztägigen Abwesenheitsgrenzen schließen einen Konflikt nicht aus. Keine behauptete tatsächliche Arbeitsdauer oder Überlappung; auch ein späterer gültiger Eintrag kann deshalb einen Klärungshinweis ergeben. Kleinere ID in `record_id`, größere in `related_record_id`. |
 
 Diagnoseformat: `YYYY-MM-DD HH:MM:SS` oder `YYYY-MM-DDTHH:MM:SS`, optional
 `Z` oder numerischer `±HH:MM`-Offset. Freitext, relative Angaben, Zeitzonennamen,
@@ -133,7 +141,7 @@ Historienbehauptungen erzeugt.
 - **1:** gestoppt, kein vollständiger Diagnosebericht; nur redigierte Phase.
 - **64:** fehlende/ungültige/mehrfach angegebene Argumente.
 
-`scope_status` bleibt immer `partial_diagnostic_only`. Format 4 setzt
+`scope_status` bleibt immer `partial_diagnostic_only`. Das frühere Format 4 setzt
 `checks.overlap=partial_completed_work_work_and_whole_day_absence_pairs_only`
 und behält die separate `work_whole_day_absence_overlap`-Angabe. Die neue Angabe
 `work_work_overlap=checked_only_for_unambiguous_supported_completed_positive_intervals`
@@ -145,7 +153,14 @@ und das weiterhin ausdrückliche `open_overlap=not_checked`. Es gibt im Reposito
 externe Verbraucher müssen die Berichtsversionsnummer und die neuen Kategorien
 beachten.
 
-Offene Überschneidungen werden weiterhin **nicht geprüft**. Mehrdeutige, nicht unterstützte oder ungültige Zeilen werden auch für
+Format 5 setzt `checks.overlap=partial_completed_pairs_and_possible_open_pairs_only`
+und `open_overlap=possible_only_for_unambiguous_supported_rows_no_guessed_end`.
+Offene Paare werden nach allen bisherigen Details geordnet nach kleinerer und
+größerer ID je einmal gestreamt; kein Vergleich verschiedener Konten, keine
+Paarliste im Speicher. Bekannte End-/Start-Randberührung und abgeschlossene
+Null-Dauer-Arbeit zählen nicht. Ohne bekannte Arbeitsendzeit wird lediglich
+geprüft, ob eine Überlappung ausgeschlossen ist; es wird kein Ende ausgewählt.
+Mehrdeutige, nicht unterstützte oder ungültige Zeilen werden auch für
 diesen Teil nicht normalisiert/verwendet. Weitere Session-/Event-/Pausen-/
 Projektionsabgleiche sind `not_checked`, Mapping und Reparatur
 `not_performed_requires_separate_confirmation`. Diese offenen Gatter bleiben
@@ -203,6 +218,13 @@ keine Zähler; quadratische Laufzeit bleibt möglich. Aus einem Paarbefund folgt
 keine Behauptung einer Doppelvergütung oder eine Freigabe zur Datenreparatur.
 
 ## Grober synthetischer Nachweis, keine reale Datenabnahme
+
+Format 5 wurde auf Mainbasis `182ec621327a120471d36ba369e147a6b1d481f6`
+mit PHP 8.5.12 / SQLite 3.46.1 an 21 anonymen Memory-Zeilen geprüft:
+fünf exakte mögliche Paare, Eigentümertrennung, Randberührung/Null-Dauer,
+ganzer DST-Abwesenheitstag, ungültige/mehrdeutige Werte, unveränderte bisherigen
+Befunde/Zähler und Daten/Schema sowie Detailbegrenzung. Nur die Klasse in einer
+Query-only-Transaktion; kein neuer CLI-/Dateiadmissions-/UI-/Mappingnachweis.
 
 PHP **8.5.12**, SQLite **3.46.1**, Zeitzonendaten **2026.5**; ein einziger privater
 synthetischer kalter Dateibestand, `0400`, aus vorhandener Quellfixture mit
