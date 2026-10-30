@@ -139,3 +139,59 @@ Primärquellen: gelockter Standard-
 [`ManagesTransactions`](https://github.com/laravel/framework/blob/v13.38.0/src/Illuminate/Database/Concerns/ManagesTransactions.php),
 [Laravel-Transaktionen](https://laravel.com/docs/13.x/database#database-transactions),
 [SQLite-Transaktionsverhalten](https://www.sqlite.org/lang_transaction.html).
+
+
+## Aktueller #74/#82-Nachweis: unbekannter COMMIT und Rücknahme nach neuen Buchungen
+
+Quellenbasis Main `3efbd9134ae511c30a5fce657e858fb333a3e55c`, Baum
+`394064b77453486f012ca835ea2182deded3a850`. Der oben beschriebene grobe PoC
+war nicht mehr ausführbar: Seit dem bestehenden
+[COMMIT-Outcome-Vertrag](writer-commit-outcome-boundary.md) liefert ein Fehler
+nach COMMIT-Versuch oder unbestätigter Cleanup nur die feste `RuntimeException`
+und sperrt den Writer. Der alte PoC erwartete noch `PDOException` beim echten
+BUSY-COMMIT sowie `LogicException` beim eingespritzten PDO-Wechsel und verwendete
+den commit-unsicheren Writer erneut. Nicht die Anwendung wird gelockert:
+ausschließlich diese veralteten PoC-Erwartungen werden korrigiert.
+
+Der echte parallele Reader muss COMMIT mindestens vier Sekunden blockieren.
+Die feste generische Exception hat exakt die erwartete Klasse/Meldung und keine
+vorherige Exception; echter Source-/Sequenzvergleich bestätigt für **diesen**
+kontrollierten BUSY-Fall den Rollback, und derselbe Writer verweigert weitere
+Arbeit. Erst nach Freigabe des Readers, bewusstem Verwerfen beider Handles und
+frischer normaler Admission prüft der PoC dieselbe stabile Event-ID. Das ist ein
+expliziter isolierter Prüfschritt nach beobachtetem Zustand, **kein** automatischer
+Retry oder allgemeiner Beweis, dass eine unbekannte Antwort zurückgerollt sei.
+Beim unsicheren PDO-Wechsel bleiben beide Quellen vollständig erhalten und der
+Adapter gesperrt; die bestehende Cleanup-Ungewissheit bleibt unverändert maskiert.
+
+Ein zusätzlicher zusammenhängender Offline-Abschnitt nutzt danach den tatsächlich
+vorhandenen `chrono:legacy-v2`-Befehl, nicht eine nachgebaute Migration:
+
+1. Alle neuen Buchungen schließen; vollständigen Quell-/Sequenzstand und exakt
+   gespeicherte Receiptbytes erfassen, sämtliche Writer/PDOs schließen.
+2. Das ursprüngliche **veraltete** Vorbuchungsbackup für `rollback-ledger` anbieten:
+   sichere Ablehnung vor Änderung, aktuelle Datei und altes Backup unverändert.
+3. Erst eine kalte Kopie des **aktuellen** Standes als separate private Sicherung
+   erstellen. Ledger-only-Rücknahme zweimal ausführen: nur eigene Frameworkledger
+   weg, neue Buchungen, Originalintervalle, Audit, Events und Sequenzen unverändert.
+4. Nach der Rücknahme wiederum den aktuellen ledgerfreien Stand kalt sichern;
+   Adoption zweimal ausführen. Genau eine Ledgerzeile, keine zweite Baseline und
+   keine verlorenen/duplizierten Fachzeilen. Ein neuer normaler Writer liest mit
+   derselben Event-ID die bytegleiche bestätigte Endreceipt ohne weitere Mutation.
+
+PHP 8.5.12 / Laravel 13.38.0 / SQLite 3.46.1, tatsächliche fabrikierte private
+V2-Dateien und Prozesse: kompletter aktualisierter PoC PASS, unter anderem sechs
+Events, 22 Auditzeilen, zwei geschlossene Sessions, eine Pause und eine finale
+Antragsentscheidung erhalten. Original, pristine Backup und beide aktuellen
+Backups bleiben unverändert; nach Schließen keine SQLite-Sidecars. Ausschließlich
+die bisherigen zwei synthetischen Fixture-Identitäten mit unbrauchbarem
+Passwortmarker, keine realen/nutzbaren Konten oder Credentials. Keine Schlüssel,
+Tokens, Listener oder Runtimeflags werden angelegt/aktiviert.
+
+Dies belegt **Ledger-only-V2-Backout nach neuen Buchungen**, nicht ganzen
+Code-/Route-/V5-/Volume-Rollback oder historische Restorefrische. Der aktuelle
+[technische Gate-Stand](migration-readiness-current.md) trennt vorhandene NEW-V5-
+Installation von noch fehlender allgemeiner Altbestands-/WAL-/Cross-Inode-
+Übernahme und operativer Abnahme. Keine neue Mikrosuite oder GitHub-Workflow,
+kein geschützter Browser-/TLS-/Docker-/Produktivnachweis, keine Deploymentaktion.
+UI und README-Medien bleiben vollständig unverändert.
