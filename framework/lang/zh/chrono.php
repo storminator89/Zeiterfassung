@@ -255,4 +255,8 @@ return [
     'HOLIDAY_INVENTORY_YEARS_EMPTY' => '没有可识别的已存储年份。这不代表没有公共假日，也不代表数据没有错误。',
     'HOLIDAY_INVENTORY_YEAR_ROWS' => '%d年 · %d行已存储数据',
     'HOLIDAY_INVENTORY_UNASSIGNED_ROWS' => '有 %d 行已存储数据没有可识别的 0001 至 9999 年份前缀，无法通过年份选择查看。请管理员核对原始值；未进行年份分配或修复。',
+    'CORRECTION_REQUESTED_AT' => '申請提交時間（Europe/Berlin）',
+    'CORRECTION_DECIDED_AT' => '已保存決定時間',
+    'CORRECTION_WITHDRAWN_AT' => '已保存撤回時間',
+    'CORRECTION_TIME_UNAVAILABLE' => '時間無法讀取',
 ];

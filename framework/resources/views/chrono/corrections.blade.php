@@ -104,6 +104,9 @@
     @php($metadataPreview = $a['metadata_preview'] ?? null)
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <p class="text-sm font-semibold opacity-70 mb-2">#{{ $a['id'] }} · {{ $a['username'] }} · {{ ['pending' => 'Offen', 'approved' => 'Freigegeben', 'rejected' => 'Abgelehnt', 'withdrawn' => 'Zurückgenommen'][$a['status']] }}</p>
+        @if (isset($a['lifecycle']))
+        <p class="text-sm opacity-70 mb-3" data-correction-lifecycle>{{ $page->copy->text('CORRECTION_REQUESTED_AT') }}: {{ $a['lifecycle']['created'] ?? $page->copy->text('CORRECTION_TIME_UNAVAILABLE') }}@if ($a['lifecycle']['resolved_kind'] !== null) · {{ $page->copy->text($a['lifecycle']['resolved_kind'] === 'withdrawal' ? 'CORRECTION_WITHDRAWN_AT' : 'CORRECTION_DECIDED_AT') }}: {{ $a['lifecycle']['resolved'] ?? $page->copy->text('CORRECTION_TIME_UNAVAILABLE') }}@endif</p>
+        @endif
         @if ($metadataPreview !== null)
         <div class="text-sm my-3"><p class="font-semibold">Ort/Notiz-Antrag · keine Zeitänderung</p>
             @if ($metadataPreview['available'])

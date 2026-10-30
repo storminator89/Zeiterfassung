@@ -66,3 +66,26 @@ function chrono_correction_preview(array $request): array {
     }
     return ['before'=>$before['text'],'after'=>$after['text'],'difference'=>$difference,'proposed_usable'=>$after['state']==='completed'];
 }
+
+
+/** Selected stored lifecycle fields only; never a clock, duration or decision authority. */
+function chrono_correction_lifecycle(array $request): array {
+    $stamp=static function(mixed $value): ?string {
+        $epoch=chrono_correction_preview_integer($value);
+        if ($epoch===false) { return null; }
+        try {
+            $date=booking_local_date($epoch);
+            $year=$date->format('Y');
+            // No coerced epoch zero, expanded year or lossy sub-minute historical offset.
+            if (strlen($year)!==4 || $year==='0000' || $date->getOffset()%60!==0) { return null; }
+            return $date->format('Y-m-d\TH:i:sP');
+        } catch (Throwable) { return null; }
+    };
+    $kind=match ($request['status']??null) {
+        'approved','rejected'=>'decision',
+        'withdrawn'=>'withdrawal',
+        default=>null,
+    };
+    return ['created'=>$stamp($request['created_at']??null),'resolved_kind'=>$kind,
+        'resolved'=>$kind===null?null:$stamp($request['reviewed_at']??null)];
+}

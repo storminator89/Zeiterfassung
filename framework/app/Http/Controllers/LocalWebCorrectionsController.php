@@ -208,6 +208,7 @@ final class LocalWebCorrectionsController extends Controller
                 'end' => $preview['proposed_usable'] ? \attendance_local((int) $row['proposed_end']) : '',
                 'pause' => $preview['proposed_usable'] ? (int) $row['proposed_pause'] : null, 'reason' => $row['reason'],
                 'review_reason' => $row['review_reason'],
+                'lifecycle' => \chrono_correction_lifecycle($row),
                 // Selected time fields only; no original snapshot is passed to Blade.
                 'preview' => $preview,
                 'metadata_preview' => \correction_metadata_v1_preview($row),

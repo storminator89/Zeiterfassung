@@ -382,4 +382,8 @@ define('HOLIDAY_INVENTORY_YEARS_EMPTY', '没有可识别的已存储年份。这
 define('HOLIDAY_INVENTORY_YEAR_ROWS', '%d年 · %d行已存储数据');
 define('HOLIDAY_INVENTORY_UNASSIGNED_ROWS', '有 %d 行已存储数据没有可识别的 0001 至 9999 年份前缀，无法通过年份选择查看。请管理员核对原始值；未进行年份分配或修复。');
 
+define('CORRECTION_REQUESTED_AT', '申請提交時間（Europe/Berlin）');
+define('CORRECTION_DECIDED_AT', '已保存決定時間');
+define('CORRECTION_WITHDRAWN_AT', '已保存撤回時間');
+define('CORRECTION_TIME_UNAVAILABLE', '時間無法讀取');
 ?>
