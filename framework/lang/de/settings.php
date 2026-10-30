@@ -8,4 +8,8 @@ return [
     'new' => 'Neues Passwort (12–72 Bytes)',
     'confirm' => 'Neues Passwort bestätigen',
     'submit' => 'Passwort ändern und abmelden',
+    'sessions_title' => 'Bisherige Web-/API-Anmeldungen abmelden',
+    'sessions_contract' => 'Nur Ihr lokales Konto mit vorhandenem Bcrypt-Passwort: Nach bestätigter Aktion werden bisherige Websitzungen und API-Token bei ihrer nächsten geschützten Prüfung ungültig, auch diese Sitzung. Ihr Passwort bleibt gleich; eine neue Anmeldung ist damit weiter möglich. Bereits laufende Anfragen werden nicht rückwirkend abgebrochen. Keine Löschung einer Geräteliste, kein LDAP-/Terminal-PIN- oder Terminalgrant-Widerruf. Andere Einstellungen werden nicht gespeichert. Aktuelles Passwort höchstens 72 Bytes, ohne NUL; längere ältere Passwörter zuerst über den getrennten Passwortwechsel ändern.',
+    'sessions_confirm' => 'Ich möchte alle bisherigen Web-/API-Anmeldungen meines lokalen Kontos widerrufen und mich danach neu anmelden.',
+    'sessions_submit' => 'Anmeldungen widerrufen und abmelden',
 ];

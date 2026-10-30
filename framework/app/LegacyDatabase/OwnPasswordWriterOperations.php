@@ -13,6 +13,21 @@ trait OwnPasswordWriterOperations
     public function replaceOwnLocalPassword(int $actor, string $expectedRole,
         #[\SensitiveParameter] string $expectedVersion, #[\SensitiveParameter] string $nextHash): void
     {
+        $this->replaceOwnLocalPasswordOperation($actor, $expectedRole, $expectedVersion, $nextHash,
+            'settings.php: own local password change');
+    }
+
+    /** Same own CAS/authority as password replacement, but a fixed distinct audit purpose. */
+    public function revokeOwnLocalWebApiSessions(int $actor, string $expectedRole,
+        #[\SensitiveParameter] string $expectedVersion, #[\SensitiveParameter] string $nextHash): void
+    {
+        $this->replaceOwnLocalPasswordOperation($actor, $expectedRole, $expectedVersion, $nextHash,
+            'settings.php: revoke own local Web/API sessions');
+    }
+
+    private function replaceOwnLocalPasswordOperation(int $actor, string $expectedRole,
+        #[\SensitiveParameter] string $expectedVersion, #[\SensitiveParameter] string $nextHash, string $auditReason): void
+    {
         // This old-profile operation must never turn into a V5 compatibility bypass.
         if ($this->accountLifecycleV5) { throw new LogicException('Own password changes are not admitted for V5.'); }
         if (! in_array($expectedRole, ['user', 'supervisor', 'admin'], true)
@@ -34,12 +49,26 @@ trait OwnPasswordWriterOperations
                 $statement->bindValue(4, $current, PDO::PARAM_STR);
                 if (! $statement->execute() || $statement->rowCount() !== 1) { throw new RuntimeException('Own password update was not confirmed.'); }
             } finally { $statement->closeCursor(); }
-        }, fn (\Closure $transaction): mixed => $this->context->run('web:'.$actor, 'settings.php: own local password change', $transaction));
+        }, fn (\Closure $transaction): mixed => $this->context->run('web:'.$actor, $auditReason, $transaction));
     }
 
     /** Explicit V5 operation; the legacy method above still refuses this profile. */
     public function replaceOwnLocalPasswordForAccountLifecycle(AccountLifecycleAuthority $actor,
         #[\SensitiveParameter] string $nextHash): void
+    {
+        $this->replaceOwnLocalPasswordForAccountLifecycleOperation($actor, $nextHash,
+            'settings.php: own local password change');
+    }
+
+    public function revokeOwnLocalWebApiSessionsForAccountLifecycle(AccountLifecycleAuthority $actor,
+        #[\SensitiveParameter] string $nextHash): void
+    {
+        $this->replaceOwnLocalPasswordForAccountLifecycleOperation($actor, $nextHash,
+            'settings.php: revoke own local Web/API sessions');
+    }
+
+    private function replaceOwnLocalPasswordForAccountLifecycleOperation(AccountLifecycleAuthority $actor,
+        #[\SensitiveParameter] string $nextHash, string $auditReason): void
     {
         if (! $this->accountLifecycleV5 || $actor->source !== 'local'
             || ! in_array($actor->role, ['user', 'supervisor', 'admin'], true)
@@ -68,7 +97,7 @@ trait OwnPasswordWriterOperations
                 }
             } finally { $statement->closeCursor(); }
         }, fn (\Closure $transaction): mixed => $this->context->run('web:'.$actor->id,
-            'settings.php: own local password change', $transaction), lifecycleReady: true);
+            $auditReason, $transaction), lifecycleReady: true);
     }
 
 }

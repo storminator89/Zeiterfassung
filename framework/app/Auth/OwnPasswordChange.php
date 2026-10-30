@@ -105,6 +105,73 @@ final class OwnPasswordChange
         }
     }
 
+    /** Explicit fingerprint revocation, not a password change, recovery or device-PIN operation. */
+    public function revokeWebApiSessions(#[\SensitiveParameter] array $form, string $remoteAddress): void
+    {
+        $v5 = ($this->isV5)();
+        $guard = $this->auth->guard('web');
+        $user = $guard->user();
+        if (! $guard instanceof SessionGuard || ! $user instanceof LegacyUser || ! $user->exists || (int) $user->getKey() < 1) {
+            throw new AuthenticationException('Unauthenticated.', ['web']);
+        }
+        if ($user->auth_source !== 'local' || ! in_array($user->role, ['user', 'supervisor', 'admin'], true)) {
+            throw new AuthorizationException('Only your own local Web/API sessions can be revoked.');
+        }
+        $authority = $this->authority($user, $v5);
+        if (array_diff(array_keys($form), ['_token', 'csrf_token', 'session_action', 'current_password', 'session_confirmation']) !== []
+            || ($form['session_action'] ?? null) !== 'revoke_web_api'
+            || ($form['session_confirmation'] ?? null) !== '1'
+            || ! is_string($form['current_password'] ?? null)) {
+            throw new InvalidArgumentException('Abmeldefelder und ausdrückliche Bestätigung prüfen. Andere Einstellungen nicht mitsenden.');
+        }
+        $current = $form['current_password'];
+        // No new-password minimum is imposed on a valid older short password.
+        // Bcrypt cannot freshly hash >72 bytes/NUL losslessly; refuse, never truncate.
+        if ($current === '' || strlen($current) > 72 || str_contains($current, "\0") || $current === 'defaultpassword') {
+            throw new InvalidArgumentException('Aktuelles lokales Passwort unverändert eingeben (höchstens 72 Bytes, kein NUL). Für ältere längere Passwörter den getrennten Passwortwechsel verwenden.');
+        }
+        if ($this->config->get('hashing.driver') !== 'bcrypt') {
+            throw new LogicException('Own session revocation requires the configured bcrypt hasher.');
+        }
+        // Shared budget: switching between password change and revocation does
+        // not create a second password-guessing allowance.
+        $this->consumeBudget((int) $user->getKey(), $remoteAddress);
+        $oldHash = $user->getAuthPassword();
+        $oldInfo = is_string($oldHash) ? password_get_info($oldHash) : [];
+        $oldCost = $oldInfo['options']['cost'] ?? null;
+        if (($oldInfo['algoName'] ?? null) !== 'bcrypt' || ! is_int($oldCost) || $oldCost < 4 || $oldCost > 31) {
+            throw new InvalidArgumentException('Diese Abmeldung unterstützt vorhandene Bcrypt-Passwörter. Für andere gespeicherte Formate den getrennten Passwortwechsel verwenden.');
+        }
+        $configuredCost = filter_var($this->config->get('hashing.bcrypt.rounds'), FILTER_VALIDATE_INT,
+            ['options' => ['min_range' => 4, 'max_range' => 31]]);
+        if ($configuredCost === false) { throw new LogicException('A supported configured bcrypt cost is required.'); }
+        if (! $this->hasher->check($current, $oldHash)) {
+            throw new InvalidArgumentException('Aktuelles lokales Passwort und Abmeldebestätigung prüfen.');
+        }
+        // Always make a new salted hash, even when current cost is up to date.
+        // Authentication still accepts the SAME password; old fingerprint-bound
+        // Websessions and JWTs fail their next existing protected check.
+        $cost = max($oldCost, $configuredCost); // Never downgrade a stronger existing hash for logout.
+        $nextHash = $this->hasher->make($current, ['rounds' => $cost]);
+        $nextInfo = password_get_info($nextHash);
+        if (hash_equals($oldHash, $nextHash) || ($nextInfo['algoName'] ?? null) !== 'bcrypt'
+            || ($nextInfo['options']['cost'] ?? null) !== $cost) {
+            throw new LogicException('A fresh non-downgraded password fingerprint is required.');
+        }
+        $writer = ($this->writer)();
+        if (! $writer instanceof AttendanceWriter) { throw new LogicException('An admitted operation-scoped writer is required.'); }
+        try {
+            if ($authority !== null) {
+                $writer->revokeOwnLocalWebApiSessionsForAccountLifecycle($authority, $nextHash);
+            } else {
+                $writer->revokeOwnLocalWebApiSessions((int) $user->getKey(), $user->role, hash('sha256', $oldHash), $nextHash);
+            }
+        } catch (\AttendanceError $error) {
+            if ($error->status === 401) { throw new AuthenticationException('Unauthenticated.', ['web']); }
+            throw $error;
+        }
+    }
+
     /** Profile and refreshed model are trusted composition, never form/session authority fields. */
     private function authority(LegacyUser $user, bool $v5): ?AccountLifecycleAuthority
     {
