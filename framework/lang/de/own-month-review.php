@@ -1,6 +1,6 @@
 <?php
 return [
-    'title' => 'Eigene offene Vorgänge vor der Monatsprüfung',
+    'title' => 'Eigene Vorgänge vor der Monatsprüfung',
     'month' => 'Monat',
     'check' => 'Eigenen Stand prüfen',
     'invalid' => 'Bitte einen gültigen Monat wählen. Es wurde kein anderer Zeitraum geprüft.',
@@ -12,6 +12,8 @@ return [
     'samples' => 'Höchstens fünf Beispiele aus diesem eigenen Lesestand:',
     'kind_open' => 'Offene Buchung',
     'kind_request' => 'Offener Antrag',
+    'closed_counts' => 'Geschlossene Buchungen mit Prüfhinweis: %1$d mit Start im Monat · %2$d Startdatum unklar. Datums-/Pausenprüfung, kein vollständiger Qualitätsnachweis.',
+    'kind_closed' => 'Geschlossene Buchung mit Prüfhinweis',
     'selected' => 'Startbezug im Monat',
     'earlier' => 'früherer offener Start',
     'unclear' => 'zeitlich unklar',

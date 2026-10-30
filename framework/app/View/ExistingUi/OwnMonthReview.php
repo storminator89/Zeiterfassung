@@ -28,18 +28,30 @@ final readonly class OwnMonthReview
             if (!is_int($value) || $value<0) { throw new \UnexpectedValueException('Invalid own month count.'); }
             $counts[$key]=$value;
         }
+        // Absent on older optional reader snapshots: do not invent a zero/clean check.
+        $closedCounts=null;
+        if (array_key_exists('closed_counts',$snapshot)) {
+            if (!is_array($snapshot['closed_counts'])) { throw new \UnexpectedValueException('Invalid closed month counts.'); }
+            $closedCounts=[];
+            foreach (['selected','unclear'] as $key) {
+                $value=$snapshot['closed_counts'][$key]??null;
+                if (!is_int($value) || $value<0) { throw new \UnexpectedValueException('Invalid closed month count.'); }
+                $closedCounts[$key]=$value;
+            }
+        }
         $samples=[];
         foreach ($snapshot['samples'] as $row) {
-            if (!is_array($row) || !in_array($row['kind']??null,['open','request'],true)
+            if (!is_array($row) || !in_array($row['kind']??null,['open','request','closed'],true)
                 || !in_array($row['relation']??null,['selected','earlier','unclear'],true)
-                || ($row['kind']==='request' && $row['relation']==='earlier')
+                || (in_array($row['kind'],['request','closed'],true) && $row['relation']==='earlier')
+                || ($row['kind']==='closed' && $closedCounts===null)
                 || !is_string($row['id']??null) || preg_match('/\A[1-9][0-9]*\z/',$row['id'])!==1
                 || filter_var($row['id'],FILTER_VALIDATE_INT,['options'=>['min_range'=>1]])===false) {
                 throw new \UnexpectedValueException('Invalid own month row.');
             }
             $samples[]=['kind'=>$row['kind'],'id'=>$row['id'],'relation'=>$row['relation']];
         }
-        $this->result=['month'=>$month,'loaded_at'=>$snapshot['loaded_at'],'counts'=>$counts,'samples'=>$samples,'limited'=>$snapshot['limited']];
+        $this->result=['month'=>$month,'loaded_at'=>$snapshot['loaded_at'],'counts'=>$counts,'closed_counts'=>$closedCounts,'samples'=>$samples,'limited'=>$snapshot['limited']];
     }
 
     public function text(string $key): string

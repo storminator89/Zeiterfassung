@@ -56,6 +56,19 @@ function chrono_own_month_review_request(array $row,string $month): string
     return 'outside';
 }
 
+/** Closed-row hints reuse existing strict timestamp diagnosis and canonical pause/duration checks. */
+function chrono_own_month_review_closed_relation(array $row,string $month): ?string
+{
+    $day=chrono_own_month_review_day($row['startzeit']??null);
+    if ($day===null) { return 'unclear'; }
+    if (substr($day,0,7)!==$month) { return null; }
+    // Oversized pause input is unassessed, not silently truncated into a valid number.
+    if (legacy_timestamp_assessment($row['endzeit']??null)['category']!==null
+        || (int)($row['pause_bounded']??1)!==1
+        || report_record_calculation($row)['status']==='invalid') { return 'selected'; }
+    return null;
+}
+
 /** Caller already owns the authenticated read snapshot; no owner/query/role from a form. */
 function chrono_own_month_review_snapshot(PDO $db,int $owner,string $month,DateTimeImmutable $loaded): array
 {
@@ -92,8 +105,26 @@ function chrono_own_month_review_snapshot(PDO $db,int $owner,string $month,DateT
             if (count($samples)<5) { $samples[]=['kind'=>'request','id'=>$row['id'],'relation'=>$relation]; }
         }
     } finally { $s->closeCursor(); }
+    // Closed rows were absent from the original open-item precheck. Stream only
+    // bounded diagnostic fields; retain no originals, notes, absence kinds or error text.
+    $closedCounts=['selected'=>0,'unclear'=>0];
+    $s=$db->prepare("SELECT CAST(id AS TEXT) AS id,
+        CASE WHEN typeof(startzeit)='text' AND length(CAST(startzeit AS BLOB))<=25 THEN startzeit ELSE NULL END AS startzeit,
+        CASE WHEN typeof(endzeit)='text' AND length(CAST(endzeit AS BLOB))<=25 THEN endzeit ELSE NULL END AS endzeit,
+        CASE WHEN pause IS NULL OR length(CAST(pause AS BLOB))<=20 THEN pause ELSE NULL END AS pause,
+        CASE WHEN pause IS NULL OR length(CAST(pause AS BLOB))<=20 THEN 1 ELSE 0 END AS pause_bounded
+        FROM zeiterfassung WHERE user_id=? AND endzeit IS NOT NULL AND endzeit<>'' ORDER BY id DESC");
+    try {
+        $s->execute([$owner]);
+        while (($row=$s->fetch(PDO::FETCH_ASSOC))!==false) {
+            $relation=chrono_own_month_review_closed_relation($row,$month);
+            if ($relation===null) { continue; }
+            $closedCounts[$relation]++;$relevant++;
+            if (count($samples)<5) { $samples[]=['kind'=>'closed','id'=>$row['id'],'relation'=>$relation]; }
+        }
+    } finally { $s->closeCursor(); }
     return ['month'=>$month,'loaded_at'=>$loaded->setTimezone(new DateTimeZone('Europe/Berlin'))->format(DateTimeInterface::ATOM),
-        'counts'=>$counts,'samples'=>$samples,'limited'=>$relevant>count($samples)];
+        'counts'=>$counts,'closed_counts'=>$closedCounts,'samples'=>$samples,'limited'=>$relevant>count($samples)];
 }
 
 /** Native existing session actor/version only; reads and authority share this owned snapshot. */

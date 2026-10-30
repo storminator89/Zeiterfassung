@@ -26,9 +26,9 @@ Ansicht noch versteckter Read. DE/EN/ZH-Texte und vorhandene Details-/Card-/Link
 Klassen; kein Redesign. Bestehende Buchungs-/Abwesenheitsformulare, Pending-/
 Status-/Retry-Semantik, History-/Export-/Korrekturwege bleiben unverändert.
 
-Die kompakte Ausgabe enthält zwei Zählzeilen, höchstens fünf eigene Beispiele,
+Die kompakte Ausgabe enthält die bisherigen zwei und optional eine dritte Zählzeile, höchstens fünf eigene Beispiele,
 Lesestempel und gewöhnliche Links auf vorhandene Listen/Korrektur. Beispiele
-sind offene Buchungen in absteigender ID-Reihenfolge, dann Pending-Anträge,
+sind offene Buchungen in absteigender ID-Reihenfolge, dann Pending-Anträge und anschließend geschlossene Prüfhinweise,
 insgesamt höchstens fünf. Bei mehr Treffern wird die Begrenzung ausdrücklich
 benannt. Jedes Antragsbeispiel verlinkt seine exakte ID über den bereits
 bestehenden Queue-Lookup (`request_status=pending&request_id=...`), ohne JS-Zahl-
@@ -74,8 +74,7 @@ Die unveränderte Starttagkonvention ist ausdrücklich **keine** Ermittlung alle
 betroffenen Monate: Nachtintervalle werden nicht aufgeteilt, Enddaten oder
 Pausenlagen nicht ergänzt. Frühere offene und zeitlich unklare Fälle gehören zu
 keinem bestätigt ausgewählten Monat und bleiben getrennt. Null Treffer ergibt
-keinen grünen „abschlussbereit“- oder Qualitätsstatus. Geschlossene fehlerhafte
-Zeilen, fehlende Solltage, andere Konten/Teams, vollständige Bestands-/Ereignis-
+keinen grünen „abschlussbereit“- oder Qualitätsstatus. Fehlende Solltage, andere Konten/Teams, vollständige Bestands-/Ereignis-
 integrität und Abschlussanforderungen sind nicht Bestandteil dieser Vorprüfung.
 
 ## Eigene Autorität und Datenminimierung
@@ -94,13 +93,13 @@ nicht verfügbar angezeigt, nie als leere/saubere Monatsprüfung. Die Karte ist
 ein eigener Snapshot, keine Behauptung atomarer Gesamtseite mit den bisherigen
 Statistik-/Status-/Open-Review-Reads.
 
-Beide SQL-Reads binden ausschließlich den vertrauenswürdigen Owner. Aktive Zeilen
+Alle drei SQL-Reads binden ausschließlich den vertrauenswürdigen Owner. Zeilen
 werden gestreamt; Zähler und höchstens fünf IDs bleiben übrig. Rohwerte werden
 vor PHP-Materialisierung begrenzt (Zeitform, Integerfelder, maximal 64-KiB-Original);
 zu große Werte bleiben unklar, nicht abgeschnittene gültige Daten. Keine Gründe,
 Notizen, Orte, Namen, Healtharten, Owner-/Reviewer-/Credential-/Generationsfelder
 werden zurückgegeben. Die minimale DTO übernimmt nur Monat, Lesestempel, fünf
-nichtnegative Zähler, begrenzte exakte ID-Strings/Art/Bezug und Limitflag; unbekannte
+nichtnegative bisherige Zähler und optional zwei getrennte geschlossene Zähler, begrenzte exakte ID-Strings/Art/Bezug und Limitflag; unbekannte
 Felder fallen weg. Native escaped und Blade-escaped Ausgabe, keine JS-Zahlrundung.
 
 ## Grober Nachweis und Grenzen
@@ -158,3 +157,65 @@ Schema, Change-Zähler, Transaktionen, Session und Zeitzone sind geprüft.
 Dies ist ein Navigations-/Komponentennachweis, keine tatsächliche Queue-
 Entscheidung oder vollständige Browser-/Auth-/CSRF-/HTTP-/Betriebsabnahme.
 Keine neuen fachlichen Zustände, Writer, Testsuite, manuelle CI oder Bereitstellung.
+
+
+## Geschlossene Datums-/Pausenprüfhinweise — weiterer Teilumfang #55/#44
+
+Quellbasis tatsächlicher Main `bb980b1f2af4d34aab8fa5d40f34c70103f18f90`,
+Baum `9104f0851fc3e6b1838e170bf890317bbfaa3c8a`. Bisher waren geschlossene
+Bestandszeilen ausdrücklich nicht Bestandteil der eigenen Monatsvorprüfung:
+Eine Person konnte dort keine Treffer sehen, obwohl die eigene Liste bekannte
+Datums-/Pausenprobleme enthielt. Der zusätzliche reine Read ergänzt jetzt zwei
+getrennte `closed_counts` und bis zur bisherigen Gesamtgrenze fünf Beispiele:
+Prüfhinweis mit eindeutigem Berliner Start im angefragten Monat und geschlossener
+Eintrag mit nicht verlässlich bestimmbarer Startzuordnung. Bekannte Starts
+außerhalb des Monats bleiben außerhalb; kein Enddatum verteilt eine Nachtschicht
+auf andere Monate. Ein unklarer Start hat weiterhin keinen bestätigten Monatsbezug.
+
+Die ursprünglichen offenen/Pending-Reads, ihre fünf Zähler und ihre priorisierten
+Beispiele bleiben unverändert. Anschließend liest ein fester ownergebundener SELECT
+nur geschlossene Zeilen (`endzeit` weder NULL noch leer), mit auf 25 Bytes
+begrenzten Textzeitfeldern, höchstens 20 Bytes Pause und einem internen
+Pause-Prüfbarkeitsflag. Zeilen werden gestreamt. Nur Zähler, exakte eigene ID,
+feste Art `closed` und Startbezug bleiben im DTO; keine Rohzeit/Pause/Fehlertexte,
+Notiz, Art der Abwesenheit, Namen oder Personendaten kommen hinzu.
+
+Kein zweiter Zeitparser: `legacy_timestamp_assessment`, der vorhandene strikte
+Starttagshelfer und `report_record_calculation` prüfen nicht eindeutige/ungültige
+Zeitformen, Endreihenfolge sowie ungültige/negative/überlange Pausen. Ein nicht
+begrenzt prüfbarer Pausenwert heißt **Prüfhinweis**, nicht bestätigter Fehler oder
+Nullpause. Gültige normale/nullpausige und Null-Minuten-Zeilen erzeugen keinen
+neuen Hinweis. Offene Zeilen bleiben ausschließlich im vorhandenen Open-Read.
+Keine neue Überlappungs-, Soll-/Saldo-/Integritäts-, Urlaubs- oder Abschlussregel.
+
+Die vorhandene Native-/Laravel-Karte zeigt dieselbe dritte Zählzeile in DE/EN/ZH
+und führt geschlossene Beispiele über denselben bisherigen `record_id`-Link zu
+Korrektur/Storno. Weder Antrag noch Storno wird automatisch ausgelöst. Fehlende
+neue DTO-Felder eines älteren optionalen Readers bleiben unbekannt: keine neue
+Zählzeile und kein erfundener Null-/Sauberkeitsnachweis. Leermeldung berücksichtigt
+alle tatsächlich gelieferten Kategorien, bestätigt aber weiterhin keine Qualität
+oder Abschlussreife. Leser-/Controller-/Home-/Auth-/Status-/Versions-/Generations-
+Gates, Routen, Snapshotgrenzen und alle schreibenden Pfade bleiben unverändert.
+
+Grober PHP 8.5.12 / SQLite 3.46.1 / Laravel 13.38.0 Memory-Nachweis führt den
+bestehenden achtphasigen Helper/Reader/Controller/DTO/Native-/Blade-Journey
+unverändert fort. Zusätzlicher ursprünglicher-Schema-Abschnitt reproduziert die
+bisher ausgelassenen geschlossenen Fälle, bekannte/unklare Monatsstarts,
+DST/Offset/Nacht/außerhalb/offene/valide Nullfälle, begrenzte Rohwerte und große
+exakte ID; eigene User-/Admin-/Supervisorgrenzen, alter DTO ohne neue Nullbehauptung,
+Native-/kompilierte Blade-Ausgabe in drei Sprachen sowie Source/Schema/Audit/
+Änderungszähler/query_only/Transaktionen/Session/Zeitzone werden geprüft.
+Notwendige PHP-/kompilierte Blade-Syntax und Vollbaum-Erhaltung separat geprüft.
+Kein App-/Bootstrap-/echter Auth-/CSRF-/HTTP-/Browser-/Layout-/Runtime-/V5-/
+Großbestands-/Konkurrenz-/Produktivnachweis, keine realen Daten/Konten/Credentials/
+Schlüssel/Dateidatenbank, neue Testsuite/manuelle CI, Aktivierung oder Deployment.
+#55 und #44 bleiben teilweise/offen; keine Reparatur, Mapping, Abschluss-/Payroll-
+oder vollständige Qualitätsabnahme. Browserabnahme bleibt beim Nutzer.
+
+Ein anfänglicher neuer Harness versuchte BLOB-Zeitfelder in der ursprünglichen
+Audit-Fixture anzulegen; deren unveränderter JSON-Audittrigger verweigerte das.
+Nur die nicht repräsentierbare Fixture wurde entfernt, weder Trigger noch
+Produktzulassung abgeschwächt. Ein zunächst numerisch wirkender überlanger
+Pausentext wurde außerdem von SQLite zu INTEGER 0 normalisiert; der beabsichtigte
+überlange TEXT-Fall erhielt deshalb einen nichtnumerischen Fixturepräfix. Dies
+ist kein Nachweis einer realen Datenmigration oder Zulassung beschädigter Quellen.
