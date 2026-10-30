@@ -111,7 +111,7 @@ final class LegacyApiReadController
         foreach (['start_date', 'end_date'] as $field) {
             // Shape only, as before: not date/calendar/timezone normalization.
             if (isset($query[$field]) && $this->validation->make([$field => $query[$field]], [
-                $field => ['bail', 'required', 'string', 'regex:/^\d{4}-\d{2}-\d{2}$/'],
+                $field => ['bail', 'required', 'string', 'regex:/\A\d{4}-\d{2}-\d{2}\z/'],
             ])->fails()) {
                 return LegacyApiResponse::json(['success' => false, 'message' => 'Invalid '.$field.' format. Use YYYY-MM-DD'], 400);
             }
