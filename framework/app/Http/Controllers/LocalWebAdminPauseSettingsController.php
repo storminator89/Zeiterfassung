@@ -8,6 +8,8 @@ use App\Chrono\LocalWebApiManagement;
 use App\Api\Management\ApiPolicyChange;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Chrono\DepartmentIntegrityReads;
+use App\Chrono\AdminRuntimeObservationReads;
+use App\View\ExistingUi\RuntimeObservation;
 use App\Chrono\LocalWebAccountLifecycle;
 use App\Chrono\LocalWebLdapSync;
 use App\Chrono\LocalWebLdapSessionRevocations;
@@ -562,6 +564,32 @@ final class LocalWebAdminPauseSettingsController extends Controller
                 $departmentIntegrity = null;
             }
         }
+        $runtimeObservationSnapshot = null;
+        $runtimeObservationRequested = false;
+        // Preserve the exact explicit selector, not middleware-trimmed request values.
+        parse_str((string) $request->server->get('QUERY_STRING', ''), $runtimeQuery);
+        if ($request->isMethod('GET') && (array_key_exists('runtime_observation', $runtimeQuery)
+            || array_key_exists('runtime_terminal', $runtimeQuery))) {
+            if (! $localSecurityControls) {
+                throw new AuthorizationException('Nur lokale Administration darf Betriebsbeobachtungen lesen.');
+            }
+            if (($runtimeQuery['runtime_observation'] ?? null) !== '1'
+                || (array_key_exists('runtime_terminal', $runtimeQuery) && $runtimeQuery['runtime_terminal'] !== '1')) {
+                return new Response('Ungültige Beobachtungsauswahl.', 400,
+                    ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
+            }
+            $runtimeObservationRequested = true;
+            try {
+                if ($this->reads instanceof AdminRuntimeObservationReads) {
+                    $runtimeObservationSnapshot = $this->reads->adminRuntimeObservation(
+                        array_key_exists('runtime_terminal', $runtimeQuery));
+                }
+            } catch (AuthenticationException|AuthorizationException $error) {
+                throw $error; // Never show observations after losing current local-Admin authority.
+            } catch (Throwable) {
+                $runtimeObservationSnapshot = null; // Unknown, never an empty or healthy result.
+            }
+        }
         // Business readers reload current role/source/version/generation before
         // returning rows. Sensitive local readers are not called for LDAP Admins.
         $rules = $this->reads->adminPauseSettings();
@@ -661,7 +689,14 @@ final class LocalWebAdminPauseSettingsController extends Controller
         $request->session()->put('lang', $language);
         $copy = new Copy($language);
 
+        $runtimeObservation = null;
+        if ($localSecurityControls && ($runtimeObservationRequested || $this->reads instanceof AdminRuntimeObservationReads)) {
+            try { $runtimeObservation = new RuntimeObservation($runtimeObservationSnapshot, $language, $runtimeObservationRequested); }
+            catch (Throwable) { $runtimeObservation = new RuntimeObservation(null, $language, $runtimeObservationRequested); }
+        }
+
         $response = response()->view('chrono.admin-pause-settings', [
+            'runtimeObservation' => $runtimeObservation,
             'managedUsersEnabled' => $localSecurityControls && $this->userMutationsEnabled(),
             'apiManagement' => $apiManagement, 'apiManagementUnavailable' => $apiManagementUnavailable,
             'holidayRefillReceipt' => $holidayRefillReceipt,
@@ -689,7 +724,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
                 departmentIntegrity: $departmentIntegrity,
                 departmentIntegrityRequested: $departmentIntegrityRequested,
             ),
-        ], 200, ['Cache-Control' => 'no-store']);
+        ], $runtimeObservationRequested && $runtimeObservation?->measurements === null ? 503 : 200, ['Cache-Control' => 'no-store']);
         if ($nonce !== null) {
             foreach (AdminCredentialDocument::headers($nonce) as $name => $value) {
                 // Multiple CSPs intersect: never replace an existing stricter one.
