@@ -126,10 +126,10 @@
 @if ($settings->saved)
     <div id="successModal" class="modal modal-open">
         <div class="modal-box">
-            <h3 class="font-bold text-lg">Erfolg!</h3>
-            <p class="py-4">Einstellungen erfolgreich aktualisiert!</p>
+            <h3 class="font-bold text-lg">{{ $page->copy->text('SETTINGS_SAVE_SUCCESS_TITLE') }}</h3>
+            <p class="py-4">{{ $page->copy->text('SETTINGS_SAVE_SUCCESS_MESSAGE') }}</p>
             <div class="modal-action">
-                <button onclick="closeModal()" class="btn btn-primary">Schließen</button>
+                <button onclick="closeModal()" class="btn btn-primary">{{ $page->copy->text('BUTTON_CLOSE') }}</button>
             </div>
         </div>
     </div>

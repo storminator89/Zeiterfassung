@@ -397,4 +397,6 @@ define('CORRECTION_REQUESTED_AT', 'Antrag gestellt (Europe/Berlin)');
 define('CORRECTION_DECIDED_AT', 'Entscheidung gespeichert');
 define('CORRECTION_WITHDRAWN_AT', 'Rücknahme gespeichert');
 define('CORRECTION_TIME_UNAVAILABLE', 'Zeitpunkt nicht auswertbar');
+define('SETTINGS_SAVE_SUCCESS_TITLE', 'Erfolg!');
+define('SETTINGS_SAVE_SUCCESS_MESSAGE', 'Einstellungen erfolgreich aktualisiert!');
 ?>

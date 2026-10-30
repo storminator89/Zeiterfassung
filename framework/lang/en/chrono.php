@@ -262,4 +262,6 @@ return [
     'CORRECTION_DECIDED_AT' => 'Decision stored',
     'CORRECTION_WITHDRAWN_AT' => 'Withdrawal stored',
     'CORRECTION_TIME_UNAVAILABLE' => 'Time unavailable',
+    'SETTINGS_SAVE_SUCCESS_TITLE' => 'Success!',
+    'SETTINGS_SAVE_SUCCESS_MESSAGE' => 'Settings updated successfully!',
 ];
