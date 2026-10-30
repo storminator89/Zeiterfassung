@@ -219,3 +219,66 @@ Produktzulassung abgeschwächt. Ein zunächst numerisch wirkender überlanger
 Pausentext wurde außerdem von SQLite zu INTEGER 0 normalisiert; der beabsichtigte
 überlange TEXT-Fall erhielt deshalb einen nichtnumerischen Fixturepräfix. Dies
 ist kein Nachweis einer realen Datenmigration oder Zulassung beschädigter Quellen.
+
+## Complete finding navigation in the existing own panel — partial #44
+
+Prepared on actual Main `5b9edd61b60a59f2108a787ffac3bb0ddc03b168`, tree
+`bc38c19eeccc256b80bb71a4f1008bc4f843f97f`. The five examples can hide entire
+categories behind earlier open rows. A deliberate **Alle eigenen Befunde ansehen**
+link now exposes every finding counted by this same precheck, at most20 minimal
+IDs/kind/start-relation per page, in the same Native/Laravel card. No new page,
+category selector, subject selector, correction-queue or time-record filter is
+introduced. This is not the separately held #50 filter packet.
+
+`month_review_page` accepts only a canonical positive integer within the safe
+fixed20 offset range. Malformed input does not invoke the month/finding reader or
+substitute today's month. Counts, old five examples and a finding page are streamed
+in one current owner-bound read snapshot using the **unchanged three SELECTs and
+existing classifiers**. No raw times, notes, original JSON, names, account fields or
+absence kind are added. The existing open → pending → closed-hint group order and
+within-group database ordering remain unchanged; text ID aliases are not a shared
+chronological sequence. A page is a presentation window, not a narrower check.
+
+The old response is unchanged without the optional page argument. The new optional
+`OwnMonthReviewFindingReads` capability leaves the original interfaces intact.
+An old optional reader can still show five examples but cannot advertise complete
+navigation; an explicit findings request to it is unavailable, never a disguised
+five-row complete list. Current member/Admin/LDAP-supervisor reads all remain own-only.
+Native password-version and Laravel fresh canonical-account/snapshot boundaries
+remain unchanged. Failed/protected reads never become an empty/clean result.
+
+Existing exact correction/storno and pending-request links are reused. First/previous/
+next links preserve only the canonical month and page, not arbitrary query selectors.
+A shifted/out-of-range page has explicit guidance back to the first page, not an
+all-clear. Every navigation is a fresh live read: changes can shift pages; this is
+**not** stable export pagination, a frozen report, full quality proof, period lock,
+closing approval, affected-period rule, payroll/saldo calculation or write authority.
+No existing form, writer, workflow, scope, schema, API, route/provider, runtime flag,
+security configuration or deployment changes.
+
+### Coarse evidence and limits
+
+PHP8.5.12 / SQLite3.46.1 / Laravel13.38.0 with the unchanged dependency lock:
+one ten-phase original-schema anonymous Memory journey through actual helper,
+Reader, Controller, DTO, compiled Blade and Native source ingress/partial. An81-finding
+mixed own fixture with more than five open rows exposes all three categories exactly
+once across five pages, at most20 IDs each; exact large IDs, all DE/EN/ZH copies,
+known unclarity, own scopes, invalid/maximum page, fresh removal/out-of-range,
+missing/failed optional capability, authority loss and owned/borrowed transaction
+cases are checked. Source/schema/audit/change counters and session/timezone stay
+unchanged during reads; the attendance writer is a throwing stub. The separate old
+nine-phase precheck journey also passes, and old default helper output matches the
+executed pre-change helper exactly. Necessary PHP/Blade syntax, diff and full-tree
+preservation/inverse are separate checks. One first harness expectation incorrectly
+assumed numeric ordering of an existing CAST(id AS TEXT) alias; only the expectation
+and explanatory copy were corrected, not the original SQL/classification/order.
+
+The DTO rejects unusable/duplicate IDs and inconsistent page/count metadata. The
+implementation's first local draft was corrected before review to assign its
+readonly DTO result once rather than mutating a readonly array. No repository test
+suite, workflow changes, manual CI dispatch or GitHub Approval review. Fake
+RequestGuard, inert layout and ArraySession remain deliberate harness limits: no
+full App/admission/V5/session middleware/HTTP/CSRF/browser/layout/load/concurrency,
+real account/credential/key/fileDB, full auth, closure/payroll/export or production
+acceptance. #44 remains partial/open. Evidence:
+`/tmp/chrono-own-month-findings-main5b9-support/`.
