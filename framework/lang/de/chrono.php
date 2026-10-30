@@ -256,4 +256,5 @@ return [
     'HOLIDAY_INVENTORY_YEARS_LIMITED' => 'Weitere gespeicherte Jahrgänge sind nicht aufgelistet; sie können weiterhin über die Jahreswahl geprüft werden.',
     'HOLIDAY_INVENTORY_YEARS_EMPTY' => 'Keine erkannten Jahrgänge gespeichert. Das bedeutet weder keine Feiertage noch einen fehlerfreien Bestand.',
     'HOLIDAY_INVENTORY_YEAR_ROWS' => '%d · %d gespeicherte Zeilen',
+    'HOLIDAY_INVENTORY_UNASSIGNED_ROWS' => '%d gespeicherte Zeilen ohne erkennbare Jahreskennung von 0001 bis 9999 fehlen in der Jahreswahl. Verwaltung muss die Originalwerte prüfen; nichts wurde zugeordnet oder repariert.',
 ];

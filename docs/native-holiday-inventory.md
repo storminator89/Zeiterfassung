@@ -88,3 +88,37 @@ Produktiv-, Last- oder Konkurrenznachweis. Keine realen Daten/Konten/Credentials
 Schlüssel, Dateidatenbank, Aktivierung, neue Testsuite oder manueller CI-Start.
 #41 bleibt teilweise/offen; die gespeicherten Jahrgänge sind keine abgenommene
 regionale Kalenderdatenbank und reparieren keine fehlenden Daten.
+
+## Nonassignable year prefixes — partial #41, no repair
+
+Source basis: actual Main `d213531db6e93a07a2d884050a370edbd6899ed6`, tree
+`8cfef884fd044b6d0f661aa6c710361ee243ec60`. The stored-year list omitted rows
+with no recognized text `YYYY-` prefix from 0001 through 9999. A new aggregate
+`unassigned_year_rows` counts exactly those omitted rows, independently of the
+selected year and the existing 20-year list limit. If positive, a localized
+notice in the same inventory panel asks Administration to inspect the originals.
+Only a count is shown, not the malformed values or a guessed year. NULL/BLOB and
+0000 prefixes are included; an invalid date inside a recognized year remains in
+that year's existing count and date diagnostics, not this separate count.
+
+The fixed parameter-free COUNT is SELECT-only. No original, year assignment,
+repair, source fetch, calculation, writer, schema, permission, route or Runtime
+changes. Both previous queries and every prior DTO value remain unchanged.
+Native still has its historical bootstrap importer and separate non-atomic
+reads; this does not certify a coherent snapshot there. Laravel still uses its
+existing authenticated snapshot and omits the notice for older optional DTOs.
+Zero is not a clean-data or calendar-completeness claim. #41 remains open.
+
+Coarse anonymous PHP 8.5.12 / SQLite 3.46.1 / Laravel 13.38.0 Memory journey:
+actual helper, original table constraints plus a deliberately permissive
+NULL-type fixture, baseline omission, recognized/nonrecognized prefixes,
+0001/9999, malformed selected-year dates, BLOB/NULL, more than 20 years,
+selected-year parity, query_only/repeated reads, no source/schema/counter change,
+and read-error propagation. Actual Native and compiled Blade fragments in
+DE/EN/ZH show exact count-only notices, absent for zero or older optional DTOs;
+existing year links and German Native/Blade content are unchanged apart from the
+notice. Necessary PHP/compiled-Blade lint and diffcheck pass. No new repository
+testsuite or manual CI dispatch. No real data/accounts/credentials/keys/file DB,
+App/bootstrap/auth/CSRF/HTTP/browser/layout/production/concurrency/performance,
+positive Runtime admission or deployment acceptance. Browser acceptance remains
+with the user.

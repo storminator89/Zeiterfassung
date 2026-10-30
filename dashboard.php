@@ -211,6 +211,7 @@ function calculateRemainingHours($workedHours, $expectedHours)
                 </ul>
                 <?php endif; ?>
             </details>
+            <?php if ($holidayInventory['unassigned_year_rows'] > 0): ?><p class="mt-2" role="status"><?= h(sprintf(HOLIDAY_INVENTORY_UNASSIGNED_ROWS, $holidayInventory['unassigned_year_rows'])) ?></p><?php endif; ?>
             <?php if ($holidayYear['invalid']): ?><p class="mt-2" role="status"><?= h(HOLIDAY_INVENTORY_INVALID_YEAR) ?></p><?php endif; ?>
             <p class="mt-3 font-semibold"><?= h(sprintf(HOLIDAY_INVENTORY_COUNT, count($holidayInventory['rows']))) ?></p>
             <?php if ($holidayInventory['truncated'] || $holidayInventory['invalid_dates']): ?><p class="mt-2"><?= h(HOLIDAY_INVENTORY_DATA_ISSUE) ?></p><?php endif; ?>

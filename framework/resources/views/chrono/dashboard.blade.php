@@ -126,6 +126,7 @@
                 @endif
             </details>
             @endif
+            @if (($holidayInventory['unassigned_year_rows'] ?? 0) > 0)<p class="mt-2" role="status">{{ sprintf($page->copy->text('HOLIDAY_INVENTORY_UNASSIGNED_ROWS'), $holidayInventory['unassigned_year_rows']) }}</p>@endif
             @if ($holidayInventory['selection_invalid'])<p class="mt-2" role="status">{{ $page->copy->text('HOLIDAY_INVENTORY_INVALID_YEAR') }}</p>@endif
             <p class="mt-3 font-semibold">{{ sprintf($page->copy->text('HOLIDAY_INVENTORY_COUNT'), count($holidayInventory['rows'])) }}</p>
             @if ($holidayInventory['truncated'] || $holidayInventory['invalid_dates'])<p class="mt-2">{{ $page->copy->text('HOLIDAY_INVENTORY_DATA_ISSUE') }}</p>@endif
