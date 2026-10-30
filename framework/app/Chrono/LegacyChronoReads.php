@@ -202,12 +202,18 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
                 }
             }
 
+            // The existing header needs the current exact binding even when
+            // the browsed calendar week has no events. Keep it in this snapshot.
+            $status = attendance_status($pdo, $user);
+
             return [
                 'current_date' => $today, 'range' => $range, 'records' => $calendarRecords,
                 'holidays' => $holidays, 'statistics' => $statistics,
                 'invalid_records' => $invalidRecords, 'absence_conflicts' => $conflicts,
                 'report_finality' => $finality, 'report_incomplete' => $incomplete,
-                'status' => ['success' => true, 'report_finality' => $finality] + attendance_status($pdo, $user),
+                'status' => ['success' => true, 'report_finality' => $finality,
+                    'expected_record' => $status['record_id'] === null ? null : (string) $status['record_id'],
+                ] + $status,
             ];
         });
     }
