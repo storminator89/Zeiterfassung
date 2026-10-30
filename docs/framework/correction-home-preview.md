@@ -54,9 +54,11 @@ Ungültige Daten, bestehende oder hypothetische Arbeit-/Abwesenheitskonflikte,
 fehlender/veränderter Originaldatensatz, unbekannte Startguthaben und technische
 Auswertungsfehler liefern ausschließlich den festen Nichtverfügbarhinweis;
 keinen partiellen Saldo, keine erfundene Null und keine Fehler-/Rohdaten.
-Die Vorschau übernimmt den bestehenden Home-Diagnosevertrag; sie ist keine neue
-allgemeine Prüfung historischer Arbeit-/Arbeitsüberschneidungen, der Qualität
-hinterlegter Modelle oder der Vollständigkeit des Feiertagskalenders.
+Die Vorschau bewahrt die bestehende Home-Rechnung und deren Invalid-/Konfliktgrenzen;
+zusätzlich verhindert der unten beschriebene strenge Zeitdiagnose-Gate eine
+numerische Vorschau aus nicht verlässlich darstellbaren beitragenden Zeiten.
+Sie ist keine neue allgemeine Prüfung historischer Arbeit-/Arbeitsüberschneidungen,
+der Qualität hinterlegter Modelle oder der Vollständigkeit des Feiertagskalenders.
 Auch eine mögliche Reparatur eines Konflikts erhält keinen numerischen
 „Jetzt“-Stand aus unvollständigen Daten. Vorschauwerte sind escaped Text;
 Originalsnapshot, Kontodetails und Exceptions gelangen nicht in die Vorlage.
@@ -87,3 +89,64 @@ HTTP-/CSRF-/Browserinteraktion, Freigabe-/Writer-/Commitfehlern, Konkurrenz oder
 Produktion. Keine reale DB/Datei, Konten, Betriebsdaten, Zugangsdaten, Schlüssel,
 Appserver, neue GitHub-CI oder Remote-Schreibzugriffe. Vollständige #50/#79,
 Vertretung/Eskalation und produktive Freigabe bleiben offen.
+
+
+## Ergänzung: keine numerische Home-Vorschau aus unklaren beitragenden Zeiten (#55/#50)
+
+Vorbereitet gegen actual Main `ea9bd198a764c5db39de8109b377f6b51e7f4d46`, Baum
+`3ca860a9062464146785119ea300296c1f82b558`. Die gespeicherte Dauer-Vorschau
+verweigert inzwischen strenge Altzeitbefunde, während diese separate Home-Vorschau
+noch numerische Vorher-/Nachherwerte aus einer geschlossenen offsetfreien doppelten
+Herbststunde liefern konnte. Der alte grobe Ablauf reproduziert diesen Widerspruch.
+
+Der reine bestehende Helfer nutzt nun zwei bereits vorhandene Diagnosegrenzen:
+
+- Geschlossene Bestandszeilen im vollständigen autorisierten eigenen Snapshot
+  müssen mit beiden gespeicherten Endpunkten die unveränderte
+  `legacy_timestamp_assessment()` bestehen. Doppelte Stunde, Frühlingslücke,
+  nicht unterstützte lesbare Form und strenger Ungültigbefund ergeben nur das
+  vorhandene Unavailable-Tupel (`false/null/null/null`), keine gewählte Altzeit.
+- Ein Nichtstorno-Vorschlag muss die unveränderte strenge Dauer-Vorschau als
+  `proposed_usable` bestehen. Damit kann die Home-Vorschau insbesondere keine
+  historischen Sekundenoffsets durch das bestehende Minutenoffsetformat runden
+  und trotzdem numerische Werte behaupten. Storno prüft weiterhin keine ignorierten
+  Vorschlagszeitfelder.
+
+Offene Zeilen werden nicht neu pauschal wegen eines strengen Altzeitbefundes
+abgewiesen: sie tragen nach dem unveränderten Home-Vertrag keine abgeschlossene
+Zeit bei. Auch die ausdrückliche Korrektur eines offenen Altbestands behält ihre
+bisherige hypothetische Projektion; laufende Sitzungen und Laufzeit-Invalidität
+bleiben separat durch die alten Guards verweigert. Fehlende Pause behält den
+vorhandenen kanonischen Default, statt nebenbei eine neue Feldformregel einzuführen.
+
+Alle numerischen Formeln, Home-Istwerte, Soll-/Feiertags-/Gutschriftenregeln,
+Owner-/Original-/Status-/Session-/Overlap-Gates, Reader-/Scope-/Transaktionsgrenzen,
+Writer/Freigaberegeln, Quelle, Routen, DTOs und UI bleiben unverändert. Die bereits
+vorhandene Native-/Blade-Anzeige übernimmt lediglich den schon vorhandenen festen
+Nichtverfügbarzweig. Kein vollständiges Vertragskonto, Reparatur/Mapping,
+Wertstellung, Vertretung/Eskalation oder neue Runtime-/Host-/Security-Freigabe.
+Abgelehnte separate Queue-/API-/Writerpakete werden nicht transportiert.
+
+**Grobe Evidenz:** PHP 8.5.12 / SQLite 3.46.1 / Laravel 13.38.0, unveränderter
+vorhandener Composerlock. Der vorhandene erfundene Memory-Journey wurde mit
+altem/neuem tatsächlichem Helfer erneut durchlaufen: 15 bisherige Normal-/Kalender-/
+Neuantrag-/Storno-/Gutschrift-/Verweigerungsfälle exakt gleich. Ein zusammenhängender
+Zusatzlauf unter UTC und Los Angeles reproduziert 50 vormals numerische neue
+Zeitdiagnose-Verweigerungen an Ziel- oder anderer beitragender Zeile sowie
+historischem Vorschlag; zwölf besondere bisherige Fälle bleiben exakt gleich
+(offene/leer beendete ignorierte Zeilen, offener Korrekturfall, Defaultpause,
+Storno mit ignoriertem Sekundenoffsetvorschlag). Zwei alte/neue Ergebnisse in den
+unveränderten tatsächlichen Native-/kompilierten-Blade-Vorschaublöcken ergeben vier
+geprüfte Darstellungen: neuer fester Nichtverfügbartext ohne alte Zahlen. Quelle,
+Schema, Changecounter, Query-only und caller-eigene Lesetransaktion sowie native
+Globals/Zeitzone bleiben erhalten. PHP- und kompilierte Blade-Syntax und Diffcheck PASS.
+
+Das sind minimale anonyme Memory-Daten und extrahierte Ansichten, keine ganze
+Reader-/Auth-/App-/Nativebootstrap-/HTTP-/CSRF-/Browser-/Layout-/Writer-/Freigabe-/
+Konkurrenz-/Betriebs-/Produktionsabnahme; keine tatsächlichen Konten/Daten/Keys,
+Zugangsdaten, DateiDB, Server oder Bereitstellung. Kein neuer Repo-Testkatalog oder
+manueller CI-Start; natürliche exakte Head-/Main-CI separat. #55/#50 bleiben offen.
+Evidenz: `/tmp/chrono-balance-preview-timestamps-mainea9bd198-support/` mit
+existing-coarse.json, coarse.json, proof.json, candidate.patch und unabhängiger
+Prüfung. Temporärer Speicher bleibt schlank mit vorhandenen Objekt-Alternates;
+keine neue vollständige Mirror-/Cold-Bundle-Kopie beansprucht.
