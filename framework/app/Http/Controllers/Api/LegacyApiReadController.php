@@ -9,6 +9,7 @@ use App\Chrono\ChronoReads;
 use App\Chrono\OwnApiCorrectionStatusReads;
 use App\Chrono\OwnApiCorrectionRequestStatusReads;
 use App\Chrono\OwnApiCorrectionRecordStatusReads;
+use App\Chrono\OwnApiCorrectionCursorStatusReads;
 use App\Chrono\OwnApiWorkModelReads;
 use App\Chrono\OwnApiWorkModelVersionsReads;
 use AttendanceError;
@@ -67,12 +68,17 @@ final class LegacyApiReadController
         }
         $requestId = $page['request_id'] ?? null;
         $recordId = $page['record_id'] ?? null;
+        $beforeId = $page['before'] ?? null;
         if (! $this->reads instanceof OwnApiCorrectionStatusReads
-            || ($recordId !== null && ! $this->reads instanceof OwnApiCorrectionRecordStatusReads)
-            || ($recordId === null && $requestId !== null && ! $this->reads instanceof OwnApiCorrectionRequestStatusReads)) {
+            || ($beforeId !== null && ! $this->reads instanceof OwnApiCorrectionCursorStatusReads)
+            || ($beforeId === null && $recordId !== null && ! $this->reads instanceof OwnApiCorrectionRecordStatusReads)
+            || ($beforeId === null && $recordId === null && $requestId !== null && ! $this->reads instanceof OwnApiCorrectionRequestStatusReads)) {
             return LegacyApiResponse::json(['success' => false, 'message' => 'Correction status unavailable.'], 503);
         }
         try {
+            if ($beforeId !== null) {
+                return LegacyApiResponse::json($this->reads->ownApiCorrectionCursorStatus($beforeId, $requestId, $recordId, $page['status'], $page['limit'], $page['offset']));
+            }
             if ($recordId !== null) {
                 return LegacyApiResponse::json($this->reads->ownApiCorrectionRecordStatus($recordId, $requestId, $page['status'], $page['limit'], $page['offset']));
             }
