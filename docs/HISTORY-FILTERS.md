@@ -1,5 +1,50 @@
 # Native Historienfilter — erster Teil von CH-46 / #52
 
+## Korrektur: neueste Treffer ohne künstliche ID-Obergrenze (#79)
+
+Auf Main `f94eb4d339b8b360c6a01b942f315762399ab871` / Tree
+`b00eb2e78afe34d5038a28a4dcfb8f80d4035bf8` setzte der gemeinsame Queryhelper
+auch ohne Seitenmarke `a.id < PHP_INT_MAX`. Dadurch fehlte eine tatsächlich
+sichtbare gültige Auditzeile mit der maximalen SQLite-/PHP-Integer-ID bereits
+auf der neuesten Seite und in deren ausgewählten/korrelierten JSON-Auszügen.
+Ein erfundener Memory-Datensatz reproduziert diese Auslassung am alten Helper.
+Dies behauptet weder einen betroffenen realen Bestand noch eine neue Schreib-
+oder Autoinkrementfähigkeit nach ausgeschöpftem ID-Raum.
+
+Nur bei **angegebener** gültiger Seitenmarke wird jetzt `a.id < before`
+gebunden. Ohne oder mit bisher zulässiger leerer Marke werden die neuesten
+Treffer ohne künstliche ID-Obergrenze gelesen. Explizit `before=PHP_INT_MAX`
+bleibt streng exklusiv und liefert dieselben SQL-/Parameterbytes wie vorher.
+Parenthesierter eigener/Admin-/aktueller Direktteamscope, alle weiteren
+konjunktiven Filter, Reihenfolge und `LIMIT 100` bleiben unverändert. Kein
+addiertes ID-Sentinel, Überlauf, Float oder JavaScript-Number wird benötigt.
+Native Karten, Bezüge und beide Auszüge sowie Laravel `HistoryQuery` verwenden
+bereits denselben Helper; es gibt keinen zweiten Abfrage-/Berechtigungsweg.
+Der alte allgemeine Kompatibilitätsreader `history(int $before = PHP_INT_MAX)`
+bleibt unverändert; die aktuellen HTTP-Seiten verwenden `HistoryQuery`.
+
+Grober Nachweis mit PHP8.5.12/SQLite3.46.1/Laravel13.38.0, anonymem Memoryfixture
+und unverändertem Composer-Lock: tatsächlicher Shared-Query und Laravel-Reader,
+aktueller Controller, kompilierter bestehender Historyinhalt mit inertem Layout,
+ausgewählte und korrelierte JSON-Projektionen.40 Vorher-/Nachhervergleiche ohne
+Maximalzeile über Rollen/Filter/Seitenmarken; Maximalzeile nur für Eigentümer,
+Direktvorgesetzten und Admin, exklusive explizite Marke, leere Marke, große
+Nachbar-IDs, gemeinsame Filter, vollständige vierseitige Keysetfolge ohne
+Duplikate und unveränderte Fehlerverweigerung. Quell-/Schema-/Auditbestand,
+Änderungszähler, `query_only`, native Session-/Zeitzonenglobals bleiben erhalten.
+Der erste externe Korrelationsprüfschritt hatte keinen caller-eigenen Snapshot;
+der bestehende Schutz verweigerte korrekt. Der korrigierte Prüfablauf verwendet
+unverändert den echten Snapshotreader, kein Produktgate wurde gelockert.
+
+Nur Helper und dieses Dokument ändern sich. Keine Writer-/Audit-/Schema-/Index-,
+Rollen-/Auth-/CSRF-/Routen-/Runtime-/Host-/Securityänderung, kein neuer Testbestand
+oder manuell ausgelöster CI-Lauf. RequestGuard ist ein Identitätsdouble; kein
+Native-Bootstrap, voller App-/Login-/HTTP-/Browser-/Layout-/Produktions-/Konkurrenz-
+oder Performancenachweis, keine echten Daten/Konten/Zugangsdaten/Schlüssel oder
+Dateidatenbank. Die bisherigen JSON-ID-Wiretypen und Exportgrenzen bleiben
+unverändert. Geschützte Browserabnahme übernimmt weiterhin der Nutzer; keine
+vollständige #79-Abnahme oder Wiedereröffnung/Neuerledigung von #52 behauptet.
+
 ## Ergänzung: protokollierten Vorgang eingrenzen
 
 Isolierter Quellschritt auf Main `5c91d62f842202512f31827668d8dce2b26a09ff`

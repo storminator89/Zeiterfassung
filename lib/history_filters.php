@@ -38,8 +38,13 @@ function chrono_history_filters(array $query): array {
 /** Optional filters only narrow the original native history scope and cursor. */
 function chrono_history_query(array $filters,int $user,string $role): array {
     if ($filters['errors']) { throw new InvalidArgumentException('Ungültige Historienfilter.'); }
-    $where=['a.id<?',"(a.user_id=? OR ?='admin' OR (?='supervisor' AND u.supervisor_id=?))"];
-    $params=[$filters['ids']['before']??PHP_INT_MAX,$user,$role,$role,$user];
+    $where=["(a.user_id=? OR ?='admin' OR (?='supervisor' AND u.supervisor_id=?))"];
+    $params=[$user,$role,$role,$user];
+    // A missing cursor means newest matches, not "below the largest valid ID".
+    // Preserve the strict bound only for an explicitly selected older page.
+    if ($filters['ids']['before']!==null) {
+        array_unshift($where,'a.id<?');array_unshift($params,$filters['ids']['before']);
+    }
     foreach (['user_id','record_id'] as $key) {
         if ($filters['ids'][$key]!==null) { $where[]="a.$key=?";$params[]=$filters['ids'][$key]; }
     }
