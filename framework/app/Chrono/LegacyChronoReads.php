@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, HolidayRefillPreviewReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads
+final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, HolidayRefillPreviewReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads, TeamTimeRecordReviewReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -221,6 +221,23 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
     public function teamReport(string $userSearch = '', mixed $page = null): array
     {
         return $this->teamReportSnapshot($userSearch, $page, null, false);
+    }
+
+    public function teamTimeRecordReview(): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
+            if (! in_array($actor->role, ['admin', 'supervisor'], true)) {
+                throw new AuthorizationException('This review requires a current supervisor or administrator.');
+            }
+            require_once dirname(__DIR__, 3).'/lib/team_time_record_review.php';
+            // Exactly the existing report scope, refreshed in this same snapshot.
+            // No request user/date/search selector can hide counterpart evidence.
+            $rows = $this->rows($pdo, "SELECT z.id,z.user_id,u.username,z.startzeit,z.endzeit,z.pause,z.absence_kind,z.planned_minutes,z.beschreibung
+                FROM zeiterfassung z JOIN users u ON z.user_id=u.id
+                WHERE u.supervisor_id=? OR ?='admin' ORDER BY z.id DESC", [$actor->getKey(), $actor->role]);
+
+            return \team_time_record_review($rows);
+        });
     }
 
     public function teamReportPeriod(string $userSearch, mixed $page, ?array $range, bool $invalid): array

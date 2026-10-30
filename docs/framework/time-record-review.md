@@ -1,5 +1,60 @@
 # #79 / #55 — vorhandene Prüfhinweise in der Laravel-Liste erhalten
 
+## Separater Team-Leseflow im bestehenden Supervisorbereich
+
+`supervisor.php?team_review=1` bietet zusätzlich eine ausdrücklich aufgerufene,
+rein lesende Laravel-Karte mit vorhandenen Prüfhinweisen und ausgewählten
+Originalzeit-/Pausenwerten. Die bisherige Berichtssperre bei ungültigen oder
+konfliktbehafteten Daten bleibt vollständig bestehen; keine Teilsumme wird
+dadurch abschließend und kein Datensatz repariert. Ohne den exakten rohen
+Querystringwert `team_review=1` erfolgt keine zusätzliche Teamprüfung. Andere
+vorhandene Werte einschließlich Arrays/Leerzeichen liefern 400, fehlende
+optionale Fähigkeit oder technischer Lesefehler 503 statt einer sauberen Liste.
+Authentifizierungs-/Autorisierungsverlust wird unverändert weitergegeben.
+
+Die optionale Schnittstelle `TeamTimeRecordReviewReads` erweitert nicht den
+allgemeinen `ChronoReads`-Vertrag. Ihr eigener bestehender DEFERRED-Snapshot
+liest Identität und Rolle frisch: nur aktuelle Admins oder Supervisoren,
+dieselbe nichtrekursive SQL-Sicht wie der bisherige Teambericht
+(`u.supervisor_id=actor` oder aktueller Admin). Kein Request-Subject, keine
+rekursiven Teams, keine fremden Administratorrechte aus dem Sessioncache.
+Auch Tabellensuche, Datumswahl und Teamwochen-Pagination schränken diesen
+vollständigen aktuellen Kontext nicht ein und können Gegenstücke nicht
+verstecken. Öffnen/Schließen und bestehende Filter-/Paginglinks bewahren die
+sonstigen Anzeigen; es wird nichts gepostet, reserviert oder freigegeben.
+
+Der neue reine Anzeigehelfer verwendet **unverändert**
+`report_absence_conflicts`, `time_record_work_overlap_lookup`,
+`time_record_review_rows`, `report_record_calculation` und
+`time_record_local_time_findings`. Er erfindet keine weitere Diagnosekategorie,
+keine DST-Auflösung und insbesondere **keinen zusätzlichen
+Abwesenheit/Abwesenheit-Hinweis** aus dem gehaltenen PR #352. Gehaltene
+Korrektur-/API-Filter sowie PR #404/#405 sind kein Bestandteil dieses Pakets.
+
+Ausgabe: höchstens 100 passende, zuletzt angelegte Buchungen mit exakter
+Person-/Buchungs-ID als Text, bestehendem Namen, Originalstart/-ende/-pause
+und vier bestehenden booleschen Hinweiskategorien. Die Gesamtzahl bezieht
+sich nur auf diese Regeln im aktuell erlaubten Kontext. Keine Beschreibungen,
+Abwesenheitsarten, Krankheitsdetails, Gegenstücklisten, Credentials, Audit-
+Rohsnapshots, Export-/Reparatur-/Korrekturschreibaktion oder neue Routen.
+Die Hilfsabfrage benötigt `beschreibung` ausschließlich für die vorhandene
+Abwesenheitsklassifikation; das Feld verlässt den Reader nicht.
+
+Originalwerte erscheinen escaped als JSON-Auswahl (damit NULL, leere Werte,
+Typen und Steuerzeichen sichtbar sind), pro Wert höchstens 512 UTF-8-Bytes
+plus Kürzungszeichen bei ausdrücklich markierter Kürzung. Nicht darstellbares UTF-8 wird nur in der
+Anzeige ersetzt. Keine Anzeige wird zurückgeschrieben oder als bestätigtes
+Mapping angeboten. Die Datenquelle bleibt unverändert. Ein leeres Ergebnis
+ist kein Vollständigkeits-, Sauberkeits-, Migrations- oder Verfügbarkeitsattest.
+Der Benutzer muss die bestehenden freigegebenen Vier-Augen-Prozesse zur
+Klärung verwenden; aus der Karte folgt keine zusätzliche Schreibautorität.
+
+Die neue Karte folgt den bestehenden Supervisor-Karten und Tabellen mit
+DE/EN/ZH-Copy. Native Seiten, alle bisherigen Aggregationen/Periodenregeln,
+Auth-/CSRF-/Writer-/Runtime-/Hostgrenzen und die HTML-Browserabnahme bleiben
+unverändert beziehungsweise separat offen. Es gibt keine Aktivierung oder
+behauptete vollständige #55/#79-Abnahme.
+
 Begrenzter inaktiver UI-Migrationsschritt auf Main
 `5d3afc45c5b14f6acffd2321e82cc86ad3818c51`, Baum
 `7dfe095c0ce33fe0184bfab215a1a9c1e24c1673`. Kein Cutover oder neues
