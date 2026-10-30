@@ -170,8 +170,8 @@ function supervisor_report_projection(PDO $conn, array $zeiten, string $userSear
         $group['detail_id'] = 'time-details-'.$group['user_id'].'-'.$group['date'];
         $group['location'] = count($group['entries']) > 1 ? 'Mehrere' : $group['entries'][0]['standort'];
         foreach ($group['entries'] as &$entry) {
-            $entryStart = new DateTime($entry['startzeit'], new DateTimeZone('Europe/Berlin'));
-            $entryEnd = $entry['endzeit'] ? new DateTime($entry['endzeit'], new DateTimeZone('Europe/Berlin')) : null;
+            $entryStart = booking_local_date(booking_time($entry['startzeit']));
+            $entryEnd = $entry['endzeit'] ? booking_local_date(booking_time($entry['endzeit'])) : null;
             $entryHours = floor($entry['duration'] / 60);
             $entryMinutes = $entry['duration'] % 60;
             $entry['start_formatted'] = $entryStart->format('H:i');

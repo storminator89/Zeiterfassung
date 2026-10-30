@@ -517,8 +517,8 @@ $planReportPage = isset($_GET['page']) && is_string($_GET['page']) ? max(1, (int
                                                                 <tbody>';
 
                                             foreach ($group['entries'] as $entry) {
-                                                $entryStart = new DateTime($entry['startzeit']);
-                                                $entryEnd = $entry['endzeit'] ? new DateTime($entry['endzeit']) : null;
+                                                $entryStart = booking_local_date(booking_time($entry['startzeit']));
+                                                $entryEnd = $entry['endzeit'] ? booking_local_date(booking_time($entry['endzeit'])) : null;
                                                 $entryHours = floor($entry['duration'] / 60);
                                                 $entryMinutes = $entry['duration'] % 60;
 
