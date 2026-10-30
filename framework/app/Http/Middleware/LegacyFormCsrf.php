@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Session\TokenMismatchException;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /** Legacy wire adapter only; Laravel still compares and owns the session token. */
 final class LegacyFormCsrf extends PreventRequestForgery
@@ -30,8 +31,12 @@ final class LegacyFormCsrf extends PreventRequestForgery
         try {
             return parent::handle($request, $next);
         } catch (TokenMismatchException) {
+            // Reject the POST; never replay credentials or weaken token validation.
+            if ($request->isMethod('POST') && $request->path() === 'login.php') {
+                return new RedirectResponse('login.php?session=expired', 303, ['Cache-Control' => 'no-store']);
+            }
             return new Response('Invalid CSRF token. Reload the page.', 403, [
-                'Content-Type' => 'text/plain; charset=UTF-8',
+                'Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store',
             ]);
         }
     }

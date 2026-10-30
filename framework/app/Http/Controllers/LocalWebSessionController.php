@@ -24,20 +24,28 @@ final class LocalWebSessionController extends Controller
     public function __construct(private LocalSession $sessions, private Interactions $interactions, private Repository $config,
         private ?SelfRegistration $registration = null) {}
 
-    public function create(Request $request): View|RedirectResponse
+    public function create(Request $request): Response|RedirectResponse
     {
+        if ($request->user() !== null) {
+            return new RedirectResponse('index.php', 303, ['Cache-Control' => 'no-store']);
+        }
         if ($this->config->get('chrono_setup.local_first_user', false) === true
             && ! $request->query->has('setup')) {
             return new RedirectResponse('setup.php', 303, ['Cache-Control' => 'no-store']);
         }
-        return $this->page($request);
+        $error = $request->query('session') === 'expired'
+            ? 'Das Anmeldeformular ist abgelaufen. Bitte melde dich erneut an.' : null;
+        return new Response($this->page($request, $error), 200, ['Cache-Control' => 'no-store']);
     }
 
-    public function store(Request $request): View|RedirectResponse|Response
+    public function store(Request $request): RedirectResponse|Response
     {
+        if ($request->user() !== null) {
+            return new RedirectResponse('index.php', 303, ['Cache-Control' => 'no-store']);
+        }
         try {
             if ($this->sessions->attempt($request)) {
-                return new RedirectResponse('index.php');
+                return new RedirectResponse('index.php', 303, ['Cache-Control' => 'no-store']);
             }
         } catch (ServiceUnavailableHttpException) {
             return new Response($this->page($request, 'Anmeldung derzeit nicht bestätigt. Bitte später erneut versuchen.'), 503);
@@ -49,14 +57,14 @@ final class LocalWebSessionController extends Controller
         $key = ! is_string($username) || ! is_string($password) || trim($username) === '' || $password === ''
             ? 'ERROR_ALL_FIELDS_REQUIRED' : 'ERROR_INVALID_CREDENTIALS';
 
-        return $this->page($request, $copy->text($key));
+        return new Response($this->page($request, $copy->text($key)), 200, ['Cache-Control' => 'no-store']);
     }
 
     public function destroy(Request $request): RedirectResponse
     {
         $this->sessions->logout($request);
 
-        return new RedirectResponse('login.php');
+        return new RedirectResponse('login.php', 303, ['Cache-Control' => 'no-store']);
     }
 
     private function page(Request $request, ?string $error = null): View

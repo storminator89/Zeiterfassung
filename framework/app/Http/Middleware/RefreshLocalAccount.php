@@ -23,7 +23,11 @@ final class RefreshLocalAccount
     {
         $guard = $this->auth->guard('web');
         $identifier = $request->session()->get($guard->getName());
-        $user = $identifier === null ? null : $guard->getProvider()->retrieveById($identifier);
+        // Guest redirects must not rotate the session/CSRF token of an open login form.
+        if ($identifier === null) {
+            throw new AuthenticationException('Unauthenticated.', ['web']);
+        }
+        $user = $guard->getProvider()->retrieveById($identifier);
 
         $provider = $guard instanceof SessionGuard ? $guard->getProvider() : null;
         $hasSource = $request->session()->exists(LocalSession::SOURCE_MARKER);
