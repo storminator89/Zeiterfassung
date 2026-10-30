@@ -11,6 +11,7 @@ use App\Providers\SharedLoginBudgetServiceProvider;
 use App\Providers\AdmittedLegacyApiServiceProvider;
 use App\Providers\ApiManagementServiceProvider;
 use App\Providers\AdmittedTerminalServiceProvider;
+use App\Providers\McpServiceProvider;
 
 return [
     AppServiceProvider::class,
@@ -24,4 +25,5 @@ return [
     ApiManagementServiceProvider::class,
     AdmittedLegacyApiServiceProvider::class,
     AdmittedTerminalServiceProvider::class,
+    McpServiceProvider::class,
 ];
