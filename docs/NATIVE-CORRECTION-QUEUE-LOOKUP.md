@@ -43,3 +43,7 @@ acceptance, account creation, real data/credential use, new test suite, manual C
 or deployment. User browser validation remains separate. Request status is the
 current stored fact, not a delivery notification. #50 remains partial/open;
 representation, escalation and overall workflow acceptance are not completed.
+
+The separately scoped [Laravel follow-up](framework/correction-request-lookup.md)
+now documents its optional read capability and existing filter-card parity;
+this Native packet and its original acceptance limits are unchanged.

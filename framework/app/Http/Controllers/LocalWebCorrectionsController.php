@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
+use App\Chrono\CorrectionQueueRequestReads;
 use App\Chrono\LocalWebCorrections;
 use App\Chrono\LocalWebCorrectionWithdrawals;
 use Illuminate\Contracts\Config\Repository;
@@ -16,6 +17,7 @@ use Illuminate\Contracts\Auth\Factory;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Throwable;
 
 /** Native correction forms only. All commands/permissions/SQL/audit stay in #78. */
@@ -30,9 +32,13 @@ final class LocalWebCorrectionsController extends Controller
         private ?Repository $config = null,
     ) {}
 
-    public function index(Request $request): View
+    public function index(Request $request): View|Response
     {
-        return $this->page($request);
+        $view = $this->page($request);
+        $page = $view->getData()['corrections'];
+        $status = $page->requestLookupInvalid ? 400 : ($page->requestLookupUnavailable ? 503 : 200);
+
+        return $status === 200 ? $view : response($view, $status);
     }
 
     // Only the POST route calls this method; GET/method override never dispatches a command.
@@ -114,8 +120,23 @@ final class LocalWebCorrectionsController extends Controller
         if ($request->isMethod('POST') && in_array($form['action'] ?? null, ['request', 'request_metadata_v1'], true)) {
             $selection = $invalid ? ['record_id' => 'invalid'] : ($selectedId ? ['record_id' => $selectedId] : []);
         }
+        $lookup = $this->requestLookup($request);
+        if ($lookup['invalid']) {
+            $selection['request_id'] = 'invalid';
+        } elseif ($lookup['id'] !== null) {
+            $selection['request_id'] = $lookup['value'];
+        }
 
         return $selection;
+    }
+
+    private function requestLookup(Request $request): array
+    {
+        require_once dirname(__DIR__, 4).'/lib/correction_queue_filter.php';
+        // Preserve the native raw query contract even under trimming/null middleware.
+        parse_str($request->server('QUERY_STRING', ''), $query);
+
+        return \correction_queue_request_filter($query);
     }
 
     private function page(Request $request, ?string $error = null, bool $retainRejectedDraft = false): View
@@ -166,7 +187,16 @@ final class LocalWebCorrectionsController extends Controller
         $previewRequestId = is_string($preview) && preg_match('/\A[1-9][0-9]*\z/D', $preview) === 1
             ? filter_var($preview, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) : false;
         $previewRequestId = $previewRequestId === false ? null : $previewRequestId;
-        $queue = $this->reads->correctionsPage($requestStatus, $requestedPage, $previewRequestId);
+        $requestLookup = $this->requestLookup($request);
+        $lookupRequested = $requestLookup['invalid'] || $requestLookup['id'] !== null;
+        $lookupUnavailable = $lookupRequested && ! $this->reads instanceof CorrectionQueueRequestReads;
+        $queue = $lookupUnavailable
+            ? ['records' => [], 'counts' => array_fill_keys(array_keys(CorrectionsPage::STATUS_LABELS), 0),
+                'status' => $requestStatus, 'total' => 0, 'page' => 1, 'pages' => 1, 'balancePreview' => []]
+            : ($lookupRequested
+                ? $this->reads->correctionRequestPage($requestStatus, $requestedPage, $previewRequestId,
+                    $requestLookup['invalid'] ? 'invalid' : $requestLookup['value'])
+                : $this->reads->correctionsPage($requestStatus, $requestedPage, $previewRequestId));
         $requests = array_map(static function (array $row): array {
             $preview = \chrono_correction_preview($row);
             return [
@@ -222,7 +252,8 @@ final class LocalWebCorrectionsController extends Controller
             ),
             'corrections' => new CorrectionsPage(
                 $records, $requests, $selectedRecordId, $error,
-                $error === null && $request->query->has('saved'), $this->interactions->corrections,
+                $error === null && ! $requestLookup['invalid'] && ! $lookupUnavailable
+                    && $request->query->has('saved'), $this->interactions->corrections,
                 selectionInvalid: $selectionInvalid,
                 requestCounts: $queue['counts'], requestStatus: $queue['status'],
                 requestTotal: $queue['total'], requestPage: $queue['page'], requestPages: $queue['pages'],
@@ -239,6 +270,9 @@ final class LocalWebCorrectionsController extends Controller
                 // Main PR318 admits the same scoped business actions for existing LDAP roles.
                 metadataEnabled: $this->interactions->corrections,
                 withdrawalDraft: $withdrawalDraft,
+                requestLookupValue: $requestLookup['value'],
+                requestLookupInvalid: $requestLookup['invalid'],
+                requestLookupUnavailable: $lookupUnavailable,
             ),
         ]);
     }
