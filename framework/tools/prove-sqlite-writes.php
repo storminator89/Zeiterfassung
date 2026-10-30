@@ -185,7 +185,7 @@ try {
         proofRequire(! $pdo->inTransaction() && SourceSnapshot::capture($pdo, $mapping) === $before, 'Mutation, event, audit or sequence survived a failed operation.');
     }
 
-    $phase = 'busy commit rolls back and can replay the same event';
+    $phase = 'busy commit uncertainty disables the adapter; fresh scope verifies stable replay';
     // A separate reader permits IMMEDIATE mutation but prevents COMMIT in the
     // preserved rollback-journal mode. This is not a mocked commit exception.
     unset($writer, $pdo); // Fresh cold admission before opening the reader.
@@ -194,13 +194,21 @@ try {
     $before = SourceSnapshot::capture($pdo, $mapping);
     $reader->exec('BEGIN');
     $reader->query('SELECT count(*) FROM users')->fetchColumn();
-    $commitFailure = proofRefused(fn () => $writer->transition(2, 'proof:web', 'synthetic-commit-pause-0001', 'pause_start'), PDOException::class);
-    proofRequire((int) ($commitFailure->errorInfo[1] ?? 0) === 5 && ! $pdo->inTransaction()
-        && SourceSnapshot::capture($pdo, $mapping) === $before, 'Busy COMMIT left partial history or did not release the writer.');
+    $commitStarted = microtime(true);
+    $commitFailure = proofRefused(fn () => $writer->transition(2, 'proof:web', 'synthetic-commit-pause-0001', 'pause_start'), RuntimeException::class);
+    proofRequire($commitFailure::class === RuntimeException::class && $commitFailure->getPrevious() === null
+        && $commitFailure->getMessage() === 'Writer outcome could not be confirmed. Do not retry automatically.'
+        && microtime(true) - $commitStarted >= 4 && ! $pdo->inTransaction()
+        && SourceSnapshot::capture($pdo, $mapping) === $before, 'Real busy COMMIT did not preserve the unknown-outcome boundary and exact source.');
+    proofRefused(fn () => $writer->transition(2, 'proof:web', 'synthetic-commit-pause-0001', 'pause_start'), LogicException::class);
+    proofRequire(SourceSnapshot::capture($pdo, $mapping) === $before, 'A disabled commit-uncertain adapter performed work.');
     $reader->exec('ROLLBACK');
-    $reader = null;
+    unset($reader, $writer, $pdo);
+    // Explicit controlled proof step after observing this isolated fixture's
+    // rolled-back source, never an automatic application retry or writer reuse.
+    [$pdo, $writer] = proofWriter($path);
     $pause = $writer->transition(2, 'proof:web', 'synthetic-commit-pause-0001', 'pause_start');
-    proofRequire($pause['state'] === 'paused', 'Same event could not be retried after failed commit.');
+    proofRequire($pause['state'] === 'paused', 'Fresh admitted scope could not resolve the same stable event.');
     $writer->transition(2, 'proof:web', 'synthetic-pause-end-00001', 'pause_end');
     $writer->transition(2, 'proof:web', 'synthetic-session-end-0001', 'end');
 
@@ -259,7 +267,10 @@ try {
     });
     $writer = new AttendanceWriter($pdo, $config, $app->make(AuditContext::class), $functions);
     $mutateConnection = (new ReflectionProperty($writer, 'connection'))->getValue($writer);
-    proofRefused(fn () => $writer->transition(2, 'proof:unsafe', 'synthetic-reconnect-start-0001', 'start'), LogicException::class);
+    $replacementFailure = proofRefused(fn () => $writer->transition(2, 'proof:unsafe', 'synthetic-reconnect-start-0001', 'start'), RuntimeException::class);
+    proofRequire($replacementFailure::class === RuntimeException::class && $replacementFailure->getPrevious() === null
+        && $replacementFailure->getMessage() === 'Writer outcome could not be confirmed. Do not retry automatically.',
+        'Unsafe replacement did not retain the fixed cleanup-uncertainty result.');
     proofRequire(! $pdo->inTransaction() && SourceSnapshot::capture($pdo, $mapping) === $before
         && SourceSnapshot::capture($replacement, $mapping) === $before, 'Unsafe replacement committed or abandoned the original mutation.');
     proofRefused(fn () => $writer->transition(2, 'proof:unsafe', 'synthetic-reconnect-start-0001', 'start'), LogicException::class);
@@ -272,6 +283,53 @@ try {
         && (int) $pdo->query('SELECT count(*) FROM framework_migrations')->fetchColumn() === 1
         && hash_file('sha256', $directory.'/backup.sqlite') === $backupHash
         && hash_file('sha256', $directory.'/original.sqlite') === $backupHash, 'Post-close persisted verification or pristine backup failed.');
+    $phase = 'current-data backup and ledger-only backout after new confirmed bookings';
+    $afterBookings = SourceSnapshot::capture($pdo, $mapping);
+    $storedReceipt = $pdo->query("SELECT response FROM attendance_events WHERE source='proof:web' AND event_id='synthetic-session-end-0001'")->fetchColumn();
+    proofRequire(is_string($storedReceipt), 'The confirmed post-adoption receipt is missing.');
+    unset($writer, $pdo);
+    $files = new OfflineFiles([$root, $root.'/framework/public']);
+    $coldAfterBookings = $files->snapshot($path); // Never copy a live SQLite handle.
+    $staleBackout = $app->make(Illuminate\Contracts\Console\Kernel::class)->call('chrono:legacy-v2', [
+        'action' => 'rollback-ledger', '--target' => $path, '--backup' => $directory.'/backup.sqlite', '--offline' => true,
+    ]);
+    proofRequire($staleBackout !== 0 && $files->snapshot($path) === $coldAfterBookings
+        && hash_file('sha256', $directory.'/backup.sqlite') === $backupHash,
+        'A stale pre-booking backup was accepted or changed current data.');
+    proofRequire(copy($path, $directory.'/current-backup.sqlite'), 'Current stopped backup was not created.');
+    $currentBackupHash = hash_file('sha256', $directory.'/current-backup.sqlite');
+    foreach (['rollback-ledger', 'rollback-ledger'] as $action) {
+        $status = $app->make(Illuminate\Contracts\Console\Kernel::class)->call('chrono:legacy-v2', [
+            'action' => $action, '--target' => $path, '--backup' => $directory.'/current-backup.sqlite', '--offline' => true,
+        ]);
+        proofRequire($status === 0, 'Current-backup ledger-only backout or repetition failed.');
+        $read = $files->openReadOnly($path);
+        proofRequire(SourceSnapshot::capture($read, $mapping) === $afterBookings
+            && $read->query("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='framework_migrations'")->fetchColumn() === false
+            && hash_file('sha256', $directory.'/current-backup.sqlite') === $currentBackupHash,
+            'Ledger backout changed confirmed business data, sequences, receipt or backup.');
+        $read = null;
+    }
+    // A fresh backup of the now ledger-free CURRENT data, not the pristine
+    // pre-booking backup, is required by the unchanged adoption contract.
+    $files->snapshot($path);
+    proofRequire(copy($path, $directory.'/backout-backup.sqlite'), 'Ledger-free current backup was not created.');
+    $backoutBackupHash = hash_file('sha256', $directory.'/backout-backup.sqlite');
+    foreach (['adopt', 'adopt'] as $action) {
+        $status = $app->make(Illuminate\Contracts\Console\Kernel::class)->call('chrono:legacy-v2', [
+            'action' => $action, '--target' => $path, '--backup' => $directory.'/backout-backup.sqlite', '--offline' => true,
+        ]);
+        proofRequire($status === 0, 'Current-source readoption or repetition failed.');
+    }
+    [$pdo, $writer] = proofWriter($path);
+    $resolvedReceipt = $writer->transition(2, 'proof:web', 'synthetic-session-end-0001', 'end');
+    proofRequire(SourceSnapshot::capture($pdo, $mapping) === $afterBookings
+        && json_encode($resolvedReceipt) === $storedReceipt
+        && (int) $pdo->query('SELECT count(*) FROM framework_migrations')->fetchColumn() === 1
+        && hash_file('sha256', $directory.'/current-backup.sqlite') === $currentBackupHash
+        && hash_file('sha256', $directory.'/backout-backup.sqlite') === $backoutBackupHash,
+        'Ledger backout/readoption lost or duplicated post-adoption business history.');
+
     $result = [
         'php' => PHP_VERSION, 'laravel' => $app->version(), 'sqlite' => $pdo->query('SELECT sqlite_version()')->fetchColumn(),
         'pdo_class' => $pdo::class, 'scope' => 'fresh synthetic stopped known-v2 private file copies; no runtime cutover',
@@ -282,13 +340,18 @@ try {
         'stored_response_byte_identical_replay_payload_conflict' => true,
         'busy_begin_single_attempt_then_same_event_retry' => true,
         'audit_event_and_real_busy_commit_failures_fully_rolled_back' => true,
+        'busy_commit_generic_uncertainty_and_adapter_reuse_refused' => true,
+        'same_stable_event_explicitly_resolved_in_fresh_admitted_scope' => true,
+        'new_confirmed_bookings_and_receipt_survive_ledger_backout_repetition_readoption' => true,
+        'current_stopped_backups_preserved' => true,
+        'stale_pre_booking_backup_refused_before_backout' => true,
         'closed_intervals_append_only_history_and_final_decisions_retained' => true,
         'fresh_pdo_udfs_scopes_globals_and_missing_context_checked' => true,
         'nested_transaction_and_unsafe_pdo_replacement_fail_closed' => true,
         'pristine_original_and_backup_unchanged' => true,
         'final_counts' => SourceSnapshot::capture($pdo, $mapping)['counts'],
         'private_fixture_directory' => $directory,
-        'remaining' => ['new/pre-v2/WAL adoption', 'production connection/auth/route integration', 'real-data restore and operational cutover'],
+        'remaining' => ['NEW V5 installation has its separate producer/proof', 'general pre-v2 upgrade and WAL admission', 'complete runtime/browser/container/restore and operating cutover acceptance'],
     ];
     unset($writer, $pdo);
     foreach (['-wal', '-shm', '-journal'] as $suffix) {
