@@ -105,7 +105,7 @@ function report_time_record_detail(array $record): array
     $calculation = report_record_calculation($record);
     $invalid = $calculation['status'] === 'invalid';
     $credit = !empty($record['absence_kind']);
-    $startLabel = $credit ? substr($record['startzeit'], 0, 10) . ' · Gutschrift' : $record['startzeit'];
+    $startLabel = $credit ? ($calculation['day'] ?? substr($record['startzeit'], 0, 10)) . ' · Gutschrift' : $record['startzeit'];
     $endLabel = $credit ? 'Keine Stempelzeit' : (($record['endzeit'] ?? '') === '' ? 'Läuft' : $record['endzeit']);
     $durationLabel = $invalid ? 'Ungültig' : ($credit ? (int)$record['planned_minutes'] . ' Sollminuten' : calculateDuration($record['startzeit'], $record['endzeit'], $record['pause']));
 
