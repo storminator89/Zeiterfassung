@@ -77,6 +77,7 @@ try {
 } catch (Throwable) {
     // Do not expose SQL, paths, source values or a misleading successful CSV.
     http_response_code(500);
+    if (function_exists('chrono_native_error_correlation')) { chrono_native_error_correlation(500); }
     header('Content-Type: text/plain; charset=UTF-8');
     echo 'CSV-Export konnte nicht erstellt werden. Bitte erneut versuchen.';
     exit;
