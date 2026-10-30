@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
+use App\Chrono\HolidayRefillPreviewReads;
 use App\Chrono\LocalWebApiManagement;
 use App\Api\Management\ApiPolicyChange;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -90,7 +91,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
     }
 
     // Only the separately registered POST route can reach this mutation.
-    public function store(Request $request): Response|RedirectResponse
+    public function store(Request $request): Response|RedirectResponse|JsonResponse
     {
         $actor = $this->adminActor();
         $form = $request->request->all();
@@ -112,6 +113,9 @@ final class LocalWebAdminPauseSettingsController extends Controller
         if ($this->apiManagement !== null) { $supported['api_management'] = ApiPolicyChange::FIELDS; }
         if ($this->holidayRefill !== null && $this->interactions->adminPauseSettings) {
             $supported['refill_holidays'] = \App\Chrono\LocalWebHolidayRefill::COMMAND_FIELDS;
+            if ($this->reads instanceof HolidayRefillPreviewReads) {
+                $supported['preview_holidays'] = HolidayRefillPreviewReads::COMMAND_FIELDS;
+            }
         }
         $actions = [];
         foreach ($supported as $flag => $fields) {
@@ -134,6 +138,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
             throw new AuthorizationException('Diese Sicherheitsverwaltung erfordert lokale Administration.');
         }
 
+        if ($actions[0] === 'preview_holidays') { return $this->previewHolidays($form); }
         if ($actions[0] === 'refill_holidays') { return $this->refillHolidays($request, $form); }
 
         if ($actions[0] === 'change_account_lifecycle') {
@@ -177,6 +182,26 @@ final class LocalWebAdminPauseSettingsController extends Controller
         } catch (Throwable) {
             return $this->page($request,
                 'Pauseneinstellungen konnten nicht gespeichert werden. Bitte neu laden und den gespeicherten Stand prüfen.');
+        }
+    }
+
+    /** No page(), session/preferences/notices, form issuance, writer or persistent preview receipt. */
+    private function previewHolidays(#[\SensitiveParameter] array $form): JsonResponse
+    {
+        $headers = ['Cache-Control'=>'no-store','X-Content-Type-Options'=>'nosniff'];
+        if (($form['preview_holidays'] ?? null) !== '1' || !$this->reads instanceof HolidayRefillPreviewReads) {
+            return new JsonResponse(['success'=>false,'message'=>'Ungültige Feiertagsprüfung.'],400,$headers);
+        }
+        try {
+            $preview = $this->reads->holidayRefillPreview($form['holiday_year'] ?? null,
+                $form['confirm_bw_source'] ?? null, $form['holiday_json'] ?? null);
+            return new JsonResponse(['success'=>true,'data'=>$preview],200,$headers);
+        } catch (AuthenticationException|AuthorizationException $error) {
+            throw $error;
+        } catch (InvalidArgumentException $error) {
+            return new JsonResponse(['success'=>false,'message'=>$error->getMessage()],400,$headers);
+        } catch (Throwable) {
+            return new JsonResponse(['success'=>false,'message'=>'Feiertagsprüfung nicht verfügbar. Neu laden und Eingaben prüfen; nichts automatisch erneut senden.'],503,$headers);
         }
     }
 
@@ -640,6 +665,8 @@ final class LocalWebAdminPauseSettingsController extends Controller
             'managedUsersEnabled' => $localSecurityControls && $this->userMutationsEnabled(),
             'apiManagement' => $apiManagement, 'apiManagementUnavailable' => $apiManagementUnavailable,
             'holidayRefillReceipt' => $holidayRefillReceipt,
+            'holidayRefillPreviewEnabled' => $localSecurityControls && $this->holidayRefill !== null
+                && $this->interactions->adminPauseSettings && $this->reads instanceof HolidayRefillPreviewReads,
             'holidayRefillDraft' => $localSecurityControls ? $holidayRefillDraft : null,
             'holidayRefillEnabled' => $localSecurityControls && $this->holidayRefill !== null && $this->interactions->adminPauseSettings,
             'page' => new AttendancePage(
