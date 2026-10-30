@@ -461,6 +461,8 @@ final class LocalWebAdminPauseSettingsController extends Controller
     private function changeApi(Request $request, #[\SensitiveParameter] array $form): Response|RedirectResponse
     {
         if ($this->apiManagement === null) { throw new AuthorizationException('API-Verwaltung nicht zugelassen.'); }
+        // A new attempt must not inherit a previous confirmed-state display receipt.
+        $request->session()->forget('chrono_api_notice');
         try {
             $state = $this->apiManagement->change($form, (string) ($request->server('REMOTE_ADDR') ?? 'local'));
         } catch (AuthenticationException|AuthorizationException|HttpResponseException $error) { throw $error; }
