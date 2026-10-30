@@ -259,4 +259,6 @@ return [
     'CORRECTION_DECIDED_AT' => '已保存決定時間',
     'CORRECTION_WITHDRAWN_AT' => '已保存撤回時間',
     'CORRECTION_TIME_UNAVAILABLE' => '時間無法讀取',
+    'SETTINGS_SAVE_SUCCESS_TITLE' => '成功！',
+    'SETTINGS_SAVE_SUCCESS_MESSAGE' => '設定已成功更新！',
 ];

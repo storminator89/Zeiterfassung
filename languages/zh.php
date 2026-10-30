@@ -386,4 +386,6 @@ define('CORRECTION_REQUESTED_AT', '申請提交時間（Europe/Berlin）');
 define('CORRECTION_DECIDED_AT', '已保存決定時間');
 define('CORRECTION_WITHDRAWN_AT', '已保存撤回時間');
 define('CORRECTION_TIME_UNAVAILABLE', '時間無法讀取');
+define('SETTINGS_SAVE_SUCCESS_TITLE', '成功！');
+define('SETTINGS_SAVE_SUCCESS_MESSAGE', '設定已成功更新！');
 ?>

@@ -394,4 +394,6 @@ define('CORRECTION_REQUESTED_AT', 'Request submitted (Europe/Berlin)');
 define('CORRECTION_DECIDED_AT', 'Decision stored');
 define('CORRECTION_WITHDRAWN_AT', 'Withdrawal stored');
 define('CORRECTION_TIME_UNAVAILABLE', 'Time unavailable');
+define('SETTINGS_SAVE_SUCCESS_TITLE', 'Success!');
+define('SETTINGS_SAVE_SUCCESS_MESSAGE', 'Settings updated successfully!');
 ?>

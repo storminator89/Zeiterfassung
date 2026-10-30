@@ -262,4 +262,6 @@ return [
     'CORRECTION_DECIDED_AT' => 'Entscheidung gespeichert',
     'CORRECTION_WITHDRAWN_AT' => 'Rücknahme gespeichert',
     'CORRECTION_TIME_UNAVAILABLE' => 'Zeitpunkt nicht auswertbar',
+    'SETTINGS_SAVE_SUCCESS_TITLE' => 'Erfolg!',
+    'SETTINGS_SAVE_SUCCESS_MESSAGE' => 'Einstellungen erfolgreich aktualisiert!',
 ];

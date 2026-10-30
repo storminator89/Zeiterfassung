@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$passwordFormRequested) {
         $theme_mode = in_array($_POST['theme_mode'], ['light', 'dark', 'system'], true) ? $_POST['theme_mode'] : 'light';
         $_SESSION['theme_mode'] = $theme_mode;
     }
-    $successMessage = 'Einstellungen erfolgreich aktualisiert!';
+    $successMessage = SETTINGS_SAVE_SUCCESS_MESSAGE;
     $showSuccessModal = true;
 }
 
@@ -269,10 +269,10 @@ include 'header.php';
 <?php if ($successMessage && $showSuccessModal) : ?>
     <div id="successModal" class="modal modal-open">
         <div class="modal-box">
-            <h3 class="font-bold text-lg">Erfolg!</h3>
+            <h3 class="font-bold text-lg"><?= h(SETTINGS_SAVE_SUCCESS_TITLE) ?></h3>
             <p class="py-4"><?= h($successMessage) ?></p>
             <div class="modal-action">
-                <button onclick="closeModal()" class="btn btn-primary">Schließen</button>
+                <button onclick="closeModal()" class="btn btn-primary"><?= h(BUTTON_CLOSE) ?></button>
             </div>
         </div>
     </div>
