@@ -63,9 +63,9 @@
                             <span class="label-text"><i class="fas fa-adjust mr-2"></i>{{ $page->copy->text('NAV_DARK_MODE') }}</span>
                         </label>
                         <select name="theme_mode" id="theme_mode" class="select select-bordered w-full">
-                            <option value="light" @selected($settings->themeMode === 'light')>Hell</option>
-                            <option value="dark" @selected($settings->themeMode === 'dark')>Dunkel</option>
-                            <option value="system" @selected($settings->themeMode === 'system')>System</option>
+                            <option value="light" @selected($settings->themeMode === 'light')>{{ $page->copy->text('SETTINGS_THEME_LIGHT') }}</option>
+                            <option value="dark" @selected($settings->themeMode === 'dark')>{{ $page->copy->text('SETTINGS_THEME_DARK') }}</option>
+                            <option value="system" @selected($settings->themeMode === 'system')>{{ $page->copy->text('SETTINGS_THEME_SYSTEM') }}</option>
                         </select>
                     </div>
                 </div>

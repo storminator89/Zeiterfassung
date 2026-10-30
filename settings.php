@@ -206,9 +206,9 @@ include 'header.php';
                             <span class="label-text"><i class="fas fa-adjust mr-2"></i><?= NAV_DARK_MODE ?></span>
                         </label>
                         <select name="theme_mode" id="theme_mode" class="select select-bordered w-full">
-                            <option value="light" <?= $theme_mode == 'light' ? 'selected' : '' ?>>Hell</option>
-                            <option value="dark" <?= $theme_mode == 'dark' ? 'selected' : '' ?>>Dunkel</option>
-                            <option value="system" <?= $theme_mode == 'system' ? 'selected' : '' ?>>System</option>
+                            <option value="light" <?= $theme_mode == 'light' ? 'selected' : '' ?>><?= h(SETTINGS_THEME_LIGHT) ?></option>
+                            <option value="dark" <?= $theme_mode == 'dark' ? 'selected' : '' ?>><?= h(SETTINGS_THEME_DARK) ?></option>
+                            <option value="system" <?= $theme_mode == 'system' ? 'selected' : '' ?>><?= h(SETTINGS_THEME_SYSTEM) ?></option>
                         </select>
                     </div>
                 </div>

@@ -106,6 +106,9 @@ return [
 
     // Exact existing native Settings copy; no administration/write capability.
     'SETTINGS_TITLE' => 'Einstellungen',
+    'SETTINGS_THEME_LIGHT' => 'Hell',
+    'SETTINGS_THEME_DARK' => 'Dunkel',
+    'SETTINGS_THEME_SYSTEM' => 'System',
     'SETTINGS_LANGUAGE' => 'Spracheinstellungen',
     'SETTINGS_REGULAR_WORKING_HOURS' => 'Regelarbeitszeit',
     'SETTINGS_OVERTIME' => 'Frühere Überstunden',
