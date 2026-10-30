@@ -6,6 +6,7 @@ use App\Chrono\ChronoReads;
 use App\Chrono\LocalWebAttendance;
 use App\Chrono\OwnOpenReviewReads;
 use App\Chrono\OwnMonthReviewReads;
+use App\Chrono\OwnMonthReviewFindingReads;
 use App\View\ExistingUi\OwnMonthReview;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -59,13 +60,24 @@ final class LocalWebAttendanceController extends Controller
         if ($this->interactions->home && $this->reads instanceof OwnMonthReviewReads) {
             require_once dirname(__DIR__, 4).'/lib/own_month_review.php';
             $month = (new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')))->format('Y-m');
-            $ownMonthReview = new OwnMonthReview($month, $language);
+            $findingsAvailable=$this->reads instanceof OwnMonthReviewFindingReads;
+            $ownMonthReview = new OwnMonthReview($month, $language, findingsAvailable: $findingsAvailable);
             if (array_key_exists('month_review', $request->query->all())) {
-                try { $month = \chrono_own_month_review_month($request->query('month_review')); }
-                catch (\InvalidArgumentException) { $month = ''; }
+                $findingsPage=null;
+                try {
+                    $month = \chrono_own_month_review_month($request->query('month_review'));
+                    if (array_key_exists('month_review_page',$request->query->all())) {
+                        $findingsPage=\chrono_own_month_review_page($request->query('month_review_page'));
+                    }
+                } catch (\InvalidArgumentException) { $month = ''; }
                 if ($month === '') { $ownMonthReview = new OwnMonthReview('', $language, requested: true, invalid: true); }
                 else {
-                    try { $ownMonthReview = new OwnMonthReview($month, $language, $this->reads->ownMonthReview($month), requested: true); }
+                    try {
+                        if ($findingsPage!==null && !$findingsAvailable) { throw new \RuntimeException('Own finding navigation unavailable.'); }
+                        $snapshot=$findingsPage===null?$this->reads->ownMonthReview($month)
+                            :$this->reads->ownMonthReviewFindings($month,$findingsPage);
+                        $ownMonthReview = new OwnMonthReview($month, $language, $snapshot, requested: true, findingsAvailable: $findingsAvailable);
+                    }
                     catch (AuthenticationException|AuthorizationException $error) { throw $error; }
                     catch (Throwable) { $ownMonthReview = new OwnMonthReview($month, $language, requested: true, unavailable: true); }
                 }

@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, HolidayRefillPreviewReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads, TeamTimeRecordReviewReads
+final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, HolidayRefillPreviewReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, OwnMonthReviewFindingReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads, TeamTimeRecordReviewReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -369,6 +369,17 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
 
             return \chrono_own_month_review_snapshot($pdo, (int) $actor->getKey(), $month,
                 new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')));
+        });
+    }
+
+    /** Same own classifiers/counts and one bounded finding page share this fresh snapshot. */
+    public function ownMonthReviewFindings(string $month,int $page): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($month,$page): array {
+            require_once dirname(__DIR__, 3).'/lib/own_month_review.php';
+
+            return \chrono_own_month_review_snapshot($pdo, (int) $actor->getKey(), $month,
+                new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')), $page);
         });
     }
 

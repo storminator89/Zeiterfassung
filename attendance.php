@@ -33,15 +33,18 @@ require_once __DIR__.'/framework/app/View/ExistingUi/OwnMonthReview.php';
 // Match header.php's existing explicit GET choice without changing its session flow.
 $monthReviewLanguage=valid_language(isset($_GET['lang'])?$_GET['lang']:($_SESSION['lang']??'de'));
 $monthReviewMonth=(new DateTimeImmutable('now',new DateTimeZone('Europe/Berlin')))->format('Y-m');
-$ownMonthReview=new \App\View\ExistingUi\OwnMonthReview($monthReviewMonth,$monthReviewLanguage);
+$ownMonthReview=new \App\View\ExistingUi\OwnMonthReview($monthReviewMonth,$monthReviewLanguage,findingsAvailable:true);
 if ($_SERVER['REQUEST_METHOD']==='GET' && array_key_exists('month_review',$_GET)) {
-    try { $monthReviewMonth=chrono_own_month_review_month($_GET['month_review']); }
-    catch (InvalidArgumentException) { $monthReviewMonth=''; }
+    $monthReviewPage=null;
+    try {
+        $monthReviewMonth=chrono_own_month_review_month($_GET['month_review']);
+        if (array_key_exists('month_review_page',$_GET)) { $monthReviewPage=chrono_own_month_review_page($_GET['month_review_page']); }
+    } catch (InvalidArgumentException) { $monthReviewMonth=''; }
     if ($monthReviewMonth==='') { $ownMonthReview=new \App\View\ExistingUi\OwnMonthReview('',$monthReviewLanguage,requested:true,invalid:true); }
     else {
         try {
-            $monthReviewSnapshot=chrono_native_own_month_review($conn,$user,$_SESSION['auth_version']??null,$monthReviewMonth);
-            $ownMonthReview=new \App\View\ExistingUi\OwnMonthReview($monthReviewMonth,$monthReviewLanguage,$monthReviewSnapshot,requested:true);
+            $monthReviewSnapshot=chrono_native_own_month_review($conn,$user,$_SESSION['auth_version']??null,$monthReviewMonth,$monthReviewPage);
+            $ownMonthReview=new \App\View\ExistingUi\OwnMonthReview($monthReviewMonth,$monthReviewLanguage,$monthReviewSnapshot,requested:true,findingsAvailable:true);
         } catch (AttendanceError $error) {
             if (in_array($error->status,[401,403],true)) { abort_request($error->status,$error->getMessage()); }
             $ownMonthReview=new \App\View\ExistingUi\OwnMonthReview($monthReviewMonth,$monthReviewLanguage,requested:true,unavailable:true);
