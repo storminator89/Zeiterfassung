@@ -399,4 +399,5 @@ define('CORRECTION_WITHDRAWN_AT', 'Rücknahme gespeichert');
 define('CORRECTION_TIME_UNAVAILABLE', 'Zeitpunkt nicht auswertbar');
 define('SETTINGS_SAVE_SUCCESS_TITLE', 'Erfolg!');
 define('SETTINGS_SAVE_SUCCESS_MESSAGE', 'Einstellungen erfolgreich aktualisiert!');
+define('LATEST_TIMESTAMP_REVIEW_HINT', 'Altzeit-Prüfhinweis: Mindestens ein gespeicherter Zeitpunkt hat einen vorhandenen Befund zu Format, Gültigkeit oder Berliner Zeitumstellung. Anzeige und Berechnung bleiben unverändert und bestätigen keine eindeutige Altzeit. Bitte Original prüfen.');
 ?>

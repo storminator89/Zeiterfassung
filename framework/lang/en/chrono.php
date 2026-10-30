@@ -264,4 +264,5 @@ return [
     'CORRECTION_TIME_UNAVAILABLE' => 'Time unavailable',
     'SETTINGS_SAVE_SUCCESS_TITLE' => 'Success!',
     'SETTINGS_SAVE_SUCCESS_MESSAGE' => 'Settings updated successfully!',
+    'LATEST_TIMESTAMP_REVIEW_HINT' => 'Legacy-time review: At least one stored timestamp has an existing format, validity or Berlin daylight-saving finding. Display and calculation are unchanged and do not confirm an unambiguous legacy time. Review the original.',
 ];

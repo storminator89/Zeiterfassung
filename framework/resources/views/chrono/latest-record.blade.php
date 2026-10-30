@@ -8,6 +8,12 @@
         <a class="link" href="adjustments.php?record_id={{ $latestRecord->entry['id'] }}">Korrektur / Storno</a></span>
     </div>
     @endif
+    @if ($latestRecord->entry['timestamp_review'] ?? false)
+    <div class="alert alert-warning mb-4" role="alert" data-latest-timestamp-review>
+        <span>{{ $latestRecord->copy->text('LATEST_TIMESTAMP_REVIEW_HINT') }}
+        <a class="link" href="adjustments.php?record_id={{ $latestRecord->entry['id'] }}">{{ $latestRecord->copy->text('OWN_OPEN_REVIEW_LINK') }}</a></span>
+    </div>
+    @endif
     <div class="bg-base-200 p-6 rounded-lg shadow-inner">
         <div class="grid grid-cols-2 gap-4">
             <div class="col-span-2 bg-primary text-primary-content p-4 rounded-lg mb-4">

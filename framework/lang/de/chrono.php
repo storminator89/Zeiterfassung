@@ -264,4 +264,5 @@ return [
     'CORRECTION_TIME_UNAVAILABLE' => 'Zeitpunkt nicht auswertbar',
     'SETTINGS_SAVE_SUCCESS_TITLE' => 'Erfolg!',
     'SETTINGS_SAVE_SUCCESS_MESSAGE' => 'Einstellungen erfolgreich aktualisiert!',
+    'LATEST_TIMESTAMP_REVIEW_HINT' => 'Altzeit-Prüfhinweis: Mindestens ein gespeicherter Zeitpunkt hat einen vorhandenen Befund zu Format, Gültigkeit oder Berliner Zeitumstellung. Anzeige und Berechnung bleiben unverändert und bestätigen keine eindeutige Altzeit. Bitte Original prüfen.',
 ];
