@@ -43,7 +43,7 @@ final class LocalWebCsvExportController extends Controller
             // turn invalid time into a successful dash/partial CSV. Open is valid.
             foreach ($records as $record) {
                 if (\report_record_calculation($record)['status'] === 'invalid') {
-                    return new Response('CSV-Export nicht verfügbar: Mindestens ein Zeiteintrag ist ungültig. Bitte die Originalwerte in der eigenen Arbeitszeitliste prüfen und über Korrekturanträge klären. Es wurden keine Zeiten gelöscht oder gekürzt.', 409, [
+                    return new Response('CSV-Export nicht verfügbar: Mindestens ein Zeiteintrag ist ungültig. Bitte die Originalwerte in der eigenen Arbeitszeitliste prüfen und über Korrekturanträge klären. Es wurden keine Zeiten gelöscht oder gekürzt.' . \report_csv_invalid_record_hint($record), 409, [
                         'Content-Type' => 'text/plain; charset=UTF-8',
                     ]);
                 }

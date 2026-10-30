@@ -46,15 +46,17 @@ try {
 
     // Canonical diagnostics inspect the same complete source, never drop a row.
     $hasInvalidRecords = false;
+    $invalidRecordExample = null;
     foreach ($exportRecords as $record) {
         if (report_record_calculation($record)['status'] === 'invalid') {
             $hasInvalidRecords = true;
+            $invalidRecordExample ??= $record;
         }
     }
     if ($hasInvalidRecords) {
         http_response_code(409);
         header('Content-Type: text/plain; charset=UTF-8');
-        echo 'CSV-Export nicht verfügbar: Mindestens ein Zeiteintrag ist ungültig. Bitte die Originalwerte in der eigenen Arbeitszeitliste prüfen und über Korrekturanträge klären. Es wurden keine Zeiten gelöscht oder gekürzt.';
+        echo 'CSV-Export nicht verfügbar: Mindestens ein Zeiteintrag ist ungültig. Bitte die Originalwerte in der eigenen Arbeitszeitliste prüfen und über Korrekturanträge klären. Es wurden keine Zeiten gelöscht oder gekürzt.' . report_csv_invalid_record_hint($invalidRecordExample);
         exit;
     }
 

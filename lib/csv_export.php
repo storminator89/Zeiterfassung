@@ -66,3 +66,15 @@ function report_csv_document(array $exportRecords): string {
         fclose($output);
     }
 }
+
+
+/** One already-authorized failing own row, not a lookup or CSV admission rule. */
+function report_csv_invalid_record_hint(array $record): string {
+    require_once __DIR__.'/correction_selection.php';
+    try { $id=correction_selection_id($record['id']??null); }
+    catch (InvalidArgumentException) { return ''; }
+    return "\n\nBeispiel aus demselben eigenen Lesestand: Buchung #".$id.".\n"
+        ."Korrektur / Storno: adjustments.php?record_id=".$id."\n"
+        .'Weitere Buchungen und Einträge außerhalb eines gewählten CSV-Zeitraums können betroffen sein. '
+        .'Das Ziel liest den aktuellen Stand; es wird nichts automatisch korrigiert.';
+}
