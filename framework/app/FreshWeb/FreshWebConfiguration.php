@@ -444,9 +444,9 @@ final readonly class FreshWebConfiguration
         foreach ([
             'assets/kolibri_icon.png' => 'b450f436baec5dbde264c4fe21d9001c0b466ff44ae1311f5919315bd32430e4',
             'assets/css/main.css' => 'd293dcf9d31e0adfc0c6cda1c2f03f4c57afe325c79e223794460dc9f94c4e6f',
-            'assets/css/app_ui.css' => '2c21f4f2cce07ecab7633d8b098d98f4622e9efde08f289a3720b37b90062f91',
+            'assets/css/app_ui.css' => '854f5f9791e6d6b2faaf81dc32b815c9c1b4a941fba7e2f34ed0e5bf4f0a7b3b',
             'assets/js/main.js' => '2f9ed4299e2acca7b8b472c3099f5b14e499ed221d33b4be77ecabfade9f5ae3',
-            'assets/js/attendance.js' => '6da4612132495f3bb68089eccc769e40d8a9079b48daec15940e9b3e5161a785',
+            'assets/js/attendance.js' => '3b87890d2ec04eeccbeeaa6a28b0d7f6d420f24d9d9910e9abc75ba5fdf5a9a4',
             'assets/js/chrono-local-web.js' => '9940b5723b21a2fa21f39db9471523ff5818bc6946a480607c2e5cac20516b3b',
         ] as $name => $hash) {
             $path = $public.'/'.$name;

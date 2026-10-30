@@ -38,8 +38,8 @@
     @endif
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">Geräte</h2>
-        <p class="opacity-70 mb-4">Freigabe und letzter Kontakt sind unabhängig. Kontakt gilt nach {{ $terminalDevices->contactMaxAge }} Sekunden als veraltet; aktueller Kontakt garantiert keine Erreichbarkeit. Stand beim Laden der Seite.</p>
-        @if ($terminalDevices->deviceRevocationsEnabled)<p class="opacity-70 mb-4">Sperren beendet die Gerätefreigabe und verwirft eine offene Kopplung. Es werden keine bereits gespeicherten Buchungen geändert.</p>@endif
+        <x-chrono-help><p class="opacity-70 mb-4">Freigabe und letzter Kontakt sind unabhängig. Kontakt gilt nach {{ $terminalDevices->contactMaxAge }} Sekunden als veraltet; aktueller Kontakt garantiert keine Erreichbarkeit. Stand beim Laden der Seite.</p></x-chrono-help>
+        @if ($terminalDevices->deviceRevocationsEnabled)<x-chrono-help><p class="opacity-70 mb-4">Sperren beendet die Gerätefreigabe und verwirft eine offene Kopplung. Es werden keine bereits gespeicherten Buchungen geändert.</p></x-chrono-help>@endif
         <div class="table-responsive">
             <table class="table">
                 <thead><tr><th>Gerät</th><th>Standort</th><th>Freigabe</th><th>Kontaktstatus</th><th>Letzter Kontakt</th>@if ($terminalDevices->deviceRevocationsEnabled)<th></th>@endif</tr></thead>
@@ -102,7 +102,7 @@
         @if ($terminalDevices->credentialRevocationsEnabled)
         <p class="opacity-70 mb-4">Vorhandene Terminal-Zugänge verwalten. PIN und Kartenkennung werden nicht angezeigt.</p>
         @else
-        <p class="opacity-70 mb-4">Nur lesende Übersicht der eingerichteten Zugänge. Zugang speichern / ersetzen und Zugang sperren sind hier nicht verbunden. PIN, Kartenwerte und Hashes werden nicht angezeigt.</p>
+        <x-chrono-help><p class="opacity-70 mb-4">Nur lesende Übersicht der eingerichteten Zugänge. Zugang speichern / ersetzen und Zugang sperren sind hier nicht verbunden. PIN, Kartenwerte und Hashes werden nicht angezeigt.</p></x-chrono-help>
         @endif
         @if (! $terminalDevices->credentials)<p class="mb-4" role="status">Keine sichtbaren Terminal-Zugänge vorhanden.</p>@endif
         <div class="table-responsive">

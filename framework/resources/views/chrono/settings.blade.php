@@ -54,7 +54,7 @@
                                 <span class="label-text"><i class="fas fa-hourglass mr-2"></i>{{ $page->copy->text('SETTINGS_OVERTIME') }}</span>
                             </label>
                             <input type="number" step="any" id="ueberstunden" name="ueberstunden" value="{{ $settings->carryInHours }}" class="input input-bordered w-full" aria-describedby="carry-in-contract">
-                            <p id="carry-in-contract" class="text-sm opacity-70 mt-2">Nur Ihr eigener früherer Überstunden-Übertrag. Positive und negative endliche Zahlen mit Dezimalpunkt und optionalem Exponent sind zulässig; keine Leerzeichen oder Dezimalkommas. Ungültige, zu kleine oder nicht darstellbare Werte werden abgelehnt, nicht gerundet. Das vorhandene REAL-Datenformat bleibt eine binäre Näherung; die bestehende Historie ist kein verlustfreies Dezimaljournal. Bei einem Fehler kann die zuvor gewählte Sprache bereits übernommen sein.</p>
+                            <x-chrono-help><p id="carry-in-contract" class="text-sm opacity-70 mt-2">Nur Ihr eigener früherer Überstunden-Übertrag. Positive und negative endliche Zahlen mit Dezimalpunkt und optionalem Exponent sind zulässig; keine Leerzeichen oder Dezimalkommas. Ungültige, zu kleine oder nicht darstellbare Werte werden abgelehnt, nicht gerundet. Das vorhandene REAL-Datenformat bleibt eine binäre Näherung; die bestehende Historie ist kein verlustfreies Dezimaljournal. Bei einem Fehler kann die zuvor gewählte Sprache bereits übernommen sein.</p></x-chrono-help>
                         </div>
                     @endif
 
@@ -81,7 +81,7 @@
                 <div class="divider my-8">{{ $settings->passwordText('title') }}</div>
                 <section aria-labelledby="own-password-title">
                     <h3 id="own-password-title" class="text-xl font-semibold mb-3">{{ $settings->passwordText('title') }}</h3>
-                    <p id="own-password-contract" class="text-sm opacity-70 mb-4">{{ $settings->passwordText('contract') }}</p>
+                    <x-chrono-help><p id="own-password-contract" class="text-sm opacity-70 mb-4">{{ $settings->passwordText('contract') }}</p></x-chrono-help>
                     <form method="post" action="settings.php" class="space-y-6" aria-describedby="own-password-contract">
                         @csrf
                         <input type="hidden" name="password_action" value="change">
@@ -94,7 +94,7 @@
                 <div class="divider my-8">{{ $settings->passwordText('sessions_title') }}</div>
                 <section aria-labelledby="own-sessions-title">
                     <h3 id="own-sessions-title" class="text-xl font-semibold mb-3">{{ $settings->passwordText('sessions_title') }}</h3>
-                    <p id="own-sessions-contract" class="text-sm opacity-70 mb-4">{{ $settings->passwordText('sessions_contract') }}</p>
+                    <x-chrono-help><p id="own-sessions-contract" class="text-sm opacity-70 mb-4">{{ $settings->passwordText('sessions_contract') }}</p></x-chrono-help>
                     <form method="post" action="settings.php" class="space-y-6" aria-describedby="own-sessions-contract">
                         @csrf
                         <input type="hidden" name="session_action" value="revoke_web_api">
@@ -112,20 +112,20 @@
                         <div class="card-body">
                             <h3 class="card-title"><i class="fas fa-history mr-2"></i>{{ $page->copy->text('SETTINGS_BACKUP_RESTORE_TITLE') }}</h3>
                             <p>{{ $page->copy->text('SETTINGS_BACKUP_IMPORT_DISABLED') }}</p>
-                            <p>{{ $page->copy->text('SETTINGS_BACKUP_RESTORE_INSTRUCTIONS') }}</p>
-                            <p>{{ $page->copy->text('SETTINGS_BACKUP_RESTORE_GUIDE') }} <code>docs/TERMINAL.md</code></p>
+                            <x-chrono-help><p>{{ $page->copy->text('SETTINGS_BACKUP_RESTORE_INSTRUCTIONS') }}</p>
+<p>{{ $page->copy->text('SETTINGS_BACKUP_RESTORE_GUIDE') }} <code>docs/TERMINAL.md</code></p></x-chrono-help>
                         </div>
                     </div>
                     <div class="card bg-base-200 shadow-md">
                         <div class="card-body">
                             <h3 class="card-title"><i class="fas fa-download mr-2"></i>{{ $page->copy->text('SETTINGS_BACKUP_SNAPSHOT_TITLE') }}</h3>
-                            <p class="mb-4">{{ $page->copy->text('SETTINGS_BACKUP_SNAPSHOT_DESCRIPTION') }}</p>
+                            <x-chrono-help><p class="mb-4">{{ $page->copy->text('SETTINGS_BACKUP_SNAPSHOT_DESCRIPTION') }}</p></x-chrono-help>
                             @if (\Illuminate\Support\Facades\Route::has('chrono.database-snapshot'))
                                 <a href="download.php" class="btn btn-primary w-full" aria-describedby="snapshot-sensitive"><i class="fas fa-download mr-2"></i>{{ $page->copy->text('SETTINGS_BACKUP_SNAPSHOT_DOWNLOAD') }}</a>
-                                <p id="snapshot-sensitive" class="text-sm opacity-70 mt-2">Der vollständige Datenbank-Snapshot enthält sensible Konto- und Personaldaten. Externe Schlüssel, Anwendungscode und Betriebskonfiguration sind nicht enthalten.</p>
+                                <x-chrono-help><p id="snapshot-sensitive" class="text-sm opacity-70 mt-2">Der vollständige Datenbank-Snapshot enthält sensible Konto- und Personaldaten. Externe Schlüssel, Anwendungscode und Betriebskonfiguration sind nicht enthalten.</p></x-chrono-help>
                             @else
                                 <button type="button" class="btn btn-primary w-full" disabled aria-describedby="snapshot-hold"><i class="fas fa-download mr-2"></i>{{ $page->copy->text('SETTINGS_BACKUP_SNAPSHOT_DOWNLOAD') }}</button>
-                                <p id="snapshot-hold" class="text-sm opacity-70 mt-2">Der Datenbank-Snapshot ist in dieser Laravel-Ansicht noch nicht angebunden. Es wird kein Download oder Restore ausgeführt.</p>
+                                <p id="snapshot-hold" class="text-sm opacity-70 mt-2">Hier nicht verfügbar.</p>
                             @endif
                         </div>
                     </div>

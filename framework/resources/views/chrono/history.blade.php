@@ -3,7 +3,7 @@
 @section('content')
 <main class="container mx-auto px-4 py-8 chrono-page">
     <h1 class="text-2xl font-bold mb-6">Änderungshistorie</h1>
-    <p>Erfassung, Korrekturantrag, Entscheidung und Arbeitszeitmodell werden mit Zeitpunkt, Akteur und Vorher-/Nachher-Werten protokolliert. Baseline-Einträge dokumentieren den Stand beim Upgrade; frühere Änderungen sind nicht rekonstruierbar.</p>
+    <x-chrono-help><p>Erfassung, Korrekturantrag, Entscheidung und Arbeitszeitmodell werden mit Zeitpunkt, Akteur und Vorher-/Nachher-Werten protokolliert. Baseline-Einträge dokumentieren den Stand beim Upgrade; frühere Änderungen sind nicht rekonstruierbar.</p></x-chrono-help>
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">Historie filtern</h2>
         <form method="get" action="history.php">
@@ -14,14 +14,14 @@
                 <div><label class="block text-sm font-semibold mt-4 mb-2" for="history_to">Änderung bis einschließlich (optional)</label><input class="input input-bordered w-full" type="date" id="history_to" name="to" value="{{ $history->values['to'] }}"></div>
                 <div><label class="block text-sm font-semibold mt-4 mb-2" for="history_operation">Vorgang (optional)</label><select class="select select-bordered w-full" id="history_operation" name="operation"><option value="">Alle Vorgänge</option>@foreach ($history->operations as $operation => $label)<option value="{{ $operation }}" @if (($history->values['operation'] ?? '') === $operation) selected @endif>{{ $label }}</option>@endforeach</select></div>
             </div>
-            <p class="text-sm opacity-70 mt-3">Der Zeitraum gilt für den Zeitpunkt der protokollierten Änderung in Europe/Berlin, nicht für den Buchungstag. Alle Filter gelten gemeinsam und nur innerhalb Ihrer bisherigen Sichtrechte.</p>
+            <x-chrono-help><p class="text-sm opacity-70 mt-3">Der Zeitraum gilt für den Zeitpunkt der protokollierten Änderung in Europe/Berlin, nicht für den Buchungstag. Alle Filter gelten gemeinsam und nur innerhalb Ihrer bisherigen Sichtrechte.</p></x-chrono-help>
             <details class="mt-4" @if ($history->values['entity'] !== '' || $history->values['record_id'] !== '' || $history->values['request_id'] !== '') open @endif><summary>Datensatz oder Antrag eingrenzen</summary>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div><label class="block text-sm font-semibold mt-4 mb-2" for="history_entity">Bereich (optional)</label><select class="select select-bordered w-full" id="history_entity" name="entity"><option value="">Alle Bereiche</option>@foreach ($history->entities as $entity => $label)<option value="{{ $entity }}" @if ($history->values['entity'] === $entity) selected @endif>{{ $label }}</option>@endforeach</select></div>
                     <div><label class="block text-sm font-semibold mt-4 mb-2" for="history_record">Datensatz-ID im Bereich (optional)</label><input class="input input-bordered w-full" type="number" min="1" step="1" id="history_record" name="record_id" value="{{ $history->values['record_id'] }}"></div>
                     <div><label class="block text-sm font-semibold mt-4 mb-2" for="history_request">Korrekturantrags-ID (optional)</label><input class="input input-bordered w-full" type="number" min="1" step="1" id="history_request" name="request_id" value="{{ $history->values['request_id'] }}"></div>
                 </div>
-                <p class="text-sm opacity-70 mt-3">Datensatz-IDs können in mehreren Bereichen vorkommen. Die Korrekturantrags-ID zeigt nur Änderungen am Antrag selbst, nicht automatisch die zugehörige Buchung oder Sitzung.</p>
+                <x-chrono-help><p class="text-sm opacity-70 mt-3">Datensatz-IDs können in mehreren Bereichen vorkommen. Die Korrekturantrags-ID zeigt nur Änderungen am Antrag selbst, nicht automatisch die zugehörige Buchung oder Sitzung.</p></x-chrono-help>
             </details>
             <div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary">Filtern</button><a class="btn btn-outline" href="{{ $history->showRelations ? 'history.php?relations=1' : 'history.php' }}">Filter zurücksetzen</a></div>
         </form>
@@ -34,10 +34,10 @@
     @if ($history->newestUrl !== null)<p class="mb-6"><a href="{{ $history->newestUrl }}">Neueste Treffer mit diesen Filtern</a></p>@endif
     @if ($history->relationsUrl !== null)<p class="mb-6"><a class="btn btn-outline" href="{{ $history->relationsUrl }}">{{ $history->showRelations ? 'Bezüge ausblenden' : 'Bezüge anzeigen' }}</a></p>@endif
     @if ($history->exportUrl !== null)<p class="mb-6"><a class="btn btn-outline" href="{{ $history->exportUrl }}">Aktuelle Treffer dieser Filterseite als ausgewähltes JSON (max. 100)</a></p>@endif
-    @if ($history->correlatedExportUrl !== null)<p class="mb-6"><a class="btn btn-outline" href="{{ $history->correlatedExportUrl }}">Bezüge dieser Treffer als JSON (begrenzt)</a><span class="block text-sm opacity-70 mt-2">Zugehörige Referenzen können außerhalb der Ankerfilter liegen. Aktuelle gespeicherte Beziehungen, keine verursachenden Ereigniszuweisungen oder vollständige Historie.</span></p>@endif
+    @if ($history->correlatedExportUrl !== null)<x-chrono-help><p class="mb-6"><a class="btn btn-outline" href="{{ $history->correlatedExportUrl }}">Bezüge dieser Treffer als JSON (begrenzt)</a><span class="block text-sm opacity-70 mt-2">Zugehörige Referenzen können außerhalb der Ankerfilter liegen. Aktuelle gespeicherte Beziehungen, keine verursachenden Ereigniszuweisungen oder vollständige Historie.</span></p></x-chrono-help>@endif
     @foreach ($history->entries as $r)
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
-        <p class="text-sm font-semibold opacity-70 mb-2">#{{ $r['id'] }} · {{ $r['occurred_at'] }}</p>
+        <p class="text-sm font-semibold opacity-70 mb-2">#{{ $r['id'] }} · {{ \App\View\ExistingUi\HumanTime::full($r['occurred_at']) }}</p>
         <h2 class="text-xl font-semibold mb-4">{{ $r['entity'] }} #{{ $r['record_id'] }} · {{ $r['operation'] }}</h2>
         <p>{{ $r['actor'] }} · {{ $r['reason'] }}</p>
         @if ($history->showRelations)
@@ -47,12 +47,12 @@
         @elseif ($relation['status'] === 'not_applicable')
         <p class="text-sm mt-3">Für diesen Bereich kein Buchungsbezug.</p>
         @else
-        <p class="text-sm mt-3">Bezüge:
+        <x-chrono-help><p class="text-sm mt-3">Bezüge:
             @foreach ($relation['session_ids'] as $id)<a class="link mr-2" href="#history-session-{{ $id }}">Sitzung #{{ $id }}</a>@endforeach
             @foreach ($relation['event_ids'] as $id)<a class="link mr-2" href="#history-event-{{ $id }}">Ereignis #{{ $id }}</a>@endforeach
             @foreach ($relation['request_ids'] as $id)<a class="link mr-2" href="#history-request-{{ $id }}">Antrag #{{ $id }}</a>@endforeach
             @if ($relation['current_request_relation'])<span class="badge badge-ghost">heutige Antragszuordnung</span>@endif
-        </p>
+        </p></x-chrono-help>
         @endif
         @endif
         <details><summary>Vorher und nachher ansehen</summary>
@@ -75,7 +75,7 @@
     @if ($history->relations !== null)
     <section class="card bg-base-100 shadow-xl p-6 mb-6" aria-labelledby="history-relations-title">
         <h2 class="text-xl font-semibold mb-4" id="history-relations-title">Bezüge dieser Treffer</h2>
-        <p class="text-sm mb-4">Begrenzte aktuelle Beziehungen, gegebenenfalls außerhalb der Ankerfilter. Kein Nachweis einer Ursache oder vollständigen Historie.</p>
+        <x-chrono-help><p class="text-sm mb-4">Begrenzte aktuelle Beziehungen, gegebenenfalls außerhalb der Ankerfilter. Kein Nachweis einer Ursache oder vollständigen Historie.</p></x-chrono-help>
         @if (in_array(true, $history->relations['truncated'], true))<p class="alert alert-warning mb-4" role="status">Bezüge gekürzt; fehlende Zuordnungen bleiben ungeklärt.</p>@endif
         @if (! $history->relations['sessions'] && ! $history->relations['events'] && ! $history->relations['requests'])<p role="status">Keine darstellbaren Bezüge. Das belegt nicht, dass keine weiteren bestehen.</p>@endif
         @if ($history->relations['sessions'])

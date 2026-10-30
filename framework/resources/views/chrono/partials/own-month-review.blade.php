@@ -39,7 +39,7 @@
             @endif
             <p class="text-xs opacity-70">{{ $ownMonthReview->text('snapshot') }} <time datetime="{{ $monthReview['loaded_at'] }}">{{ $monthReview['loaded_at'] }}</time></p>
         @endif
-        <p class="opacity-70">{{ $ownMonthReview->text('note') }}</p>
+        <x-chrono-help><p class="opacity-70">{{ $ownMonthReview->text('note') }}</p></x-chrono-help>
         <div class="flex flex-wrap gap-3"><a class="link" href="adjustments.php?request_status=pending">{{ $ownMonthReview->text('pending_link') }}</a><a class="link" href="attendance.php#timeRecordsContainer">{{ $ownMonthReview->text('review_link') }}</a></div>
     </div>
 </details>

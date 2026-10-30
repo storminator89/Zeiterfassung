@@ -1,7 +1,7 @@
 <details id="department-integrity" class="mb-4" @if ($adminPauseSettings->departmentIntegrityRequested) open @endif>
     <summary class="cursor-pointer">Abteilungszuordnungen im gesamten Bestand prüfen</summary>
-    <p class="text-sm mt-2">Nur lesende Momentaufnahme aller Benutzer, unabhängig von Suche und Tabellenblatt. Keine automatische Zuordnung, Reparatur, Löschung oder Aktivierung von Fremdschlüsseln.</p>
-    <a class="link" href="admin.php?{{ http_build_query(['search' => $adminPauseSettings->users['search'] ?? '', 'page' => $adminPauseSettings->users['page'] ?? 1, 'department_integrity' => '1']) }}#department-integrity">Prüfung ausdrücklich starten / neu laden</a>
+    <x-chrono-help><p class="text-sm mt-2">Nur lesende Momentaufnahme aller Benutzer, unabhängig von Suche und Tabellenblatt. Keine automatische Zuordnung, Reparatur, Löschung oder Aktivierung von Fremdschlüsseln.</p></x-chrono-help>
+    <a class="link" href="admin.php?{{ http_build_query(['section' => 'system', 'search' => $adminPauseSettings->users['search'] ?? '', 'page' => $adminPauseSettings->users['page'] ?? 1, 'department_integrity' => '1']) }}#department-integrity">Prüfung ausdrücklich starten / neu laden</a>
     @if ($adminPauseSettings->departmentIntegrityRequested)
         @if ($adminPauseSettings->departmentIntegrity === null)
         <p class="text-warning mt-2" role="alert">Bestandsprüfung derzeit nicht verfügbar. Daraus folgt kein fehlerfreier oder leerer Bestand.</p>
@@ -12,9 +12,9 @@
             <p class="text-warning" role="alert">{{ $integrity['unaddressable_count'] }} Problemzuordnungen gehören zu nichtpositiven Benutzer-IDs. Die vorhandene Prüfliste und der Editor können diese nicht öffnen; getrennte Offlineprüfung erforderlich. Die Gesamtzahl enthält diese Fälle.</p>
             @endif
             @if ($integrity['problem_count'] === 0)
-            <p class="text-sm">Keine fehlende oder ungültige Abteilungsreferenz in dieser Momentaufnahme gefunden. Dies bestätigt weder fachlich richtige Zuordnungen noch Migrations- oder Löschfähigkeit.</p>
+            <x-chrono-help><p class="text-sm">Keine fehlende oder ungültige Abteilungsreferenz in dieser Momentaufnahme gefunden. Dies bestätigt weder fachlich richtige Zuordnungen noch Migrations- oder Löschfähigkeit.</p></x-chrono-help>
             @else
-            <p class="text-sm">Höchstens 25 Problemzeilen je Prüfseite, nach Benutzer-ID. Ungültige Rohwerte werden hier nicht ausgegeben; bestehende Details über „Bearbeiten“ prüfen und Änderungen ausdrücklich vornehmen. Andere Stammdaten oder Vorgesetztenketten sind nicht Gegenstand dieser Prüfung.</p>
+            <x-chrono-help><p class="text-sm">Höchstens 25 Problemzeilen je Prüfseite, nach Benutzer-ID. Ungültige Rohwerte werden hier nicht ausgegeben; bestehende Details über „Bearbeiten“ prüfen und Änderungen ausdrücklich vornehmen. Andere Stammdaten oder Vorgesetztenketten sind nicht Gegenstand dieser Prüfung.</p></x-chrono-help>
             <div class="overflow-x-auto"><table class="table w-full">
                 <thead><tr><th>Benutzer-ID</th><th>{{ $page->copy->text('TABLE_HEADER_USERNAME') }}</th><th>Befund</th><th>{{ $page->copy->text('TABLE_HEADER_ACTIONS') }}</th></tr></thead>
                 <tbody>

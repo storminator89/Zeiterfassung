@@ -11,7 +11,7 @@
                 <div><dt class="font-semibold">{{ $profile->text('department') }}</dt><dd>{{ $profile->referenceName('department') }}</dd></div>
                 <div><dt class="font-semibold">{{ $profile->text('supervisor') }}</dt><dd>{{ $profile->referenceName('supervisor') }}</dd></div>
             </dl>
-            <p class="text-sm opacity-70 mb-4">{{ $profile->text('assignment_note') }}</p>
+            <x-chrono-help><p class="text-sm opacity-70 mb-4">{{ $profile->text('assignment_note') }}</p></x-chrono-help>
             @if ($profile->model === null)
                 <p>{{ $profile->text('no_model') }}</p>
             @else
@@ -29,7 +29,7 @@
                     </table>
                 </div>
             @endif
-            <p class="text-sm opacity-70 mt-4">{{ $profile->text('model_note') }} @if ($page->interactions->workModels)<a href="work_models.php">{{ $profile->text('models_link') }}</a>@endif</p>
+            <x-chrono-help><p class="text-sm opacity-70 mt-4">{{ $profile->text('model_note') }} @if ($page->interactions->workModels)<a href="work_models.php">{{ $profile->text('models_link') }}</a>@endif</p></x-chrono-help>
         @endif
     </section>
 @endif

@@ -25,6 +25,16 @@ final readonly class TimeRecordsPage
         public bool $storedValuesExport = false,
     ) {}
 
+    public function location(mixed $value): string
+    {
+        return match($value) {
+            'office'=>$this->copy->text('LOCATION_OFFICE'),
+            'home_office'=>$this->copy->text('LOCATION_HOME_OFFICE'),
+            'business_trip'=>$this->copy->text('LOCATION_BUSINESS_TRIP'),
+            null,''=>'—', default=>(string)$value,
+        };
+    }
+
     public function storedValuesText(string $key): string
     {
         $labels=require dirname(__DIR__,3).'/lang/'.$this->copy->language.'/stored-values-export.php';

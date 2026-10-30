@@ -97,7 +97,7 @@
     </style>
     <div class="container mx-auto px-4 py-8 chrono-dashboard">
         <h2 class="text-4xl font-bold mb-8 text-center">{{ $page->copy->text('DASHBOARD_TITLE') }}</h2>
-        <p class="text-sm mb-6">{{ $page->copy->text('DASHBOARD_PERIOD_BASIS') }}</p>
+        <x-chrono-help><p class="text-sm mb-6">{{ $page->copy->text('DASHBOARD_PERIOD_BASIS') }}</p></x-chrono-help>
         @if ($absenceYearSupported ?? false)
             @include('chrono.partials.own-absence-year')
         @endif
@@ -120,7 +120,7 @@
             @if (array_key_exists('stored_years', $holidayInventory))
             <details class="mt-3">
                 <summary class="cursor-pointer">{{ $page->copy->text('HOLIDAY_INVENTORY_YEARS_TITLE') }}</summary>
-                <p class="mt-2 opacity-70">{{ $page->copy->text('HOLIDAY_INVENTORY_YEARS_NOTE') }}</p>
+                <x-chrono-help><p class="mt-2 opacity-70">{{ $page->copy->text('HOLIDAY_INVENTORY_YEARS_NOTE') }}</p></x-chrono-help>
                 @if ($holidayInventory['stored_years_truncated'])<p class="mt-2">{{ $page->copy->text('HOLIDAY_INVENTORY_YEARS_LIMITED') }}</p>@endif
                 @if ($holidayInventory['stored_years'] === [])<p class="mt-2">{{ $page->copy->text('HOLIDAY_INVENTORY_YEARS_EMPTY') }}</p>@else
                 <ul class="list-disc pl-5 mt-2 max-h-32 overflow-y-auto">
@@ -178,7 +178,7 @@
                     @if (isset($dashboard->statistics['recorded_as_of_day']) && array_key_exists('recorded_as_of_overtime', $dashboard->statistics))
                     <p data-report-period="all" data-report-presentation="{{ $dashboard->presentation('all') }}" class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ sprintf($page->copy->text('DASHBOARD_RECORDED_AS_OF'), $dashboard->statistics['recorded_as_of_day'], $dashboard->value('recorded_as_of_overtime', 'all')) }}</p>
                     @endif
-                    <p class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p>
+                    <x-chrono-help><p class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p></x-chrono-help>
                     <div data-report-period="year" data-report-presentation="{{ $dashboard->presentation('year') }}" class="stat-desc text-sm font-medium opacity-80">
                         {{ sprintf($page->copy->text('DASHBOARD_OVER_HOURS_YEAR'), $dashboard->value('year_overtime', 'year')) }}
                     </div>
@@ -290,12 +290,12 @@
     <div class="modal" id="scheduleModal">
         <div class="modal-box">
             <h3 class="font-bold text-lg" id="scheduleModalLabel">{{ $page->copy->text('MODAL_TITLE_SCHEDULE') }}</h3>
-            <p class="py-4">
+            <x-chrono-help><p class="py-4">
                 <strong>{{ $page->copy->text('FORM_START') }}:</strong> <span id="startTime"></span><br>
                 <strong>{{ $page->copy->text('FORM_END') }}:</strong> <span id="endTime"></span><br>
                 <strong>{{ $page->copy->text('FORM_DESCRIPTION') }}:</strong> <span id="eventDescription"></span><br>
                 <strong>{{ $page->copy->text('FORM_LOCATION') }}:</strong> <span id="eventLocation"></span>
-            </p>
+            </p></x-chrono-help>
             <div class="modal-action">
                 <button class="btn" data-calendar-close>{{ $page->copy->text('BUTTON_CLOSE') }}</button>
             </div>

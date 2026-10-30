@@ -23,7 +23,7 @@
             </tbody></table></div></details>@endif
             <p class="text-xs opacity-70">{{ $ownPeriodComparison->text('snapshot') }} <time datetime="{{ $comparison['loaded_at'] }}">{{ $comparison['loaded_at'] }}</time></p>
         @endif
-        <p class="opacity-70">{{ $ownPeriodComparison->text('note') }}</p>
+        <x-chrono-help><p class="opacity-70">{{ $ownPeriodComparison->text('note') }}</p></x-chrono-help>
         <div class="flex flex-wrap gap-3"><a class="link" href="adjustments.php">{{ $ownPeriodComparison->text('correction') }}</a><a class="link" href="work_models.php">{{ $ownPeriodComparison->text('model_link') }}</a></div>
     </div>
 </details>

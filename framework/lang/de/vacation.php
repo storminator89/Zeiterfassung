@@ -10,7 +10,7 @@ return [
     'from' => 'Von',
     'through' => 'Bis',
     'reason' => 'Begründung (keine sensiblen Angaben)',
-    'home_reason' => 'Begründung für Urlaub (bei Krankheit nicht erforderlich)',
+    'home_reason' => 'Begründung (nur Urlaub)',
     'submit' => 'Antrag einreichen',
     'home_note' => 'Urlaub wird als Antrag ohne Gutschrift gespeichert. Gutschrift erst nach Fremdfreigabe; Krankheit bleibt direkt.',
     'current' => 'Aktueller gespeicherter Stand',

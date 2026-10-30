@@ -1,7 +1,7 @@
 <section id="team-time-review" class="card bg-base-100 shadow-xl mb-8" aria-labelledby="teamTimeReviewTitle">
     <div class="card-body">
         <h3 id="teamTimeReviewTitle" class="card-title">{{ $supervisor->text('TEAM_REVIEW_TITLE') }}</h3>
-        <p class="text-sm opacity-70">{{ $supervisor->text('TEAM_REVIEW_NOTE') }}</p>
+        <x-chrono-help><p class="text-sm opacity-70">{{ $supervisor->text('TEAM_REVIEW_NOTE') }}</p></x-chrono-help>
         @if ($supervisor->review === null)
             <p class="mt-3"><a class="btn btn-outline" href="{{ $supervisor->reviewUrl(true) }}">{{ $supervisor->text('TEAM_REVIEW_OPEN') }}</a></p>
         @else
@@ -13,7 +13,7 @@
             @else
                 @php($reviewData = $supervisor->review['data'])
                 <p class="mt-3">{{ sprintf($supervisor->text('TEAM_REVIEW_COUNT'), $reviewData['total']) }}</p>
-                <p class="text-sm opacity-70">{{ $supervisor->text('TEAM_REVIEW_ORIGINAL_NOTE') }}</p>
+                <x-chrono-help><p class="text-sm opacity-70">{{ $supervisor->text('TEAM_REVIEW_ORIGINAL_NOTE') }}</p></x-chrono-help>
                 @if ($reviewData['truncated'])<p class="alert alert-warning mt-3" role="status">{{ $supervisor->text('TEAM_REVIEW_TRUNCATED') }}</p>@endif
                 @if ($reviewData['rows'] === [])
                     <p class="mt-3" role="status">{{ $supervisor->text('TEAM_REVIEW_EMPTY') }}</p>

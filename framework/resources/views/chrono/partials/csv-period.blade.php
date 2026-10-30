@@ -6,6 +6,6 @@
         <div><label for="csv-period-to" class="block text-sm font-semibold mb-1">{{ $copy->text('CSV_PERIOD_TO') }}</label><input id="csv-period-to" name="to" type="date" min="0001-01-01" max="9999-12-31" required class="input input-bordered w-full"></div>
         <button class="btn btn-outline btn-success" type="submit">{{ $copy->text('CSV_PERIOD_SUBMIT') }}</button>
     </form>
-    <p class="text-sm opacity-70 mt-3">{{ $copy->text('CSV_PERIOD_NOTE') }}</p>
-    <p class="text-sm opacity-70 mt-2">{{ $copy->text('CSV_EXPORT_NEW_CONTEXT_HINT') }}</p>
+    <x-chrono-help><p class="text-sm opacity-70 mt-3">{{ $copy->text('CSV_PERIOD_NOTE') }}</p>
+<p class="text-sm opacity-70 mt-2">{{ $copy->text('CSV_EXPORT_NEW_CONTEXT_HINT') }}</p></x-chrono-help>
 </details>

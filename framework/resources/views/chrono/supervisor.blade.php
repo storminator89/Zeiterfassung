@@ -98,7 +98,7 @@
                 <section class="card bg-base-100 shadow-xl mb-8" aria-labelledby="teamStatusTitle">
                     <div class="card-body">
                         <h3 id="teamStatusTitle" class="card-title">{{ $supervisor->text('TEAM_STATUS_TITLE') }}</h3>
-                        <p class="text-sm opacity-70">{{ $supervisor->text('TEAM_STATUS_SNAPSHOT_NOTE') }} <time datetime="{{ $supervisor->report['team_status']['loaded_at'] }}">{{ $supervisor->report['team_status']['loaded_at'] }}</time></p>
+                        <x-chrono-help><p class="text-sm opacity-70">{{ $supervisor->text('TEAM_STATUS_SNAPSHOT_NOTE') }} <time datetime="{{ $supervisor->report['team_status']['loaded_at'] }}">{{ $supervisor->report['team_status']['loaded_at'] }}</time></p></x-chrono-help>
                         <div class="overflow-x-auto">
                             <table class="table table-zebra w-full">
                                 <thead><tr><th>{{ $supervisor->text('TABLE_HEADER_USERNAME') }}</th><th>{{ $supervisor->text('TEAM_STATUS_STATE') }}</th></tr></thead>
@@ -130,7 +130,7 @@
                 <section class="card bg-base-100 shadow-xl mb-8" aria-labelledby="teamAbsenceTitle">
                     <div class="card-body">
                         <h3 id="teamAbsenceTitle" class="card-title">{{ $supervisor->text('TEAM_ABSENCE_TITLE') }}</h3>
-                        <p class="text-sm opacity-70">{{ $supervisor->text('TEAM_ABSENCE_NOTE') }}</p>
+                        <x-chrono-help><p class="text-sm opacity-70">{{ $supervisor->text('TEAM_ABSENCE_NOTE') }}</p></x-chrono-help>
                         <p class="text-sm">{{ $absenceWeek['from'] }} – {{ $absenceWeek['through'] }} · Europe/Berlin</p>
                         <form method="get" action="supervisor.php" class="flex flex-wrap gap-4 my-4">
                             <input type="hidden" name="lang" value="{{ $supervisor->language }}">
@@ -205,7 +205,7 @@
                         <div class="card bg-base-100 shadow-xl">
                             <div class="card-body">
                                 <h3 class="card-title">Überstunden Übersicht</h3>
-                                <p class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p>
+                                <x-chrono-help><p class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p></x-chrono-help>
                                 <div class="chart-container">
                                     <canvas id="overtimeChart"></canvas>
                                 </div>
@@ -227,7 +227,7 @@
                     <h3 class="text-2xl font-semibold mb-6">
                         <i class="fas fa-hourglass mr-2"></i>{{ $supervisor->text('TOTAL_OVERTIME_TITLE') }}
                     </h3>
-                    <p class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p>
+                    <x-chrono-help><p class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p></x-chrono-help>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="overtimeCards">
                         @if ($supervisor->report['overtime'] !== [])
                             @foreach ($supervisor->report['overtime'] as $userId => $data)
@@ -257,7 +257,7 @@
                     <div class="card bg-base-100 shadow-xl">
                         <div class="card-body">
                             <!-- Search and Filter Bar -->
-                            <p class="text-sm opacity-70 mb-4">{{ $supervisor->text('SUPERVISOR_PERIOD_NOTE') }}</p>
+                            <x-chrono-help><p class="text-sm opacity-70 mb-4">{{ $supervisor->text('SUPERVISOR_PERIOD_NOTE') }}</p></x-chrono-help>
                             @if ($supervisor->periodInvalid)<div class="alert alert-error mb-4" role="alert">{{ $supervisor->text('SUPERVISOR_PERIOD_INVALID') }}</div>@endif
                             <form method="get" action="supervisor.php" class="flex flex-wrap gap-4 mb-4">
                                 @foreach ($supervisor->reviewQuery() as $name => $value)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endforeach
@@ -390,7 +390,7 @@
                     <button class="btn btn-circle btn-ghost">✕</button>
                 </form>
             </div>
-            <p class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p>
+            <x-chrono-help><p class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p></x-chrono-help>
             <div id="modal_content" class="space-y-6">
                 <!-- Content will be dynamically inserted here -->
             </div>

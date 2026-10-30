@@ -2,6 +2,9 @@
 
 // Exact selected copy from languages/de.php; no executable legacy bootstrap.
 return [
+    'UI_MY_RECORDS' => 'Meine Buchungen',
+    'UI_CARRY_IN' => 'Übertrag (Std.)',
+    'UI_RECORDED_BALANCE' => 'Erfasster Saldo',
     'TITLE' => 'Quodara Chrono - Zeiterfassung',
     'NAV_HOME' => 'Home',
     'NAV_DASHBOARD' => 'Dashboard',
@@ -170,7 +173,7 @@ return [
     'FORM_SUPERVISOR' => 'Vorgesetzter',
     'FORM_NO_SUPERVISOR' => 'Kein Vorgesetzter',
     'FORM_REGULAR_WORKING_HOURS' => 'Regelarbeitszeit',
-    'FORM_OVERTIME' => '����berstunden',
+    'FORM_OVERTIME' => 'Überstunden',
     'FORM_NEW_PASSWORD' => 'Neues Passwort (leer lassen für keine Änderung)',
 
     // Exact selected native create-form copy.

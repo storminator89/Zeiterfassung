@@ -10,7 +10,7 @@ return [
     'from' => 'From',
     'through' => 'Through',
     'reason' => 'Reason (no sensitive details)',
-    'home_reason' => 'Vacation reason (not required for illness)',
+    'home_reason' => 'Reason (vacation only)',
     'submit' => 'Submit request',
     'home_note' => 'Vacation is saved as a request without credit. Credit requires another authorized person’s approval; illness stays direct.',
     'current' => 'Current stored state',

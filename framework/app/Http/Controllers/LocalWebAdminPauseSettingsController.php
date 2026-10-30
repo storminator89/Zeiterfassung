@@ -176,7 +176,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
             $this->pauseSettings->apply(array_diff_key($form, array_flip(['_token', 'csrf_token'])));
 
             // The native handler redirects after commit; no invented flash success.
-            return new RedirectResponse('admin.php#pause-settings');
+            return new RedirectResponse('admin.php?section=rules#pause-settings');
         } catch (AuthenticationException|AuthorizationException $error) {
             throw $error;
         } catch (InvalidArgumentException $error) {
@@ -231,7 +231,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         } catch (Throwable) {
             return $this->userMutationText('Feiertagsergänzung gespeichert. Gespeicherten Jahrgang prüfen; nicht erneut senden.', 200);
         }
-        return (new RedirectResponse('admin.php#holiday-refill', 303))->header('Cache-Control', 'no-store');
+        return (new RedirectResponse('admin.php?section=system#holiday-refill', 303))->header('Cache-Control', 'no-store');
     }
 
     /** Prepared FreshWeb V5 binding follows its unchanged Runtime/route gate; no default binding. */
@@ -273,7 +273,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         } catch (Throwable) {
             return $this->userMutationText('Kontostatus gespeichert. Bitte neu laden und den gespeicherten Stand prüfen; nicht erneut senden.', 200);
         }
-        return (new RedirectResponse('admin.php#user-management', 303))->header('Cache-Control', 'no-store');
+        return (new RedirectResponse('admin.php?section=users#user-management', 303))->header('Cache-Control', 'no-store');
     }
 
     private function ldapSessionsEnabled(): bool
@@ -302,7 +302,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         try {
             $actor = $this->auth->guard('web')->user();
             $request->session()->flash('chrono_ldap_sessions_revoked', (int) $actor->getAuthIdentifier());
-            return new RedirectResponse('admin.php#user-management', 303,
+            return new RedirectResponse('admin.php?section=users#user-management', 303,
                 ['Cache-Control' => 'no-store', 'Referrer-Policy' => 'no-referrer']);
         } catch (Throwable) {
             return $this->userMutationText('Sitzungsänderung gespeichert. Die Antwort konnte nicht abgeschlossen werden; nicht erneut senden.', 503);
@@ -396,7 +396,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
             if ($id < 1) { throw new \RuntimeException; }
             $request->session()->flash('chrono_ldap_sync_result', ['actor_id' => $id, 'display' => $outcome->toDisplay()]);
 
-            return new RedirectResponse('admin.php#ldap-sync', 303, ['Cache-Control' => 'no-store']);
+            return new RedirectResponse('admin.php?section=access#ldap-sync', 303, ['Cache-Control' => 'no-store']);
         } catch (Throwable) {
             return $this->ldapFailure('LDAP synchronization could not be confirmed. Reload and inspect the stored state; do not retry automatically.', 503);
         }
@@ -417,7 +417,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         try {
             $this->intake->change(array_diff_key($form, array_flip(['_token', 'csrf_token', 'update_intake_policy'])));
 
-            return new RedirectResponse('admin.php#user-intake-policy');
+            return new RedirectResponse('admin.php?section=access#user-intake-policy');
         } catch (AuthenticationException|AuthorizationException $error) {
             throw $error;
         } catch (InvalidArgumentException|DomainException $error) {
@@ -458,7 +458,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
                 return $this->page($request, errorKey: 'ERROR_ALL_FIELDS_REQUIRED');
             }
 
-            return new RedirectResponse('admin.php#department-management');
+            return new RedirectResponse('admin.php?section=departments#department-management');
         } catch (AuthenticationException|AuthorizationException $error) {
             throw $error;
         } catch (InvalidArgumentException|DomainException $error) {
@@ -500,7 +500,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         }
         // No raw form/password, key metadata or secret is flashed or echoed.
         $request->session()->flash('chrono_api_notice', $state->enabled ? 'enabled' : 'disabled');
-        return (new RedirectResponse('admin.php#api-management', 303))->header('Cache-Control', 'no-store');
+        return (new RedirectResponse('admin.php?section=system#api-management', 303))->header('Cache-Control', 'no-store');
     }
 
     private function page(Request $request, ?string $error = null, ?string $errorKey = null, ?string $successKey = null, ?array $createUserDraft = null, ?array $holidayRefillDraft = null): Response

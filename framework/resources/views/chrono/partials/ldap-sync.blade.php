@@ -24,7 +24,7 @@
         @endif
         @if ($ldap->ldapSyncForm !== null && $page->cspNonce !== null)
             <p class="mb-4">{{ __('ldap-sync.notice', [], $page->copy->language) }}</p>
-            <form method="post" action="admin.php" autocomplete="off" class="space-y-4">
+            <form method="post" action="admin.php?section=access" autocomplete="off" class="space-y-4">
                 @csrf
                 <input type="hidden" name="sync_ldap" value="1">
                 <div class="form-control">

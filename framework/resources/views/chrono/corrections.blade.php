@@ -3,7 +3,7 @@
 @section('content')
 <main class="container mx-auto px-4 py-8 chrono-page">
     <h1 class="text-2xl font-bold mb-6">Korrekturanträge</h1>
-    <p class="opacity-70">Nachträgliche Änderungen mit Begründung und Freigabe. Originalereignisse bleiben erhalten. Eigene Anträge müssen von einer anderen berechtigten Person freigegeben werden.</p>
+    <x-chrono-help><p class="opacity-70">Nachträgliche Änderungen mit Begründung und Freigabe. Originalereignisse bleiben erhalten. Eigene Anträge müssen von einer anderen berechtigten Person freigegeben werden.</p></x-chrono-help>
     @if ($corrections->error)<div class="alert alert-error mb-6" role="alert">{{ $corrections->error }}</div>@endif
     @if ($corrections->saved)<div class="alert alert-success mb-6">Gespeichert.</div>@endif
 
@@ -36,7 +36,7 @@
                 <select class="select select-bordered w-full" id="record_id" name="record_id">
                     <option value="0">Fehlende Buchung nachtragen</option>
                     @foreach ($corrections->recordOptions as $r)
-                    <option value="{{ $r['id'] }}" @selected($corrections->selectedRecordId === $r['id'])>#{{ $r['id'] }} · {{ $r['start'] }} – {{ $r['end'] }}</option>
+                    <option value="{{ $r['id'] }}" @selected($corrections->selectedRecordId === $r['id'])>#{{ $r['id'] }} · {{ \App\View\ExistingUi\HumanTime::full($r['start']) }} – {{ \App\View\ExistingUi\HumanTime::full($r['end']) }}</option>
                     @endforeach
                 </select>
                 <label class="block text-sm font-semibold mt-4 mb-2"><input class="checkbox checkbox-primary" type="checkbox" name="cancel" value="1" @checked($corrections->requestDraft['cancel'] ?? false)> Bestehende Buchung stornieren (Zeitfelder dann leer lassen)</label>
@@ -45,7 +45,7 @@
                     <div><label class="block text-sm font-semibold mt-4 mb-2" for="end">Ende mit Zeitzone</label><input class="input input-bordered w-full" id="end" name="end" value="{{ $corrections->requestDraft['end'] ?? '' }}" placeholder="2026-10-25T17:00+01:00"></div>
                     <div><label class="block text-sm font-semibold mt-4 mb-2" for="pause">Tatsächliche Pause (Minuten)</label><input class="input input-bordered w-full" id="pause" name="pause" value="{{ $corrections->requestDraft['pause'] ?? '' }}" type="number" min="0"></div>
                 </div>
-                <small class="block opacity-70 mt-3">Deutschland: Winterzeit +01:00, Sommerzeit +02:00. Abwesenheitsgutschriften beginnen um 00:00 Uhr Ortszeit; als Ende 00:00 plus Sollminuten und als Pause 0 eintragen. Arbeitsnachträge dürfen nicht in der Zukunft liegen. Bei Zeitumstellungen den Offset für jeden Zeitpunkt einzeln angeben.</small>
+                <x-chrono-help><small class="block opacity-70 mt-3">Deutschland: Winterzeit +01:00, Sommerzeit +02:00. Abwesenheitsgutschriften beginnen um 00:00 Uhr Ortszeit; als Ende 00:00 plus Sollminuten und als Pause 0 eintragen. Arbeitsnachträge dürfen nicht in der Zukunft liegen. Bei Zeitumstellungen den Offset für jeden Zeitpunkt einzeln angeben.</small></x-chrono-help>
                 <label class="block text-sm font-semibold mt-4 mb-2" for="reason">Begründung</label>
                 <textarea class="textarea textarea-bordered w-full" id="reason" name="reason" minlength="5" maxlength="1000" required>{{ $corrections->requestDraft['reason'] ?? '' }}</textarea>
                 <div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary">Antrag stellen</button></div>
@@ -54,14 +54,14 @@
         @if ($corrections->metadataEnabled)
         <details class="mt-5" @if ($corrections->metadataDraft) open @endif>
             <summary class="cursor-pointer font-semibold">Nur Arbeitsort und Notiz beantragen</summary>
-            <p class="text-sm opacity-70 mt-3">Nur bestehende abgeschlossene eigene Arbeitsbuchungen, keine Abwesenheiten. Beide Angaben ersetzen die bisherigen Werte nach fremder berechtigter Freigabe; eine leere Notiz löscht die alte Notiz. Zeiten, Pausen und Originalereignisse bleiben unverändert.</p>
+            <x-chrono-help><p class="text-sm opacity-70 mt-3">Nur bestehende abgeschlossene eigene Arbeitsbuchungen, keine Abwesenheiten. Beide Angaben ersetzen die bisherigen Werte nach fremder berechtigter Freigabe; eine leere Notiz löscht die alte Notiz. Zeiten, Pausen und Originalereignisse bleiben unverändert.</p></x-chrono-help>
             @if ($corrections->metadataDraft)<p class="text-sm opacity-70 mt-3" role="status">Felder nur zur Prüfung beibehalten. Ersetzen erneut bewusst bestätigen; nichts wird automatisch gesendet.</p>@endif
             <form method="post">
                 @csrf
                 <fieldset @disabled(! $corrections->enabled)>
                     <input type="hidden" name="action" value="request_metadata_v1">
                     <label class="block text-sm font-semibold mt-4 mb-2" for="metadata_record_id">Bestehende eigene Arbeitsbuchung</label>
-                    <select class="select select-bordered w-full" id="metadata_record_id" name="record_id"><option value="0">Bitte bestehende Buchung wählen</option>@foreach ($corrections->recordOptions as $r)<option value="{{ $r['id'] }}" @selected($corrections->selectedRecordId === $r['id'])>#{{ $r['id'] }} · {{ $r['start'] }} – {{ $r['end'] }}</option>@endforeach</select>
+                    <select class="select select-bordered w-full" id="metadata_record_id" name="record_id"><option value="0">Bitte bestehende Buchung wählen</option>@foreach ($corrections->recordOptions as $r)<option value="{{ $r['id'] }}" @selected($corrections->selectedRecordId === $r['id'])>#{{ $r['id'] }} · {{ \App\View\ExistingUi\HumanTime::full($r['start']) }} – {{ \App\View\ExistingUi\HumanTime::full($r['end']) }}</option>@endforeach</select>
                     <label class="block text-sm font-semibold mt-4 mb-2" for="metadata_location">Neuer Arbeitsort</label>
                     <select class="select select-bordered w-full" id="metadata_location" name="location">@foreach (['office'=>'Büro (office)','home_office'=>'Homeoffice (home_office)','business_trip'=>'Dienstreise (business_trip)'] as $code=>$label)<option value="{{ $code }}" @selected(($corrections->metadataDraft['location'] ?? 'office') === $code)>{{ $label }}</option>@endforeach</select>
                     <label class="block text-sm font-semibold mt-4 mb-2" for="metadata_note">Neue Notiz (einzeilig, höchstens 1000 UTF-8-Bytes; leer löscht)</label>
@@ -84,7 +84,7 @@
         @elseif ($corrections->ownRequestsUnavailable)<div class="alert alert-error mb-4" role="alert">Eigene Antragsauswahl ist in diesem Profil nicht verbunden. Es werden keine Anträge angezeigt.</div>@endif
         @if ($corrections->requestLookupInvalid)<div class="alert alert-error mb-4" role="alert">Ungültige Antrags-ID. Bitte eine positive ganze ID ohne Leerzeichen oder führende Nullen eingeben. Es werden keine Anträge angezeigt.</div>
         @elseif ($corrections->requestLookupUnavailable)<div class="alert alert-error mb-4" role="alert">Antrags-ID-Suche ist in diesem Profil nicht verbunden. Es werden keine Anträge angezeigt.</div>@endif
-        <p class="mb-4">Offene Anträge für diese Auswahl: <strong>{{ $corrections->requestCounts['pending'] }}</strong> · innerhalb Ihrer bisherigen Sichtrechte.</p>
+        <p class="mb-4">Offene Anträge für diese Auswahl: <strong>{{ $corrections->requestCounts['pending'] }}</strong></p>
         <form method="get" action="adjustments.php">
             @if (array_key_exists('record_id', $corrections->queueSelection))<input type="hidden" name="record_id" value="{{ $corrections->queueSelection['record_id'] }}">@endif
             <label class="block text-sm font-semibold mt-4 mb-2" for="request_status">Status</label>
@@ -95,10 +95,10 @@
             </select>
             <label class="block text-sm font-semibold mt-4 mb-2" for="own_requests">Antragsauswahl</label>
             <select class="select select-bordered w-full" id="own_requests" name="own_requests"><option value="" @selected(! $corrections->ownRequestsOnly)>Alle bisher sichtbaren Anträge</option><option value="1" @selected($corrections->ownRequestsOnly)>Nur eigene Anträge</option></select>
-            <p class="text-sm opacity-70 mt-3">Die eigene Auswahl schränkt Status und Antrags-ID zusätzlich ein. Sichtrechte und Freigaberegeln bleiben unverändert.</p>
+
             <label class="block text-sm font-semibold mt-4 mb-2" for="request_id">Antrags-ID (optional)</label>
             <input class="input input-bordered w-full" type="text" inputmode="numeric" id="request_id" name="request_id" value="{{ $corrections->requestLookupValue }}">
-            <p class="text-sm opacity-70 mt-3">Status und Antrags-ID gelten gemeinsam, nur innerhalb Ihrer bisherigen Sichtrechte. Ein leeres Ergebnis bestätigt weder Existenz noch Zugriff; auch ein anderer Status kann die Auswahl leeren.</p>
+            <x-chrono-help><p class="text-sm opacity-70 mt-3">Status und Antrags-ID gelten gemeinsam, nur innerhalb Ihrer bisherigen Sichtrechte. Ein leeres Ergebnis bestätigt weder Existenz noch Zugriff; auch ein anderer Status kann die Auswahl leeren.</p></x-chrono-help>
             <div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary">Filtern</button>@if ($corrections->requestLookupInvalid || $corrections->requestLookupUnavailable || $corrections->requestLookupValue !== '')<a class="btn btn-outline" href="{{ $corrections->requestLookupResetUrl() }}">Antrags-ID entfernen</a>@endif</div>
         </form>
     </section>
@@ -127,7 +127,7 @@
             <p class="font-semibold">Gespeicherte Netto-Buchungsdauer · kein Kontosaldo</p>
             <p>Vorher: {{ $a['preview']['before'] }} · Beantragt: {{ $a['preview']['after'] }}</p>
             <p>{{ $a['preview']['difference'] === null ? 'Keine verlässliche Dauer-Differenz verfügbar.' : 'Dauer-Differenz: ' . $a['preview']['difference'] }}</p>
-            <p class="opacity-70">Nur ausgewählte Zeitfelder des gespeicherten Originals und Antrags. Keine Freigabe- oder Saldozusage; die Entscheidung prüft den aktuellen Datensatz erneut.</p>
+            <x-chrono-help><p class="opacity-70">Nur ausgewählte Zeitfelder des gespeicherten Originals und Antrags. Keine Freigabe- oder Saldozusage; die Entscheidung prüft den aktuellen Datensatz erneut.</p></x-chrono-help>
         </div>
         @endif
         @if ($metadataPreview === null && $a['status'] === 'pending' && $a['user_id'] === $page->userId)
@@ -139,7 +139,7 @@
                 @else
                 <p role="status">Keine verlässliche Vorschau verfügbar. Aktuellen Eintrag und Datenhinweise prüfen.</p>
                 @endif
-            <p class="opacity-70">Nur dieser Antrag auf dem aktuell gelesenen Stand: Startguthaben plus abgeschlossene Buchungstage minus deren Soll, wie Home. Kein vollständiges Vertragszeitkonto, keine Freigabezusage. Andere offene Anträge sind nicht eingerechnet; vor der Entscheidung wird erneut geprüft.</p>
+            <x-chrono-help><p class="opacity-70">Nur dieser Antrag auf dem aktuell gelesenen Stand: Startguthaben plus abgeschlossene Buchungstage minus deren Soll, wie Home. Kein vollständiges Vertragszeitkonto, keine Freigabezusage. Andere offene Anträge sind nicht eingerechnet; vor der Entscheidung wird erneut geprüft.</p></x-chrono-help>
             @else
             <a class="btn btn-outline btn-sm mt-2" href="{{ $corrections->balancePreviewUrl($a['id']) }}">Home-Stand mit Antrag prüfen</a>
             @endif
@@ -155,7 +155,7 @@
             <label class="block text-sm font-semibold mt-4 mb-2" for="withdraw_reason_{{ $a['id'] }}">Begründung der Rücknahme</label>
             <input class="input input-bordered w-full" id="withdraw_reason_{{ $a['id'] }}" name="withdraw_reason" value="{{ ($corrections->withdrawalDraft['id'] ?? null) === $a['id'] ? ($corrections->withdrawalDraft['withdraw_reason'] ?? '') : '' }}" minlength="5" maxlength="1000" required>
             @if (($corrections->withdrawalDraft['id'] ?? null) === $a['id'])<p class="text-sm opacity-70 mt-3" role="status">Begründung zur Prüfung beibehalten. Aktuellen Antrag prüfen und Rücknahme erneut bewusst wählen; nichts wird automatisch gesendet.</p>@endif
-            <p class="text-sm opacity-70 mt-3">Nur diesen offenen Antrag endgültig zurücknehmen. Buchung und bisherige Historie bleiben erhalten; die Rücknahme wird protokolliert. Bei Bedarf einen neuen Antrag stellen.</p>
+            <x-chrono-help><p class="text-sm opacity-70 mt-3">Nur diesen offenen Antrag endgültig zurücknehmen. Buchung und bisherige Historie bleiben erhalten; die Rücknahme wird protokolliert. Bei Bedarf einen neuen Antrag stellen.</p></x-chrono-help>
             <div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-outline" type="submit">Antrag endgültig zurücknehmen</button></div>
         </form>
         @endif

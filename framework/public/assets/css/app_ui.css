@@ -160,3 +160,33 @@ body.chrono-local-ui #main-content .info-tooltip .tooltiptext {
 }
 body.chrono-local-ui #main-content .info-tooltip:hover .tooltiptext,
 body.chrono-local-ui #main-content .info-tooltip:focus-within .tooltiptext {display:block;}
+/* Optional inline help: keyboard/touch disclosure, no explanatory text wall. */
+.chrono-local-ui .chrono-help {display:inline-block;position:relative;vertical-align:middle;line-height:1;align-self:flex-start;margin:0;}
+.chrono-local-ui .chrono-help > summary {display:inline-flex;align-items:center;justify-content:center;width:1.5rem;height:1.5rem;list-style:none;cursor:pointer;color:hsl(var(--bc)/.55);border-radius:50%;}
+.chrono-local-ui .chrono-help > summary::-webkit-details-marker {display:none;}
+.chrono-local-ui .chrono-help > summary:hover,.chrono-local-ui .chrono-help[open] > summary {color:hsl(var(--p));background:hsl(var(--b2));}
+.chrono-local-ui .chrono-help > summary:focus-visible {outline:2px solid hsl(var(--p));outline-offset:2px;}
+.chrono-local-ui .chrono-help-panel {position:absolute;top:calc(100% + .4rem);left:0;z-index:100;width:min(22rem,calc(100vw - 3rem));max-height:45vh;overflow:auto;padding:1rem;border:1px solid hsl(var(--b3));border-radius:.75rem;background:hsl(var(--b1));color:hsl(var(--bc));box-shadow:0 8px 30px rgb(15 23 42/.15);font-size:.875rem;font-weight:400;line-height:1.5;white-space:normal;text-transform:none;}
+.chrono-local-ui .chrono-help-panel p {margin:0!important;opacity:1;}
+.chrono-local-ui .chrono-help-panel p + p {margin-top:.6rem!important;}
+.chrono-local-ui .stat-title .chrono-help-panel {left:auto;right:0;}
+.chrono-local-ui .chrono-disclosure {border-top:1px solid hsl(var(--b3));padding-top:1rem;}
+.chrono-local-ui .chrono-disclosure > summary {cursor:pointer;font-size:.95rem;font-weight:600;padding:.25rem 0;}
+.chrono-local-ui [role="status"]:empty {display:none;}
+.chrono-local-ui .sr-only {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+.chrono-local-ui .chrono-admin-tabs {display:flex;gap:.35rem;flex-wrap:wrap;border-bottom:1px solid hsl(var(--b3));padding-bottom:.75rem;}
+.chrono-local-ui .chrono-admin-tabs a {padding:.6rem 1rem;text-decoration:none;border-radius:.5rem;color:hsl(var(--bc)/.7);font-weight:500;}
+.chrono-local-ui .chrono-admin-tabs a[aria-current] {background:hsl(var(--p));color:hsl(var(--pc));}
+.chrono-local-ui .chrono-admin-pane[hidden] {display:none!important;}
+.chrono-local-ui .chrono-admin-pane > .card {margin-bottom:1rem;}
+.chrono-local-ui .chrono-user-create-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;max-width:55rem;padding:1.25rem!important;background:hsl(var(--b2));border-radius:.75rem;}
+.chrono-local-ui .chrono-user-create-grid > button {justify-self:start;align-self:end;}
+.chrono-local-ui .chrono-user-email {display:block;color:hsl(var(--bc)/.55);font-size:.8rem;}
+.chrono-local-ui .chrono-row-actions {display:inline-block;position:relative;margin-left:.5rem;}
+.chrono-local-ui .chrono-row-actions > summary {cursor:pointer;font-size:.8rem;color:hsl(var(--bc)/.65);}
+.chrono-local-ui .chrono-row-actions > div {padding:.75rem;display:flex;gap:.5rem;flex-wrap:wrap;}
+.chrono-local-ui .chrono-admin-pane .card-body {gap:.75rem;}
+@media(max-width:640px){.chrono-local-ui .chrono-user-create-grid{grid-template-columns:1fr;}.chrono-local-ui .chrono-admin-tabs a{padding:.5rem .65rem;}}
+.chrono-local-ui .stats {overflow:visible;}
+.chrono-local-ui .chrono-secondary-tools {margin-top:1.5rem;margin-bottom:1.5rem;}
+.chrono-local-ui .chrono-secondary-tools > summary {padding:.5rem 0;}

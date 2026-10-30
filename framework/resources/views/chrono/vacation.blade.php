@@ -3,7 +3,7 @@
 @section('content')
 <main class="container mx-auto px-4 py-8 chrono-page">
     <h1 class="text-2xl font-bold mb-4">{{ $vacationCopy->text('title') }}</h1>
-    <p class="opacity-70 mb-6">{{ $vacationCopy->text('intro') }}</p>
+    <x-chrono-help><p class="opacity-70 mb-6">{{ $vacationCopy->text('intro') }}</p></x-chrono-help>
     <a class="link link-primary" href="attendance.php">{{ $vacationCopy->text('back') }}</a>
     @if ($vacationError)<div class="alert alert-error my-4" role="alert">{{ $vacationError }}</div>@endif
     @if ($vacation !== null)
@@ -47,7 +47,7 @@
             <a class="link link-primary" href="{{ $base.'&preview='.$request['id'].'#vacation-'.$request['id'] }}">{{ $vacationCopy->text('preview') }}</a>
             @if ($vacation['approval_request_id']===$request['id'] && $vacation['approval']!==null)
                 <div class="border border-base-300 rounded-lg p-4 my-3">
-                    <p class="text-sm">{{ $vacationCopy->text('preview_note') }}</p>
+                    <x-chrono-help><p class="text-sm">{{ $vacationCopy->text('preview_note') }}</p></x-chrono-help>
                     <p>{{ $vacationCopy->text('credit_days') }}: {{ $vacation['approval']['credit_days'] }}</p>
                     <ul>@foreach ($vacation['approval']['days'] as $day)<li>{{ $day['day'] }} · {{ $day['minutes'] }} {{ $vacationCopy->text('minutes') }}</li>@endforeach</ul>
                     @if ($vacation['approval']['approvable'])@php($actions=['approve','reject'])
@@ -56,7 +56,7 @@
             @endif
         @endif
         @if ($vacation['scope']==='review' && $request['state']==='cancel_pending')@php($actions=['approve_cancel','reject_cancel'])@endif
-        @if (in_array($request['state'],['approved','cancel_pending'],true))<p class="text-sm opacity-70">{{ $vacationCopy->text('cancel_note') }}</p>@endif
+        @if (in_array($request['state'],['approved','cancel_pending'],true))<x-chrono-help><p class="text-sm opacity-70">{{ $vacationCopy->text('cancel_note') }}</p></x-chrono-help>@endif
         @foreach ($actions as $action)
         <form method="post" action="{{ $base }}" class="space-y-2 border-t border-base-200 pt-3 mt-3">
             @csrf

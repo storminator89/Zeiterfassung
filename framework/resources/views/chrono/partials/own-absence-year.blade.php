@@ -1,6 +1,7 @@
 <details id="own-absence-year" class="mb-6 text-sm border border-base-300 rounded-box p-3" @if ($absenceYearState !== 'idle') open @endif>
     <summary class="cursor-pointer font-semibold">{{ $absenceYearCopy['title'] }}</summary>
-    <p class="mt-3">{{ $absenceYearCopy['note'] }}</p><p class="mt-2 opacity-70">{{ $absenceYearCopy['limit'] }}</p>
+    <x-chrono-help><p class="mt-3">{{ $absenceYearCopy['note'] }}</p>
+<p class="mt-2 opacity-70">{{ $absenceYearCopy['limit'] }}</p></x-chrono-help>
     @if ($absenceYearState === 'idle')
         <a class="btn btn-outline btn-sm mt-3" href="{{ chrono_own_absence_year_link($absenceYearCurrent, 1, $absenceYearContext) }}">{{ $absenceYearCopy['load'] }}</a>
     @else

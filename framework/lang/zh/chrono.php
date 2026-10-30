@@ -3,6 +3,9 @@
 // Existing native Traditional Chinese copy, as inert presentation data.
 // Only the two previously absent table/export labels are completed here.
 return [
+    'UI_MY_RECORDS' => '我的记录',
+    'UI_CARRY_IN' => '结转（小时）',
+    'UI_RECORDED_BALANCE' => '已记录余额',
     'TITLE' => 'Quodara Chrono - 時間追蹤',
     'NAV_HOME' => '首頁',
     'NAV_DASHBOARD' => '儀表板',

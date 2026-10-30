@@ -3,6 +3,16 @@
  */
 (() => {
     'use strict';
+    function newEventId() {
+        const source = globalThis.crypto;
+        if (typeof source?.randomUUID === 'function') return source.randomUUID();
+        if (typeof source?.getRandomValues === 'function') {
+            const bytes = new Uint8Array(16);
+            source.getRandomValues(bytes);
+            return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+        }
+        throw new Error('Buchung konnte nicht vorbereitet werden. Bitte die Seite neu laden.');
+    }
     function validStartMetadata(body) {
         const present = Object.hasOwn(body, 'location') || Object.hasOwn(body, 'note');
         if (!present) return true; // Exact legacy pending requests remain valid and unchanged.
@@ -111,11 +121,13 @@
             return new Error(requestId === null ? text : `${text} Anfragekennung: ${requestId} (kein Buchungsnachweis).`);
         }
         function message(text) {
-            document.querySelectorAll('#message, #attendance-message').forEach(element => { element.textContent = text; });
+            const inline = document.getElementById('message');
+            const global = document.getElementById('attendance-message');
+            if (inline) inline.textContent = text;
+            if (global) global.textContent = inline ? '' : text;
         }
-        // Presentation only. Never restore remembered amounts after a booking,
-        // failed refresh or manual correction: only a deliberate page navigation
-        // can obtain fresh numeric summaries without discarding unsaved forms.
+        // Presentation only: fresh amounts come from a server snapshot, never from
+        // remembered numbers or browser arithmetic. Forms remain untouched.
         const reportPeriods = ['all', 'week', 'month', 'year'];
         let reportFinality = null;
         let reportRefreshNeeded = false;
@@ -127,10 +139,10 @@
             const unresolved = reportFinality && reportPeriods.some(period => reportFinality[period]);
             const stale = reportRefreshNeeded || reportValues().some(element => element.dataset.reportPresentation === 'refresh-needed');
             if (unresolved) {
-                copy.textContent = 'Klärung offen: Arbeitszeit und ganztägige Abwesenheit überschneiden sich. Betroffene Summen sind bis zur manuellen Vier-Augen-Klärung nicht abschließend. Originalzeiten bleiben unverändert.';
+                copy.textContent = 'Arbeitszeit und Abwesenheit überschneiden sich. Betroffene Summen bitte über einen Korrekturantrag klären.';
                 notice.hidden = false;
             } else if (stale) {
-                copy.textContent = 'Anzeigeaktualisierung nötig: Die markierten Summen sind nicht abschließend. Bitte ungespeicherte Eingaben zuerst sichern und die Seite bewusst neu laden. Eine frühere Buchungswarnung ist keine aktuelle Konfliktprüfung.';
+                copy.textContent = 'Auswertung wird aktualisiert. Falls die Anzeige stehen bleibt, die Seite neu laden.';
                 notice.hidden = false;
             } else if (reportFinality) { notice.hidden = true; }
         }
@@ -158,6 +170,24 @@
                     element.textContent = 'Aktualisierung nötig';
                 }
             });
+            reportNotice();
+        }
+        function applyHomeBalance(value) {
+            const element = document.querySelector('[data-home-balance]');
+            if (!element) return;
+            if (!reportFinality || !value || typeof value.label !== 'string'
+                || (reportFinality.all && value.presentation !== 'unresolved')
+                || !['current', 'unresolved', 'incomplete'].includes(value.presentation)
+                || (value.positive !== null && typeof value.positive !== 'boolean')) {
+                invalidateReportValues(); return;
+            }
+            element.textContent = value.label;
+            element.dataset.reportPresentation = value.presentation;
+            element.classList.remove('text-success', 'text-error');
+            if (value.presentation === 'current' && value.label !== '00:00' && value.positive !== null) {
+                element.classList.add(value.positive ? 'text-success' : 'text-error');
+            }
+            reportRefreshNeeded = false;
             reportNotice();
         }
         function render(nextState = state, nextRecord = expectedRecord) {
@@ -234,14 +264,14 @@
             if (!refreshing) {
                 const startedAt = revision;
                 refreshing = (async () => {
-                    const response = await request('attendance.php?format=status', {cache: 'no-store', redirect: 'error'});
+                    const response = await request('attendance.php?format=status' + (document.querySelector('[data-home-balance]') ? '&home_balance=1' : ''), {cache: 'no-store', redirect: 'error'});
                     if (!response.ok) throw responseError('Anzeige konnte nicht aktualisiert werden. Bitte Seite neu laden.', response);
                     const data = await readJson(response);
                     if (!data.success || !Object.hasOwn(allowed, data.state)
                         || (data.state === 'absent' ? data.expected_record !== null : !recordString(data.expected_record))) {
                         throw new Error('Anwesenheitsstatus und Sitzungsbindung konnten nicht geladen werden. Bitte neu laden.');
                     }
-                    if (startedAt === revision && !busy) { supportsStartMetadata = data.start_metadata_version === 1; render(data.state, data.expected_record); renderRecent(data.records); applyReportFinality(data.report_finality); }
+                    if (startedAt === revision && !busy) { supportsStartMetadata = data.start_metadata_version === 1; render(data.state, data.expected_record); renderRecent(data.records); applyReportFinality(data.report_finality); applyHomeBalance(data.home_balance); }
                 })().finally(() => { refreshing = null; });
             }
             await refreshing;
@@ -271,15 +301,14 @@
             const endPause = action === 'end' && state === 'paused';
             if (endPause && !pending && !window.confirm('Pause und Arbeitszeit gemeinsam beenden?')) return;
             if (!pending) {
-                if (typeof crypto.randomUUID !== 'function') {
-                    message('Sichere Ereignis-ID nicht verfügbar. Bitte einen aktuellen Browser verwenden.');
-                    return;
-                }
+                let eventId;
+                try { eventId = newEventId(); }
+                catch (error) { message(error.message); return; }
                 const metadata = action === 'start' ? {location: document.getElementById('attendance-location')?.value ?? 'office',
                     note: document.getElementById('attendance-note')?.value ?? ''} : {};
                 if (!validStartMetadata({action, ...metadata})) { message('Arbeitsort oder Notiz ungültig. Maximal 1000 UTF-8-Bytes; keine Steuerzeichen oder reservierten Abwesenheitswerte.'); return; }
                 if (nondefaultStartMetadata(metadata) && !supportsStartMetadata) { message('Dieser Server bestätigt Arbeitsort und Notiz noch nicht. Status aktualisieren; keine Buchung gesendet.'); return; }
-                pending = {event_id: crypto.randomUUID(), action, confirm_end_pause: endPause ? '1' : '0',
+                pending = {event_id: eventId, action, confirm_end_pause: endPause ? '1' : '0',
                     ...(action === 'start' ? nondefaultStartMetadata(metadata) ? metadata : {} : {expected_record: expectedRecord})};
             }
             if (nondefaultStartMetadata(pending) && !supportsStartMetadata) {
@@ -306,12 +335,14 @@
                 }
                 pending = null; rememberPending(); confirmed = true;
                 render(data.state, null); // Cached acknowledgment is not a current session binding.
-                // Any confirmed end changes completed totals; the status read has no replacement numbers.
+                // Any confirmed end changes completed totals; invalidate until a fresh server read.
                 // This may be a historical cached warning. It proves neither a
                 // current conflict nor current numeric totals; the fresh read
                 // below owns current period flags. Invalidate before it can fail.
                 if (action === 'end' || data.overlap_warning) invalidateReportValues();
-                message([data.overlap_warning ? 'Buchungsbestätigung (bei Wiederholung historisch); aktueller Konfliktstand wird getrennt geprüft.' : '', data.message, data.local_time].filter(Boolean).join(' '));
+                const stamp = typeof data.local_time === 'string' ? new Date(data.local_time) : null;
+                const time = stamp && !Number.isNaN(stamp.getTime()) ? stamp.toLocaleTimeString(document.documentElement.lang || 'de', {hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'}) : '';
+                message([data.overlap_warning ? 'Gebucht. Auswertung prüfen.' : data.message, time].filter(Boolean).join(' '));
             } catch (error) {
                 // A lost/malformed end acknowledgement may already be committed.
                 // Keep its exact pending event, but never leave old numbers

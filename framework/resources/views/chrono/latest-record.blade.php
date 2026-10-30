@@ -22,11 +22,11 @@
             </div>
             <div>
                 <p class="font-semibold">{{ $latestRecord->copy->text('TABLE_HEADER_START_TIME') }}:</p>
-                <p>{{ $latestRecord->entry['start'] }}</p>
+                <p>{{ \App\View\ExistingUi\HumanTime::full($latestRecord->entry['start']) }}</p>
             </div>
             <div>
                 <p class="font-semibold">{{ $latestRecord->copy->text('TABLE_HEADER_END_TIME') }}:</p>
-                <p>{{ $latestRecord->entry['end'] }}</p>
+                <p>{{ \App\View\ExistingUi\HumanTime::full($latestRecord->entry['end']) }}</p>
             </div>
             <div>
                 <p class="font-semibold">{{ $latestRecord->copy->text('TABLE_HEADER_BREAK') }}:</p>

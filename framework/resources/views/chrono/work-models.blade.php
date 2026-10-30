@@ -3,15 +3,15 @@
 @section('content')
 <main class="container mx-auto px-4 py-8 chrono-page">
     <h1 class="text-2xl font-bold mb-6">Arbeitszeitmodelle</h1>
-    <p>Das jüngste Modell mit passendem Gültigkeitsdatum bestimmt die Sollzeit. Feiertage aus dem hinterlegten Feiertagskalender haben null Sollminuten. Bereits erfasste Abwesenheitsgutschriften bleiben unverändert und können über einen Korrekturantrag angepasst werden.</p>
-    <p class="text-sm opacity-70 mb-4">Nicht auswertbare gespeicherte Wochenminuten sind keine null Minuten. Der Anzeigehinweis ändert oder berechnet kein Modell neu.</p>
+    <x-chrono-help><p>Das jüngste Modell mit passendem Gültigkeitsdatum bestimmt die Sollzeit. Feiertage aus dem hinterlegten Feiertagskalender haben null Sollminuten. Bereits erfasste Abwesenheitsgutschriften bleiben unverändert und können über einen Korrekturantrag angepasst werden.</p>
+<p class="text-sm opacity-70 mb-4">Nicht auswertbare gespeicherte Wochenminuten sind keine null Minuten. Der Anzeigehinweis ändert oder berechnet kein Modell neu.</p></x-chrono-help>
     @if ($workModels->error)<div class="alert alert-error mb-6" role="alert">{{ $workModels->error }}</div>@endif
     @if ($workModels->saved)<div class="alert alert-success mb-6">Arbeitszeitmodell gespeichert.</div>@endif
 
     @if ($page->role === 'admin')
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">Neues Modell hinterlegen</h2>
-        <p class="opacity-70">Ein neues Modell ersetzt keine Historie. Bei gleichem Gültigkeitsdatum gilt die zuletzt gespeicherte Version. Rückwirkende Modelle ändern Sollzeit-Auswertungen, aber keine gebuchten Gutschriften.</p>
+        <x-chrono-help><p class="opacity-70">Ein neues Modell ersetzt keine Historie. Bei gleichem Gültigkeitsdatum gilt die zuletzt gespeicherte Version. Rückwirkende Modelle ändern Sollzeit-Auswertungen, aber keine gebuchten Gutschriften.</p></x-chrono-help>
         <form method="post" id="work-model-form">
             @csrf
             <fieldset @disabled(! $workModels->enabled)>
@@ -34,7 +34,7 @@
                 </div>
                 <label class="block text-sm font-semibold mt-4 mb-2" for="reason">Begründung</label>
                 <textarea class="textarea textarea-bordered w-full" id="reason" name="reason" minlength="5" maxlength="1000" required>{{ $workModels->previewForm['reason'] ?? '' }}</textarea>
-                <div class="flex flex-wrap gap-3 mt-5">@if ($workModels->previewEnabled)<button class="btn btn-outline" name="model_action" value="preview" formnovalidate>Gutschriften vorab prüfen (ohne Speichern)</button>@endif<button class="btn btn-primary" name="model_action" value="save">Modell speichern</button></div>
+                <div class="flex flex-wrap gap-3 mt-5">@if ($workModels->previewEnabled)<button class="btn btn-outline" name="model_action" value="preview" formnovalidate>Vorschau</button>@endif<button class="btn btn-primary" name="model_action" value="save">Modell speichern</button></div>
             </fieldset>
         </form>
     </section>
@@ -45,10 +45,10 @@
     <section id="model-credit-preview" class="card bg-base-100 shadow-xl p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">Vorschau – kein Modell gespeichert</h2>
         <p>{{ $creditPreview['username'] }} · Person #{{ $creditPreview['person_id'] }} · ab {{ $creditPreview['from'] }} (Europe/Berlin){{ $creditPreview['until'] !== null ? ' bis vor '.$creditPreview['until'].' (nächstes vorhandenes Modell)' : '' }}</p>
-        <p class="text-sm opacity-70 mt-3">Hypothetisches Tagessoll des eingegebenen Modells im Vergleich zur gespeicherten Netto-Gutschrift. Bereits erfasste Gutschriften werden weder neu berechnet noch geändert. Die Abweichung ist kein Kontosaldo und kein automatischer Korrekturauftrag. Nur bereits gespeicherte Feiertage werden berücksichtigt; deren Vollständigkeit ist nicht bestätigt.</p>
+        <x-chrono-help><p class="text-sm opacity-70 mt-3">Hypothetisches Tagessoll des eingegebenen Modells im Vergleich zur gespeicherten Netto-Gutschrift. Bereits erfasste Gutschriften werden weder neu berechnet noch geändert. Die Abweichung ist kein Kontosaldo und kein automatischer Korrekturauftrag. Nur bereits gespeicherte Feiertage werden berücksichtigt; deren Vollständigkeit ist nicht bestätigt.</p></x-chrono-help>
         @if ($creditPreview['truncated'] || $creditPreview['unknown'])<p class="mt-3" role="status">Die Vorschau ist begrenzt oder enthält nicht auswertbare Gutschriften. Unbekannte Werte sind nicht null Minuten; es gibt keine abschließende Summe.</p>@endif
         @if (! $creditPreview['items'])<p class="mt-3" role="status">Keine zuordenbaren gespeicherten Abwesenheiten im betrachteten Modellabschnitt gefunden. Dies ist kein Vollständigkeits- oder Datenqualitätsnachweis.</p>@else
-        <p class="text-sm mt-3">Bis zu 100 gespeicherte Gutschriften je Seite in der bisherigen Beginn-/ID-Reihenfolge. Unlesbare Anfänge stehen zuerst; Ortszeit-/Formathinweise bleiben unabhängig davon ungeklärt.</p>
+        <x-chrono-help><p class="text-sm mt-3">Bis zu 100 gespeicherte Gutschriften je Seite in der bisherigen Beginn-/ID-Reihenfolge. Unlesbare Anfänge stehen zuerst; Ortszeit-/Formathinweise bleiben unabhängig davon ungeklärt.</p></x-chrono-help>
         <div class="table-responsive mt-3"><table class="table"><thead><tr><th>Buchung / Historie (neuer Tab)</th><th>Tag (Berlin)</th><th>Gespeicherte Netto-Gutschrift</th><th>Hypothetisches Tagessoll</th><th>Tagessoll minus Gutschrift</th></tr></thead><tbody>
         @foreach ($creditPreview['items'] as $credit)
             <tr><td><a class="link link-primary" target="_blank" rel="noopener noreferrer" href="{{ 'history.php?'.http_build_query(['entity'=>'zeiterfassung','user_id'=>$creditPreview['person_id'],'record_id'=>$credit['id']]) }}">#{{ $credit['id'] }}</a>@if ($credit['timestamp_review'] ?? false)<span class="block text-sm">Zeitformat/Ortszeit ungeklärt; keine erfundene Gutschrift.</span>@endif</td><td>{{ $credit['day'] ?? 'Nicht zuordenbar' }}</td><td>{{ $credit['stored_minutes'] === null ? 'Nicht auswertbar' : $credit['stored_minutes'].' min' }}</td><td>{{ $credit['hypothetical_target'] === null ? 'Unbekannt' : $credit['hypothetical_target'].' min' }}</td><td>{{ $credit['difference'] === null ? 'Unbekannt' : ($credit['difference'] > 0 ? '+' : '').$credit['difference'].' min' }}</td></tr>
@@ -57,7 +57,7 @@
         @endif
         @if (($creditPreview['pagination_version'] ?? null) === 1)
         <p class="text-sm mt-3">{{ $creditPreview['total'] }} passende gespeicherte Buchungen · Vorschauseite {{ $creditPreview['page'] }} von {{ $creditPreview['pages'] }} · höchstens {{ $creditPreview['page_size'] }} je Seite.</p>
-        <p class="text-sm opacity-70 mt-2">Jeder Seitenaufruf prüft die aktuell ausgefüllte Modellmaske erneut, ohne Speichern. Neue Daten oder geänderte Eingaben können Seiten verschieben. Für eine geänderte Maske können Sie die Vorschau oben bewusst auf Seite 1 neu starten. Kein eingefrorener Abschlussstand.</p>
+        <x-chrono-help><p class="text-sm opacity-70 mt-2">Jeder Seitenaufruf prüft die aktuell ausgefüllte Modellmaske erneut, ohne Speichern. Neue Daten oder geänderte Eingaben können Seiten verschieben. Für eine geänderte Maske können Sie die Vorschau oben bewusst auf Seite 1 neu starten. Kein eingefrorener Abschlussstand.</p></x-chrono-help>
         @if ($creditPreview['pages'] > 1)
         <nav class="flex flex-wrap gap-3 mt-3" aria-label="Gutschriften-Vorschauseiten">
             @if ($creditPreview['page'] > 1)<button type="submit" form="work-model-form" class="btn btn-outline" name="preview_page" value="1" formnovalidate @disabled(! $workModels->enabled)>Erste Seite</button><button type="submit" form="work-model-form" class="btn btn-outline" name="preview_page" value="{{ $creditPreview['page'] - 1 }}" formnovalidate @disabled(! $workModels->enabled)>Vorherige Seite</button>@endif
@@ -92,7 +92,7 @@
 
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">Hinterlegte Modelle</h2>
-        <p class="text-sm opacity-70 mb-4">{{ $workModels->total }} Modellversionen · Seite {{ $workModels->page }} von {{ $workModels->pages }} · {{ $workModels->pageSize }} je Seite innerhalb Ihrer bisherigen Sichtrechte. Neue Versionen können die Seiten verschieben.</p>
+        <x-chrono-help><p class="text-sm opacity-70 mb-4">{{ $workModels->total }} Modellversionen · Seite {{ $workModels->page }} von {{ $workModels->pages }} · {{ $workModels->pageSize }} je Seite innerhalb Ihrer bisherigen Sichtrechte. Neue Versionen können die Seiten verschieben.</p></x-chrono-help>
         @if ($workModels->models === [])<p role="status">Keine sichtbaren Modellversionen.</p>@else
         <div class="table-responsive">
             <table class="table">

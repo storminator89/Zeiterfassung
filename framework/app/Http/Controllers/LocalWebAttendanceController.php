@@ -37,7 +37,20 @@ final class LocalWebAttendanceController extends Controller
     public function page(Request $request): View|JsonResponse
     {
         if ($request->query('format') === 'status') {
-            return $this->json(fn () => $this->reads->attendanceStatus());
+            return $this->json(function () use ($request): array {
+                $status=$this->reads->attendanceStatus();
+                if ($this->interactions->home && $request->query('home_balance') === '1') {
+                    $summary=$this->reads->homeSummary();
+                    $status['home_balance']=[
+                        'label'=>$summary['total_overtime_formatted'],
+                        'presentation'=>!empty($summary['absence_conflicts']) ? 'unresolved' : (!empty($summary['invalid_records']) ? 'incomplete' : 'current'),
+                        'positive'=>$summary['positive_overtime'],
+                    ];
+                    // Displayed number and its finality come from the same authoritative snapshot.
+                    $status['report_finality']=$summary['report_finality'];
+                }
+                return $status;
+            });
         }
 
         // Registrar already ran RefreshLocalAccount -> auth:web -> auth.session.

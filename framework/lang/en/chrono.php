@@ -2,6 +2,9 @@
 
 // Exact selected copy from languages/en.php; no executable legacy bootstrap.
 return [
+    'UI_MY_RECORDS' => 'My entries',
+    'UI_CARRY_IN' => 'Carry-in (hours)',
+    'UI_RECORDED_BALANCE' => 'Recorded balance',
     'TITLE' => 'Quodara Chrono - Time Tracking',
     'NAV_HOME' => 'Home',
     'NAV_DASHBOARD' => 'Dashboard',

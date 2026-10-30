@@ -22,7 +22,7 @@
             @endforeach
             <p class="text-xs opacity-70">{{ $ownCorrectionDecisions->text('snapshot') }} <time datetime="{{ $decisions['loaded_at'] }}">{{ $decisions['loaded_at'] }}</time></p>
         @endif
-        <p class="opacity-70">{{ $ownCorrectionDecisions->text('note') }}</p>
+        <x-chrono-help><p class="opacity-70">{{ $ownCorrectionDecisions->text('note') }}</p></x-chrono-help>
         <a class="link" href="adjustments.php?request_status=all&amp;own_requests=1">{{ $ownCorrectionDecisions->text('all') }}</a>
     </div>
 </details>

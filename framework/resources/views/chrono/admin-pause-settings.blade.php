@@ -1,7 +1,9 @@
 @extends('chrono.layouts.app')
 
 @section('content')
-@php($managedUsersEnabled = $managedUsersEnabled ?? false)
+@php
+    $managedUsersEnabled = $managedUsersEnabled ?? false;
+@endphp
 <style>
     #user-management > .card-body > .card-title { position:relative; }
     #account-lifecycle-help { display:inline-flex;align-self:stretch;align-items:center; }
@@ -16,6 +18,18 @@
     @if ($adminPauseSettings->success)
     <div class="alert alert-success shadow-lg mb-4" role="status"><div><i class="fas fa-check-circle"></i><span>{{ $adminPauseSettings->success }}</span></div></div>
     @endif
+@php
+    $adminSections = ['users'=>'Benutzer', 'departments'=>'Abteilungen', 'rules'=>'Arbeitszeit', 'access'=>'Zugänge', 'system'=>'System'];
+    if (!$adminPauseSettings->localSecurityControls) { unset($adminSections['users'], $adminSections['access']); }
+    $adminSection=request()->query('section', array_key_first($adminSections));
+    if (!is_string($adminSection) || !array_key_exists($adminSection,$adminSections)) { $adminSection=array_key_first($adminSections); }
+@endphp
+<nav class="chrono-admin-tabs" aria-label="Verwaltungsbereiche">
+@foreach($adminSections as $key=>$label)
+<a href="admin.php?section={{ $key }}" @if($key===$adminSection) aria-current="page" @endif>{{ $label }}</a>
+@endforeach
+</nav>
+<section class="chrono-admin-pane" data-admin-pane="users" @if($adminSection !== 'users') hidden @endif>
     @if ($adminPauseSettings->localSecurityControls)
     <div id="user-management" class="card bg-base-100 shadow-xl mb-8">
         <div class="card-body">
@@ -30,7 +44,7 @@
             <p class="alert alert-info mb-4" role="status">{{ $adminPauseSettings->ldapSessionNotice }}</p>
             @endif
             @if ($page->interactions->ldapSessionRevocations)
-            <p class="text-sm opacity-70 mb-4" id="ldap-session-revocation-help">„LDAP-Sitzungen beenden“ beendet bestehende Web-Sitzungen und bisherige hashgebundene Tokens beim nächsten autoritativen Check. Es deaktiviert kein Konto: erneute gültige LDAP-Anmeldung bleibt möglich, Terminal-Zugänge bleiben unverändert. Bei unklarer Antwort nicht erneut senden.</p>
+            <x-chrono-help><p class="text-sm opacity-70 mb-4" id="ldap-session-revocation-help">„LDAP-Sitzungen beenden“ beendet bestehende Web-Sitzungen und bisherige hashgebundene Tokens beim nächsten autoritativen Check. Es deaktiviert kein Konto: erneute gültige LDAP-Anmeldung bleibt möglich, Terminal-Zugänge bleiben unverändert. Bei unklarer Antwort nicht erneut senden.</p></x-chrono-help>
             @endif
             @if ($adminPauseSettings->lifecycleNotice !== null)
             <p class="alert alert-info mb-4" role="status">{{ $adminPauseSettings->lifecycleNotice }}</p>
@@ -38,14 +52,15 @@
             @unless ($managedUsersEnabled)
             <div id="user-mutations-hold" class="alert alert-info mb-4" role="note">Bestehende Benutzer bleiben nur lesend: Ändern, Löschen und Passwortänderungen sind nicht verbunden.</div>
             @endunless
-            <button type="button" class="btn btn-primary mb-4" id="toggleUserForm" @disabled(! $adminPauseSettings->enabled || ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled']))><i class="fas fa-plus mr-2"></i>{{ $page->copy->text('BUTTON_CREATE_USER') }}</button>
+            <button type="button" class="btn btn-primary mb-4" id="toggleUserForm" @disabled($adminPauseSettings->departments === [] || ! $adminPauseSettings->enabled || ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled']))><i class="fas fa-plus mr-2"></i>{{ $page->copy->text('BUTTON_CREATE_USER') }}</button>
+            @if ($adminPauseSettings->departments === [])<a class="btn btn-outline mb-4" href="admin.php?section=departments">Zuerst Abteilung anlegen</a>@endif
             @php($createUserDraft = $adminPauseSettings->createUserDraft)
             <div id="userForm" class="{{ $createUserDraft === null ? 'hidden ' : '' }}mb-6">
                 <form method="post" class="space-y-4">
                     @if ($createUserDraft !== null)<p class="text-sm opacity-70" role="status">Eingaben zur Überarbeitung erhalten. Bitte alle Angaben prüfen, Rolle und Zuordnungen ausdrücklich neu wählen und das Passwort erneut eingeben. Keine automatische Speicherung oder Wiederholung.</p>@endif
                     @csrf
                     <input type="hidden" name="add_user" value="1">
-                    <fieldset @disabled(! $adminPauseSettings->enabled || ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled'])) class="space-y-4">
+                    <fieldset @disabled(! $adminPauseSettings->enabled || ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled'])) class="chrono-user-create-grid">
                     <div class="form-control">
                         <label class="label" for="username"><span class="label-text">{{ $page->copy->text('FORM_USERNAME') }}</span></label>
                         <input type="text" id="username" name="username"@if ($createUserDraft !== null) value="{{ $createUserDraft['username'] ?? '' }}"@endif class="input input-bordered" required>
@@ -88,10 +103,10 @@
                     </div>
                     <div class="form-control">
                         <label class="label" for="regelarbeitszeit"><span class="label-text">{{ $page->copy->text('FORM_REGULAR_WORKING_HOURS') }}</span></label>
-                        <input type="number" id="regelarbeitszeit" name="regelarbeitszeit"@if ($createUserDraft !== null) value="{{ $createUserDraft['regelarbeitszeit'] ?? '' }}"@endif class="input input-bordered" step="0.01" required>
+                        <input type="number" id="regelarbeitszeit" name="regelarbeitszeit" value="{{ $createUserDraft['regelarbeitszeit'] ?? '8' }}" class="input input-bordered" step="0.01" required>
                     </div>
                     <div class="form-control">
-                        <label class="label" for="ueberstunden"><span class="label-text">{{ $page->copy->text('FORM_OVERTIME') }}</span></label>
+                        <label class="label" for="ueberstunden"><span class="label-text">{{ $page->copy->text('UI_CARRY_IN') }}</span></label>
                         <input type="number" id="ueberstunden" name="ueberstunden" class="input input-bordered" step="0.01" value="{{ $createUserDraft === null ? '0' : ($createUserDraft['ueberstunden'] ?? '') }}">
                     </div>
                     <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus mr-2"></i>{{ $page->copy->text('BUTTON_CREATE_USER') }}</button>
@@ -105,25 +120,25 @@
                     <button class="btn btn-square" type="submit"><i class="fas fa-search"></i></button>
                 </div></div>
             </form>
-            @include('chrono.partials.department-integrity')
+
             <div class="overflow-x-auto">
                 <table class="table w-full">
                     <thead><tr>
                         <th class="text-left">{{ $page->copy->text('TABLE_HEADER_USERNAME') }}</th>
-                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_EMAIL') }}</th>
+
                         <th class="text-left">{{ $page->copy->text('TABLE_HEADER_ROLE') }}</th>
                         <th class="text-left">{{ $page->copy->text('TABLE_HEADER_DEPARTMENT') }}</th>
                         <th class="text-left">{{ $page->copy->text('TABLE_HEADER_SUPERVISOR') }}</th>
                         <th class="text-left">{{ $page->copy->text('TABLE_HEADER_REGULAR_WORKING_HOURS') }}</th>
-                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_OVERTIME') }}</th>
+                        <th class="text-left">{{ $page->copy->text('UI_CARRY_IN') }}</th>
                         <th class="text-left">{{ $page->copy->text('TABLE_HEADER_ACTIONS') }}</th>
                     </tr></thead>
                     <tbody>
                     @foreach (($adminPauseSettings->users['users'] ?? []) as $user)
                         <tr>
-                            <td>{{ $user['username'] }}</td><td>{{ $user['email'] }}</td><td>{{ $user['role'] }}</td>
+                            <td><strong>{{ $user['username'] }}</strong> @if(isset($adminPauseSettings->lifecycleUsers[$user['id']]))<span class="badge badge-ghost">{{ ['active'=>'Aktiv','inactive'=>'Deaktiviert','departed'=>'Ausgetreten'][$adminPauseSettings->lifecycleUsers[$user['id']]['status']] ?? '—' }}</span>@endif<span class="chrono-user-email">{{ $user['email'] }}</span></td><td>{{ $user['role'] }}</td>
                             <td>{{ $user['department_name'] ?? '' }}@if (($user['department_reference_status'] ?? null) === 'missing')<small class="block text-warning mt-1">Zugeordnete Abteilung fehlt. Zuordnung über „Bearbeiten“ prüfen.</small>@elseif (in_array($user['department_reference_status'] ?? null, ['invalid', 'unknown'], true))<small class="block text-warning mt-1">Abteilungszuordnung nicht eindeutig prüfbar. Bestand über „Bearbeiten“ prüfen.</small>@endif</td><td>{{ $user['supervisor_name'] ?? '' }}@if (($user['supervisor_reference_status'] ?? null) === 'missing')<small class="block text-warning mt-1">Zugeordnete vorgesetzte Person fehlt. Zuordnung über „Bearbeiten“ prüfen.</small>@elseif (in_array($user['supervisor_reference_status'] ?? null, ['invalid', 'unknown'], true))<small class="block text-warning mt-1">Vorgesetztenzuordnung nicht eindeutig prüfbar. Bestand über „Bearbeiten“ prüfen.</small>@endif</td>
-                            <td>{{ $user['regelarbeitszeit'] }}</td><td>{{ $user['ueberstunden'] }}</td>
+                            <td>{{ number_format((float)$user['regelarbeitszeit'], 2, ',', '') }} h</td><td>{{ number_format((float)$user['ueberstunden'], 2, ',', '') }} h</td>
                             <td>
                                 <button type="button" class="btn btn-ghost btn-sm" data-read-user="{{ $user['id'] }}" title="{{ $page->copy->text('BUTTON_EDIT') }}"><i class="fas fa-edit"></i></button>
                                 @if (($user['has_audit_history'] ?? false) === true)
@@ -138,6 +153,7 @@
                                 @else
                                 <button type="button" class="btn btn-ghost btn-sm" title="{{ $page->copy->text('BUTTON_DELETE') }}" disabled aria-describedby="user-mutations-hold"><i class="fas fa-trash-alt"></i></button>
                                 @endif
+                                <details class="chrono-row-actions"><summary>Weitere Aktionen</summary><div>
                                 @if (isset($adminPauseSettings->lifecycleUsers[$user['id']]))
                                     @include('chrono.partials.account-lifecycle-actions', ['lifecycleUser' => $adminPauseSettings->lifecycleUsers[$user['id']], 'lifecycleId' => $user['id']])
                                 @endif
@@ -151,20 +167,27 @@
                                     <button type="submit" class="btn btn-ghost btn-sm">LDAP-Sitzungen beenden</button>
                                 </form>
                                 @endif
+
+                                </div></details>
                             </td>
                         </tr>
                     @endforeach
                     </tbody>
                 </table>
             </div>
+            @if (($adminPauseSettings->users['total_pages'] ?? 0) > 1)
             <div class="btn-group mt-4">
             @for ($i = 1; $i <= ($adminPauseSettings->users['total_pages'] ?? 0); $i++)
                 <a href="?page={{ $i }}&amp;search={{ urlencode($adminPauseSettings->users['search']) }}" class="btn {{ $i === $adminPauseSettings->users['page'] ? 'btn-active' : '' }}">{{ $i }}</a>
             @endfor
             </div>
+            @endif
         </div>
     </div>
     @endif
+
+</section>
+<section class="chrono-admin-pane" data-admin-pane="departments" @if($adminSection !== 'departments') hidden @endif>
     <div id="department-management" class="card bg-base-100 shadow-xl mb-8">
         <div class="card-body">
             <h2 class="card-title text-2xl mb-4">{{ $page->copy->text('DEPARTMENT_MANAGEMENT_TITLE') }}</h2>
@@ -203,6 +226,9 @@
             </table>
         </div>
     </div>
+
+</section>
+<section class="chrono-admin-pane" data-admin-pane="rules" @if($adminSection !== 'rules') hidden @endif>
     <div id="pause-settings" class="card bg-base-100 shadow-xl mb-8">
         <div class="card-body">
             <h2 class="card-title text-2xl mb-4">{{ $page->copy->text('PAUSE_SETTINGS_TITLE') }}</h2>
@@ -232,19 +258,14 @@
             </form>
         </div>
     </div>
-    @if ($holidayRefillEnabled ?? false)
-        @include('chrono.partials.holiday-refill')
-    @endif
-    @if (($apiManagement ?? null) !== null)
-        @include('chrono.partials.api-management')
-    @elseif ($apiManagementUnavailable ?? false)
-        <p class="alert alert-warning" role="alert">API-Verwaltung nicht bestätigt. Es wird kein Schlüssel oder Freigabestand automatisch repariert oder zurückgesetzt.</p>
-    @endif
+
+</section>
+<section class="chrono-admin-pane" data-admin-pane="access" @if($adminSection !== 'access') hidden @endif>
     @if ($adminPauseSettings->localSecurityControls && $adminPauseSettings->intakePolicy !== null)
     <div id="user-intake-policy" class="card bg-base-100 shadow-xl mb-8">
         <div class="card-body">
             <h2 class="card-title text-2xl mb-4">Benutzeraufnahme</h2>
-            <p class="mb-4">Aufnahmewege unabhängig freigeben. Bestehende Konten und Anmeldungen bleiben unverändert; die Erst-Admin-Einrichtung ist davon getrennt. LDAP benötigt zusätzlich einen zugelassenen Connector; Speichern startet keinen Verzeichnislauf.</p>
+            <x-chrono-help><p class="mb-4">Aufnahmewege unabhängig freigeben. Bestehende Konten und Anmeldungen bleiben unverändert; die Erst-Admin-Einrichtung ist davon getrennt. LDAP benötigt zusätzlich einen zugelassenen Connector; Speichern startet keinen Verzeichnislauf.</p></x-chrono-help>
             <form method="post" class="space-y-4">
                 @csrf
                 <input type="hidden" name="update_intake_policy" value="1">
@@ -262,17 +283,42 @@
                     <button class="btn btn-primary">Aufnahmewege speichern</button>
                 </fieldset>
             </form>
-            <p class="text-sm opacity-70 mt-3">Stand: Revision {{ $adminPauseSettings->intakePolicy['revision'] }}. Veraltete Formulare überschreiben keine neuere Auswahl. Alle Wege dürfen aus sein; lokale Administration kann die Auswahl trotzdem wieder ändern.</p>
+            <x-chrono-help><p class="text-sm opacity-70 mt-3">Stand: Revision {{ $adminPauseSettings->intakePolicy['revision'] }}. Veraltete Formulare überschreiben keine neuere Auswahl. Alle Wege dürfen aus sein; lokale Administration kann die Auswahl trotzdem wieder ändern.</p></x-chrono-help>
         </div>
     </div>
     @endif
     @if ($adminPauseSettings->localSecurityControls && $adminPauseSettings->intakePolicy !== null)
         @include('chrono.partials.ldap-sync', ['ldap' => $adminPauseSettings])
     @endif
+
+</section>
+<section class="chrono-admin-pane" data-admin-pane="system" @if($adminSection !== 'system') hidden @endif>
+    @if ($holidayRefillEnabled ?? false)
+        @include('chrono.partials.holiday-refill')
+    @endif
+    @if (($apiManagement ?? null) !== null)
+        @include('chrono.partials.api-management')
+    @elseif ($apiManagementUnavailable ?? false)
+        <p class="alert alert-warning" role="alert">API-Verwaltung nicht bestätigt. Es wird kein Schlüssel oder Freigabestand automatisch repariert oder zurückgesetzt.</p>
+    @endif
+    @if ($adminPauseSettings->localSecurityControls) @include('chrono.partials.department-integrity') @endif
     @if (($runtimeObservation ?? null) !== null)
         @include('chrono.partials.runtime-observation', ['observation' => $runtimeObservation])
     @endif
+
+</section>
 </main>
+<script @if ($page->cspNonce !== null) nonce="{{ $page->cspNonce }}" @endif>
+document.addEventListener('DOMContentLoaded', function () {
+ const map={'#user-management':'users','#department-management':'departments','#pause-settings':'rules','#user-intake-policy':'access','#ldap-sync':'access','#api-management':'system','#holiday-refill':'system','#runtime-observation':'system','#department-integrity':'system'};
+ const pane=map[location.hash];
+ if (pane) {
+  document.querySelectorAll('[data-admin-pane]').forEach(el=>{el.hidden=el.dataset.adminPane!==pane;});
+  document.querySelectorAll('.chrono-admin-tabs a').forEach(el=>{if(new URL(el.href).searchParams.get('section')===pane)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});
+ }
+});
+</script>
+
 @if ($adminPauseSettings->lifecycleUsers !== [])
 @include('chrono.partials.account-lifecycle-dialog')
 @endif
@@ -309,7 +355,7 @@
         <div class="form-control mb-4"><label class="label" for="edit_regelarbeitszeit"><span class="label-text">{{ $page->copy->text('FORM_REGULAR_WORKING_HOURS') }}</span></label>
             <p>Änderungen am Soll bitte unter <a href="work_models.php">Arbeitszeitmodelle</a> mit Gültigkeitsdatum speichern.</p><input readonly type="number" id="edit_regelarbeitszeit" name="regelarbeitszeit" class="input input-bordered" step="0.01" required>
         </div>
-        <div class="form-control mb-4"><label class="label" for="edit_ueberstunden"><span class="label-text">{{ $page->copy->text('FORM_OVERTIME') }}</span></label><input type="number" id="edit_ueberstunden" name="ueberstunden" class="input input-bordered" step="0.01" required @readonly(! $managedUsersEnabled)></div>
+        <div class="form-control mb-4"><label class="label" for="edit_ueberstunden"><span class="label-text">{{ $page->copy->text('UI_CARRY_IN') }}</span></label><input type="number" id="edit_ueberstunden" name="ueberstunden" class="input input-bordered" step="0.01" required @readonly(! $managedUsersEnabled)></div>
         <div class="form-control mb-4"><label class="label" for="edit_password"><span class="label-text">{{ $page->copy->text('FORM_NEW_PASSWORD') }}</span></label><input type="password" id="edit_password" name="password" class="input input-bordered" value="" autocomplete="new-password" @disabled(! $managedUsersEnabled) @unless ($managedUsersEnabled) aria-describedby="user-detail-hold" @endunless></div>
         <div class="modal-action">
             <button type="{{ $managedUsersEnabled ? 'submit' : 'button' }}" id="save-managed-user" class="btn btn-primary" disabled @unless ($managedUsersEnabled) aria-describedby="user-detail-hold" @endunless>{{ $page->copy->text('BUTTON_SAVE_CHANGES') }}</button>

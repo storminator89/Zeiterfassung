@@ -7,7 +7,7 @@
         <input type="hidden" name="confirmation" id="account-lifecycle-confirmation">
         <h3 class="font-bold text-lg mb-4" id="account-lifecycle-title">Kontostatus ändern</h3>
         <p id="account-lifecycle-description" class="mb-4"></p>
-        <p class="text-sm mb-4">Historie, Anträge und offene Arbeitszeiten bleiben erhalten; laufende Zeiten werden nicht automatisch beendet. Aktivierung erlaubt nur frische Anmeldung: alte Sitzungen, Tokens und Grants werden nicht wieder gültig. Separat gesperrte Terminal-Geräte oder Zugänge bleiben gesperrt. Der letzte lokal anmeldbare Admin darf nicht gesperrt werden. Bei Änderung des eigenen Kontos erfolgt die Abmeldung.</p>
+        <x-chrono-help><p class="text-sm mb-4">Historie, Anträge und offene Arbeitszeiten bleiben erhalten; laufende Zeiten werden nicht automatisch beendet. Aktivierung erlaubt nur frische Anmeldung: alte Sitzungen, Tokens und Grants werden nicht wieder gültig. Separat gesperrte Terminal-Geräte oder Zugänge bleiben gesperrt. Der letzte lokal anmeldbare Admin darf nicht gesperrt werden. Bei Änderung des eigenen Kontos erfolgt die Abmeldung.</p></x-chrono-help>
         <label class="label" for="account-lifecycle-reason"><span class="label-text">Begründung (keine Passwörter oder Zugangsdaten)</span></label>
         <input type="text" class="input input-bordered w-full" id="account-lifecycle-reason" name="reason" maxlength="500" required autocomplete="off">
         <p class="text-sm opacity-70 mt-3">Bei unklarer Antwort nicht erneut senden, sondern neu anmelden und den gespeicherten Stand prüfen.</p>
