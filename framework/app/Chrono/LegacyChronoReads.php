@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, HolidayRefillPreviewReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads, TeamTimeRecordReviewReads
+final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, HolidayRefillPreviewReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads, TeamTimeRecordReviewReads, OwnPeriodComparisonReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -360,6 +360,16 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
 
             return \api_own_work_model_snapshot($pdo, (int) $actor->getKey(), $day);
         }, false);
+    }
+
+    public function ownPeriodComparison(string $from, string $through): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($from, $through): array {
+            require_once dirname(__DIR__, 3).'/lib/own_period_comparison.php';
+
+            return \own_period_comparison_snapshot($pdo, (int) $actor->getKey(), $from, $through,
+                new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')));
+        });
     }
 
     public function ownMonthReview(string $month): array

@@ -6,6 +6,8 @@ use App\Chrono\ChronoReads;
 use App\Chrono\LocalWebAttendance;
 use App\Chrono\OwnOpenReviewReads;
 use App\Chrono\OwnMonthReviewReads;
+use App\Chrono\OwnPeriodComparisonReads;
+use App\View\ExistingUi\OwnPeriodComparison;
 use App\View\ExistingUi\OwnMonthReview;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -72,6 +74,29 @@ final class LocalWebAttendanceController extends Controller
             }
         }
 
+        $ownPeriodComparison = null;
+        if ($this->interactions->home) {
+            require_once dirname(__DIR__, 4).'/lib/own_period_comparison.php';
+            $loaded = new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin'));
+            $from = $loaded->modify('-7 days')->format('Y-m-d');
+            $through = $loaded->modify('-1 day')->format('Y-m-d');
+            $ownPeriodComparison = new OwnPeriodComparison($from, $through, $language);
+            // Preserve raw PHP query strings/arrays before Laravel normalization.
+            parse_str((string) $request->server->get('QUERY_STRING', ''), $comparisonQuery);
+            if (array_key_exists('compare_from', $comparisonQuery) || array_key_exists('compare_through', $comparisonQuery)) {
+                try { [$from, $through] = \own_period_comparison_range($comparisonQuery['compare_from'] ?? null, $comparisonQuery['compare_through'] ?? null, $loaded); }
+                catch (\InvalidArgumentException) { $from = ''; $through = ''; }
+                if ($from === '') { $ownPeriodComparison = new OwnPeriodComparison('', '', $language, requested: true, invalid: true); }
+                elseif (! $this->reads instanceof OwnPeriodComparisonReads) {
+                    $ownPeriodComparison = new OwnPeriodComparison($from, $through, $language, requested: true, unavailable: true);
+                } else {
+                    try { $ownPeriodComparison = new OwnPeriodComparison($from, $through, $language, $this->reads->ownPeriodComparison($from, $through), requested: true); }
+                    catch (AuthenticationException|AuthorizationException $error) { throw $error; }
+                    catch (Throwable) { $ownPeriodComparison = new OwnPeriodComparison($from, $through, $language, requested: true, unavailable: true); }
+                }
+            }
+        }
+
         return view('chrono.attendance', ['page' => new AttendancePage(
             $copy, (int) $actor->getAuthIdentifier(), $actor->username,
             $actor->role, $this->reads->attendanceStatus(),
@@ -87,7 +112,7 @@ final class LocalWebAttendanceController extends Controller
             reportInvalidCount: count($summary['invalid_records'] ?? []),
             reportInvalidRecordIds: $summary['invalid_record_ids'] ?? [],
             reportUnresolved: $summary['report_finality']['all'] ?? false,
-        ), 'ownOpenReview' => $ownOpenReview, 'ownOpenReviewUnavailable' => $ownOpenReviewUnavailable, 'ownMonthReview' => $ownMonthReview]);
+        ), 'ownOpenReview' => $ownOpenReview, 'ownOpenReviewUnavailable' => $ownOpenReviewUnavailable, 'ownMonthReview' => $ownMonthReview, 'ownPeriodComparison' => $ownPeriodComparison]);
     }
 
     public function transition(Request $request): JsonResponse
