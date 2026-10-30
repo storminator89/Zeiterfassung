@@ -391,5 +391,6 @@ define('HOLIDAY_INVENTORY_YEARS_NOTE', 'Nur erkannte Jahrespräfixe, höchstens 
 define('HOLIDAY_INVENTORY_YEARS_LIMITED', 'Weitere gespeicherte Jahrgänge sind nicht aufgelistet; sie können weiterhin über die Jahreswahl geprüft werden.');
 define('HOLIDAY_INVENTORY_YEARS_EMPTY', 'Keine erkannten Jahrgänge gespeichert. Das bedeutet weder keine Feiertage noch einen fehlerfreien Bestand.');
 define('HOLIDAY_INVENTORY_YEAR_ROWS', '%d · %d gespeicherte Zeilen');
+define('HOLIDAY_INVENTORY_UNASSIGNED_ROWS', '%d gespeicherte Zeilen ohne erkennbare Jahreskennung von 0001 bis 9999 fehlen in der Jahreswahl. Verwaltung muss die Originalwerte prüfen; nichts wurde zugeordnet oder repariert.');
 
 ?>

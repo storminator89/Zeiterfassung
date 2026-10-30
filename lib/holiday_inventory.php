@@ -40,7 +40,7 @@ function holiday_inventory(PDO $db, int $year): array
 function holiday_inventory_stored_years(PDO $db): array
 {
     // Counts include malformed dates within a recognized nonzero year prefix.
-    // Other malformed prefixes are not claimed to be covered by this overview.
+    // Rows outside these prefixes are counted separately, not assigned a year.
     $statement = $db->prepare("SELECT substr(datum,1,4) AS year_prefix,COUNT(*) AS row_count
         FROM Feiertage WHERE typeof(datum)='text'
         AND datum GLOB '[0-9][0-9][0-9][0-9]-*' AND substr(datum,1,4)<>'0000'
@@ -48,10 +48,19 @@ function holiday_inventory_stored_years(PDO $db): array
     $statement->execute();
     $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
     $statement->closeCursor();
+    // Use the exact complement of the discovery predicate, including NULL/BLOB
+    // and the forbidden 0000 year. Do not coerce or invent a year for originals.
+    $unassigned = $db->prepare("SELECT COUNT(*) FROM Feiertage
+        WHERE typeof(datum)<>'text' OR datum NOT GLOB '[0-9][0-9][0-9][0-9]-*'
+        OR substr(datum,1,4)='0000'");
+    $unassigned->execute();
+    $unassignedRows = (int)$unassigned->fetchColumn();
+    $unassigned->closeCursor();
     return [
         'stored_years' => array_map(static fn(array $row): array => [
             'year' => (int)$row['year_prefix'], 'count' => (int)$row['row_count'],
         ], array_slice($rows, 0, 20)),
         'stored_years_truncated' => count($rows)>20,
+        'unassigned_year_rows' => $unassignedRows,
     ];
 }

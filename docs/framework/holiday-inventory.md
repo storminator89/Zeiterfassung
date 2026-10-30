@@ -80,3 +80,23 @@ Source basis and bounded shared-helper/compiled-view evidence are documented in
 `docs/native-holiday-inventory.md`. They are not actual App/auth/CSRF/HTTP/browser,
 production, performance, concurrency or regional data acceptance. #41 stays
 partial/open; no new repository test suite or manual CI dispatch.
+
+## Omitted malformed year prefixes — partial #41
+
+On actual Main `d213531db6e93a07a2d884050a370edbd6899ed6`, tree
+`8cfef884fd044b6d0f661aa6c710361ee243ec60`, the shared read-only helper adds
+`unassigned_year_rows`: a COUNT of rows outside the exact recognized text-prefix
+predicate (0001–9999 followed by `-`). The existing inventory panel shows a
+localized count-only notice when positive. It never exposes malformed originals,
+guesses a year, repairs data or changes accounting. The count covers all years,
+not only the selected year or the 20 listed years; invalid dates *inside* a
+recognized year still use the old year's diagnostics. NULL/BLOB and 0000 remain
+unassigned. An absent field in an older optional Reader DTO shows no new notice.
+
+The unchanged authorized snapshot owns the extra fixed SELECT; all old DTO values,
+queries, reader/service/controller/auth/version/generation, source gates, writers,
+schema, routes and Runtime stay unchanged. A read error propagates, never becomes
+zero or healthy. No regional/source/completeness/valid-calendar attestation.
+See the Native inventory note's corresponding section for exact coarse evidence
+and limits. #41 remains partial/open; no real-data inspection, new testsuite,
+manual CI dispatch, runtime activation, browser or production acceptance/deployment.

@@ -388,5 +388,6 @@ define('HOLIDAY_INVENTORY_YEARS_NOTE', 'Recognized year prefixes only, up to the
 define('HOLIDAY_INVENTORY_YEARS_LIMITED', 'Further stored years are not listed; they can still be checked using the year field.');
 define('HOLIDAY_INVENTORY_YEARS_EMPTY', 'No recognized stored years. This means neither no holidays nor an error-free inventory.');
 define('HOLIDAY_INVENTORY_YEAR_ROWS', '%d · %d stored rows');
+define('HOLIDAY_INVENTORY_UNASSIGNED_ROWS', '%d stored rows without a recognized year prefix from 0001 to 9999 are missing from year selection. Ask your administrator to review the original values; nothing was assigned or repaired.');
 
 ?>

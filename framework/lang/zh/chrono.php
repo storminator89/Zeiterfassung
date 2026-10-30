@@ -253,4 +253,5 @@ return [
     'HOLIDAY_INVENTORY_YEARS_LIMITED' => '还有其他已存储年份未列出；仍可通过年份输入框查看。',
     'HOLIDAY_INVENTORY_YEARS_EMPTY' => '没有可识别的已存储年份。这不代表没有公共假日，也不代表数据没有错误。',
     'HOLIDAY_INVENTORY_YEAR_ROWS' => '%d年 · %d行已存储数据',
+    'HOLIDAY_INVENTORY_UNASSIGNED_ROWS' => '有 %d 行已存储数据没有可识别的 0001 至 9999 年份前缀，无法通过年份选择查看。请管理员核对原始值；未进行年份分配或修复。',
 ];
