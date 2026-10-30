@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
 use App\Chrono\TeamReportPeriodReads;
+use App\Chrono\TeamTimeRecordReviewReads;
 use App\View\ExistingUi\AttendancePage;
 use App\View\ExistingUi\Copy;
 use App\View\ExistingUi\Interactions;
@@ -43,6 +44,23 @@ final class LocalWebSupervisorController extends Controller
                 : $this->reads->teamReport($search, $query['page'] ?? null));
         $absenceWeek = $this->reads->teamAbsenceWeek($query['team_date'] ?? null, $query['team_page'] ?? null);
 
+        $review = null;
+        if (array_key_exists('team_review', $query)) {
+            if ($query['team_review'] !== '1') {
+                $review = ['state' => 'invalid'];
+            } elseif (! $this->reads instanceof TeamTimeRecordReviewReads) {
+                $review = ['state' => 'unavailable'];
+            } else {
+                try {
+                    $review = ['state' => 'ready', 'data' => $this->reads->teamTimeRecordReview()];
+                } catch (\Illuminate\Auth\AuthenticationException | \Illuminate\Auth\Access\AuthorizationException $error) {
+                    throw $error; // Never replace loss of scope with cached team originals.
+                } catch (\Throwable) {
+                    $review = ['state' => 'unavailable'];
+                }
+            }
+        }
+
         return response()->view('chrono.supervisor', [
             // Deliberately blocked until a separately reviewed protected GET and
             // standard AttendancePage active-page whitelist admit supervisor.php.
@@ -52,7 +70,8 @@ final class LocalWebSupervisorController extends Controller
                 interactions: $this->interactions, activePage: 'supervisor.php',
             ),
             'supervisor' => new SupervisorPage($report, $search, $language, $absenceWeek,
-                $period['range'], $period['invalid'], $periodUnavailable),
-        ], $period['invalid'] ? 400 : ($periodUnavailable ? 503 : 200))->header('Cache-Control', 'no-store');
+                $period['range'], $period['invalid'], $periodUnavailable, $review),
+        ], ($period['invalid'] || ($review['state'] ?? null) === 'invalid') ? 400
+            : (($periodUnavailable || ($review['state'] ?? null) === 'unavailable') ? 503 : 200))->header('Cache-Control', 'no-store');
     }
 }

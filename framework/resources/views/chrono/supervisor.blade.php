@@ -92,6 +92,8 @@
     <div class="container mx-auto px-4 py-8">
             <h2 class="text-4xl font-bold mb-8 text-center">{{ $supervisor->text('SUPERVISOR_TIMES_TITLE') }}</h2>
 
+            @include('chrono.partials.team-time-review')
+
             @if (in_array($page->role, ['supervisor', 'admin'], true) && isset($supervisor->report['team_status']))
                 <section class="card bg-base-100 shadow-xl mb-8" aria-labelledby="teamStatusTitle">
                     <div class="card-body">
@@ -133,6 +135,7 @@
                         <form method="get" action="supervisor.php" class="flex flex-wrap gap-4 my-4">
                             <input type="hidden" name="lang" value="{{ $supervisor->language }}">
                             <input type="hidden" name="user_search" value="{{ $supervisor->search }}">
+                            @foreach ($supervisor->reviewQuery() as $name => $value)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endforeach
                             @foreach ($supervisor->periodQuery() as $name => $value)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endforeach
                             <input type="hidden" name="page" value="{{ $supervisor->report['page'] }}">
                             <div class="form-control"><label for="team-absence-date">{{ $supervisor->text('TEAM_ABSENCE_DATE') }}</label><input class="input input-bordered" type="date" id="team-absence-date" name="team_date" value="{{ $absenceWeek['from'] }}"></div>
@@ -257,6 +260,7 @@
                             <p class="text-sm opacity-70 mb-4">{{ $supervisor->text('SUPERVISOR_PERIOD_NOTE') }}</p>
                             @if ($supervisor->periodInvalid)<div class="alert alert-error mb-4" role="alert">{{ $supervisor->text('SUPERVISOR_PERIOD_INVALID') }}</div>@endif
                             <form method="get" action="supervisor.php" class="flex flex-wrap gap-4 mb-4">
+                                @foreach ($supervisor->reviewQuery() as $name => $value)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endforeach
                                 @if ($supervisor->absenceWeek !== null)<input type="hidden" name="team_date" value="{{ $supervisor->absenceWeek['from'] }}"><input type="hidden" name="team_page" value="{{ $supervisor->absenceWeek['page'] }}">@endif
                                 <input type="hidden" name="lang" value="{{ $supervisor->language }}">
                                 <label class="form-control self-center"><span><input class="checkbox checkbox-primary" type="checkbox" name="period" value="1" @checked($supervisor->period !== null || $supervisor->periodInvalid)> {{ $supervisor->text('SUPERVISOR_PERIOD_APPLY') }}</span></label>
