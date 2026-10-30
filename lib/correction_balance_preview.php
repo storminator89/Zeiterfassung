@@ -21,6 +21,12 @@ function chrono_correction_balance_preview(PDO $db, int $user, array $records, f
         foreach ($records as $index=>$record) {
             // Do not accept a mixed-user or duplicate-id array from another caller.
             if ((int)($record['user_id']??0)!==$user) { return $unavailable; }
+            // Only completed source rows contribute to Home. Do not certify a
+            // numeric before/after from a persisted timestamp the strict preview refuses.
+            $sourceEnd=$record['endzeit']??null;
+            if ($sourceEnd!==null && $sourceEnd!==''
+                && (legacy_timestamp_assessment($record['startzeit']??null)['category']!==null
+                    || legacy_timestamp_assessment($sourceEnd)['category']!==null)) { return $unavailable; }
             if ($recordId!==null && (int)($record['id']??0)===$recordId) {
                 if ($old!==null) { return $unavailable; }
                 $old=$record;$oldIndex=$index;
@@ -40,6 +46,9 @@ function chrono_correction_balance_preview(PDO $db, int $user, array $records, f
         if ($cancel) {
             unset($afterRecords[$oldIndex]);
         } else {
+            // Reuse the existing strict proposal display/offset-fidelity gate;
+            // never derive a numeric balance from its unavailable time projection.
+            if (!chrono_correction_preview($request)['proposed_usable']) { return $unavailable; }
             $start=chrono_correction_preview_integer($request['proposed_start']??null);
             $end=chrono_correction_preview_integer($request['proposed_end']??null);
             $pause=chrono_correction_preview_integer($request['proposed_pause']??null);
