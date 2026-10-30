@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, CorrectionQueueRequestReads
+final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -442,12 +442,21 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
         return $this->correctionQueueSnapshot($status, $page, $previewRequestId, ['request_id' => $requestId]);
     }
 
+    public function ownCorrectionRequestsPage(string $status, int $page, ?int $previewRequestId, mixed $requestId = null): array
+    {
+        $query = ['own_requests' => '1'];
+        if ($requestId !== null) { $query['request_id'] = $requestId; }
+
+        return $this->correctionQueueSnapshot($status, $page, $previewRequestId, $query);
+    }
+
     private function correctionQueueSnapshot(string $status, int $page, ?int $previewRequestId, array $query): array
     {
         require_once dirname(__DIR__, 3).'/lib/correction_queue_filter.php';
         $lookup = \correction_queue_request_filter($query);
+        $own = \correction_queue_own_filter($query);
 
-        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($status, $page, $previewRequestId, $lookup): array {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($status, $page, $previewRequestId, $lookup, $own): array {
             if (! in_array($status, ['pending', 'all', 'approved', 'rejected', 'withdrawn'], true) || $page < 1) {
                 throw new \InvalidArgumentException('Invalid correction request page.');
             }
@@ -455,7 +464,11 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
             // paging share this fresh snapshot; no request supplies an actor.
             $scope = "(a.user_id=? OR ?='admin' OR (?='supervisor' AND u.supervisor_id=?))";
             $parameters = [$actor->getKey(), $actor->role, $actor->role, $actor->getKey()];
-            if ($lookup['invalid']) {
+            if ($own['enabled']) {
+                $scope .= ' AND a.user_id=?';
+                $parameters[] = $actor->getKey();
+            }
+            if ($lookup['invalid'] || $own['invalid']) {
                 $scope .= ' AND 0'; // Invalid selectors never widen counts or rows.
             } elseif ($lookup['id'] !== null) {
                 $scope .= ' AND a.id=?';

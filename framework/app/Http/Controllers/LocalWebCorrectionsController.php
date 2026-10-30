@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
 use App\Chrono\CorrectionQueueRequestReads;
+use App\Chrono\OwnCorrectionQueueReads;
 use App\Chrono\LocalWebCorrections;
 use App\Chrono\LocalWebCorrectionWithdrawals;
 use Illuminate\Contracts\Config\Repository;
@@ -36,7 +37,8 @@ final class LocalWebCorrectionsController extends Controller
     {
         $view = $this->page($request);
         $page = $view->getData()['corrections'];
-        $status = $page->requestLookupInvalid ? 400 : ($page->requestLookupUnavailable ? 503 : 200);
+        $status = $page->requestLookupInvalid || $page->ownRequestsInvalid ? 400
+            : ($page->requestLookupUnavailable || $page->ownRequestsUnavailable ? 503 : 200);
 
         return $status === 200 ? $view : response($view, $status);
     }
@@ -121,6 +123,10 @@ final class LocalWebCorrectionsController extends Controller
             $selection = $invalid ? ['record_id' => 'invalid'] : ($selectedId ? ['record_id' => $selectedId] : []);
         }
         $lookup = $this->requestLookup($request);
+        $own = $this->ownFilter($request);
+        if ($own['enabled'] || $own['invalid']) {
+            $selection['own_requests'] = $own['invalid'] ? 'invalid' : '1';
+        }
         if ($lookup['invalid']) {
             $selection['request_id'] = 'invalid';
         } elseif ($lookup['id'] !== null) {
@@ -137,6 +143,14 @@ final class LocalWebCorrectionsController extends Controller
         parse_str($request->server('QUERY_STRING', ''), $query);
 
         return \correction_queue_request_filter($query);
+    }
+
+    private function ownFilter(Request $request): array
+    {
+        require_once dirname(__DIR__, 4).'/lib/correction_queue_filter.php';
+        parse_str($request->server('QUERY_STRING', ''), $query);
+
+        return \correction_queue_own_filter($query);
     }
 
     private function page(Request $request, ?string $error = null, bool $retainRejectedDraft = false): View
@@ -188,15 +202,20 @@ final class LocalWebCorrectionsController extends Controller
             ? filter_var($preview, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) : false;
         $previewRequestId = $previewRequestId === false ? null : $previewRequestId;
         $requestLookup = $this->requestLookup($request);
+        $ownFilter = $this->ownFilter($request);
+        $ownUnavailable = $ownFilter['enabled'] && ! $this->reads instanceof OwnCorrectionQueueReads;
         $lookupRequested = $requestLookup['invalid'] || $requestLookup['id'] !== null;
-        $lookupUnavailable = $lookupRequested && ! $this->reads instanceof CorrectionQueueRequestReads;
-        $queue = $lookupUnavailable
+        $lookupUnavailable = $lookupRequested && ! $ownFilter['enabled'] && ! $this->reads instanceof CorrectionQueueRequestReads;
+        $queue = $lookupUnavailable || $ownUnavailable || $ownFilter['invalid']
             ? ['records' => [], 'counts' => array_fill_keys(array_keys(CorrectionsPage::STATUS_LABELS), 0),
                 'status' => $requestStatus, 'total' => 0, 'page' => 1, 'pages' => 1, 'balancePreview' => []]
-            : ($lookupRequested
+            : ($ownFilter['enabled']
+                ? $this->reads->ownCorrectionRequestsPage($requestStatus, $requestedPage, $previewRequestId,
+                    $requestLookup['invalid'] ? 'invalid' : ($requestLookup['id'] === null ? null : $requestLookup['value']))
+                : ($lookupRequested
                 ? $this->reads->correctionRequestPage($requestStatus, $requestedPage, $previewRequestId,
                     $requestLookup['invalid'] ? 'invalid' : $requestLookup['value'])
-                : $this->reads->correctionsPage($requestStatus, $requestedPage, $previewRequestId));
+                : $this->reads->correctionsPage($requestStatus, $requestedPage, $previewRequestId)));
         $requests = array_map(static function (array $row): array {
             $preview = \chrono_correction_preview($row);
             return [
@@ -254,6 +273,7 @@ final class LocalWebCorrectionsController extends Controller
             'corrections' => new CorrectionsPage(
                 $records, $requests, $selectedRecordId, $error,
                 $error === null && ! $requestLookup['invalid'] && ! $lookupUnavailable
+                    && ! $ownFilter['invalid'] && ! $ownUnavailable
                     && $request->query->has('saved'), $this->interactions->corrections,
                 selectionInvalid: $selectionInvalid,
                 requestCounts: $queue['counts'], requestStatus: $queue['status'],
@@ -274,6 +294,9 @@ final class LocalWebCorrectionsController extends Controller
                 requestLookupValue: $requestLookup['value'],
                 requestLookupInvalid: $requestLookup['invalid'],
                 requestLookupUnavailable: $lookupUnavailable,
+                ownRequestsOnly: $ownFilter['enabled'],
+                ownRequestsInvalid: $ownFilter['invalid'],
+                ownRequestsUnavailable: $ownUnavailable,
             ),
         ]);
     }

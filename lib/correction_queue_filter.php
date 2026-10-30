@@ -19,3 +19,15 @@ function correction_queue_request_filter(array $query): array
         return ['id' => null, 'value' => '', 'invalid' => true];
     }
 }
+
+/** Optional own-only intersection; neither a subject selector nor a permission. */
+function correction_queue_own_filter(array $query): array
+{
+    if (!array_key_exists('own_requests', $query) || $query['own_requests'] === '') {
+        return ['enabled' => false, 'invalid' => false];
+    }
+
+    return $query['own_requests'] === '1'
+        ? ['enabled' => true, 'invalid' => false]
+        : ['enabled' => false, 'invalid' => true];
+}
