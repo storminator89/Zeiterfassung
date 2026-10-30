@@ -32,5 +32,6 @@ try {
     echo json_encode($user);
 } catch (PDOException $e) {
     http_response_code(500);
-    exit('Datenbankfehler: ' . $e->getMessage());
+    if (function_exists('chrono_native_error_correlation')) { chrono_native_error_correlation(500); }
+    exit('Datenbankfehler.');
 }

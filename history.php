@@ -24,6 +24,7 @@ if ($exportMode['requested']) {
     } catch (Throwable $exportError) { $export=chrono_history_export_failure(); }
     // Materialization/encoding succeeded or produced one fixed failure before these headers/body.
     http_response_code($export['status']);
+    if (function_exists('chrono_native_error_correlation')) { chrono_native_error_correlation($export['status']); }
     foreach ($export['headers'] as $name=>$value) { header($name.': '.$value); }
     echo $export['body'];exit;
 }
@@ -38,7 +39,9 @@ elseif ($showRelations) {
         $byAudit=array_column($relations['anchors'],null,'audit_id');
     } catch (Throwable $readError) {
         $status=$readError instanceof AttendanceError && in_array($readError->status,[401,403],true)?$readError->status:503;
-        http_response_code($status);header('Content-Type: text/plain; charset=UTF-8');header('Cache-Control: no-store');header('X-Content-Type-Options: nosniff');
+        http_response_code($status);
+        if (function_exists('chrono_native_error_correlation')) { chrono_native_error_correlation($status); }
+        header('Content-Type: text/plain; charset=UTF-8');header('Cache-Control: no-store');header('X-Content-Type-Options: nosniff');
         echo $status===503?'Historienbezüge derzeit nicht verfügbar.':'Historienbezüge nicht berechtigt. Bitte erneut anmelden.';exit;
     }
 }

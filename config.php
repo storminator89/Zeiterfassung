@@ -104,7 +104,7 @@ SQL;
         $conn->exec("ALTER TABLE users ADD COLUMN auth_source TEXT NOT NULL DEFAULT 'local'");
     }
 } catch (\PDOException $e) {
-    error_log($e->getMessage());
+    // abort_request provides only the existing fixed ID/status log, never PDO details.
     abort_request(503, 'Database unavailable.');
 }
 

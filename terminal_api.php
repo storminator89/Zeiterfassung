@@ -26,6 +26,7 @@ attendance_json(function() use ($conn) {
     // Keep failure unconfirmed; never expose or newly log request/secret details.
     while (ob_get_level() > $chronoTerminalOutputLevel) { ob_end_clean(); }
     http_response_code(503);
+    if (function_exists('chrono_native_error_correlation')) { chrono_native_error_correlation(503); }
     header('Content-Type: application/json; charset=UTF-8');
     exit(json_encode(['success'=>false,'message'=>'Buchung nicht bestätigt. Verbindung prüfen und denselben Vorgang erneut versuchen.']));
 }

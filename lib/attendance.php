@@ -214,7 +214,7 @@ function attendance_record_id_string(array $result): array {
 function attendance_json(callable $action): never {
     header('Content-Type: application/json; charset=UTF-8');
     try { echo json_encode($action(),JSON_THROW_ON_ERROR); }
-    catch (AttendanceError $e) { http_response_code($e->status); echo json_encode(['success'=>false,'message'=>$e->getMessage()]); }
-    catch (Throwable $e) { error_log('Attendance failure: '.$e->getMessage()); http_response_code(503); echo json_encode(['success'=>false,'message'=>'Buchung nicht bestätigt. Verbindung prüfen und denselben Vorgang erneut versuchen.']); }
+    catch (AttendanceError $e) { http_response_code($e->status); if (function_exists('chrono_native_error_correlation')) { chrono_native_error_correlation($e->status); } echo json_encode(['success'=>false,'message'=>$e->getMessage()]); }
+    catch (Throwable $e) { http_response_code(503); if (function_exists('chrono_native_error_correlation')) { chrono_native_error_correlation(503); } echo json_encode(['success'=>false,'message'=>'Buchung nicht bestätigt. Verbindung prüfen und denselben Vorgang erneut versuchen.']); }
     exit;
 }

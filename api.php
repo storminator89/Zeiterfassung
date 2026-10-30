@@ -189,6 +189,7 @@ function getUsers($conn, $user_id) {
         echo json_encode(['success' => true, 'data' => $users], JSON_THROW_ON_ERROR);
     } catch (\Exception $exception) {
         http_response_code(500);
+        if (function_exists('chrono_native_error_correlation')) { chrono_native_error_correlation(500); }
         echo json_encode(['success' => false, 'message' => 'Internal server error']);
     }
 }
@@ -326,6 +327,7 @@ function getTimeEntries($conn, $user_id) {
         ], JSON_THROW_ON_ERROR);
     } catch (\Exception $exception) {
         http_response_code(500);
+        if (function_exists('chrono_native_error_correlation')) { chrono_native_error_correlation(500); }
         echo json_encode(['success' => false, 'message' => 'Internal server error']);
     }
 }
@@ -373,6 +375,7 @@ function getCorrectionStatus($conn, $user_id) {
         echo json_encode($result, JSON_THROW_ON_ERROR);
     } catch (Throwable) {
         http_response_code(503);
+        if (function_exists('chrono_native_error_correlation')) { chrono_native_error_correlation(503); }
         echo json_encode(['success' => false, 'message' => 'Correction status unavailable.']);
     }
 }
@@ -399,6 +402,7 @@ function getWorkModel($conn, $user_id) {
         echo json_encode($result, JSON_THROW_ON_ERROR);
     } catch (Throwable) {
         http_response_code(503);
+        if (function_exists('chrono_native_error_correlation')) { chrono_native_error_correlation(503); }
         echo json_encode(['success' => false, 'message' => 'Work model unavailable.']);
     }
 }
@@ -425,6 +429,7 @@ function getWorkModelVersions($conn, $user_id) {
         echo json_encode($result, JSON_THROW_ON_ERROR);
     } catch (Throwable) {
         http_response_code(503);
+        if (function_exists('chrono_native_error_correlation')) { chrono_native_error_correlation(503); }
         echo json_encode(['success' => false, 'message' => 'Work-model versions unavailable.']);
     }
 }
@@ -527,6 +532,7 @@ if ($method === 'POST') {
     // No exception text, stack, request payload or secret is sent or newly logged.
     while (ob_get_level() > $chronoApiOutputLevel) { ob_end_clean(); }
     http_response_code(500);
+    if (function_exists('chrono_native_error_correlation')) { chrono_native_error_correlation(500); }
     header('Content-Type: application/json; charset=UTF-8');
     exit('{"success":false,"message":"Internal server error"}');
 }
