@@ -427,3 +427,14 @@ Vor einer abschließenden Abnahme bleiben unabhängiger integrierter Review,
 Abgleich mit dann aktuellem `main` sowie die vollständige autorisierte
 HTTP-/Clientabnahme erforderlich. #25 wird durch den begrenzten CLI-/Quellen-
 Nachweis allein **nicht geschlossen**.
+
+
+### Eigene Korrekturstatus nach gespeicherter Buchungsreferenz
+
+`GET /api.php/corrections` akzeptiert zusätzlich das optionale kanonische
+Stringfeld `record_id`. Es grenzt ausschließlich die eigenen bereits vorhandenen
+Anträge nach deren gespeicherter Referenz ein, zusammen mit `status`, `request_id`
+und bisheriger Pagination; keine fremde Kontoauswahl, Buchungsprüfung oder
+Schreibberechtigung. Nur bei ausdrücklicher Auswahl enthält `meta.record_id`
+den exakten String. Ohne Auswahl bleiben bisherige Antworten unverändert.
+[Vertrag, Fehler- und Abnahmegrenzen](framework/api-own-correction-status.md#own-stored-record-reference-filter--partial-68).
