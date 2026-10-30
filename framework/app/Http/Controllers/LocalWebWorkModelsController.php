@@ -109,9 +109,10 @@ final class LocalWebWorkModelsController extends Controller
                 ? (filter_var($rawId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0) : 0;
         }
         $projection = $this->reads->workModelsPage($requestedPage, $selectedId);
+        require_once dirname(__DIR__, 4).'/lib/work_model_display.php';
         $display = static fn (array $row): array => [
             'id' => (int) $row['id'], 'username' => $row['username'], 'valid_from' => $row['valid_from'],
-            'minutes' => array_map(static fn ($value): int => (int) $value, json_decode($row['minutes_json'], true)),
+            'minutes' => \work_model_display_minutes($row['minutes_json']),
             'reason' => $row['reason'], 'effective_id' => isset($row['effective_id']) ? (int) $row['effective_id'] : null,
         ];
         $models = array_map($display, $projection['models']);

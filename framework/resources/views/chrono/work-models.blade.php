@@ -4,6 +4,7 @@
 <main class="container mx-auto px-4 py-8 chrono-page">
     <h1 class="text-2xl font-bold mb-6">Arbeitszeitmodelle</h1>
     <p>Das jüngste Modell mit passendem Gültigkeitsdatum bestimmt die Sollzeit. Feiertage aus dem hinterlegten Feiertagskalender haben null Sollminuten. Bereits erfasste Abwesenheitsgutschriften bleiben unverändert und können über einen Korrekturantrag angepasst werden.</p>
+    <p class="text-sm opacity-70 mb-4">Nicht auswertbare gespeicherte Wochenminuten sind keine null Minuten. Der Anzeigehinweis ändert oder berechnet kein Modell neu.</p>
     @if ($workModels->error)<div class="alert alert-error mb-6" role="alert">{{ $workModels->error }}</div>@endif
     @if ($workModels->saved)<div class="alert alert-success mb-6">Arbeitszeitmodell gespeichert.</div>@endif
 
@@ -70,7 +71,7 @@
             <thead><tr><th>Ansicht</th><th>Version</th><th>Person</th><th>Gültig ab</th>@foreach (\App\View\ExistingUi\WorkModelsPage::DAYS as $day)<th>{{ substr($day, 0, 2) }}</th>@endforeach<th>Begründung</th></tr></thead>
             <tbody>
             @foreach (['Ausgewählt' => $workModels->selectedModel, 'Heute maßgeblich' => $workModels->effectiveModel] as $label => $m)
-                @if ($m)<tr><td>{{ $label }}</td><td>#{{ $m['id'] }}</td><td>{{ $m['username'] }}</td><td>{{ $m['valid_from'] }}</td>@foreach ($m['minutes'] as $v)<td>{{ $v }} min</td>@endforeach<td>{{ $m['reason'] }}</td></tr>@endif
+                @if ($m)<tr><td>{{ $label }}</td><td>#{{ $m['id'] }}</td><td>{{ $m['username'] }}</td><td>{{ $m['valid_from'] }}</td>@foreach ($m['minutes'] as $v)<td>{{ $v === null ? 'Nicht auswertbar' : $v.' min' }}</td>@endforeach<td>{{ $m['reason'] }}</td></tr>@endif
             @endforeach
             </tbody>
         </table></div>
@@ -88,7 +89,7 @@
                 <thead><tr><th>Version / Ansicht</th><th>Person</th><th>Gültig ab</th>@foreach (\App\View\ExistingUi\WorkModelsPage::DAYS as $day)<th>{{ substr($day, 0, 2) }}</th>@endforeach<th>Begründung</th></tr></thead>
                 <tbody>
                     @foreach ($workModels->models as $m)
-                    <tr><td><a href="{{ $workModels->url($workModels->page, $m['id']) }}">#{{ $m['id'] }} ansehen</a>@if ($m['id'] === $workModels->selectedModelId)<small class="block">Ausgewählt</small>@endif<small class="block opacity-70">{{ $m['id'] === $m['effective_id'] ? 'Heute maßgeblich' : ($m['valid_from'] > $workModels->defaultValidFrom ? 'Künftiges Gültigkeitsdatum' : 'Frühere Version') }}</small></td><td>{{ $m['username'] }}</td><td>{{ $m['valid_from'] }}</td>@foreach ($m['minutes'] as $v)<td>{{ $v }} min</td>@endforeach<td>{{ $m['reason'] }}</td></tr>
+                    <tr><td><a href="{{ $workModels->url($workModels->page, $m['id']) }}">#{{ $m['id'] }} ansehen</a>@if ($m['id'] === $workModels->selectedModelId)<small class="block">Ausgewählt</small>@endif<small class="block opacity-70">{{ $m['id'] === $m['effective_id'] ? 'Heute maßgeblich' : ($m['valid_from'] > $workModels->defaultValidFrom ? 'Künftiges Gültigkeitsdatum' : 'Frühere Version') }}</small></td><td>{{ $m['username'] }}</td><td>{{ $m['valid_from'] }}</td>@foreach ($m['minutes'] as $v)<td>{{ $v === null ? 'Nicht auswertbar' : $v.' min' }}</td>@endforeach<td>{{ $m['reason'] }}</td></tr>
                     @endforeach
                 </tbody>
             </table>
