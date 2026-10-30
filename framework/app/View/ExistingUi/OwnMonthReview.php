@@ -8,7 +8,8 @@ final readonly class OwnMonthReview
     public ?array $result;
 
     public function __construct(public string $month, string $language, ?array $snapshot=null,
-        public bool $requested=false, public bool $invalid=false, public bool $unavailable=false)
+        public bool $requested=false, public bool $invalid=false, public bool $unavailable=false,
+        public bool $findingsAvailable=false)
     {
         if (!in_array($language,['de','en','zh'],true)
             || ($month!=='' && preg_match('/\A(?!0000)[0-9]{4}-(?:0[1-9]|1[0-2])\z/',$month)!==1)) {
@@ -39,8 +40,29 @@ final readonly class OwnMonthReview
                 $closedCounts[$key]=$value;
             }
         }
-        $samples=[];
-        foreach ($snapshot['samples'] as $row) {
+        $samples=self::rows($snapshot['samples'],$closedCounts);
+        $result=['month'=>$month,'loaded_at'=>$snapshot['loaded_at'],'counts'=>$counts,'closed_counts'=>$closedCounts,'samples'=>$samples,'limited'=>$snapshot['limited']];
+        if (array_key_exists('findings',$snapshot)) {
+            $finding=$snapshot['findings'];
+            if (!$findingsAvailable || $closedCounts===null || !is_array($finding)
+                || !is_int($finding['page']??null) || $finding['page']<1 || $finding['page']>intdiv(PHP_INT_MAX,20)
+                || ($finding['per_page']??null)!==20 || !is_int($finding['total']??null) || $finding['total']<0
+                || $finding['total']!==array_sum($counts)+array_sum($closedCounts)
+                || ($finding['total_pages']??null)!==($finding['total']===0?1:intdiv($finding['total']-1,20)+1)
+                || !is_array($finding['rows']??null)
+                || count($finding['rows'])!==min(20,max(0,$finding['total']-($finding['page']-1)*20))) {
+                throw new \UnexpectedValueException('Invalid own month finding page.');
+            }
+            $result['findings']=['page'=>$finding['page'],'per_page'=>20,'total'=>$finding['total'],
+                'total_pages'=>$finding['total_pages'],'rows'=>self::rows($finding['rows'],$closedCounts)];
+        }
+        $this->result=$result;
+    }
+
+    private static function rows(array $rows,?array $closedCounts): array
+    {
+        $result=[];$seen=[];
+        foreach ($rows as $row) {
             if (!is_array($row) || !in_array($row['kind']??null,['open','request','closed'],true)
                 || !in_array($row['relation']??null,['selected','earlier','unclear'],true)
                 || (in_array($row['kind'],['request','closed'],true) && $row['relation']==='earlier')
@@ -49,9 +71,19 @@ final readonly class OwnMonthReview
                 || filter_var($row['id'],FILTER_VALIDATE_INT,['options'=>['min_range'=>1]])===false) {
                 throw new \UnexpectedValueException('Invalid own month row.');
             }
-            $samples[]=['kind'=>$row['kind'],'id'=>$row['id'],'relation'=>$row['relation']];
+            $key=$row['kind'].':'.$row['id'];
+            if (isset($seen[$key])) { throw new \UnexpectedValueException('Duplicate own month finding.'); }
+            $seen[$key]=true;$result[]=['kind'=>$row['kind'],'id'=>$row['id'],'relation'=>$row['relation']];
         }
-        $this->result=['month'=>$month,'loaded_at'=>$snapshot['loaded_at'],'counts'=>$counts,'closed_counts'=>$closedCounts,'samples'=>$samples,'limited'=>$snapshot['limited']];
+        return $result;
+    }
+
+    public function findingUrl(int $page): string
+    {
+        if ($this->month==='' || $page<1 || $page>intdiv(PHP_INT_MAX,20)) {
+            throw new \InvalidArgumentException('Invalid own month navigation.');
+        }
+        return 'attendance.php?month_review='.rawurlencode($this->month).'&month_review_page='.$page.'#own-month-review';
     }
 
     public function text(string $key): string

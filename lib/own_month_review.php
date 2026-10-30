@@ -13,6 +13,17 @@ function chrono_own_month_review_month(mixed $value): string
     return $value;
 }
 
+/** Navigation only: fixed20 minimal findings per live own snapshot, never a row/type filter. */
+function chrono_own_month_review_page(mixed $value): int
+{
+    if ((!is_string($value) && !is_int($value))
+        || preg_match('/\A[1-9][0-9]*\z/',(string)$value)!==1
+        || ($page=filter_var($value,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>intdiv(PHP_INT_MAX,20)]]))===false) {
+        throw new InvalidArgumentException('Invalid own month findings page.');
+    }
+    return $page;
+}
+
 /** Existing strict diagnosis before canonical Berlin projection; never choose an ambiguous instant. */
 function chrono_own_month_review_day(mixed $value): ?string
 {
@@ -70,11 +81,20 @@ function chrono_own_month_review_closed_relation(array $row,string $month): ?str
 }
 
 /** Caller already owns the authenticated read snapshot; no owner/query/role from a form. */
-function chrono_own_month_review_snapshot(PDO $db,int $owner,string $month,DateTimeImmutable $loaded): array
+function chrono_own_month_review_snapshot(PDO $db,int $owner,string $month,DateTimeImmutable $loaded,?int $findingsPage=null): array
 {
     chrono_own_month_review_month($month);
     if (!$db->inTransaction() || $owner<1) { throw new LogicException('An authenticated own-row snapshot is required.'); }
+    if ($findingsPage!==null) { chrono_own_month_review_page($findingsPage); }
     $counts=array_fill_keys(['open_selected','open_earlier','open_unclear','pending_selected','pending_unclear'],0);$samples=[];$relevant=0;
+    $findings=[];$offset=$findingsPage===null?null:($findingsPage-1)*20;
+    // Stream all current facts once, retain only the same five samples and at
+    // most20 selected minimal IDs. Fixed group/id order, not global chronology.
+    $remember=static function(string $kind,string $id,string $relation) use (&$samples,&$relevant,&$findings,$offset): void {
+        $position=$relevant++;$item=['kind'=>$kind,'id'=>$id,'relation'=>$relation];
+        if (count($samples)<5) { $samples[]=$item; }
+        if ($offset!==null && $position>=$offset && count($findings)<20) { $findings[]=$item; }
+    };
     $s=$db->prepare("SELECT CAST(id AS TEXT) AS id,
         CASE WHEN typeof(startzeit)='text' AND length(CAST(startzeit AS BLOB))<=25 THEN startzeit ELSE NULL END AS startzeit
         FROM zeiterfassung WHERE user_id=? AND (endzeit IS NULL OR endzeit='') ORDER BY id DESC");
@@ -83,8 +103,7 @@ function chrono_own_month_review_snapshot(PDO $db,int $owner,string $month,DateT
         while (($row=$s->fetch(PDO::FETCH_ASSOC))!==false) {
             $day=chrono_own_month_review_day($row['startzeit']);$relation=$day===null?'unclear':(substr($day,0,7)===$month?'selected':($day<$month.'-01'?'earlier':'outside'));
             if ($relation==='outside') { continue; }
-            $counts['open_'.$relation]++;$relevant++;
-            if (count($samples)<5) { $samples[]=['kind'=>'open','id'=>$row['id'],'relation'=>$relation]; }
+            $counts['open_'.$relation]++;$remember('open',$row['id'],$relation);
         }
     } finally { $s->closeCursor(); }
     // Stream active rows; oversized/foreign representations stay unknown without
@@ -101,8 +120,7 @@ function chrono_own_month_review_snapshot(PDO $db,int $owner,string $month,DateT
         while (($row=$s->fetch(PDO::FETCH_ASSOC))!==false) {
             $relation=chrono_own_month_review_request($row,$month);
             if ($relation==='outside') { continue; }
-            $counts['pending_'.$relation]++;$relevant++;
-            if (count($samples)<5) { $samples[]=['kind'=>'request','id'=>$row['id'],'relation'=>$relation]; }
+            $counts['pending_'.$relation]++;$remember('request',$row['id'],$relation);
         }
     } finally { $s->closeCursor(); }
     // Closed rows were absent from the original open-item precheck. Stream only
@@ -119,18 +137,23 @@ function chrono_own_month_review_snapshot(PDO $db,int $owner,string $month,DateT
         while (($row=$s->fetch(PDO::FETCH_ASSOC))!==false) {
             $relation=chrono_own_month_review_closed_relation($row,$month);
             if ($relation===null) { continue; }
-            $closedCounts[$relation]++;$relevant++;
-            if (count($samples)<5) { $samples[]=['kind'=>'closed','id'=>$row['id'],'relation'=>$relation]; }
+            $closedCounts[$relation]++;$remember('closed',$row['id'],$relation);
         }
     } finally { $s->closeCursor(); }
-    return ['month'=>$month,'loaded_at'=>$loaded->setTimezone(new DateTimeZone('Europe/Berlin'))->format(DateTimeInterface::ATOM),
+    $result=['month'=>$month,'loaded_at'=>$loaded->setTimezone(new DateTimeZone('Europe/Berlin'))->format(DateTimeInterface::ATOM),
         'counts'=>$counts,'closed_counts'=>$closedCounts,'samples'=>$samples,'limited'=>$relevant>count($samples)];
+    if ($findingsPage!==null) {
+        $result['findings']=['page'=>$findingsPage,'per_page'=>20,'total'=>$relevant,
+            'total_pages'=>$relevant===0?1:intdiv($relevant-1,20)+1,'rows'=>$findings];
+    }
+    return $result;
 }
 
 /** Native existing session actor/version only; reads and authority share this owned snapshot. */
-function chrono_native_own_month_review(PDO $db,int $actor,#[SensitiveParameter] mixed $version,string $month): array
+function chrono_native_own_month_review(PDO $db,int $actor,#[SensitiveParameter] mixed $version,string $month,?int $findingsPage=null): array
 {
     chrono_own_month_review_month($month);
+    if ($findingsPage!==null) { chrono_own_month_review_page($findingsPage); }
     if ($db->inTransaction()) { throw new LogicException('Own month review requires an idle connection.'); }
     if (!$db->beginTransaction()) { throw new RuntimeException('Own month review unavailable.'); }
     try {
@@ -140,7 +163,7 @@ function chrono_native_own_month_review(PDO $db,int $actor,#[SensitiveParameter]
             throw new AttendanceError('Eigene Monatsprüfung nicht verfügbar. Bitte neu anmelden.',401);
         }
         if (!in_array($current['role'],['user','supervisor','admin'],true)) { throw new AttendanceError('Eigene Monatsprüfung nicht verfügbar.',403); }
-        $result=chrono_own_month_review_snapshot($db,$actor,$month,new DateTimeImmutable('now',new DateTimeZone('Europe/Berlin')));
+        $result=chrono_own_month_review_snapshot($db,$actor,$month,new DateTimeImmutable('now',new DateTimeZone('Europe/Berlin')),$findingsPage);
         if (!$db->commit()) { throw new RuntimeException('Own month review unavailable.'); }
         return $result;
     } catch (Throwable $error) {

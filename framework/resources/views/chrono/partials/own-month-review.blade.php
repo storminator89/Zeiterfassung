@@ -15,13 +15,28 @@
             <p>{{ sprintf($ownMonthReview->text('pending_counts'), $monthCounts['pending_selected'], $monthCounts['pending_unclear']) }}</p>
             @php($closedCounts = $monthReview['closed_counts'])
             @if ($closedCounts !== null)<p>{{ sprintf($ownMonthReview->text('closed_counts'), $closedCounts['selected'], $closedCounts['unclear']) }}</p>@endif
+            @php($monthFindings = $monthReview['findings'] ?? null)
+            @if ($monthFindings !== null)<p>{{ $ownMonthReview->text('finding_order') }}</p>
+                @if ($monthFindings['page'] > $monthFindings['total_pages'])<p role="status">{{ $ownMonthReview->text('finding_outside') }}</p>@endif
+            @endif
             @if (array_sum($monthCounts) + array_sum($closedCounts ?? []) === 0)<p role="status">{{ $ownMonthReview->text('empty') }}</p>
             @else
-                <p>{{ $ownMonthReview->text('samples') }}</p><ul class="list-disc pl-5">
-                @foreach ($monthReview['samples'] as $sample)<li>{{ $ownMonthReview->text('kind_'.$sample['kind']) }} #{{ $sample['id'] }} · {{ $ownMonthReview->text($sample['relation']) }}@if ($sample['kind'] !== 'request') · <a class="link" href="adjustments.php?record_id={{ rawurlencode($sample['id']) }}">{{ $ownMonthReview->text('correction') }}</a>@else · <a class="link" href="adjustments.php?request_status=pending&amp;request_id={{ rawurlencode($sample['id']) }}">{{ $ownMonthReview->text('pending_link') }}</a>@endif</li>@endforeach
+                @if ($monthFindings === null)<p>{{ $ownMonthReview->text('samples') }}</p>@endif
+                <ul class="list-disc pl-5">
+                @foreach ($monthFindings['rows'] ?? $monthReview['samples'] as $sample)<li>{{ $ownMonthReview->text('kind_'.$sample['kind']) }} #{{ $sample['id'] }} · {{ $ownMonthReview->text($sample['relation']) }}@if ($sample['kind'] !== 'request') · <a class="link" href="adjustments.php?record_id={{ rawurlencode($sample['id']) }}">{{ $ownMonthReview->text('correction') }}</a>@else · <a class="link" href="adjustments.php?request_status=pending&amp;request_id={{ rawurlencode($sample['id']) }}">{{ $ownMonthReview->text('pending_link') }}</a>@endif</li>@endforeach
                 </ul>
             @endif
-            @if ($monthReview['limited'])<p>{{ $ownMonthReview->text('limited') }}</p>@endif
+            @if ($monthFindings !== null)
+                <nav class="flex flex-wrap items-center gap-3 my-3" aria-label="{{ $ownMonthReview->text('finding_navigation') }}">
+                    <span>{{ sprintf($ownMonthReview->text('finding_page'), $monthFindings['page'], $monthFindings['total_pages'], $monthFindings['total']) }}</span>
+                    @if ($monthFindings['page'] > 1)<a class="btn btn-outline btn-sm" href="{{ $ownMonthReview->findingUrl(1) }}">{{ $ownMonthReview->text('finding_first') }}</a>@endif
+                    @if ($monthFindings['page'] > 1 && $monthFindings['page'] <= $monthFindings['total_pages'])<a class="btn btn-outline btn-sm" href="{{ $ownMonthReview->findingUrl($monthFindings['page'] - 1) }}">{{ $ownMonthReview->text('finding_previous') }}</a>@endif
+                    @if ($monthFindings['page'] < $monthFindings['total_pages'])<a class="btn btn-outline btn-sm" href="{{ $ownMonthReview->findingUrl($monthFindings['page'] + 1) }}">{{ $ownMonthReview->text('finding_next') }}</a>@endif
+                </nav><p class="opacity-70">{{ $ownMonthReview->text('finding_live') }}</p>
+            @else
+                @if ($monthReview['limited'])<p>{{ $ownMonthReview->text('limited') }}</p>@endif
+                @if ($ownMonthReview->findingsAvailable)<a class="btn btn-outline btn-sm my-3" href="{{ $ownMonthReview->findingUrl(1) }}">{{ $ownMonthReview->text('finding_all') }}</a>@endif
+            @endif
             <p class="text-xs opacity-70">{{ $ownMonthReview->text('snapshot') }} <time datetime="{{ $monthReview['loaded_at'] }}">{{ $monthReview['loaded_at'] }}</time></p>
         @endif
         <p class="opacity-70">{{ $ownMonthReview->text('note') }}</p>
