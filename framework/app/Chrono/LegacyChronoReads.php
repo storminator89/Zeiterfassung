@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads, OwnApiTimeEntryKindReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, HolidayRefillPreviewReads, OwnStoredValuesExportReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, OwnMonthReviewFindingReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads, TeamTimeRecordReviewReads, OwnPeriodComparisonReads, WorkModelCreditPreviewPageReads
+final class LegacyChronoReads implements ChronoReads, OwnApiTimeEntryKindReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, HolidayRefillPreviewReads, OwnStoredValuesExportReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, OwnMonthReviewFindingReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads, TeamTimeRecordReviewReads, OwnPeriodComparisonReads, WorkModelCreditPreviewPageReads, OwnAbsenceYearReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -371,6 +371,16 @@ final class LegacyChronoReads implements ChronoReads, OwnApiTimeEntryKindReads, 
 
             return \api_own_work_model_snapshot($pdo, (int) $actor->getKey(), $day);
         }, false);
+    }
+
+    public function ownAbsenceYear(mixed $year = null, mixed $page = null): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($year, $page): array {
+            require_once dirname(__DIR__, 3).'/lib/own_absence_year.php';
+
+            return \chrono_own_absence_year_snapshot($pdo, (int) $actor->getKey(), $year, $page,
+                new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')));
+        });
     }
 
     public function ownPeriodComparison(string $from, string $through): array

@@ -98,6 +98,9 @@
     <div class="container mx-auto px-4 py-8 chrono-dashboard">
         <h2 class="text-4xl font-bold mb-8 text-center">{{ $page->copy->text('DASHBOARD_TITLE') }}</h2>
         <p class="text-sm mb-6">{{ $page->copy->text('DASHBOARD_PERIOD_BASIS') }}</p>
+        @if ($absenceYearSupported ?? false)
+            @include('chrono.partials.own-absence-year')
+        @endif
 
         @if ($holidayInventoryUnavailable ?? false)
         <details id="holiday-inventory" class="mb-6 text-sm border border-base-300 rounded-box p-3" @if ($holidayInventoryOpen ?? false) open @endif>

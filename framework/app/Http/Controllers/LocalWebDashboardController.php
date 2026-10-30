@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
 use App\Chrono\HolidayInventoryReads;
+use App\Chrono\OwnAbsenceYearReads;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Throwable;
@@ -56,6 +57,19 @@ final class LocalWebDashboardController extends Controller
             }
         }
 
+        require_once dirname(__DIR__, 4).'/lib/own_absence_year_copy.php';
+        $absenceYearSupported = $this->reads instanceof OwnAbsenceYearReads;
+        $absenceYearState = 'idle'; $absenceYearData = null;
+        if ($absenceYearSupported && (array_key_exists('absence_year', $query) || array_key_exists('absence_page', $query))) {
+            try {
+                $absenceYearData = $this->reads->ownAbsenceYear($query['absence_year'] ?? null, $query['absence_page'] ?? null);
+                $absenceYearState = 'loaded';
+            } catch (AuthenticationException|AuthorizationException $error) {
+                throw $error;
+            } catch (\InvalidArgumentException) { $absenceYearState = 'invalid'; }
+            catch (Throwable) { $absenceYearState = 'unavailable'; }
+        }
+
         return view('chrono.dashboard', [
             // Separate prerequisites: dashboard.php must join the shared chrome
             // whitelist and a reviewed protected GET before this can be dispatched.
@@ -70,6 +84,12 @@ final class LocalWebDashboardController extends Controller
                 \calendar_range_events($snapshot['records'], $snapshot['holidays'], $snapshot['range'], $labels),
                 $snapshot['report_finality'], $snapshot['report_incomplete'],
             ),
+            'absenceYearSupported' => $absenceYearSupported,
+            'absenceYearState' => $absenceYearState, 'absenceYearData' => $absenceYearData,
+            'absenceYearCopy' => \chrono_own_absence_year_copy($language),
+            'absenceYearCurrent' => (new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')))->format('Y'),
+            'absenceYearContext' => ['calendar_date' => $snapshot['range']['start']->format('Y-m-d'),
+                ...($holidayInventory === null ? [] : ['holiday_year' => (string) $holidayInventory['year']])],
             'holidayInventory' => $holidayInventory,
             'holidayInventoryUnavailable' => $holidayInventoryUnavailable,
             'holidayInventoryOpen' => $holidayInventoryOpen,

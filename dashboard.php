@@ -45,6 +45,22 @@ $calendarLink = static fn(string $day): string => 'dashboard.php?calendar_date='
 $holidayYear = holiday_inventory_year($_GET['holiday_year'] ?? null, (int)$currentYear);
 $holidayInventory = holiday_inventory($conn, $holidayYear['year']);
 
+// Explicit own stored-credit year review; no extra query or write in Native.
+require_once __DIR__.'/lib/own_absence_year.php';
+require_once __DIR__.'/lib/own_absence_year_copy.php';
+require_once __DIR__.'/lib/native_own_absence_year_view.php';
+$absenceYearCopy=chrono_own_absence_year_copy((string)($_SESSION['lang']??'de'));
+$absenceYearState='idle';$absenceYearData=null;
+if (array_key_exists('absence_year',$_GET) || array_key_exists('absence_page',$_GET)) {
+    try {
+        $absenceYearData=chrono_own_absence_year_projection($records,$_GET['absence_year']??null,$_GET['absence_page']??null,
+            new DateTimeImmutable('now',new DateTimeZone('Europe/Berlin')));
+        $absenceYearState='loaded';
+    } catch (InvalidArgumentException) { $absenceYearState='invalid'; }
+    catch (Throwable) { $absenceYearState='unavailable'; }
+}
+$absenceYearContext=['calendar_date'=>$calendarRange['start']->format('Y-m-d'),'holiday_year'=>(string)$holidayInventory['year']];
+
 // Completed booking days only, using local dates rather than SQLite UTC DATE().
 $monthDays=array_filter($reportDays,fn($day)=>$day>=$currentMonthStart&&$day<=$currentMonthEnd,ARRAY_FILTER_USE_KEY);
 $workedDays=count($monthDays);
@@ -191,6 +207,8 @@ function calculateRemainingHours($workedHours, $expectedHours)
         <h2 class="text-4xl font-bold mb-8 text-center"><?= DASHBOARD_TITLE ?></h2>
 
         <p class="text-sm opacity-70 mb-6"><?= h(sprintf(DASHBOARD_CURRENT_PERIOD_NOTE, $firstDayOfWeek, $lastDayOfWeek, $currentMonthStart, $currentMonthEnd)) ?></p>
+
+        <?php chrono_native_own_absence_year_view($absenceYearData,$absenceYearState,$absenceYearCopy,$absenceYearContext,(string)$currentYear); ?>
 
         <details id="holiday-inventory" class="mb-6 text-sm border border-base-300 rounded-box p-3" <?= array_key_exists('holiday_year', $_GET) ? 'open' : '' ?>>
             <summary class="cursor-pointer font-semibold"><?= h(HOLIDAY_INVENTORY_TITLE) ?> · <?= (int)$holidayInventory['year'] ?> · <?= h(HOLIDAY_INVENTORY_UNVERIFIED) ?></summary>
