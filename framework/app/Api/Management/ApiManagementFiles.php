@@ -21,7 +21,7 @@ final class ApiManagementFiles
     private array $baseline;
     public function __construct(private readonly RuntimeAdmission $database, private readonly ?Closure $trustedEntropy = null)
     {
-        if ($database->schemaProfile !== 'account-lifecycle-v5' || basename($database->path) !== 'application.sqlite') { throw new RuntimeException('API management requires local V5.'); }
+        if (!$database->isGenerationBoundAccountProfile() || basename($database->path) !== 'application.sqlite') { throw new RuntimeException('API management requires local V5.'); }
         $this->instance = dirname($database->path);
         try { $this->baseline = $this->context(); }
         catch (Throwable) { throw new RuntimeException('Private API management cohort refused.'); }
@@ -30,6 +30,8 @@ final class ApiManagementFiles
     public function __serialize(): array { throw new RuntimeException('Private API management cannot be serialized.'); }
     private function context(): array
     {
+        clearstatcache(true,$this->instance.'/vacation-v7-upgrade.json');
+        if (@lstat($this->instance.'/vacation-v7-upgrade.json') !== false) { throw new RuntimeException; }
         $state = self::instance($this->instance);
         $ancestors = [];
         $path = $this->instance;
@@ -105,14 +107,16 @@ final class ApiManagementFiles
         if (!$this->locked || !$db->inTransaction()) { throw new RuntimeException('Operator then writer lock required.'); }
         $rows = $db->query('PRAGMA database_list')->fetchAll(PDO::FETCH_ASSOC);
         $main = array_values(array_filter($rows,fn($r) => $r['name'] === 'main'));
-        if (count($rows) !== 1 || count($main) !== 1 || $main[0]['file'] !== $this->database->path || $db->query('PRAGMA schema_version')->fetchColumn() !== $this->database->schemaVersion) { throw new RuntimeException('Admitted writer required.'); }
+        if ($this->database->schemaProfile==='vacation-requests-v7') {
+            \App\LegacyDatabase\VacationWorkflowV7References::requireAdmitted($db,$this->database);
+        } elseif (count($rows) !== 1 || count($main) !== 1 || $main[0]['file'] !== $this->database->path || $db->query('PRAGMA schema_version')->fetchColumn() !== $this->database->schemaVersion) { throw new RuntimeException('Admitted writer required.'); }
         $this->unchanged();
     }
     public function prepareLocked(PDO $db, AccountLifecycleAuthority $actor, ApiPolicyChange $change, bool $legacyDefaultEnabled): array
     {
         if (!$change->enabled) { throw new RuntimeException('Disable must not inspect or prepare signing keys.'); }
         $this->requireLockedWriter($db);
-        $state = (new ApiPolicyJournal)->requireChangeLocked($db,$actor,$change,$legacyDefaultEnabled);
+        $state = (new ApiPolicyJournal($this->database->schemaProfile==='vacation-requests-v7'?$this->database:null))->requireChangeLocked($db,$actor,$change,$legacyDefaultEnabled);
         $this->unchanged(); $metadata = $this->metadata();
         if ($metadata !== null) { $secret = (new ExistingApiFileSigningKey($metadata))->secret(); unset($secret); $this->unchanged(); return ['status'=>'prepared','key_confirmed'=>true]; }
         if ($state->keyPrepared || !$change->allowNewKey || !$change->enabled) { throw new RuntimeException('Explicit new-key authorization required.'); }

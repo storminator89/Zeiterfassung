@@ -102,7 +102,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         if ($this->userMutationsEnabled()) {
             $supported += LocalWebAdminUserMutations::COMMAND_FIELDS;
         }
-        if ($this->intake?->isV4() === true || $this->intake?->isV5() === true) {
+        if ($this->intake?->isV4() === true || $this->intake?->hasGenerationBoundAccountAuthority() === true) {
             $supported['update_intake_policy'] = ['update_intake_policy', 'revision', 'manual_enabled', 'ldap_sync_enabled', 'registration_enabled'];
             if ($this->ldapHttpEnabled()) { $supported['sync_ldap'] = LocalWebLdapSync::COMMAND_FIELDS; }
         }
@@ -278,7 +278,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
 
     private function ldapSessionsEnabled(): bool
     {
-        return ($this->intake?->isV4() === true || $this->intake?->isV5() === true) && $this->config?->get('app.debug') === false
+        return ($this->intake?->isV4() === true || $this->intake?->hasGenerationBoundAccountAuthority() === true) && $this->config?->get('app.debug') === false
             && $this->config?->get('chrono_ldap_sessions.http_enabled', false) === true
             && $this->interactions->adminPauseSettings && $this->interactions->ldapSessionRevocations
             && $this->ldapSessions !== null;
@@ -311,14 +311,14 @@ final class LocalWebAdminPauseSettingsController extends Controller
 
     private function ldapHttpEnabled(): bool
     {
-        return ($this->intake?->isV4() === true || $this->intake?->isV5() === true) && $this->ldapSync !== null
+        return ($this->intake?->isV4() === true || $this->intake?->hasGenerationBoundAccountAuthority() === true) && $this->ldapSync !== null
             && $this->config?->get('chrono_ldap_sync.http_enabled', false) === true;
     }
 
     /** Only the admitted private credential-document branch may expose password editing. */
     private function userMutationsEnabled(): bool
     {
-        return ($this->intake?->isV4() === true || $this->intake?->isV5() === true)
+        return ($this->intake?->isV4() === true || $this->intake?->hasGenerationBoundAccountAuthority() === true)
             && $this->config?->get('app.debug') === false
             && $this->interactions->adminPauseSettings && $this->userMutations !== null;
     }
@@ -508,7 +508,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         $actor = $this->adminActor();
         $localSecurityControls = $actor->auth_source === 'local';
         $v4 = $this->intake?->isV4() === true;
-        $v5 = $this->intake?->isV5() === true;
+        $v5 = $this->intake?->hasGenerationBoundAccountAuthority() === true;
         if (($v4 || $v5) && $this->config?->get('app.debug') !== false) {
             return $this->ldapFailure('Private non-debug Admin document composition is required.', 503);
         }

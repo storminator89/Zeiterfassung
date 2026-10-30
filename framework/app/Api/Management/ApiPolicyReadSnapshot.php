@@ -14,7 +14,7 @@ final readonly class ApiPolicyReadSnapshot
 
     public function read(): ApiPolicyState
     {
-        if (! $this->runtime->isAccountLifecycleV5()) {
+        if (! $this->runtime->hasGenerationBoundAccountAuthority()) {
             throw new LogicException('API UI operating policy requires the explicit V5 profile.');
         }
         $reader = $pdo = null;
@@ -22,7 +22,7 @@ final readonly class ApiPolicyReadSnapshot
             $reader = $this->runtime->readConnection($this->config->get('database.connections.chrono', []), 'chrono');
             $pdo = $reader->getPdo();
             if (! $pdo->beginTransaction()) { throw new LogicException('API policy snapshot unavailable.'); }
-            $state = (new ApiPolicyJournal)->read($pdo, $this->config->get('chrono_api.enabled', false) === true);
+            $state = (new ApiPolicyJournal($this->runtime->vacationAdmission()))->read($pdo, $this->config->get('chrono_api.enabled', false) === true);
             if (! $pdo->rollBack() || $pdo->inTransaction()) { throw new LogicException('API policy snapshot not ended.'); }
             return $state;
         } finally {

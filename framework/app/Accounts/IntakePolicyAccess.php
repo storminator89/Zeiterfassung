@@ -30,7 +30,7 @@ final readonly class IntakePolicyAccess
         private Closure $writer,
         private ?AccountLifecycleWebIdentity $lifecycle = null,
     ) {
-        if ($v4 && $this->isV5()) { throw new LogicException('V5 intake must not be aliased into V4.'); }
+        if ($v4 && $this->hasGenerationBoundAccountAuthority()) { throw new LogicException('V5 intake must not be aliased into V4.'); }
     }
 
     public function isV4(): bool
@@ -40,12 +40,17 @@ final readonly class IntakePolicyAccess
 
     public function isV5(): bool
     {
+        return $this->hasGenerationBoundAccountAuthority() && !$this->policies->isVacationWorkflowV7();
+    }
+
+    public function hasGenerationBoundAccountAuthority(): bool
+    {
         return $this->lifecycle?->requiresGeneration() ?? false;
     }
 
     private function selected(): bool
     {
-        return $this->v4 || $this->isV5();
+        return $this->v4 || $this->hasGenerationBoundAccountAuthority();
     }
 
     /** Legacy profiles have no policy card, not a fabricated permitted V4 policy. */
@@ -148,7 +153,7 @@ final readonly class IntakePolicyAccess
                     throw new LogicException;
                 }
                 if ($user !== null) {
-                    $statement = $pdo->prepare($this->isV5()
+                    $statement = $pdo->prepare($this->hasGenerationBoundAccountAuthority()
                         ? 'SELECT id,username,role,auth_source,password,account_status,auth_generation FROM users WHERE id=?'
                         : 'SELECT role,auth_source,password FROM users WHERE id=?');
                     $statement->execute([$user]);
@@ -156,17 +161,17 @@ final readonly class IntakePolicyAccess
                     $statement->closeCursor();
                     if ($actor === false || $actor['auth_source'] !== 'local' || ! is_string($actor['password'])
                         || $actor['password'] === '' || ! hash_equals($version, hash('sha256', $actor['password']))
-                        || ($this->isV5() && ($authority === null || ! $authority->matches($actor)))) {
+                        || ($this->hasGenerationBoundAccountAuthority() && ($authority === null || ! $authority->matches($actor)))) {
                         throw new AuthenticationException('Unauthenticated.', ['web']);
                     }
                     if ($actor['role'] !== 'admin') {
                         throw new AuthorizationException('Nur die aktuelle lokale Verwaltung darf Aufnahmewege verwalten.');
                     }
-                    if ($this->isV5() && ! AccountLifecycleAuthority::locallyLoginEligibleAdmin($actor)) {
+                    if ($this->hasGenerationBoundAccountAuthority() && ! AccountLifecycleAuthority::locallyLoginEligibleAdmin($actor)) {
                         throw new AuthenticationException('Unauthenticated.', ['web']);
                     }
                 }
-                $policy = $this->policies->read($pdo, $this->isV5());
+                $policy = $this->policies->readForAccountAuthority($pdo, $this->hasGenerationBoundAccountAuthority());
                 if ($connection->getRawPdo() !== $pdo) {
                     throw new LogicException;
                 }

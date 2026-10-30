@@ -19,7 +19,7 @@ final readonly class AccountLifecycleApiIdentity
     /** Immutable admitted profile metadata only; never opens the still-closed V5 source. */
     public static function fromRuntime(?RuntimeDatabase $runtime): self
     {
-        return new self($runtime?->isAccountLifecycleV5() ?? false, $runtime);
+        return new self($runtime?->hasGenerationBoundAccountAuthority() ?? false, $runtime);
     }
 
     /** Actual provider path: an early off selection cannot survive a later binding change. */
@@ -34,7 +34,7 @@ final readonly class AccountLifecycleApiIdentity
         };
         $runtime = $selected();
 
-        return new self($runtime?->isAccountLifecycleV5() ?? false, $runtime, $selected);
+        return new self($runtime?->hasGenerationBoundAccountAuthority() ?? false, $runtime, $selected);
     }
 
     public function requiresGeneration(): bool

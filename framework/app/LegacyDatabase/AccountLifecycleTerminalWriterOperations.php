@@ -10,7 +10,7 @@ use Closure;
 trait AccountLifecycleTerminalWriterOperations
 {
     /** Device-only pair/heartbeat are not account authorities. Runtime admission stays closed. */
-    private function terminalV5(LegacyTerminalRequest $request, AdmittedTerminalKeys $keys): array
+    private function terminalGenerationBound(LegacyTerminalRequest $request, AdmittedTerminalKeys $keys): array
     {
         $this->assertIntakeProfile();
         $this->terminalRequireEnabled();

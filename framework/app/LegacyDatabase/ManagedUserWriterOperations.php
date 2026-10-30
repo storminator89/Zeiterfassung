@@ -33,7 +33,7 @@ trait ManagedUserWriterOperations
             $email, $role, $password, $department, $supervisor, $regularHours, $carryIn, $lifecycleAuthority): AdminUserMutationResult {
             $this->assertExpectedWebPrincipal($admin, 'local', $expectedWebVersion, 'admin', $lifecycleAuthority);
             \admin_validate_user_fields($username, $email, $regularHours, $carryIn);
-            $hash = $this->accountLifecycleV5 && ! empty($password) ? password_hash($password, PASSWORD_DEFAULT) : null;
+            $hash = $this->hasGenerationBoundAccountAuthority() && ! empty($password) ? password_hash($password, PASSWORD_DEFAULT) : null;
             $this->requireManagedUserTargetLocked($targetId, $role, $hash, $username);
             $assignment = \validateUserAssignment($this->pdo, $role, $supervisor, $department, $targetId);
 
@@ -68,6 +68,10 @@ trait ManagedUserWriterOperations
         return $this->executeLocked(function () use ($admin, $expectedWebVersion, $targetId, $lifecycleAuthority): AdminUserMutationResult {
             $this->assertExpectedWebPrincipal($admin, 'local', $expectedWebVersion, 'admin', $lifecycleAuthority);
             $this->requireManagedUserTargetLocked($targetId, null);
+            if ($this->vacationAdmission!==null && (att_one($this->pdo,'SELECT id FROM vacation_requests WHERE user_id=? LIMIT 1',[$targetId])
+                || att_one($this->pdo,'SELECT id FROM vacation_transitions WHERE actor_id=? LIMIT 1',[$targetId]))) {
+                throw new \AttendanceError('Konten mit Urlaubsanträgen oder Urlaubsentscheidungen bleiben für den Verlauf erhalten. Bitte die vorhandene Kontodeaktivierung verwenden.',409);
+            }
             // EXACT native retention predicate: any owned audit, including user
             // or work-model history/baselines, not only time-entry mutations.
             if (att_one($this->pdo, 'SELECT id FROM audit_log WHERE user_id=?', [$targetId])) {
@@ -93,7 +97,7 @@ trait ManagedUserWriterOperations
         // Roles are still assigned only by the existing explicit local-Admin
         // operation. Directory sync never promotes a role or converts its source;
         // a directory Admin never substitutes for the retained local recovery Admin.
-        if ($this->accountLifecycleV5) {
+        if ($this->hasGenerationBoundAccountAuthority()) {
             $replacement = null;
             if ($nextRole !== null) {
                 $replacement = att_one($this->pdo, 'SELECT username,role,auth_source,password,account_status,auth_generation FROM users WHERE id=?', [$targetId]);

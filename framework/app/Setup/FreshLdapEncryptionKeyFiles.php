@@ -3,6 +3,7 @@
 namespace App\Setup;
 
 use App\LegacyDatabase\AccountLifecycleV5References;
+use App\LegacyDatabase\VacationWorkflowV7References;
 use App\LegacyDatabase\IntakePolicyV4References;
 use App\LegacyDatabase\OfflineFiles;
 use App\LegacyDatabase\RuntimeAdmission;
@@ -39,7 +40,7 @@ final class FreshLdapEncryptionKeyFiles
             self::requireUnstarted($instance); // Includes any link/type/partial artifact, without reading it.
             [$manifest, $hash, $manifestState] = self::manifest($instance);
             $admission = RuntimeAdmission::fromConfiguration($manifest);
-            if (! in_array($admission->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5'], true)
+            if (! in_array($admission->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5', 'vacation-requests-v7'], true)
                 || $admission->path !== $instance.'/application.sqlite') {
                 throw new RuntimeException;
             }
@@ -63,7 +64,9 @@ final class FreshLdapEncryptionKeyFiles
                 }
             }
             // Exact canonical empty selected profile/default policy, not merely zero users.
-            if ($admission->schemaProfile === 'account-lifecycle-v5') {
+            if ($admission->schemaProfile === 'vacation-requests-v7') {
+                VacationWorkflowV7References::build($mapping)->requireFreshLoginBudget($pdo);
+            } elseif ($admission->schemaProfile === 'account-lifecycle-v5') {
                 // Future admitted V5 must be canonical and physically budget-ready.
                 // The unchanged Runtime hold above still refuses before this branch.
                 AccountLifecycleV5References::build($mapping)->requireFreshLoginBudget($pdo);
@@ -149,6 +152,10 @@ final class FreshLdapEncryptionKeyFiles
         // a null field to V2/V3/V4: their historical digest bytes stay exact.
         if ($database->schemaProfile === 'account-lifecycle-v5') {
             $metadata['intake_policy_schema_signature'] = $database->intakePolicySchemaSignature;
+        }
+        if ($database->schemaProfile === 'vacation-requests-v7') {
+            $metadata['intake_policy_schema_signature'] = $database->intakePolicySchemaSignature;
+            $metadata['account_lifecycle_schema_signature'] = $database->accountLifecycleSchemaSignature();
         }
 
         return hash('sha256', json_encode($metadata, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));

@@ -106,7 +106,7 @@ boundaries, not a declaration that the UI is usable.
 ### Explicit producer alternatives; unflagged command retains V4
 
 The unflagged operator command above retains the original V4 profile; this is
-not the root standard installer, which selects local browser V5 explicitly. For a separately reviewed
+not the root standard installer, which now selects local browser V7 explicitly. For a separately reviewed
 complete NEW-only V5 source composition, use the following **instead** of that
 command, never both and never on an existing instance:
 
@@ -118,7 +118,7 @@ Record only its exact returned basename. This prepares dormant files, not
 Runtime activation, credentials, migration or source acceptance. A pre-NEW-V5
 image still refuses through its original Runtime hold.
 
-### Local NEW V5 installation with browser-only first registration
+### Local NEW V7 installation with browser-only first registration
 
 For the explicitly selected **local** first-user-Admin policy, the installation
 process uses this single NEW preparation command instead of either command above:
@@ -127,7 +127,7 @@ process uses this single NEW preparation command instead of either command above
 docker compose --env-file "$OPERATOR_CONFIG" -f deploy/laravel/compose.yaml run --rm operator chrono:prepare-fresh --private-parent=/var/lib/chrono-laravel --new-only --local-browser-first-admin
 ```
 
-It prepares the same canonical empty V5 files and a bound nonsecret
+It prepares canonical empty vacation-workflow V7 files and a bound nonsecret
 `local-first-user-setup.json` policy. No account, password, token, key or server is
 created. It cannot target/reopen an existing installation; do not add this file
 by hand. The application user has **no terminal or token step**: after the normal
@@ -136,7 +136,7 @@ the existing first-setup card. The first successful registration becomes Admin.
 See [browser first-user setup](browser-first-user-admin.md) for the local-network
 risk and the exact boundary; local reachability does not prove personal identity.
 
-Before Web setup on an admitted NEW V5 source, explicitly set
+Before Web setup on an admitted NEW V5/V7 generation-bound source, explicitly set
 `CHRONO_LARAVEL_SHARED_LOGIN_BUDGET_ENABLED=true` in the private **operator
 configuration**, and keep it true afterwards. V5 requires the existing shared
 budget even with API off. Web Compose passes this existing boolean selection;
@@ -390,3 +390,13 @@ Primary references: [Laravel deployment/public entry point](https://laravel.com/
 [Composer release hashes](https://getcomposer.org/download/),
 [Compose profiles](https://docs.docker.com/compose/how-tos/profiles/),
 [Apache request-read timeouts](https://httpd.apache.org/docs/2.4/mod/mod_reqtimeout.html).
+
+### Existing standard V5 vacation-workflow upgrade
+
+New browser-first-user installs now prepare V7. Existing closed V5 instances are
+not reinstalled or silently disabled: the explicit same-cohort offline
+`chrono:vacation-workflow-v7` command preserves users, policy, keys and bookings,
+then rebinds the known admission metadata. See the maintenance prerequisites,
+channel metadata and interrupted-handoff boundaries in
+[vacation-requests-standard.md](vacation-requests-standard.md). No deployment,
+key rotation, arbitrary restore or Native-data cutover is implied.

@@ -94,6 +94,7 @@ final readonly class FreshWebConfiguration
             if (! is_string($directory) || preg_match('/^chrono-fresh-[a-f0-9]{24}$/D', basename($directory)) !== 1) {
                 throw new RuntimeException;
             }
+            self::requireNoUpgradeFence($directory);
             $directories = [$directory => self::directory($directory)];
             foreach ([$app->basePath(), dirname($app->basePath()), $app->publicPath()] as $forbidden) {
                 $forbidden = realpath($forbidden);
@@ -106,11 +107,11 @@ final readonly class FreshWebConfiguration
             }
             [$manifest, $manifestHash, $manifestState] = self::json($directory.'/runtime-admission.json');
             $admission = RuntimeAdmission::fromConfiguration($manifest);
-            if (! in_array($admission->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5'], true)
+            if (! in_array($admission->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5', 'vacation-requests-v7'], true)
                 || $admission->path !== $directory.'/application.sqlite') {
                 throw new RuntimeException;
             }
-            $v5 = $admission->schemaProfile === 'account-lifecycle-v5';
+            $v5 = $admission->isGenerationBoundAccountProfile();
             if (($v5 && $lock !== 0) || (! $v5 && $lock === 0)) { throw new RuntimeException; }
             if ($v5) {
                 // V5 stays a distinct generation-aware runtime. API retains its
@@ -159,7 +160,7 @@ final readonly class FreshWebConfiguration
                 // A route/display capability only: current DB policy and locked writer stay authoritative.
                 'chrono_registration.enabled' => true,
             ];
-            if ($admission->schemaProfile === 'account-lifecycle-v5') {
+            if ($admission->isGenerationBoundAccountProfile()) {
                 // These selected capabilities are rechecked with all other overrides.
                 $overrides += ['chrono_api.enabled' => $apiEnabled, 'chrono_login_budget.enabled' => true];
             }
@@ -169,6 +170,14 @@ final readonly class FreshWebConfiguration
             return $profile;
         } catch (Throwable) {
             throw new LogicException('The private fresh web instance is not admitted.');
+        }
+    }
+
+    private static function requireNoUpgradeFence(string $directory): void
+    {
+        clearstatcache(true,$directory.'/vacation-v7-upgrade.json');
+        if (@lstat($directory.'/vacation-v7-upgrade.json') !== false) {
+            throw new LogicException('The stopped vacation upgrade must complete before web admission.');
         }
     }
 
@@ -183,6 +192,7 @@ final readonly class FreshWebConfiguration
     /** Metadata only; no DB contents/hash/PDO and no receipt/raw-token read. */
     public function assertCurrent(Repository $config, bool $checkConfiguration = true): void
     {
+        self::requireNoUpgradeFence($this->directory);
         // These initial prerequisites are not configuration overrides. Recheck
         // them before private metadata and before cookie/session middleware too.
         if ($config->get('app.env') !== 'production' || $config->get('app.debug') !== false
@@ -427,7 +437,7 @@ final readonly class FreshWebConfiguration
             'assets/css/main.css' => 'd293dcf9d31e0adfc0c6cda1c2f03f4c57afe325c79e223794460dc9f94c4e6f',
             'assets/css/app_ui.css' => '4f8bf76f83a5c5d3ea3807818a792aa2b4c12ec83aaf46a33342d1aadf4adc1e',
             'assets/js/main.js' => '2f9ed4299e2acca7b8b472c3099f5b14e499ed221d33b4be77ecabfade9f5ae3',
-            'assets/js/attendance.js' => '45e7216884458380ebd0944c7a3fe1a5eae6a840b71bf80310b924126def48a2',
+            'assets/js/attendance.js' => 'ede45194c21152d9bcd67c63c3c62fd5a62c984cacbc713f677f15927c7d5710',
             'assets/js/chrono-local-web.js' => '9940b5723b21a2fa21f39db9471523ff5818bc6946a480607c2e5cac20516b3b',
         ] as $name => $hash) {
             $path = $public.'/'.$name;

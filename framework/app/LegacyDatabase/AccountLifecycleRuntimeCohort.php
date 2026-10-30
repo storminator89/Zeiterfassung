@@ -13,7 +13,7 @@ final class AccountLifecycleRuntimeCohort
     public static function requireCurrent(RuntimeAdmission $admission, OfflineFiles $files): array
     {
         try {
-            if ($admission->schemaProfile !== 'account-lifecycle-v5' || ! function_exists('posix_geteuid')) {
+            if (!$admission->isGenerationBoundAccountProfile() || ! function_exists('posix_geteuid')) {
                 throw new RuntimeException;
             }
             $database = $files->validate($admission->path);
@@ -22,6 +22,7 @@ final class AccountLifecycleRuntimeCohort
                 || preg_match('/\Achrono-fresh-[a-f0-9]{24}\z/D', basename($directory)) !== 1) {
                 throw new RuntimeException;
             }
+            self::requireNoVacationUpgrade($directory);
             $directoryState = self::directory($directory);
             $databaseState = self::file($database);
             $manifestPath = $directory.'/runtime-admission.json';
@@ -57,12 +58,24 @@ final class AccountLifecycleRuntimeCohort
             $files->validate($database);
             $files->validate($manifestPath);
 
+            self::requireNoVacationUpgrade($directory);
+
             // Ordinary DB writes and key/setup file creation do not change these
             // identities. Neither source data nor secret files are read here.
             return ['directory' => $directoryState, 'database' => $databaseState,
                 'manifest' => $manifestState, 'manifest_sha256' => hash('sha256', $bytes)];
         } catch (Throwable) {
             throw new LogicException('The canonical NEW V5 runtime cohort could not be confirmed.');
+        }
+    }
+
+    /** Both V5 and V7 stop while an explicit offline cohort upgrade is fenced. */
+    private static function requireNoVacationUpgrade(string $directory): void
+    {
+        $fence = $directory.'/vacation-v7-upgrade.json';
+        clearstatcache(true, $fence);
+        if (@lstat($fence) !== false || is_link($fence)) {
+            throw new RuntimeException('Offline vacation upgrade is not complete.');
         }
     }
 

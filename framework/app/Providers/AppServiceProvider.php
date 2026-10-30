@@ -63,7 +63,7 @@ class AppServiceProvider extends ServiceProvider
         ));
         // Pure/lazy service only. No default directory, root loader or connection.
         $this->app->scoped(LocalWebLdapSync::class, fn ($app) => new LegacyLocalWebLdapSync(
-            $app->make('auth'), $app->make('db'), new IntakePolicyStore,
+            $app->make('auth'), $app->make('db'), new IntakePolicyStore($app->bound(RuntimeDatabase::class) ? $app->make(RuntimeDatabase::class)->vacationAdmission() : null),
             function () use ($app): LdapSyncTransport {
                 if (! $app->bound(LdapSyncTransport::class)) { throw new LogicException('No admitted LDAP sync transport.'); }
                 return $app->make(LdapSyncTransport::class);
@@ -79,7 +79,7 @@ class AppServiceProvider extends ServiceProvider
         ));
         $this->app->scoped(IntakePolicyAccess::class, fn ($app) => new IntakePolicyAccess(
             $app->bound(RuntimeDatabase::class) && $app->make(RuntimeDatabase::class)->isIntakePolicyV4(),
-            $app->make('auth'), $app->make('db'), new IntakePolicyStore,
+            $app->make('auth'), $app->make('db'), new IntakePolicyStore($app->bound(RuntimeDatabase::class) ? $app->make(RuntimeDatabase::class)->vacationAdmission() : null),
             function () use ($app): AttendanceWriter {
                 if (! $app->bound(AttendanceWriter::class)) {
                     throw new LogicException('No admitted operation-scoped intake policy writer is configured.');

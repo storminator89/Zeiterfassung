@@ -21,6 +21,8 @@ use App\Http\Controllers\LocalWebSettingsController;
 use App\Http\Controllers\LocalWebSupervisorController;
 use App\Http\Controllers\LocalWebTerminalDevicesController;
 use App\Http\Controllers\LocalWebWorkModelsController;
+use App\Http\Controllers\LocalWebVacationController;
+use App\Vacation\VacationWeb;
 use App\Http\Middleware\LegacyFormCsrf;
 use App\Http\Middleware\LdapSyncThrottle;
 use App\LegacyDatabase\AttendanceWriter;
@@ -53,11 +55,17 @@ final class LocalWebRoutes
 {
     public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false, bool $includeSetup = false, bool $includeLdapSync = false, bool $useSharedLoginBudget = false, bool $includeTerminalSites = false, bool $includeTerminalCredentialRevocations = false, bool $includeCorrectionWithdrawals = false, bool $includeTerminalDeviceRevocations = false, bool $includeLdapSessionRevocations = false, bool $includeTerminalModuleSettings = false, bool $includeTerminalDevicePairings = false): void
     {
+        $vacationEnabled=$app->bound(RuntimeDatabase::class) && $app->make(RuntimeDatabase::class)->isVacationWorkflowV7();
+        if ($vacationEnabled) {
+            if (!$app->bound(AttendanceWriter::class)) { throw new LogicException('Vacation routes require their admitted writer.'); }
+            $app->scoped(VacationWeb::class,fn($app)=>new VacationWeb($app->make('auth'),$app->make('db'),
+                $app->make(RuntimeDatabase::class),$app->make(\App\Auth\AccountLifecycleWebIdentity::class),
+                fn():AttendanceWriter=>$app->make(AttendanceWriter::class)));
+        }
         if ($app->bound(RuntimeDatabase::class)
-            && ($runtime = $app->make(RuntimeDatabase::class))->isAccountLifecycleV5()) {
-            // Normal immutable Runtime admission, not an alternate opener. The
-            // current V5 hold refuses before this registrar changes anything.
-            // V4 receives no additional read or changed connection lifetime.
+            && ($runtime = $app->make(RuntimeDatabase::class))->hasGenerationBoundAccountAuthority()) {
+            // Exact physical Runtime admission and retained local recovery,
+            // not an alternate opener or profile alias. V4 receives no extra read.
             LocalWebRecoveryEligibility::requireReadSnapshot(
                 $runtime->readConnection($app->make('config')->get('database.connections.chrono', []), 'chrono'),
                 $includeSetup,
@@ -88,7 +96,7 @@ final class LocalWebRoutes
         if ($includeCorrectionWithdrawals && ($app->make('config')->get('app.debug') !== false
             || ! $app->bound(RuntimeDatabase::class)
             || (! $app->make(RuntimeDatabase::class)->isIntakePolicyV4()
-                && ! $app->make(RuntimeDatabase::class)->isAccountLifecycleV5())
+                && ! $app->make(RuntimeDatabase::class)->hasGenerationBoundAccountAuthority())
             || ! $app->bound(AttendanceWriter::class))) {
             throw new LogicException('Correction withdrawal requires explicit non-debug writable V4 or V5 composition.');
         }
@@ -96,7 +104,7 @@ final class LocalWebRoutes
             || $app->make('config')->get('app.debug') !== false
             || ! $app->bound(RuntimeDatabase::class)
             || (! $app->make(RuntimeDatabase::class)->isIntakePolicyV4()
-                && ! $app->make(RuntimeDatabase::class)->isAccountLifecycleV5())
+                && ! $app->make(RuntimeDatabase::class)->hasGenerationBoundAccountAuthority())
             || ! $app->bound(AttendanceWriter::class)
             || $app->bound(\App\Chrono\LocalWebLdapSessionRevocations::class))) {
             throw new LogicException('LDAP session revocation requires its explicit non-debug writable V4 or V5 Admin composition.');
@@ -141,7 +149,7 @@ final class LocalWebRoutes
             || $app->make('config')->get('app.debug') !== false
             || ! $app->bound(RuntimeDatabase::class)
             || (! $app->make(RuntimeDatabase::class)->isIntakePolicyV4()
-                && ! $app->make(RuntimeDatabase::class)->isAccountLifecycleV5())
+                && ! $app->make(RuntimeDatabase::class)->hasGenerationBoundAccountAuthority())
             || ! $app->bound(AttendanceWriter::class)
             || ! $app->make(CacheFactory::class)->store('file')->getStore() instanceof FileStore)) {
             throw new LogicException('LDAP HTTP sync requires explicit writable V4 or V5, non-debug Admin composition and persistent file cache.');
@@ -156,7 +164,7 @@ final class LocalWebRoutes
 
         // Native attendance/correction/model fields were never globally trimmed/coerced.
         // " 1 " must not become either a confirmation or a cancellation flag.
-        $nativeFormPath = fn (Request $request): bool => in_array($request->path(), ['/', 'index.php', 'attendance.php', 'adjustments.php', 'get_time_records.php', 'save.php', 'work_models.php', 'get_latest_record.php', 'delete.php', 'import.php'], true)
+        $nativeFormPath = fn (Request $request): bool => in_array($request->path(), ['/', 'index.php', 'attendance.php', 'adjustments.php', 'get_time_records.php', 'save.php', 'vacation.php', 'work_models.php', 'get_latest_record.php', 'delete.php', 'import.php'], true)
             || ($includeSettings && $request->path() === 'settings.php')
             || ($includeAdminPauseSettings && $request->path() === 'admin.php')
             || ($includeRegistration && $request->path() === 'register.php')
@@ -224,7 +232,7 @@ final class LocalWebRoutes
         $router->group(['middleware' => [
             EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class,
             ShareErrorsFromSession::class, LegacyFormCsrf::class, SubstituteBindings::class,
-        ]], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeRegistration, $includeSetup, $includeLdapSync, $useSharedLoginBudget, $includeTerminalSites, $includeTerminalCredentialRevocations, $includeTerminalDeviceRevocations, $includeTerminalModuleSettings, $includeTerminalDevicePairings): void {
+        ]], function () use ($router, $vacationEnabled, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeRegistration, $includeSetup, $includeLdapSync, $useSharedLoginBudget, $includeTerminalSites, $includeTerminalCredentialRevocations, $includeTerminalDeviceRevocations, $includeTerminalModuleSettings, $includeTerminalDevicePairings): void {
             $router->get('login.php', [LocalWebSessionController::class, 'create'])->name('login');
             $login = $router->post('login.php', [LocalWebSessionController::class, 'store']);
             if (! $useSharedLoginBudget) {
@@ -238,7 +246,7 @@ final class LocalWebRoutes
                 $router->get('register.php', [LocalWebRegistrationController::class, 'create']);
                 $router->post('register.php', [LocalWebRegistrationController::class, 'store'])->middleware('throttle:chrono-web-register');
             }
-            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeLdapSync, $includeTerminalSites, $includeTerminalCredentialRevocations, $includeTerminalDeviceRevocations, $includeTerminalModuleSettings, $includeTerminalDevicePairings): void {
+            $router->group(['middleware' => [RefreshLocalAccount::class, 'auth:web', 'auth.session']], function () use ($router, $vacationEnabled, $includeHistory, $includeSupervisor, $includeDashboard, $includeCsv, $includeSettings, $includeAdminPauseSettings, $includeTerminalDevices, $includeDatabaseSnapshot, $includeLdapSync, $includeTerminalSites, $includeTerminalCredentialRevocations, $includeTerminalDeviceRevocations, $includeTerminalModuleSettings, $includeTerminalDevicePairings): void {
                 foreach (['/', 'index.php', 'attendance.php'] as $path) {
                     $router->get($path, [LocalWebAttendanceController::class, 'page']);
                     $router->post($path, [LocalWebAttendanceController::class, 'transition']);
@@ -250,6 +258,10 @@ final class LocalWebRoutes
                 $router->match(array_values(array_unique([...Router::$verbs, 'TRACE', 'CONNECT'])),
                     'get_latest_record.php', [LocalWebLatestRecordController::class, 'latest']);
                 $router->post('save.php', [LocalWebHomeController::class, 'absence']);
+                if ($vacationEnabled) {
+                    $router->get('vacation.php',[LocalWebVacationController::class,'index'])->name('chrono.vacation');
+                    $router->post('vacation.php',[LocalWebVacationController::class,'store']);
+                }
                 // Native stubs have no method guard. Include standard TRACE/CONNECT
                 // as well as router verbs; unsafe methods still require CSRF.
                 $denialMethods = array_values(array_unique([...Router::$verbs, 'TRACE', 'CONNECT']));
@@ -358,7 +370,7 @@ final class LocalWebRoutes
             || $config->get('cache.stores.'.$store.'.driver') !== 'file') {
             throw new LogicException('The opt-in local web stack requires explicit persistent Laravel session blocking.');
         }
-        $v5 = $app->bound(RuntimeDatabase::class) && $app->make(RuntimeDatabase::class)->isAccountLifecycleV5();
+        $v5 = $app->bound(RuntimeDatabase::class) && $app->make(RuntimeDatabase::class)->hasGenerationBoundAccountAuthority();
         $lock = $config->get('session.block_lock_seconds');
         $wait = $config->get('session.block_wait_seconds');
         if (! is_int($lock) || ($v5 ? $lock !== 0 : $lock < 1) || ! is_int($wait) || $wait < 1) {

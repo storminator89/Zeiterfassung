@@ -17,11 +17,38 @@ use UnexpectedValueException;
  */
 final class IntakePolicyStore
 {
+    public function __construct(private readonly ?\App\LegacyDatabase\RuntimeAdmission $vacationAdmission = null) {}
+
+    public function isVacationWorkflowV7(): bool
+    {
+        return $this->vacationAdmission?->schemaProfile === 'vacation-requests-v7';
+    }
+
+    public function readForAccountAuthority(PDO $pdo, bool $requiresGeneration): IntakePolicy
+    {
+        if ($this->vacationAdmission !== null && (!$this->isVacationWorkflowV7() || !$requiresGeneration)) {
+            throw new LogicException('Explicit generation-bound vacation policy authority required.');
+        }
+        return $this->read($pdo, $requiresGeneration && !$this->isVacationWorkflowV7());
+    }
+
+    private function hasGenerationAuthority(bool $accountLifecycleV5): bool
+    {
+        if ($this->vacationAdmission !== null && ($accountLifecycleV5 || $this->vacationAdmission->schemaProfile !== 'vacation-requests-v7')) {
+            throw new LogicException('Separate explicit vacation policy context required.');
+        }
+        return $accountLifecycleV5 || $this->vacationAdmission !== null;
+    }
+
     public function read(PDO $pdo, bool $accountLifecycleV5 = false): IntakePolicy
     {
         $this->requireTransaction($pdo);
         // Trusted operation composition only, never infer V5 from optional columns.
-        $versions = $accountLifecycleV5 ? [1, 2, 3, 4, 5] : [1, 2, 3, 4];
+        $this->hasGenerationAuthority($accountLifecycleV5);
+        if ($this->vacationAdmission !== null) {
+            \App\LegacyDatabase\VacationWorkflowV7References::requireAdmitted($pdo, $this->vacationAdmission);
+        }
+        $versions = $this->vacationAdmission !== null ? [1, 2, 3, 4, 5, 7] : ($accountLifecycleV5 ? [1, 2, 3, 4, 5] : [1, 2, 3, 4]);
         if ($pdo->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN) !== $versions) {
             throw new UnexpectedValueException('The explicit intake policy profile is required.');
         }
@@ -55,14 +82,14 @@ final class IntakePolicyStore
     public function applyLocked(PDO $pdo, int $admin, IntakePolicyChange $change, bool $accountLifecycleV5 = false): IntakePolicy
     {
         $this->requireTransaction($pdo);
-        $statement = $pdo->prepare($accountLifecycleV5
+        $statement = $pdo->prepare($this->hasGenerationAuthority($accountLifecycleV5)
             ? 'SELECT username,password,role,auth_source,account_status,auth_generation FROM users WHERE id=?'
             : 'SELECT role,auth_source FROM users WHERE id=?');
         $statement->execute([$admin]);
         $actor = $statement->fetch(PDO::FETCH_ASSOC);
         $statement->closeCursor();
         if ($admin < 1 || $actor === false || $actor['role'] !== 'admin' || $actor['auth_source'] !== 'local'
-            || ($accountLifecycleV5 && ! AccountLifecycleAuthority::locallyLoginEligibleAdmin($actor))) {
+            || ($this->hasGenerationAuthority($accountLifecycleV5) && ! AccountLifecycleAuthority::locallyLoginEligibleAdmin($actor))) {
             throw new AuthorizationException('Nur die lokale Verwaltung darf Aufnahmewege ändern.');
         }
         $policy = $this->read($pdo, $accountLifecycleV5);

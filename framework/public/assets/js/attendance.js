@@ -344,6 +344,11 @@
                     // Status/table refreshes do not replace numeric report values.
                     invalidateReportValues();
                     absenceForm.reset();
+                    const vacationCommand = absenceForm.elements.namedItem('vacation_command_id');
+                    if (vacationCommand instanceof HTMLInputElement && /^[a-f0-9]{32}$/.test(data.next_command_id || '')) {
+                        vacationCommand.value = data.next_command_id;
+                        vacationCommand.defaultValue = data.next_command_id;
+                    }
                     try { await refresh(true); }
                     catch (error) { if (status) status.textContent += ` ${error.message}`; }
                 }

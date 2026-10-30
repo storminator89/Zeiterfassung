@@ -28,7 +28,7 @@ final class LegacyAuthServiceProvider extends ServiceProvider
                 if (! $app->bound(\App\LegacyDatabase\AttendanceWriter::class)) { throw new LogicException('No admitted own-password writer.'); }
                 return $app->make(\App\LegacyDatabase\AttendanceWriter::class);
             },
-            fn (): bool => $app->bound(RuntimeDatabase::class) && $app->make(RuntimeDatabase::class)->isAccountLifecycleV5(),
+            fn (): bool => $app->bound(RuntimeDatabase::class) && $app->make(RuntimeDatabase::class)->hasGenerationBoundAccountAuthority(),
             $app->make(AccountLifecycleWebIdentity::class),
         ));
         // Lazy immutable profile metadata only: resolving this service never

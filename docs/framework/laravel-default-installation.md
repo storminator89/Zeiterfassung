@@ -1,4 +1,4 @@
-# Laravel default installation — NEW local V5
+# Laravel default installation — NEW local vacation workflow V7
 
 `docker build .` now builds the Laravel 13 application; root `compose.yaml`
 selects its HTTPS Web service by default. The root image's normal command is the
@@ -36,14 +36,14 @@ docker build -t chrono-laravel:local .
 Copy `deploy/laravel/local.env.example` **outside the checkout**, edit privately,
 and record its absolute path as below. Fill UID/GID, existing private parent,
 canonical local HTTPS origin, unused HTTPS port and existing TLS file paths.
-The template has no secret values; default V5 shared budget=true, session lease=0,
-positive wait=10 and token setup=false are intentional. Keep them for NEW V5;
+The template has no secret values; standard shared budget=true, session lease=0,
+positive wait=10 and token setup=false are intentional. Keep them for NEW V7;
 they do not authorize an old V4 profile or bypass its different lock contract.
 Never paste rendered Compose/inspect output: the Web env_file contains the key.
 
 ```sh
 OPERATOR_CONFIG=/absolute/private/chrono-local.env
-# Explicitly create one NEW empty V5 cohort + nonsecret browser-first-user policy.
+# Explicitly create one NEW empty V7 cohort + nonsecret browser-first-user policy.
 # No account/password/token/key/listener is created by this command.
 docker compose --env-file "$OPERATOR_CONFIG" -f deploy/laravel/compose.yaml run --rm operator chrono:prepare-fresh --private-parent=/var/lib/chrono-laravel --new-only --local-browser-first-admin
 ```
@@ -94,6 +94,16 @@ who can reach an unfinished shared local installation could register first.**
 Local address checks are not identity verification; complete setup in the
 trusted local setting, never through public forwarding. See
 [browser-first-user boundaries](browser-first-user-admin.md).
+
+## Vacation workflow and existing standard installations
+
+New `--local-browser-first-admin` preparations now select the complete
+`vacation-requests-v7` profile. The original empty V4 producer and explicit
+`--dormant-account-lifecycle-v5` preparation remain available for their historical
+contracts; neither silently upgrades an existing database. Existing closed V5
+standard installations have an explicit same-cohort offline upgrade, not a
+reinstall-only feature or a NEW-only exception. See
+[vacation requests and the V5→V7 handoff](vacation-requests-standard.md).
 
 ## Operations and native compatibility
 

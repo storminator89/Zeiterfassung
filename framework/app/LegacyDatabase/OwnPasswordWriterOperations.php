@@ -29,7 +29,7 @@ trait OwnPasswordWriterOperations
         #[\SensitiveParameter] string $expectedVersion, #[\SensitiveParameter] string $nextHash, string $auditReason): void
     {
         // This old-profile operation must never turn into a V5 compatibility bypass.
-        if ($this->accountLifecycleV5) { throw new LogicException('Own password changes are not admitted for V5.'); }
+        if ($this->hasGenerationBoundAccountAuthority()) { throw new LogicException('Own password changes are not admitted for V5.'); }
         if (! in_array($expectedRole, ['user', 'supervisor', 'admin'], true)
             || preg_match('/\A[a-f0-9]{64}\z/', $expectedVersion) !== 1
             || (password_get_info($nextHash)['algoName'] ?? 'unknown') !== 'bcrypt') {
@@ -70,7 +70,7 @@ trait OwnPasswordWriterOperations
     private function replaceOwnLocalPasswordForAccountLifecycleOperation(AccountLifecycleAuthority $actor,
         #[\SensitiveParameter] string $nextHash, string $auditReason): void
     {
-        if (! $this->accountLifecycleV5 || $actor->source !== 'local'
+        if (! $this->hasGenerationBoundAccountAuthority() || $actor->source !== 'local'
             || ! in_array($actor->role, ['user', 'supervisor', 'admin'], true)
             || (password_get_info($nextHash)['algoName'] ?? 'unknown') !== 'bcrypt') {
             throw new LogicException('An admitted V5 own-local authority and bcrypt hash are required.');
