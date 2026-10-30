@@ -69,8 +69,8 @@ try {
             INSERT INTO zeiterfassung(id,startzeit,endzeit,pause,beschreibung,standort,user_id,absence_kind,planned_minutes) VALUES
             (44,'2026-10-25T00:30:00+02:00','2026-10-25T04:30:00+01:00',30,'Synthetic DST shift','office',1,NULL,NULL),
             (45,'2026-10-26T00:00:00+01:00','2026-10-26T04:30:00+01:00',0,'Urlaub','',1,'Urlaub',270),
-            (46,'2026-10-28T08:00:00+01:00',NULL,0,'Synthetic open shift','office',1,NULL,NULL);
-            INSERT INTO work_sessions(user_id,record_id,started_at) VALUES(1,46,1793170800);
+            (9007199254740993,'2026-10-28T08:00:00+01:00',NULL,0,'Synthetic open shift','office',1,NULL,NULL);
+            INSERT INTO work_sessions(user_id,record_id,started_at) VALUES(1,9007199254740993,1793170800);
             INSERT INTO break_intervals(session_id,started_at) VALUES(last_insert_rowid(),1793174400);");
         foreach ([1, 4] as $user) {
             att_exec($pdo, 'INSERT INTO time_adjustments(user_id,record_id,proposed_start,proposed_end,proposed_pause,reason,status,original_json,created_at,cancel) VALUES(?,NULL,1,61,0,?,?,?,?,0)', [
@@ -93,11 +93,14 @@ try {
     $authenticate(1);
 
     $phase = 'own status and Berlin DST/model/absence projection parity';
-    $statement = $pdo->query('SELECT id,startzeit,endzeit,pause,absence_kind,planned_minutes FROM zeiterfassung WHERE user_id=1 ORDER BY id DESC LIMIT 30');
-    $expectedStatus = ['success' => true, 'records' => $statement->fetchAll(PDO::FETCH_ASSOC),
+    $statement = $pdo->query('SELECT id,CAST(id AS TEXT) AS id_string,startzeit,endzeit,pause,absence_kind,planned_minutes FROM zeiterfassung WHERE user_id=1 ORDER BY id DESC LIMIT 30');
+    $expectedStatus = ['success' => true, 'start_metadata_version' => 1, 'records' => $statement->fetchAll(PDO::FETCH_ASSOC),
         'report_finality' => ['all' => false, 'week' => false, 'month' => false, 'year' => false],
+        'expected_record' => '9007199254740993',
     ] + attendance_status($pdo, 1);
     $statement->closeCursor();
+    // Keep the additive wire contract exact, including a binding beyond JS-safe integers.
+    $ensure($expectedStatus['records'][0]['id_string'] === '9007199254740993');
     $ensure($reads->attendanceStatus() === $expectedStatus && $expectedStatus['state'] === 'paused');
     $raw = $pdo->query('SELECT * FROM zeiterfassung WHERE user_id=1 ORDER BY startzeit DESC')->fetchAll(PDO::FETCH_ASSOC);
     $ensure($reads->reportRows() === $raw);
@@ -114,6 +117,11 @@ try {
 
     $phase = 'authenticated identity, fresh role, direct-team/admin visibility';
     $refuses(fn () => $reads->period('2026-10-23', '2026-10-28', 4), AuthorizationException::class);
+    $authenticate(4);
+    $ensure($reads->attendanceStatus() === ['success' => true, 'start_metadata_version' => 1, 'records' => [],
+        'report_finality' => ['all' => false, 'week' => false, 'month' => false, 'year' => false],
+        'expected_record' => null, 'state' => 'absent', 'record_id' => null,
+    ]);
     $authenticate(2, 'admin'); // Stale guard role must not widen current supervisor rights.
     $ensure($reads->period('2026-10-23', '2026-10-28', 1) === $period);
     $refuses(fn () => $reads->period('2026-10-23', '2026-10-28', 4), AuthorizationException::class);

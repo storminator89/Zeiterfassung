@@ -13,7 +13,7 @@ Die Routenliste bleibt ausschließlich `GET|HEAD /up`.
 
 | Dienstmethode | Imminenter Bestandskonsument / unveränderte Quelle | Ergebnis und Grenze |
 |---|---|---|
-| `attendanceStatus()` | `attendance.php?format=status`, `attendance_status()` | Eigener Nutzer, eine Lesetransaktion, exakt `success,records,state,record_id`; die zuletzt **angelegten** 30 Projektionen nach `id DESC`, keine neue Startzeit-Sortierung. |
+| `attendanceStatus()` | `attendance.php?format=status`, `attendance_status()` | Eigener Nutzer, eine Lesetransaktion: `success,start_metadata_version,records,report_finality,expected_record,state,record_id`. `records` enthält zusätzlich die exakte Dezimalzeichenfolge `id_string`; `expected_record` ist die exakte Dezimalzeichenfolge der aktiven Buchung oder `null`. Die zuletzt **angelegten** 30 Projektionen nach `id DESC`, keine neue Startzeit-Sortierung. |
 | `reportRows(bool $chronological = false)` | Eigene Berichte/Export, `zeiterfassung`-Lesepfad | Eigene vollständige unveränderte Projektionszeilen nach `startzeit DESC`; offene Zeilen, gespeicherte Abwesenheitsart und Sollgutschrift bleiben erhalten. Nur opt-in Home verwendet `chronological: true` mit nativer Instant-/ID-Sortierung; Standard/Korrekturen bleiben unverändert. Kein fertiger CSV-Serializer oder API-Paginator. |
 | `period(start,end,subject?)` | Dashboard-/Teamprojektion | `report_days`, `report_period_minutes`, `planned_hours`, `report_format_hours`, `report_percentage` bleiben die einzigen Rechenfunktionen. Liefert interne Felder `days,actual_minutes,planned_hours,actual_formatted,percentage`, **kein neues HTTP-Antwortformat**. Ohne Subjekt eigene Daten; explizites Subjekt nur nach bestehender `view`-Policy. |
 | `corrections()` | Antragshistorie in `adjustments.php` | Derselbe Join, Scope, `id DESC LIMIT 100`, Originalsnapshot und finale Entscheidung wie im Bestand. Keine Antrag-/Freigabe-/Stornofunktion. |
@@ -109,6 +109,20 @@ PHP-Syntaxprüfung, Composer-Validierung/Plattformprüfung und `git diff --check
 bestanden. Dies ist **keine** Abnahme gegen einen echten Datenbestand,
 Web-/API-/Terminalcookies oder -geräte, keine CSV-/UI-/Exportabnahme und kein
 Nachweis der vollständigen #78-Abnahmeliste.
+
+Am 30.10.2026 wurde ausschließlich die veraltete Statuserwartung dieses
+bestehenden Read-Rehearsals an den bereits vorhandenen additiven Vertrag
+angepasst. Vorher brach der parameterlose Befehl in der Status-/Projektionsgruppe
+ab, weil `start_metadata_version`, `expected_record` und `records[].id_string`
+fehlten. Der genaue Arrayvergleich bleibt erhalten; keine Felder werden vor dem
+Vergleich entfernt. Dieselbe synthetische Reise prüft nun eine aktive Buchung
+mit ID `9007199254740993` (oberhalb der JavaScript-Ganzzahlpräzision) samt exakter
+Stringbindung sowie ein Konto ohne Buchung mit `expected_record=null`.
+Alle bisherigen DST-/Modell-/Scope-/SourceSnapshot-Prüfungen bleiben bestehen.
+Das repariert einen begrenzten Laravel-Lesenachweis für die weitere
+#79/#82-Abnahme, nicht Reader, Runtime, Schreibpfad, HTTP-/UI-Aktivierung oder
+Cutover. Die Prüfung bleibt ausschließlich anonymes SQLite-`:memory:` und
+ersetzt keine der vorstehenden offenen Abnahmen.
 
 **Nächster separater Schritt:** Anwendungsdienst für Stempeloperationen auf dem
 exakt reviewten gemeinsamen #75-`AttendanceWriter`, ohne zweite Transaktion,
