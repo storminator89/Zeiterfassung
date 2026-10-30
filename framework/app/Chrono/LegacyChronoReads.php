@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, HolidayRefillPreviewReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads, TeamTimeRecordReviewReads, OwnPeriodComparisonReads
+final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, HolidayRefillPreviewReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads, TeamTimeRecordReviewReads, OwnPeriodComparisonReads, WorkModelCreditPreviewPageReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -645,6 +645,16 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
     /** Existing bounded Native hypothetical comparison; never a writer or recalculation. */
     public function workModelCreditPreview(array $command): array
     {
+        return $this->workModelCreditPreviewSnapshot($command);
+    }
+
+    public function workModelCreditPreviewPage(array $command, mixed $page): array
+    {
+        return $this->workModelCreditPreviewSnapshot($command, true, $page);
+    }
+
+    private function workModelCreditPreviewSnapshot(array $command, bool $paged=false, mixed $page=null): array
+    {
         $authenticated = $this->auth->guard()->user();
         if (! $authenticated instanceof LegacyUser || (int) $authenticated->getKey() < 1) {
             throw new AuthenticationException;
@@ -662,13 +672,14 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
         $actorId = (int) $authenticated->getKey();
         unset($password);
 
-        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($command, $version, $actorId): array {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($command, $version, $actorId, $paged, $page): array {
             if ((int) $actor->getKey() !== $actorId || $actor->role !== 'admin') {
                 throw new AuthorizationException('Nur die aktuelle Verwaltung darf Gutschriften vorab prüfen.');
             }
             require_once dirname(__DIR__, 3).'/lib/work_model_credit_preview.php';
 
-            return work_model_credit_preview_locked($pdo, $actorId, $version, $command);
+            return $paged?work_model_credit_preview_locked($pdo, $actorId, $version, $command, $page)
+                :work_model_credit_preview_locked($pdo, $actorId, $version, $command);
         });
     }
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Chrono\ChronoReads;
 use App\Chrono\LocalWebWorkModels;
 use App\Chrono\WorkModelCreditPreviewReads;
+use App\Chrono\WorkModelCreditPreviewPageReads;
 use App\View\ExistingUi\AttendancePage;
 use App\View\ExistingUi\Copy;
 use App\View\ExistingUi\Interactions;
@@ -37,7 +38,8 @@ final class LocalWebWorkModelsController extends Controller
     public function store(Request $request): View|Response
     {
         $form = $request->request->all();
-        $action = array_key_exists('model_action', $form) ? $form['model_action'] : 'save';
+        require_once dirname(__DIR__, 4).'/lib/work_model_credit_preview.php';
+        $action = \work_model_preview_action($form);
         if (! is_string($action) || ! in_array($action, ['save', 'preview'], true)) {
             return $this->page($request, 'Unbekannte Modellaktion. Es wurde kein Modell gespeichert.');
         }
@@ -46,11 +48,20 @@ final class LocalWebWorkModelsController extends Controller
             if (! $this->reads instanceof WorkModelCreditPreviewReads) {
                 return $this->page($request, 'Gutschriftenvorschau ist in diesem Profil nicht verbunden.');
             }
+            if (array_key_exists('preview_page', $form) && ! $this->reads instanceof WorkModelCreditPreviewPageReads) {
+                return new Response('Vorschauseiten sind in diesem Profil nicht verbunden. Es wurde kein Modell gespeichert.', 503,
+                    ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
+            }
             $command = array_intersect_key($form, array_flip([
                 'user_id', 'valid_from', 'day1', 'day2', 'day3', 'day4', 'day5', 'day6', 'day7', 'reason',
             ]));
             try {
-                $preview = $this->reads->workModelCreditPreview($command);
+                $preview = $this->reads instanceof WorkModelCreditPreviewPageReads
+                    ? $this->reads->workModelCreditPreviewPage($command, array_key_exists('preview_page', $form) ? $form['preview_page'] : '1')
+                    : $this->reads->workModelCreditPreview($command);
+                if ($this->reads instanceof WorkModelCreditPreviewPageReads && ($preview['pagination_version'] ?? null) !== 1) {
+                    throw new \LogicException('Paged preview receipt is unavailable.');
+                }
             } catch (AuthenticationException|AuthorizationException $error) {
                 throw $error;
             } catch (\AttendanceError $error) {
