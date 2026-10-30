@@ -32,5 +32,26 @@ function holiday_inventory(PDO $db, int $year): array
             $invalid = true;
         }
     }
-    return ['year' => $year, 'rows' => $rows, 'truncated' => $truncated, 'invalid_dates' => $invalid];
+    return ['year' => $year, 'rows' => $rows, 'truncated' => $truncated, 'invalid_dates' => $invalid]
+        + holiday_inventory_stored_years($db);
+}
+
+/** Bounded discovery of stored YYYY- prefixes; never completeness or provenance. */
+function holiday_inventory_stored_years(PDO $db): array
+{
+    // Counts include malformed dates within a recognized nonzero year prefix.
+    // Other malformed prefixes are not claimed to be covered by this overview.
+    $statement = $db->prepare("SELECT substr(datum,1,4) AS year_prefix,COUNT(*) AS row_count
+        FROM Feiertage WHERE typeof(datum)='text'
+        AND datum GLOB '[0-9][0-9][0-9][0-9]-*' AND substr(datum,1,4)<>'0000'
+        GROUP BY substr(datum,1,4) ORDER BY year_prefix DESC LIMIT 21");
+    $statement->execute();
+    $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+    $statement->closeCursor();
+    return [
+        'stored_years' => array_map(static fn(array $row): array => [
+            'year' => (int)$row['year_prefix'], 'count' => (int)$row['row_count'],
+        ], array_slice($rows, 0, 20)),
+        'stored_years_truncated' => count($rows)>20,
+    ];
 }

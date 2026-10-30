@@ -51,3 +51,32 @@ read-only Memory rows and fake transport, not real login/session/CSRF/HTTP/brows
 regional source validation, concurrency, production or positive V5 admission.
 No new repository test suite/workflow, dependency, deployment or host/security
 switch. Form values remain in the original document; no automatic replay.
+
+
+## Bounded stored-year discovery (partial #41)
+
+The same shared inventory helper now also returns up to the 20 newest recognized
+stored year prefixes with row counts and an explicit truncation flag. Native and
+Laravel place this inside the existing collapsed inventory panel. Fixed
+Dashboard links preserve the selected calendar week; the original year input
+still permits older/unlisted years. DE/EN/ZH labels are matched across both UIs.
+
+These are counts of stored rows with a four-ASCII-digit nonzero year prefix,
+not valid-date/region/source/completeness attestations. Malformed dates inside a
+recognized prefix count as stored rows; other malformed prefixes and nontext
+values are omitted and this limitation is visible. Empty means no recognized
+stored years, not no holidays or clean data. Failed reads propagate, never
+silently become an empty overview. The old selected-year rows/diagnostics and
+read/write authority are unchanged. Two additive fields only; older optional
+readers that do not supply them retain the old view without an overview.
+
+All auth/source/version/generation/snapshot/connection, reader interfaces,
+controller, route, import/refill/calculation and writer code remain unchanged.
+The additional grouping SELECT runs in the existing Laravel read snapshot;
+Native's already-documented lazyimport behavior is not repaired or newly
+introduced. No new external call, confirmation, permission or runtime activation.
+
+Source basis and bounded shared-helper/compiled-view evidence are documented in
+`docs/native-holiday-inventory.md`. They are not actual App/auth/CSRF/HTTP/browser,
+production, performance, concurrency or regional data acceptance. #41 stays
+partial/open; no new repository test suite or manual CI dispatch.

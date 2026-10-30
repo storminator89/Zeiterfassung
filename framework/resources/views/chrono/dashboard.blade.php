@@ -114,6 +114,18 @@
                 <div><label for="holiday-year" class="block">{{ $page->copy->text('HOLIDAY_INVENTORY_YEAR') }}</label><input id="holiday-year" name="holiday_year" type="number" min="1" max="9999" step="1" required value="{{ $holidayInventory['year'] }}" class="input input-bordered input-sm w-28"></div>
                 <button type="submit" class="btn btn-outline btn-sm">{{ $page->copy->text('HOLIDAY_INVENTORY_SHOW') }}</button>
             </form>
+            @if (array_key_exists('stored_years', $holidayInventory))
+            <details class="mt-3">
+                <summary class="cursor-pointer">{{ $page->copy->text('HOLIDAY_INVENTORY_YEARS_TITLE') }}</summary>
+                <p class="mt-2 opacity-70">{{ $page->copy->text('HOLIDAY_INVENTORY_YEARS_NOTE') }}</p>
+                @if ($holidayInventory['stored_years_truncated'])<p class="mt-2">{{ $page->copy->text('HOLIDAY_INVENTORY_YEARS_LIMITED') }}</p>@endif
+                @if ($holidayInventory['stored_years'] === [])<p class="mt-2">{{ $page->copy->text('HOLIDAY_INVENTORY_YEARS_EMPTY') }}</p>@else
+                <ul class="list-disc pl-5 mt-2 max-h-32 overflow-y-auto">
+                    @foreach ($holidayInventory['stored_years'] as $storedYear)<li><a class="link" href="{{ 'dashboard.php?'.http_build_query(['calendar_date'=>$dashboard->range['start']->format('Y-m-d'),'holiday_year'=>$storedYear['year']]).'#holiday-inventory' }}">{{ sprintf($page->copy->text('HOLIDAY_INVENTORY_YEAR_ROWS'),$storedYear['year'],$storedYear['count']) }}</a></li>@endforeach
+                </ul>
+                @endif
+            </details>
+            @endif
             @if ($holidayInventory['selection_invalid'])<p class="mt-2" role="status">{{ $page->copy->text('HOLIDAY_INVENTORY_INVALID_YEAR') }}</p>@endif
             <p class="mt-3 font-semibold">{{ sprintf($page->copy->text('HOLIDAY_INVENTORY_COUNT'), count($holidayInventory['rows'])) }}</p>
             @if ($holidayInventory['truncated'] || $holidayInventory['invalid_dates'])<p class="mt-2">{{ $page->copy->text('HOLIDAY_INVENTORY_DATA_ISSUE') }}</p>@endif

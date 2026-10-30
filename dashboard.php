@@ -201,6 +201,16 @@ function calculateRemainingHours($workedHours, $expectedHours)
                 <div><label for="holiday-year" class="block"><?= h(HOLIDAY_INVENTORY_YEAR) ?></label><input id="holiday-year" name="holiday_year" type="number" min="1" max="9999" step="1" required value="<?= (int)$holidayInventory['year'] ?>" class="input input-bordered input-sm w-28"></div>
                 <button type="submit" class="btn btn-outline btn-sm"><?= h(HOLIDAY_INVENTORY_SHOW) ?></button>
             </form>
+            <details class="mt-3">
+                <summary class="cursor-pointer"><?= h(HOLIDAY_INVENTORY_YEARS_TITLE) ?></summary>
+                <p class="mt-2 opacity-70"><?= h(HOLIDAY_INVENTORY_YEARS_NOTE) ?></p>
+                <?php if ($holidayInventory['stored_years_truncated']): ?><p class="mt-2"><?= h(HOLIDAY_INVENTORY_YEARS_LIMITED) ?></p><?php endif; ?>
+                <?php if ($holidayInventory['stored_years'] === []): ?><p class="mt-2"><?= h(HOLIDAY_INVENTORY_YEARS_EMPTY) ?></p><?php else: ?>
+                <ul class="list-disc pl-5 mt-2 max-h-32 overflow-y-auto">
+                    <?php foreach ($holidayInventory['stored_years'] as $storedYear): ?><li><a class="link" href="<?= h('dashboard.php?'.http_build_query(['calendar_date'=>$calendarRange['start']->format('Y-m-d'),'holiday_year'=>$storedYear['year']]).'#holiday-inventory') ?>"><?= h(sprintf(HOLIDAY_INVENTORY_YEAR_ROWS,$storedYear['year'],$storedYear['count'])) ?></a></li><?php endforeach; ?>
+                </ul>
+                <?php endif; ?>
+            </details>
             <?php if ($holidayYear['invalid']): ?><p class="mt-2" role="status"><?= h(HOLIDAY_INVENTORY_INVALID_YEAR) ?></p><?php endif; ?>
             <p class="mt-3 font-semibold"><?= h(sprintf(HOLIDAY_INVENTORY_COUNT, count($holidayInventory['rows']))) ?></p>
             <?php if ($holidayInventory['truncated'] || $holidayInventory['invalid_dates']): ?><p class="mt-2"><?= h(HOLIDAY_INVENTORY_DATA_ISSUE) ?></p><?php endif; ?>

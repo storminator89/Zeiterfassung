@@ -372,4 +372,10 @@ define('BUTTON_EXPORT_CSV', '匯出 CSV');
 
 define('CSV_EXPORT_NEW_CONTEXT_HINT', 'CSV 下载或错误信息将在单独的页面打开；您选择的日期会保留在本页。');
 
+define('HOLIDAY_INVENTORY_YEARS_TITLE', '查找已存储的年份');
+define('HOLIDAY_INVENTORY_YEARS_NOTE', '仅列出可识别的年份前缀，最多显示最新的20年。行数不能证明日期有效、数据完整、地区或来源正确；其他错误的年份前缀不会列出。');
+define('HOLIDAY_INVENTORY_YEARS_LIMITED', '还有其他已存储年份未列出；仍可通过年份输入框查看。');
+define('HOLIDAY_INVENTORY_YEARS_EMPTY', '没有可识别的已存储年份。这不代表没有公共假日，也不代表数据没有错误。');
+define('HOLIDAY_INVENTORY_YEAR_ROWS', '%d年 · %d行已存储数据');
+
 ?>
