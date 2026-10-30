@@ -110,3 +110,52 @@ without new dummy entropy. This does **not** attest lost COMMIT acknowledgement,
 real HTTP/CSRF/login, browser/iOS, Docker/TLS, crash/power loss or production recovery.
 The user retains actual browser acceptance. Do not run real key creation merely
 because this source/PR was reviewed or its natural CI succeeded.
+
+## Rejected-attempt feedback — partial #79
+
+Source Main `a929d308a47be011a7c7f02fea7a50ee0607e1f6`, complete tree
+`ed4ad1eeb553b1beb2f0709e196c7598df7d6ad0`. An unconsumed earlier
+`chrono_api_notice` could previously appear as a saved-success notice beside a
+new rejected API-management POST: known 400/409 outcomes rerender the existing
+Admin page, which consumes that old receipt. The current error did not make the
+older saved-state receipt confirmation of the new operation.
+
+A new already-dispatched API-management attempt now forgets only that previous
+non-authorizing display receipt before the unchanged service invocation. A
+current rejection or unconfirmed outcome cannot inherit an older success. The
+same existing successful 303 redirect still creates the same minimal new
+one-use receipt; an ordinary GET still consumes a legitimate receipt normally.
+No submitted password, token, confirmation or policy form is copied to session,
+URL or response. No automatic retry, new draft, rollback claim or state repair.
+
+Only two existing paths change: this note and two inserted controller lines.
+API service invocation/arguments/remote address, exception classes/statuses,
+source/role/CSRF/admission/budget/password/confirmation/revision checks,
+key producers/files, policy/audit readers and writers, fresh status reads,
+forms/DTOs/locales, dispatch/routes and all runtime/host/security settings remain
+unchanged. This is not permission to activate, disable, provision or otherwise
+change a real API or key. The non-authorizing session notice is not policy state.
+
+### Bounded component evidence
+
+PHP 8.5.12 / SQLite 3.46.1 / Laravel 13.38.0: actual old/new Admin controller,
+canonical business reader on fabricated query-only anonymous Memory, compiled
+actual Admin content/API partial and existing display DTOs; fake RequestGuard
+and `LocalWebApiManagement` outcome port, inert shared layout. Baseline old
+success beside new 400 reproduced. Eighteen 400/409 combinations cover all three
+old notice values in DE/EN/ZH: only the current escaped error remains, with
+unchanged single service call, complete arguments and remote address.
+
+Original GET one-use consumption, fake known-success 303/new minimal receipt,
+unknown 503 without retry or source diagnostics, unchanged authentication/
+authorization/budget exceptions, unavailable fresh status, and mixed/member/
+directory refusals/form hiding are covered. No submitted dummy password/token
+persists or renders; unrelated session marker, source/schema/change counters,
+query-only/transaction state and native session/timezone remain unchanged.
+
+No actual API policy/password/key service invocation, real account/credential/
+key, file DB, server, operating setting or deployment. No full App/bootstrap/
+V5-admission/auth/CSRF/HTTP/browser/layout/runtime/production/performance or
+concurrency acceptance. Necessary PHP/compiled-Blade syntax, exact source/tree
+preservation, inverse/replay/cold bundle and independent review are separate
+checks; no new repository testsuite or manual CI dispatch. #79 remains partial.
