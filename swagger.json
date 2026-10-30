@@ -1206,6 +1206,191 @@
           }
         }
       }
+    },
+    "/api.php/work-models": {
+      "get": {
+        "summary": "Discover the authenticated account's stored work-model versions",
+        "description": "Own bounded stored version list, even for administrator/supervisor tokens. Discover historical and future effective dates without guessing a date. Same exact ID/date/minute projection as GET /work-model. No owner/model/date selector, reason, author, account metadata, target/balance/holiday/absence calculation, write, approval or notification. Pages are separate current snapshots, not an immutable audit/export or completeness attestation. Existing Native/Laravel bearer and separate Laravel admission/generation/raw method/URL gates remain.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Existing bounded API pagination; default 100, maximum 1000, zero returns metadata only.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000,
+              "default": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "Existing offset from 0 through 2147483647. Omitted offset is reported as null and skips zero rows.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Own selected page, ordered by valid_from DESC then exact ID DESC. Each selected row validates as a whole; malformed rows refuse the whole page with 503. Empty is no selected stored rows, not no work/entitlement or a legacy fallback.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "maxItems": 1000,
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "model_id",
+                          "valid_from",
+                          "weekday_minutes"
+                        ],
+                        "properties": {
+                          "model_id": {
+                            "type": "string",
+                            "pattern": "^[1-9][0-9]*$",
+                            "maxLength": 19,
+                            "description": "Exact positive SQLite signed64 decimal string, never a JSON number."
+                          },
+                          "valid_from": {
+                            "type": "string",
+                            "format": "date"
+                          },
+                          "weekday_minutes": {
+                            "type": "array",
+                            "minItems": 7,
+                            "maxItems": 7,
+                            "description": "Stored base minutes Monday through Sunday; no holiday or absence adjustment.",
+                            "items": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1440
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "total",
+                        "filtered",
+                        "limit",
+                        "offset",
+                        "order",
+                        "time_zone",
+                        "scope",
+                        "holiday_adjustment",
+                        "legacy_fallback"
+                      ],
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "filtered": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 1000
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 1000
+                        },
+                        "offset": {
+                          "type": "integer",
+                          "nullable": true,
+                          "minimum": 0,
+                          "maximum": 2147483647
+                        },
+                        "order": {
+                          "type": "string",
+                          "enum": [
+                            "valid_from_desc_id_desc"
+                          ]
+                        },
+                        "time_zone": {
+                          "type": "string",
+                          "enum": [
+                            "Europe/Berlin"
+                          ]
+                        },
+                        "scope": {
+                          "type": "string",
+                          "enum": [
+                            "own"
+                          ]
+                        },
+                        "holiday_adjustment": {
+                          "type": "string",
+                          "enum": [
+                            "not_applied"
+                          ]
+                        },
+                        "legacy_fallback": {
+                          "type": "string",
+                          "enum": [
+                            "not_returned"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid raw query or pagination, including unknown fields or any owner/model/date/role selector. Only limit and offset are accepted."
+          },
+          "401": {
+            "description": "Existing invalid/missing bearer identity response, not a web-session fallback."
+          },
+          "503": {
+            "description": "Stored page, source or optional reader unavailable; no partial page or exception details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Work-model versions unavailable."
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {

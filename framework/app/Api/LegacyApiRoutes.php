@@ -18,7 +18,7 @@ final class LegacyApiRoutes
         $middleware = [LegacyApiWire::class];
         if ($requireAdmittedProfile) { $middleware[] = RequireAdmittedLegacyApiProfile::class; }
         $router->group(['prefix' => 'api.php', 'middleware' => $middleware], function (Router $router): void {
-            foreach (['users' => 'identity', 'timeentries' => 'entries', 'corrections' => 'corrections', 'work-model' => 'workModel'] as $path => $action) {
+            foreach (['users' => 'identity', 'timeentries' => 'entries', 'corrections' => 'corrections', 'work-model' => 'workModel', 'work-models' => 'workModelVersions'] as $path => $action) {
                 $route = $router->any($path, [LegacyApiReadController::class, $action])
                     ->middleware(RequireLegacyApiToken::class);
                 // Laravel otherwise normalizes trailing slashes/percent escapes
