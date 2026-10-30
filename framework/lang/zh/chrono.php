@@ -261,4 +261,5 @@ return [
     'CORRECTION_TIME_UNAVAILABLE' => '時間無法讀取',
     'SETTINGS_SAVE_SUCCESS_TITLE' => '成功！',
     'SETTINGS_SAVE_SUCCESS_MESSAGE' => '設定已成功更新！',
+    'LATEST_TIMESTAMP_REVIEW_HINT' => '舊時間檢查提示：至少一個已保存的時間點已有格式、有效性或柏林夏令時間檢查結果。顯示與計算保持不變，並不表示舊時間可明確判定。請檢查原始紀錄。',
 ];

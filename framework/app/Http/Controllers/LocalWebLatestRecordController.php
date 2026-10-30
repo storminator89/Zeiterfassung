@@ -26,10 +26,12 @@ final class LocalWebLatestRecordController extends Controller
             if ($record !== []) {
                 require_once dirname(__DIR__, 4).'/lib/reporting.php';
                 require_once dirname(__DIR__, 4).'/lib/work_location.php';
+                require_once dirname(__DIR__, 4).'/lib/time_record_review.php';
                 $calculation = \report_record_calculation($record);
                 $entry = [
                     'id' => (int) $record['id'],
                     'invalid' => $calculation['status'] === 'invalid', 'error' => $calculation['error'],
+                    'timestamp_review' => $calculation['status'] !== 'invalid' && \time_record_local_time_findings($record) !== [],
                     'duration' => $calculation['status'] === 'invalid' ? 'Ungültig'
                         : ($calculation['minutes'] === null ? '-' : \report_format_hours($calculation['minutes'] / 60)),
                     'start' => $calculation['start'] === null ? 'Ungültig' : \booking_local_date($calculation['start'])->format('d.m.Y H:i'),
