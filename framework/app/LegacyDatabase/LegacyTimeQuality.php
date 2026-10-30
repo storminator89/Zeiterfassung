@@ -85,7 +85,7 @@ final class LegacyTimeQuality
         $total = array_sum($counts);
 
         return [
-            'report_version' => 9,
+            'report_version' => 10,
             'scope_status' => 'partial_diagnostic_only',
             'read_only' => true,
             'records_checked' => $records,
@@ -102,7 +102,8 @@ final class LegacyTimeQuality
                 'original_break_overlap' => 'checked_completed_positive_integer_original_break_pairs_same_session_only',
                 'original_session_overlap' => 'checked_completed_positive_integer_original_session_pairs_same_user_only',
                 'original_open_session_overlap' => 'possible_only_for_integer_original_session_pairs_same_user_no_guessed_end',
-                'event_session_break_projection_reconciliation' => 'not_checked_beyond_original_interval_boundaries_completed_original_pairs_and_possible_open_session_pairs',
+                'original_open_break_overlap' => 'possible_only_for_integer_original_break_pairs_same_session_no_guessed_end',
+                'event_session_break_projection_reconciliation' => 'not_checked_beyond_original_interval_boundaries_completed_original_pairs_and_possible_open_session_and_break_pairs',
                 'mapping_or_repair' => 'not_performed_requires_separate_confirmation',
             ],
             'offset_free_values_requiring_berlin_mapping_confirmation' => $offsetFree,
@@ -372,6 +373,7 @@ final class LegacyTimeQuality
         $this->originalBreakPairs($pdo, $add);
         $this->originalSessionPairs($pdo, $add);
         $this->originalOpenSessionPairs($pdo, $add);
+        $this->originalOpenBreakPairs($pdo, $add);
     }
 
     /** Stored completed positive breaks in one original session; no inferred end or projection. */
@@ -470,6 +472,39 @@ final class LegacyTimeQuality
         } finally {
             $others->closeCursor();
             $sessions->closeCursor();
+        }
+    }
+
+    /** Possible original break conflicts only; NULL never chooses an end or current instant. */
+    private function originalOpenBreakPairs(PDO $pdo, callable $add): void
+    {
+        $breaks = $pdo->query('SELECT id,session_id,started_at,ended_at FROM break_intervals ORDER BY id');
+        $others = $pdo->prepare('SELECT id,started_at,ended_at FROM break_intervals WHERE session_id=? AND id>? AND (CAST(? AS INTEGER)=1 OR ended_at IS NULL) ORDER BY id');
+        try {
+            while (($break = $breaks->fetch(PDO::FETCH_ASSOC)) !== false) {
+                if (!is_int($break['started_at']) || ($break['ended_at'] !== null
+                    && (!is_int($break['ended_at']) || $break['ended_at'] <= $break['started_at']))) {
+                    continue; // Invalid, reversed and empty closed spans establish no possible occupation.
+                }
+                $others->execute([$break['session_id'], $break['id'], (int) ($break['ended_at'] === null)]);
+                try {
+                    while (($other = $others->fetch(PDO::FETCH_ASSOC)) !== false) {
+                        if (is_int($other['started_at']) && ($other['ended_at'] === null
+                            || (is_int($other['ended_at']) && $other['ended_at'] > $other['started_at']))
+                            && ($break['ended_at'] === null || $other['started_at'] < $break['ended_at'])
+                            && ($other['ended_at'] === null || $break['started_at'] < $other['ended_at'])) {
+                            // At least one NULL end, same original session, one lower/higher-ID pair.
+                            // Known boundaries can exclude overlap; unknown duration cannot confirm it.
+                            $add('break_intervals', (int) $break['id'], 'possible_original_open_break_overlap', null, (int) $other['id']);
+                        }
+                    }
+                } finally {
+                    $others->closeCursor();
+                }
+            }
+        } finally {
+            $others->closeCursor();
+            $breaks->closeCursor();
         }
     }
 

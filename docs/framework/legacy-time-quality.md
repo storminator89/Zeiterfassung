@@ -593,3 +593,69 @@ Runtime-/App-/Auth-/HTTP-/Browser-/Betriebs-/Konkurrenz-/Last-/Produktiv- oder
 Migrationsabnahme. Keine echten Daten, Konten, Zugangsdaten, Schlüssel, Datei-DB,
 Konfiguration, Host-/Sicherheitsänderung, Aktivierung oder Deployment. Keine neue
 Testsuite oder manuell ausgelöste CI. #55 bleibt ausdrücklich teilweise/offen.
+
+
+## Format 10: mögliche Überschneidung offener Originalpausen
+
+Quellbasis Main `4d24eeefe12463865b923fc60411e5d9484a2232`, vollständiger Baum
+`0c0ebcea76f6d6e8e41d26994093b2374524fd2b` nach #374. Weiterer rein lesender
+Teilumfang #55: Format 9 betrachtet mögliche offene Originalsessions und
+abgeschlossene Originalpausenpaare, lässt aber Pausenpaare mit einem unbekannten
+Ende aus. Ein offenes Original kann neben einem späteren abgeschlossenen
+Pausenoriginal derselben Session stehen; getrennte heutige Projektionen klären
+diese Originalbeziehung nicht. Ein solcher V2-Bestand kann bisher ohne Befund
+in diesem Teilbericht bleiben.
+
+Format 10 hängt `possible_original_open_break_overlap` nach allen bisherigen
+Befunden an. Beide Pausen müssen zur selben Originalsession gehören;
+mindestens ein Ende ist NULL. Starts sind gespeicherte Integer; vorhandene
+Enden ebenfalls Integer und strikt größer als der Start. Leere, umgekehrte,
+REAL-/TEXT-Spannen nehmen nicht teil. Bekannte halboffene Grenzen schließen
+Paare bei Randberührung aus. NULL bleibt unbekannt: kein Jetzt, keine gewählte
+Endzeit, Elternsessiongrenze, Dauer, Rundung oder Zeitkonversion wird eingesetzt.
+Auch innerhalb einer bereits geschlossenen Session bleibt die bisherige
+Diagnose der offenen Pause erhalten; ein mögliches Paar ist kein Beweis einer
+tatsächlichen Überschneidung oder einer falschen aktuellen Summe.
+
+Die feste Abfrage streamt höher-IDige Pausen derselben Session, jedes Paar
+einmal. `entity=break_intervals`, exakte dezimale `entity_id`/`related_entity_id`
+und `column=null` folgen dem bestehenden Originalpaarformat. Keine Session-/
+Benutzer-ID, Namen, Zeitwerte, Inhalte oder Credentials in der Ausgabe. Die
+Originalschema-Regel höchstens einer offenen Pause je Session bleibt erhalten.
+Keine Reparatur, Projektion-/Ledgerberechnung, Schema-/Writer-/Runtime-/Auth-/
+Routen-/Konfigurationsänderung oder neue Zulassung. Der Event-/Session-/Pausen-/
+Projektionsabgleich bleibt ausdrücklich unvollständig.
+
+Alle früheren Berichtsfelder, Befunde, Reihenfolgen und Zähler bleiben außer
+der ausdrücklichen Versions-/Checks-Erweiterung unverändert. Vollständige Zähler
+laufen trotz Detailgrenze weiter; `needs_review` berücksichtigt auch den neuen
+Befund. Die Grenze 1–1000 beschränkt nur die Ausgabe, nicht die Paararbeit;
+kein neuer Ausführungsgrößen- oder Leistungsnachweis für große Bestände.
+
+### Grober Format-10-Komponentenbeleg
+
+PHP 8.5.12 / SQLite 3.46.1 / Laravel 13.38.0: tatsächliche alte/neue Klasse mit
+unveränderten Quellmigratoren und V2Preflight auf zwei erfundenen query-only
+Memory-Snapshots. 12 Sessions und 32 Pausen ergeben 7 neue mögliche Paare;
+9 bisherige Befunde bleiben samt Reihenfolge/Zählern und sonstigen Feldern exakt.
+Beide ID-Reihenfolgen, gleiche Session versus getrennte Sessions desselben
+Kontos, bekannte Randberührung, Null-Dauer/umgekehrt/REAL/TEXT/leeres Ende,
+signed64-Extrema und exakte IDs über 2^53 bis PHP_INT_MAX sind geprüft. Eine
+offene Pause in geschlossener Elternsession behält ihren bisherigen Befund.
+Die bestehende Ein-offene-Pause-Regel weist einen zweiten offenen Insert ab;
+kein Index wurde zur Fixturevorbereitung entfernt oder abgeschwächt.
+
+Ein zweiter vorher befundfreier Snapshot erhält ausschließlich wegen eines
+möglichen Originalpaars `needs_review=true`. Tatsächliche V2-Komponentenvorprüfung
+besteht auf beiden Snapshots; wiederholte Ausgabe, vollständige Zähler bei
+Limit 2, Datensparsamkeit sowie Schema/Zeilen/Änderungszähler, query-only-/
+Transaktionszustand und Session/Zeitzone bleiben erhalten. Notwendige Syntax,
+Baum-/Patch-/Inverseerhaltung und unabhängiger Quellreview separat.
+
+Kein tatsächlicher Dateiscanner-/CLI-/OfflineFiles-/Sidecar-/Bestands-/V5-/
+Runtime-/App-/Auth-/HTTP-/Browser-/Konkurrenz-/Last-/Produktivnachweis, keine
+vollständige Reconciliation, Mapping-, Reparatur- oder Migrationsabnahme.
+Keine realen Daten, Konten, Zugangsdaten, Schlüssel, Datei-DB, Server, Hosts,
+Sicherheits-/Betriebskonfiguration, Aktivierung oder Deployment. Keine neue
+Repositorytestsuite oder manuelle CI. #55 bleibt ausdrücklich teilweise/offen;
+gehaltene/abgelehnte Pakete werden nicht transportiert.
