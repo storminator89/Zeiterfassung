@@ -103,6 +103,9 @@ return [
 
     // Exact existing native Settings copy; no administration/write capability.
     'SETTINGS_TITLE' => '設定',
+    'SETTINGS_THEME_LIGHT' => '淺色',
+    'SETTINGS_THEME_DARK' => '深色',
+    'SETTINGS_THEME_SYSTEM' => '跟隨系統',
     'SETTINGS_LANGUAGE' => '語言設定',
     'SETTINGS_REGULAR_WORKING_HOURS' => '正常工作時數',
     'SETTINGS_OVERTIME' => '先前加班時數',

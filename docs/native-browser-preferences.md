@@ -43,3 +43,36 @@ Das ist kein tatsächlicher Browser-/Sperr-/Quota-/Layout-/Reload-/Mehrtab-/
 Login-/HTTP-/DB-/Produktivnachweis. Kein Appbootstrap oder Konto-/Datenzugriff.
 Keine Betriebs-/Runtime-/Host-/V5-Aktivierung, keine Abhängigkeit von PR #239.
 #18/#62 und echte Browserabnahme bleiben für den weitergehenden Umfang offen.
+
+## Settings-Auswahl in der tatsächlich gewählten Sprache — #62/#79
+
+Die drei sichtbaren Theme-Optionen waren in Native und Laravel unabhängig von
+der gewählten Sprache fest als „Hell / Dunkel / System“ hinterlegt. Beide
+bestehenden Controls verwenden nun die vorhandenen DE/EN/ZH-Wörterbücher:
+„Hell / Dunkel / System“, „Light / Dark / System“ und „淺色 / 深色 / 跟隨系統“.
+Nur diese Beschriftungen ändern sich; die Formularwerte bleiben bytegleich
+`light`, `dark`, `system`. Auswahlzustand, Name/ID, POST-Ziel, CSRF, Sprachauflösung,
+Session-/Speicherablauf und sämtliche Inline-Scriptkörper sind unverändert.
+Es wird weder eine Auswahl gespeichert noch eine Systempräferenz neu ermittelt.
+
+Die sechs Wörterbücher erhalten nur dieselben drei Schlüssel. Alle alten
+Wörterbucheinträge sowie sämtliche nativen Settings-Handler — insbesondere
+Passwort, Übertrag, Importmeldungen und deren Erfolgs-/Fehlersemantik — bleiben
+exakt. Die Änderung transportiert keinen Teil des gehaltenen PR #340 und
+keine #57-Arbeit. Keine neue UI, Route, Abhängigkeit, Assetpin, Daten-/Schema-,
+Runtime-, Host- oder Sicherheitsänderung.
+
+Grober Beleg unter PHP 8.5.12 / SQLite 3.46.1 / Laravel 13.38.0: vorhandener
+Reader-/Settingscontroller-/Query-only-Memory-Profiljourney erneut bestanden;
+54 tatsächliche vollständige kompilierte Settings-Renderings und neun echte
+quelltext-extrahierte Native-Select-Renderings prüfen drei Sprachen, alle drei
+Auswahlen, User-/Admin-Darstellung sowie normale, Erfolgs- und Fehleransicht.
+Native-/Laraveltexte sind gleich; Werte und ausgewählte Option bleiben gleich.
+Nach Rückersetzung ausschließlich der Optionsbeschriftungen ist die gesamte
+bisherige Settingsausgabe byteidentisch. Wiederholte Darstellung und unveränderte
+Quellzeilen, Schema, Change-Zähler, Transaktionen, Session und Zeitzone geprüft.
+
+Dies ist kein neuer Browser-/System-Media-/Speicher-/Layout-/Login-/Auth-/CSRF-/
+HTTP-/Produktivnachweis. Die unveränderten Scripts werden nicht als neue
+Funktionalitätsabnahme ausgegeben. Keine neue Testsuite, manuelle CI, echte
+Konten/Credentials/Schlüssel, Writeroperation oder Bereitstellung.
