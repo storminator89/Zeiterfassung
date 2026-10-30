@@ -2,6 +2,7 @@
 
 // Definitions only: no bootstrap, session, connection, writes or automatic read.
 require_once __DIR__.'/attendance.php';
+require_once __DIR__.'/legacy_timestamp_assessment.php';
 
 /** Internal same-PDO query; errors are not an empty roster or absent status. */
 function chrono_team_status_rows(PDO $pdo, string $sql, array $arguments): array
@@ -88,6 +89,11 @@ function chrono_team_status_state(PDO $pdo, int $user, int $now): string
     $expectedRecord = null;
     $projectionStart = null;
     if ($projection !== null) {
+        // A permissive runtime parse must not choose/shift an unresolved Berlin wall time.
+        if (in_array(legacy_timestamp_assessment($projection['startzeit'])['category'],
+            ['ambiguous_berlin_local_time', 'nonexistent_berlin_local_time'], true)) {
+            return 'unknown';
+        }
         $projectionStart = report_stored_epoch($projection['startzeit']);
         if ($projectionStart === null || $projectionStart > $now) {
             return 'unknown';
