@@ -1,0 +1,34 @@
+name: Local MCP API journey
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: ctype, curl, dom, fileinfo, mbstring, openssl, pdo_sqlite, sqlite3, xml
+          tools: composer:2.10.3
+          coverage: none
+      - name: Locked dependency and syntax checks
+        working-directory: framework
+        run: |
+          composer validate --strict
+          composer install --no-interaction --prefer-dist --no-progress --no-plugins
+          composer check-platform-reqs
+          find app/Mcp -name '*.php' -exec php -l {} \;
+          php -l app/Providers/McpServiceProvider.php
+          php -l config/chrono_mcp.php
+          php -l tools/rehearse-mcp.php
+      - name: One isolated STDIO and HTTPS API journey
+        run: python3 tests/mcp_journey.py
+      - name: Locked dependency advisory report
+        if: always()
+        working-directory: framework
+        run: composer audit --locked --format=plain
