@@ -380,4 +380,10 @@ define('CSV_PERIOD_NOTE', 'Only your own entries by their Berlin start date, reg
 
 define('CSV_EXPORT_NEW_CONTEXT_HINT', 'CSV downloads and error messages open separately; your selection stays on this page.');
 
+define('HOLIDAY_INVENTORY_YEARS_TITLE', 'Find stored years');
+define('HOLIDAY_INVENTORY_YEARS_NOTE', 'Recognized year prefixes only, up to the 20 newest. Row counts attest neither valid dates nor completeness, region or source; other malformed year prefixes are omitted.');
+define('HOLIDAY_INVENTORY_YEARS_LIMITED', 'Further stored years are not listed; they can still be checked using the year field.');
+define('HOLIDAY_INVENTORY_YEARS_EMPTY', 'No recognized stored years. This means neither no holidays nor an error-free inventory.');
+define('HOLIDAY_INVENTORY_YEAR_ROWS', '%d · %d stored rows');
+
 ?>

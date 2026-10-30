@@ -248,4 +248,9 @@ return [
     'CSV_PERIOD_TO' => 'To (inclusive)',
     'CSV_PERIOD_SUBMIT' => 'Export range as CSV',
     'CSV_PERIOD_NOTE' => 'Only your own entries by their Berlin start date, regardless of search or list page. Overnight shifts remain entirely on their start date. The quality check still covers all your entries; errors or unresolved overlaps outside the range can also block the download. Not a payroll-software format.',
+    'HOLIDAY_INVENTORY_YEARS_TITLE' => 'Find stored years',
+    'HOLIDAY_INVENTORY_YEARS_NOTE' => 'Recognized year prefixes only, up to the 20 newest. Row counts attest neither valid dates nor completeness, region or source; other malformed year prefixes are omitted.',
+    'HOLIDAY_INVENTORY_YEARS_LIMITED' => 'Further stored years are not listed; they can still be checked using the year field.',
+    'HOLIDAY_INVENTORY_YEARS_EMPTY' => 'No recognized stored years. This means neither no holidays nor an error-free inventory.',
+    'HOLIDAY_INVENTORY_YEAR_ROWS' => '%d · %d stored rows',
 ];

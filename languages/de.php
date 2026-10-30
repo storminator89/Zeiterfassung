@@ -383,4 +383,10 @@ define('CSV_PERIOD_NOTE', 'Nur eigene Buchungen nach Berliner Startdatum, unabh�
 
 define('CSV_EXPORT_NEW_CONTEXT_HINT', 'CSV-Download oder Fehlermeldung öffnen separat; Ihre Auswahl bleibt auf dieser Seite erhalten.');
 
+define('HOLIDAY_INVENTORY_YEARS_TITLE', 'Gespeicherte Jahrgänge finden');
+define('HOLIDAY_INVENTORY_YEARS_NOTE', 'Nur erkannte Jahrespräfixe, höchstens die 20 neuesten. Zeilenzahlen bestätigen weder gültige Termine noch Vollständigkeit, Region oder Herkunft; andere fehlerhafte Jahrespräfixe fehlen hier.');
+define('HOLIDAY_INVENTORY_YEARS_LIMITED', 'Weitere gespeicherte Jahrgänge sind nicht aufgelistet; sie können weiterhin über die Jahreswahl geprüft werden.');
+define('HOLIDAY_INVENTORY_YEARS_EMPTY', 'Keine erkannten Jahrgänge gespeichert. Das bedeutet weder keine Feiertage noch einen fehlerfreien Bestand.');
+define('HOLIDAY_INVENTORY_YEAR_ROWS', '%d · %d gespeicherte Zeilen');
+
 ?>
