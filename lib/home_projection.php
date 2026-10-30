@@ -107,7 +107,14 @@ function report_time_record_detail(array $record): array
     $credit = !empty($record['absence_kind']);
     $startLabel = $credit ? ($calculation['day'] ?? substr($record['startzeit'], 0, 10)) . ' · Gutschrift' : $record['startzeit'];
     $endLabel = $credit ? 'Keine Stempelzeit' : (($record['endzeit'] ?? '') === '' ? 'Läuft' : $record['endzeit']);
-    $durationLabel = $invalid ? 'Ungültig' : ($credit ? (int)$record['planned_minutes'] . ' Sollminuten' : calculateDuration($record['startzeit'], $record['endzeit'], $record['pause']));
+    // Display only: never invent zero or truncate unsupported stored target metadata.
+    $storedCredit = $record['planned_minutes'] ?? null;
+    $creditMinutes = (is_int($storedCredit) || (is_string($storedCredit)
+        && preg_match('/\A(?:0|[1-9][0-9]{0,3})\z/', $storedCredit) === 1))
+        && $storedCredit >= 0 && $storedCredit <= 1440 ? (int)$storedCredit : null;
+    $durationLabel = $invalid ? 'Ungültig' : ($credit
+        ? ($creditMinutes === null ? 'Gespeicherte Sollminuten nicht auswertbar' : $creditMinutes . ' Sollminuten')
+        : calculateDuration($record['startzeit'], $record['endzeit'], $record['pause']));
 
     return [
         'id' => (int) $record['id'],
