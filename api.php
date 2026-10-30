@@ -246,7 +246,7 @@ function getTimeEntries($conn, $user_id) {
 
         // Add date filters if provided
         if (isset($_GET['start_date'])) {
-            if (!is_string($_GET['start_date']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['start_date'])) {
+            if (!is_string($_GET['start_date']) || !preg_match('/\A\d{4}-\d{2}-\d{2}\z/', $_GET['start_date'])) {
                 http_response_code(400);
                 echo json_encode(['success' => false, 'message' => 'Invalid start_date format. Use YYYY-MM-DD']);
                 return;
@@ -256,7 +256,7 @@ function getTimeEntries($conn, $user_id) {
         }
 
         if (isset($_GET['end_date'])) {
-            if (!is_string($_GET['end_date']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['end_date'])) {
+            if (!is_string($_GET['end_date']) || !preg_match('/\A\d{4}-\d{2}-\d{2}\z/', $_GET['end_date'])) {
                 http_response_code(400);
                 echo json_encode(['success' => false, 'message' => 'Invalid end_date format. Use YYYY-MM-DD']);
                 return;

@@ -426,3 +426,50 @@ Vor einer abschließenden Abnahme bleiben unabhängiger integrierter Review,
 Abgleich mit dann aktuellem `main` sowie die vollständige autorisierte
 HTTP-/Clientabnahme erforderlich. #25 wird durch den begrenzten CLI-/Quellen-
 Nachweis allein **nicht geschlossen**.
+
+### Exakte Datumstextgrenze für `/timeentries` (#68)
+
+Auf Main `2f829196ef9f403d40ee6806bff8327048692874` / Tree
+`60fc0967d7bc450c1177e7574e3d6db81b939237` akzeptierten die Native- und Laravel-
+Formatregex für `start_date`/`end_date` ein zusätzliches abschließendes LF:
+PCRE `$` kann vor diesem letzten Zeilenumbruch treffen. Ein erfundener Eintrag
+am ausgewählten Anfangstag fehlte dadurch im erfolgreich gemeldeten Teilbestand
+(`start_date=2026-10-30%0A`: HTTP 200, weniger Treffer als ohne LF).
+Dies belegt keinen betroffenen realen Bestand oder Berechtigungsfehler.
+
+Beide vorhandenen Formatprüfungen verwenden jetzt `\A` und `\z` statt `^`/`$`.
+Der Datumstext muss vollständig genau die bisherige zehnstellige Form abdecken.
+Ein abschließendes LF führt vor dem Datenread zum vorhandenen JSON-400 mit
+`Invalid start_date format. Use YYYY-MM-DD` beziehungsweise der identischen
+`end_date`-Meldung. Keine Trimmung, Reparatur, neue Parserbibliothek oder
+Kalenderprüfung: bisher formgültige unmögliche Kalenderdaten/Jahr `0000`,
+Auslassung, unbekannte ignorierte Parameter und umgekehrte Bereiche behalten
+ihren bisherigen Vertrag. Auch die Laravel-Variante wertet weiter den rohen
+Querystring aus; normalisierte Requestfelder dürfen ungültiges LF nicht heilen.
+
+Keine neue Route, Abfrage, Count-, Paging-, Berliner Buchungstags-, DTO-,
+Reader-/Writer-/Auth-/JWT-/Source-/Runtime-/Host-/Securityänderung. Die SQL-
+Prädikate und gebundenen Werte gültiger Eingaben bleiben unverändert; auch
+Admins lesen nur ihr eigenes Konto. Alle anderen API-/Mutationsfunktionen und
+die ursprünglichen 400-Meldungen bleiben bytegleich.
+
+Ein grober PHP 8.5.12 / SQLite 3.46.1 / Laravel 13.38.0 Memory-Journey vergleicht
+den tatsächlich extrahierten alten/neuen Native-Handler sowie den alten/neuen
+Laravel-Controller mit echter Validatorfabrik und unverändertem Snapshotreader.
+Die alte LF-Annahme und der still veränderte Count sind in beiden Varianten
+reproduziert. 57 Vorher-/Nachher-Draht-/Statusvergleiche über Benutzer-,
+Supervisor- und Adminidentität bestätigen die übrigen gültigen/ungültigen
+Datums-, Kalenderform-, Eigentümer- und Pagingfälle. LF an beiden Grenzen wird
+jetzt vor dem Read abgewiesen; feste Fehlertexte, Rawquery-Verhalten,
+Quell-/Schema-/Auditbestand, Änderungszähler, `query_only`, native Session und
+Zeitzone bleiben erhalten. Ein erster externer Baseline-Controllerimport brauchte
+seinen ursprünglichen Dateikontext für definitionsreine Includes; nur der
+Prüfimport wurde korrigiert, keine Produktgrenze.
+
+RequestGuard ist ein Identitätsdouble, Native-Bootstrap/Router sind ausgelassen.
+Kein echter JWT-/Login-/Auth-/HTTP-/Browser-/Produktions-/Konkurrenz-/Performance-
+nachweis, keine echten Konten/Daten/Zugangsdaten/Schlüssel, Dateidatenbank,
+Runtimeaktivierung oder Deployment. Keine neue Repo-Testsuite oder
+manueller CI-Lauf; notwendige PHP-Syntax und Diffcheck sind separat geprüft.
+#68 bleibt offen; Browser-/Clientabnahme und vollständiger Workflowausbau sind
+hiermit nicht behauptet.
