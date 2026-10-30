@@ -12,6 +12,7 @@ use App\Chrono\OwnApiCorrectionRecordStatusReads;
 use App\Chrono\OwnApiCorrectionCursorStatusReads;
 use App\Chrono\OwnApiWorkModelReads;
 use App\Chrono\OwnApiWorkModelVersionsReads;
+use App\Chrono\OwnApiTimeEntryKindReads;
 use AttendanceError;
 use Illuminate\Contracts\Validation\Factory;
 use Illuminate\Http\Request;
@@ -148,13 +149,24 @@ final class LegacyApiReadController
                 return LegacyApiResponse::json(['success' => false, 'message' => 'Invalid '.$field.' format. Use YYYY-MM-DD'], 400);
             }
         }
+        require_once dirname(__DIR__, 5).'/lib/api_time_entry_kind.php';
+        try {
+            $entryKind = \api_time_entry_kind_query((string) $request->server('QUERY_STRING', ''));
+        } catch (\InvalidArgumentException $error) {
+            return LegacyApiResponse::json(['success' => false, 'message' => $error->getMessage()], 400);
+        }
+        if ($entryKind !== null && ! $this->reads instanceof OwnApiTimeEntryKindReads) {
+            return LegacyApiResponse::json(['success' => false, 'message' => 'Time-entry kind filtering unavailable.'], 503);
+        }
         $input = new ApiTimeEntriesQuery(
             $query['start_date'] ?? null, $query['end_date'] ?? null,
             $pagination['limit'], $pagination['offset'],
             $pagination['limit'], $pagination['offset'],
         );
         try {
-            return LegacyApiResponse::json($this->reads->apiTimeEntries($input));
+            return LegacyApiResponse::json($entryKind === null
+                ? $this->reads->apiTimeEntries($input)
+                : $this->reads->ownApiTimeEntriesByKind($input, $entryKind));
         } catch (Throwable) {
             // Unexpected read failures retain JSON 500, never a paginator/422.
             return LegacyApiResponse::json(['success' => false, 'message' => 'Internal server error'], 500);

@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, HolidayRefillPreviewReads, OwnStoredValuesExportReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, OwnMonthReviewFindingReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads, TeamTimeRecordReviewReads, OwnPeriodComparisonReads, WorkModelCreditPreviewPageReads
+final class LegacyChronoReads implements ChronoReads, OwnApiTimeEntryKindReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, HolidayRefillPreviewReads, OwnStoredValuesExportReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, OwnMonthReviewFindingReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads, TeamTimeRecordReviewReads, OwnPeriodComparisonReads, WorkModelCreditPreviewPageReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -415,7 +415,17 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
 
     public function apiTimeEntries(ApiTimeEntriesQuery $query): array
     {
-        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($query): array {
+        return $this->apiTimeEntriesSnapshot($query, null);
+    }
+
+    public function ownApiTimeEntriesByKind(ApiTimeEntriesQuery $query, string $kind): array
+    {
+        return $this->apiTimeEntriesSnapshot($query, $kind);
+    }
+
+    private function apiTimeEntriesSnapshot(ApiTimeEntriesQuery $query, ?string $entryKind): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($query, $entryKind): array {
             $where = ['user_id = :user_id'];
             $parameters = [':user_id' => $actor->getKey()];
             foreach (['start_date' => $query->startDate, 'end_date' => $query->endDate] as $field => $date) {
@@ -427,6 +437,10 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
             if ($query->startDate !== null || $query->endDate !== null) {
                 require_once dirname(__DIR__, 3).'/lib/api_booking_day.php';
                 api_register_booking_day($pdo);
+            }
+            if ($entryKind !== null) {
+                require_once dirname(__DIR__, 3).'/lib/api_time_entry_kind.php';
+                $where[] = \api_time_entry_kind_predicate($pdo, $entryKind);
             }
             require_once dirname(__DIR__, 3).'/lib/report_ordering.php';
             report_register_start_order($pdo);
@@ -465,7 +479,7 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
             return ['success' => true, 'data' => $rows, 'meta' => [
                 'total' => $total, 'filtered' => count($rows),
                 'limit' => $query->limitMetadata, 'offset' => $query->offsetMetadata,
-            ]];
+            ] + ($entryKind === null ? [] : ['entry_kind' => $entryKind])];
         }, false);
     }
 
