@@ -14,7 +14,7 @@ zusätzlicher Webroot oder Zugriff auf private Frameworkquellen wird eingeführt
 | `assets/kolibri_icon.png` | `framework/public/assets/kolibri_icon.png` | 20733 | `b450f436baec5dbde264c4fe21d9001c0b466ff44ae1311f5919315bd32430e4` |
 | `assets/css/main.css` | `framework/public/assets/css/main.css` | 19247 | `d293dcf9d31e0adfc0c6cda1c2f03f4c57afe325c79e223794460dc9f94c4e6f` |
 | `assets/css/app_ui.css` | `framework/public/assets/css/app_ui.css` | 6546 | `4f8bf76f83a5c5d3ea3807818a792aa2b4c12ec83aaf46a33342d1aadf4adc1e` |
-| `assets/js/main.js` | `framework/public/assets/js/main.js` | 8028 | `a9ccf2539d158cd6548bfd6deda6e561bdd4025b8d8d32443da385d3d6b655d9` |
+| `assets/js/main.js` | `framework/public/assets/js/main.js` | 9767 | `2f9ed4299e2acca7b8b472c3099f5b14e499ed221d33b4be77ecabfade9f5ae3` |
 | `assets/js/attendance.js` | `framework/public/assets/js/attendance.js` | 24265 | `86b759f00e3a9aa02b2d2f96d0ab1acf815114becb7691c7ccfb2c9997730b17` |
 | `framework/resources/js/chrono-local-web.js` | `framework/public/assets/js/chrono-local-web.js` | 2984 | `9940b5723b21a2fa21f39db9471523ff5818bc6946a480607c2e5cac20516b3b` |
 
@@ -127,3 +127,15 @@ Die feste Public-Kopie ist bytegleich; nur ihr bisheriger exakter Attendancehash
 und die Tabelle oben ändern sich. Alle anderen Pins und Validatoren sowie
 Startup-/Pending-/Event-/Retry-/#66-/V5-/Runtimegrenzen bleiben erhalten.
 Kein neuer öffentlicher Assetpfad, dynamischer Fallback oder Betriebszugang.
+
+
+## #79/#82: tatsächliches NEW-Installationsboot mit aktuellen Assetpins
+
+Der [NEW-V5-Kerneljourney](fresh-installation-rehearsal.md) reproduziert zwei
+veraltete feste Pins auf Main `3a5cef6d`: `main.js` und der bestehende
+Kalenderrenderer waren bereits separat geprüft/gemergt, ihre Bootgates jedoch
+noch auf älteren Bytes. Nur diese beiden Digestwerte werden auf die belegten
+aktuellen Main-Blobs ausgerichtet; die Assetdateien und sämtliche Validatoren
+bleiben bytegleich. Die obige `main.js`-Zeile beschreibt die aktuelle feste
+Native-/Public-Kopie. Manipulierte Bytes bleiben vor DB-/Routenfreigabe verweigert.
+Kein Runtime-/Host-Cutover und keine zusätzliche Asset- oder Securityfreigabe.
