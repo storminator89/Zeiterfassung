@@ -219,7 +219,7 @@ final class LocalWebTerminalDevicesController extends Controller
             ),
             'terminalDevices' => new TerminalDevicesPage(
                 $projection['devices'], $projection['contact_max_age'], $this->interactions->terminalSites,
-                $error, ($this->interactions->terminalSites || $allowRevocations || $allowDeviceRevocations || $allowModuleSettings) && $allowSavedQuery && $request->query->has('saved'),
+                $error, $error === null && ($this->interactions->terminalSites || $allowRevocations || $allowDeviceRevocations || $allowModuleSettings) && $allowSavedQuery && $request->query->has('saved'),
                 credentials: $credentials,
                 credentialRevocationsEnabled: $allowRevocations,
                 deviceRevocationsEnabled: $allowDeviceRevocations,
