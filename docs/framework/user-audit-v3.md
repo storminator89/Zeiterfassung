@@ -132,3 +132,68 @@ Commit-/Crash-/Konkurrenzfehler wurden nicht ausgeführt. Kein echter Bestand, A
 Credential, Kontensaldo, HTTP-/Browser-/Directory-/Hardwareablauf, Deployment oder
 Runtime-/Sicherheitskonfigurationswechsel. Independentes finales Quellreview
 und jede echte Upgrade-/Restore-/Cutoverfreigabe bleiben eigene Gates.
+
+
+## #74: wiederholbarer tatsächlicher CLI-End-to-End-Nachweis
+
+Quellenbasis tatsächlicher Main `3a5cef6dd4e1980745dce70ce806b280101ae95e`,
+Baum `c1cfcc9b3876edde410b1ef60ba2d52b86d46c9d`. Der frühere private Nachweis
+oben prüfte den echten CLI-/Operatorpfad noch nicht. Ein zusätzlicher einzelner
+grober, wiederholbarer Quell-PoC prüft jetzt genau diesen Pfad:
+
+```sh
+php framework/tools/rehearse-user-audit-upgrade.php
+```
+
+Kein Datenbank-/Pfadargument, kein `.env`-/APP_DATA_DIR-/Runtimefallback. Der
+CLI-only-PoC erzeugt unter einer neuen privaten temporären Zufallsdirectory
+ausschließlich seine eigene sourcegenerierte bekannte V2-Quelle und unabhängige
+kalte Kopien. Die beiden vorhandenen synthetischen Fixture-Identitäten besitzen
+unbrauchbare Passwortmarker; keine realen/nutzbaren Konten, Credentials, Keys,
+Tokens oder Listener. Der normale Projektbootstrap samt FreshWeb-/LegacyAuth-/
+Runtimeprovidern wird nicht geladen; kein bestehender Bestand wird übernommen.
+
+Die minimale echte Laravel-Console lädt ausschließlich den vorhandenen
+`LegacyFixtureServiceProvider` zusätzlich zu den Standard-Frameworkprovidern.
+Sie verwendet private neue Environment-/Bootstrapcache-/Storagepfade, nicht
+Betreiber-`.env`, gespeicherte Appkonfiguration oder Routen. Eventuelle
+Environment-Cachepfadüberschreibungen werden nur im eigenen Prozess entfernt;
+keine Hostvariable oder Betreiberdatei wird geändert. Die vorhandenen konkreten
+`chrono:legacy-v2`-/`chrono:user-audit-v3`-Commandklassen, Audit-UDFs, Offline-
+Datei-/Backupaufnahme und Immediate-Transaktionsdienste werden nicht ersetzt.
+Der gewöhnliche Appbootstrap wird damit bewusst **nicht** abgenommen; Default-
+Connection und Runtime-/Businesswriter bleiben unaufgelöst.
+
+Ein zusammenhängender tatsächlicher CLI-Ablauf wurde unter PHP 8.5.12 / Laravel
+13.38.0 / SQLite 3.46.1 vollständig ausgeführt:
+
+1. V2-Datei aus der echten Fixturequelle, Adoption und aktuelle kalte Sicherung.
+2. Echter V2-Inspect, Upgrade zu exakt `[1,2,3]`, erste Ledgerzeile exakt erhalten,
+   ausschließlich zweite Zeile mit ID/Batch2 additiv. Alle übrigen Fach-/Audit-/
+   Event-/Modellzeilen und Sequenzen unverändert.
+3. Das alte V2-Backup wird für Wiederholung am V3-Ziel vor Mutation abgelehnt.
+4. Nach aktueller kalter V3-Sicherung zwei Wiederholungen: Target-/Backupbytes,
+   Dateidentitäten und Schema-Cookie unverändert, keine zweite DDL/Baseline/Audit.
+5. Echter V3-Inspect und ausdrückliche Ablehnung des alten V2-Ledgerbackouts;
+   abschließend vollständiger Quell-/Backup-/Integritätsvergleich.
+
+PHP-Syntax und grober Ablauf PASS, stderr leer. Derselbe gesamte Ablauf wurde
+auch mit bewusst gesetzten nichtgeheimen Runtime-Auswahlschaltern und einem
+synthetischen Configcache-Canary wiederholt: kein Runtime-/Default-PDO oder
+Betreiber-Configcache geöffnet, Canary unverändert/nicht ausgeführt. Dies ist
+Isolationsnachweis des PoC, kein alternativer Runtimeopener.
+
+Nur der neue CLI-PoC und dieses Dokument ändern sich. Keine Produktions-
+Migration, Audittrigger, Userwriter, Admission, Runtime-/Securitykonfiguration,
+Routes/Provider, UI, README-/Medien-, Dependency- oder CIänderung. Keine neue
+feine Testsuite/manuelle CI. Keine Deltas aus gehaltenen/abgelehnten Paketen
+#404/#405 oder den Korrektur-/API-Filtern übernommen.
+
+Nach Erfolg bleibt nur die genau neue private Proofdirectory für lokale
+Nachprüfbarkeit erhalten; Aggregate nennen keine Zeilenwerte. Fehler nennt nur
+feste Phase/Typ, keine SQL-/PDO-/Credential-/Pfaddetails; unsicheres Ergebnis ist
+keine automatische Retry-/Restorefreigabe. Kein V4/V5-Altbestandsupgrade, neuer
+Geschäfts-/Userwrite, WAL-/Crash-/Upgrade-Konkurrenz-/Restore-/Auth-/Browser-/
+Hostnachweis oder produktiver Cutover. #74/#82 und die breite #32-Abnahme bleiben
+für diese übrigen Kriterien offen; der konkrete CLI-Migrationspfad ist nun
+wiederholbar grob nachweisbar.
