@@ -53,10 +53,10 @@ final readonly class AdmittedLegacyApiConfiguration implements JsonSerializable
             throw new LogicException('The complete fresh profile, shared budget and existing key metadata are required.');
         }
         $database = RuntimeAdmission::fromConfiguration($manifest);
-        if (! in_array($database->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5'], true)) {
+        if (! in_array($database->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5', 'vacation-requests-v7'], true)) {
             throw new LogicException('The admitted V4 or V5 API database profile is required.');
         }
-        $v5 = $database->schemaProfile === 'account-lifecycle-v5';
+        $v5 = $database->isGenerationBoundAccountProfile();
         $v5Runtime = self::requireAccountProfile($app, $v5);
         $fresh = $app->make(FreshWebConfiguration::class);
         $budget = $app->make(WriterLoginBudget::class);
@@ -94,7 +94,7 @@ final readonly class AdmittedLegacyApiConfiguration implements JsonSerializable
 
     public function requiresOperatingPolicy(): bool
     {
-        return $this->v5Runtime?->isAccountLifecycleV5() ?? false;
+        return $this->v5Runtime?->hasGenerationBoundAccountAuthority() ?? false;
     }
 
     /** Pure per-request consistency check; physical DB/key checks stay in existing sources. */
@@ -123,7 +123,7 @@ final readonly class AdmittedLegacyApiConfiguration implements JsonSerializable
         if (! $v5) { return null; } // Preserve the original V4 composition path.
         $runtime = $app->make(RuntimeDatabase::class);
         if (! $runtime instanceof RuntimeDatabase || ($expected !== null && $runtime !== $expected)
-            || ! $runtime->isAccountLifecycleV5()
+            || ! $runtime->hasGenerationBoundAccountAuthority()
             || ! $app->bound(AccountLifecycleApiIdentity::class)
             || ! ($identity = $app->make(AccountLifecycleApiIdentity::class)) instanceof AccountLifecycleApiIdentity
             || ! $identity->requiresGeneration()) {

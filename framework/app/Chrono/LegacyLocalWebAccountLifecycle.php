@@ -133,7 +133,7 @@ final readonly class LegacyLocalWebAccountLifecycle implements LocalWebAccountLi
 
     private function localAdmin(): array
     {
-        if (! $this->runtime->isAccountLifecycleV5() || ! $this->identity->requiresGeneration()) {
+        if (! $this->runtime->hasGenerationBoundAccountAuthority() || ! $this->identity->requiresGeneration()) {
             throw new LogicException('The separate V5 account lifecycle profile is required.');
         }
         $actor = $this->auth->guard('web')->user();

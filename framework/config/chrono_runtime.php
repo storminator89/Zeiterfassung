@@ -33,6 +33,13 @@ if ($intakePolicySignature !== $absent) {
     $admission['intake_policy_schema_signature'] = $intakePolicySignature;
 }
 
+// V7 only. Missing/extra/null lineage still fails RuntimeAdmission's exact
+// profile validation; older profile/configuration bytes are not given a default.
+$accountLifecycleSignature = env('FRAMEWORK_CHRONO_DB_ACCOUNT_LIFECYCLE_SCHEMA_SIGNATURE', $absent);
+if ($accountLifecycleSignature !== $absent) {
+    $admission['account_lifecycle_schema_signature'] = $accountLifecycleSignature;
+}
+
 return [
     'read_enabled' => env('FRAMEWORK_CHRONO_READ_ENABLED', false),
     'write_enabled' => env('FRAMEWORK_CHRONO_WRITE_ENABLED', false),

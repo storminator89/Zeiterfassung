@@ -51,7 +51,7 @@ final class FreshWebServiceProvider extends ServiceProvider
             $profile->assertTerminalCurrent($this->app);
             if (! $this->app->bound(RuntimeDatabase::class) || ! $this->app->bound(AttendanceWriter::class)
                 || (! $this->app->make(RuntimeDatabase::class)->isIntakePolicyV4()
-                    && ! $this->app->make(RuntimeDatabase::class)->isAccountLifecycleV5())) {
+                    && ! $this->app->make(RuntimeDatabase::class)->hasGenerationBoundAccountAuthority())) {
                 throw new LogicException('Fresh web requires the complete admitted local runtime and intake writer.');
             }
             $router = $this->app->make(Router::class);
@@ -62,13 +62,13 @@ final class FreshWebServiceProvider extends ServiceProvider
                     throw new LogicException('Fresh web must not replace another web route profile.');
                 }
             }
-            if ($this->app->make(RuntimeDatabase::class)->isAccountLifecycleV5()
+            if ($this->app->make(RuntimeDatabase::class)->hasGenerationBoundAccountAuthority()
                 && $this->app->bound(LocalWebAccountLifecycle::class)) {
                 throw new LogicException('Fresh V5 web must not replace another account lifecycle profile.');
             }
             // Prepared local V5 uses the existing owner-only withdrawal flow.
             // This metadata does not bypass the registrar's Runtime/eligibility gate.
-            $includeCorrectionWithdrawals = $this->app->make(RuntimeDatabase::class)->isAccountLifecycleV5();
+            $includeCorrectionWithdrawals = $this->app->make(RuntimeDatabase::class)->hasGenerationBoundAccountAuthority();
             $this->app->instance(Interactions::class, new Interactions(
                 login: true, attendance: true, logout: true, corrections: true, home: true, absences: true,
                 workModels: true, history: true, supervisor: true, dashboard: true, adminPauseSettings: true,
@@ -85,13 +85,13 @@ final class FreshWebServiceProvider extends ServiceProvider
                     useSharedLoginBudget: SharedLoginBudgetServiceProvider::selected($this->app),
                     includeCorrectionWithdrawals: $includeCorrectionWithdrawals);
             });
-            // The unchanged registrar must return first. Its current V5 Runtime
-            // hold still refuses before routes or this prepared capability exist.
-            if ($this->app->make(RuntimeDatabase::class)->isAccountLifecycleV5()) {
+            // The same registrar and physical Runtime/recovery gates must return
+            // before either explicit generation-bound profile gains this service.
+            if ($this->app->make(RuntimeDatabase::class)->hasGenerationBoundAccountAuthority()) {
                 $this->app->scoped(LocalWebAccountLifecycle::class, static function ($app): LegacyLocalWebAccountLifecycle {
                     $runtime = $app->make(RuntimeDatabase::class);
                     $identity = $app->make(AccountLifecycleWebIdentity::class);
-                    if (! $runtime->isAccountLifecycleV5() || ! $identity->requiresGeneration()) {
+                    if (! $runtime->hasGenerationBoundAccountAuthority() || ! $identity->requiresGeneration()) {
                         throw new LogicException('The explicit V5 account lifecycle profile is required.');
                     }
                     return new LegacyLocalWebAccountLifecycle(

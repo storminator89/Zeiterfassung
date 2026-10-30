@@ -23,6 +23,7 @@ final class AttendanceWriter
     use OwnPasswordWriterOperations;
     use ApiManagementWriterOperations;
     use HolidayRefillWriterOperations;
+    use VacationWriterOperations;
 
     private readonly SQLiteConnection $connection;
     private bool $unusable = false;
@@ -38,6 +39,7 @@ final class AttendanceWriter
         private readonly bool $intakePolicyV4 = false,
         private readonly ?int $loginBudgetSchemaVersion = null,
         private readonly bool $accountLifecycleV5 = false,
+        private readonly ?RuntimeAdmission $vacationAdmission = null,
     ) {
         if (! $pdo instanceof Sqlite || $pdo->inTransaction()
             || ($configuration['driver'] ?? null) !== 'sqlite'
@@ -46,10 +48,17 @@ final class AttendanceWriter
             || $pdo->getAttribute(PDO::ATTR_ERRMODE) !== PDO::ERRMODE_EXCEPTION) {
             throw new LogicException('A dedicated admitted PHP 8.5 SQLite writer with IMMEDIATE/5000 is required.');
         }
+        if ($this->vacationAdmission !== null && $configuration !== $this->vacationAdmission->configuration(true)) {
+            throw new LogicException('Vacation writer configuration differs from its admitted source.');
+        }
         $databases = $pdo->query('PRAGMA database_list')->fetchAll(PDO::FETCH_ASSOC);
-        if (count($databases) !== 1 || $databases[0]['name'] !== 'main'
-            || $databases[0]['file'] !== ($configuration['database'] ?? null)
-            || ! in_array($pdo->query('PRAGMA journal_mode')->fetchColumn(), ['delete', 'truncate', 'persist'], true)
+        if ($this->vacationAdmission!==null) {
+            VacationWorkflowV7References::requireSourceConnection($pdo,$this->vacationAdmission);
+        } elseif (count($databases) !== 1 || $databases[0]['name'] !== 'main'
+            || $databases[0]['file'] !== ($configuration['database'] ?? null)) {
+            throw new LogicException('Only the one admitted legacy main source is supported.');
+        }
+        if (! in_array($pdo->query('PRAGMA journal_mode')->fetchColumn(), ['delete', 'truncate', 'persist'], true)
             || (int) $pdo->query('PRAGMA busy_timeout')->fetchColumn() !== 5000
             || (int) $pdo->query('PRAGMA query_only')->fetchColumn() !== 0) {
             throw new LogicException('Only the admitted rollback-journal file and its existing settings are supported.');
@@ -60,6 +69,34 @@ final class AttendanceWriter
         $this->connection->setReconnector(static fn () => throw new RuntimeException('A writer must never reconnect; admit a fresh operation scope instead.'));
         require_once dirname(__DIR__, 3).'/lib/attendance.php';
         $this->assertIntakeProfile();
+    }
+
+    private function hasGenerationBoundAccountAuthority(): bool
+    {
+        return $this->accountLifecycleV5 || $this->vacationAdmission !== null;
+    }
+
+    /** Exact V7 source context, not an optional-column or marker-five shortcut. */
+    private function requireVacationWriterProfile(): void
+    {
+        $admission = $this->vacationAdmission;
+        if ($admission === null || $admission->schemaProfile !== 'vacation-requests-v7'
+            || $this->accountLifecycleV5 || !$this->intakePolicyV4
+            || $admission->schemaVersion !== $this->loginBudgetSchemaVersion
+            || $this->pdo->query('PRAGMA schema_version')->fetchColumn() !== $admission->schemaVersion
+            || $this->pdo->query('SELECT id,migration,batch FROM framework_migrations ORDER BY id')->fetchAll(PDO::FETCH_ASSOC) !== $admission->expectedLedgerRows()) {
+            throw new LogicException('Exact vacation writer admission required.');
+        }
+        $mapping = json_decode(file_get_contents(dirname(__DIR__, 3).'/docs/framework/schema-map.json'), true, 512, JSON_THROW_ON_ERROR);
+        $references = VacationWorkflowV7References::build($mapping);
+        if ($references->signatures() !== ['base_schema_signature'=>$admission->baseSchemaSignature,
+            'user_audit_schema_signature'=>$admission->userAuditSchemaSignature,
+            'intake_policy_schema_signature'=>$admission->intakePolicySchemaSignature,
+            'account_lifecycle_schema_signature'=>$admission->accountLifecycleSchemaSignature(),
+            'schema_signature'=>$admission->schemaSignature]) {
+            throw new LogicException('Canonical vacation writer lineage required.');
+        }
+        $references->inspect($this->pdo);
     }
 
     /** Anonymous fixed quota operation; returns limited only AFTER confirmed COMMIT. */
@@ -76,7 +113,7 @@ final class AttendanceWriter
                 $this->assertIntakeProfileLocked(requireV4: true);
 
                 return $limited;
-            }, lifecycleReady: $this->accountLifecycleV5);
+            }, lifecycleReady: $this->hasGenerationBoundAccountAuthority());
         } catch (Throwable) {
             // Never a confirmed 429/allow result, auth failure, retry or fallback.
             throw new RuntimeException('Login budget commit was not confirmed.');
@@ -130,8 +167,8 @@ final class AttendanceWriter
     /** Native device/grant identity only; no web session, actor or SQL callback. */
     public function terminal(LegacyTerminalRequest $request, AdmittedTerminalKeys $keys): array
     {
-        if ($this->accountLifecycleV5) {
-            return $this->terminalV5($request, $keys);
+        if ($this->hasGenerationBoundAccountAuthority()) {
+            return $this->terminalGenerationBound($request, $keys);
         }
         // Match terminal_handle's repeated module check. Never wrap the entire
         // request: native nonce, limits and identify writes must autocommit first.
@@ -200,7 +237,7 @@ final class AttendanceWriter
     private function assertAdminOperationAuthorityLocked(int $user, ?\App\Accounts\AccountLifecycleAuthority $authority,
         ?string $role = null): void
     {
-        if (! $this->accountLifecycleV5) {
+        if (! $this->hasGenerationBoundAccountAuthority()) {
             if ($authority !== null) { throw new LogicException('V5 Admin authority cannot target an older account profile.'); }
             return;
         }
@@ -247,7 +284,7 @@ final class AttendanceWriter
             practice_work_model_apply_locked($this->pdo, $user, $role, $command,
                 fn (string $reason, Closure $operation): mixed => $this->context->run('web:'.$user, $reason, $operation),
             );
-        }, lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
+        }, lifecycleReady: $this->hasGenerationBoundAccountAuthority() && $lifecycleAuthority !== null);
     }
 
     /** One fixed Admin operation; no caller-supplied role, PDO or SQL callback. */
@@ -269,7 +306,7 @@ final class AttendanceWriter
 
             \replacePauseSettingsLocked($this->pdo, $rules);
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'Pausenregeln ersetzen', $transaction),
-            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
+            lifecycleReady: $this->hasGenerationBoundAccountAuthority() && $lifecycleAuthority !== null);
     }
 
     /** Fixed department operations; native wrapper transactions must not nest here. */
@@ -301,7 +338,7 @@ final class AttendanceWriter
             };
 
             return true;
-        }, lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
+        }, lifecycleReady: $this->hasGenerationBoundAccountAuthority() && $lifecycleAuthority !== null);
     }
 
     /** Existing create only; no request actor, auth source, token or SQL callback. */
@@ -336,7 +373,7 @@ final class AttendanceWriter
             // same locked PDO. Never call the native raw-BEGIN wrapper here.
             $assignment = \validateUserAssignment($this->pdo, $role, $supervisor, $department);
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-            $statement = $this->pdo->prepare($this->accountLifecycleV5
+            $statement = $this->pdo->prepare($this->hasGenerationBoundAccountAuthority()
                 ? "INSERT INTO users (username, password, email, role, department_id, supervisor_id, regelarbeitszeit, ueberstunden, account_status, auth_generation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 1)"
                 : 'INSERT INTO users (username, password, email, role, department_id, supervisor_id, regelarbeitszeit, ueberstunden) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
             $statement->execute([$username, $hashedPassword, $email, $role,
@@ -346,7 +383,7 @@ final class AttendanceWriter
             // transaction; auth_source/token retain their native defaults.
             return true;
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'admin.php', $transaction),
-            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
+            lifecycleReady: $this->hasGenerationBoundAccountAuthority() && $lifecycleAuthority !== null);
     }
 
     /** Operator-authorized setup only; the empty-state decision is made under this lock. */
@@ -355,26 +392,26 @@ final class AttendanceWriter
         if ((password_get_info($passwordHash)['algoName'] ?? 'unknown') !== 'bcrypt') {
             throw new \InvalidArgumentException('A configured bcrypt setup hash is required.');
         }
-        if ($this->accountLifecycleV5 && ! \App\Accounts\AccountLifecycleAuthority::locallyLoginEligibleAdmin([
+        if ($this->hasGenerationBoundAccountAuthority() && ! \App\Accounts\AccountLifecycleAuthority::locallyLoginEligibleAdmin([
             'username' => $username, 'password' => $passwordHash, 'role' => 'admin', 'auth_source' => 'local',
             'account_status' => 'active', 'auth_generation' => 1,
         ])) {
             throw new \InvalidArgumentException('A locally login-eligible first administrator is required.');
         }
         return $this->executeLocked(function () use ($username, $email, $passwordHash): bool {
-            if ($this->accountLifecycleV5) { $this->assertIntakeProfileLocked(true); }
+            if ($this->hasGenerationBoundAccountAuthority()) { $this->assertIntakeProfileLocked(true); }
             // ALL users, not only admins: never take over an existing installation.
             if ((int) $this->pdo->query('SELECT COUNT(*) FROM users')->fetchColumn() !== 0) {
                 return false;
             }
-            $statement = $this->pdo->prepare($this->accountLifecycleV5
+            $statement = $this->pdo->prepare($this->hasGenerationBoundAccountAuthority()
                 ? "INSERT INTO users (username,password,email,role,auth_source,token,department_id,supervisor_id,regelarbeitszeit,ueberstunden,account_status,auth_generation) VALUES (?,?,?,'admin','local',NULL,NULL,NULL,8,0,'active',1)"
                 : "INSERT INTO users (username,password,email,role,auth_source,token,department_id,supervisor_id,regelarbeitszeit,ueberstunden) VALUES (?,?,?,'admin','local',NULL,NULL,NULL,8,0)");
             $statement->execute([$username, $passwordHash, $email]);
             $statement->closeCursor();
             return true;
         }, fn (Closure $transaction): mixed => $this->context->run('setup:first-local-admin', 'First administrator setup', $transaction),
-            lifecycleReady: $this->accountLifecycleV5);
+            lifecycleReady: $this->hasGenerationBoundAccountAuthority());
     }
 
     /** Existing site-create only; never module settings, pairing, keys or credentials. */
@@ -399,7 +436,7 @@ final class AttendanceWriter
             }
             \terminal_create_site_locked($this->pdo, $name);
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'terminals.php', $transaction),
-            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
+            lifecycleReady: $this->hasGenerationBoundAccountAuthority() && $lifecycleAuthority !== null);
     }
 
     /** Existing revoke_credential only; no secrets, device/module changes or grant rewrites. */
@@ -424,7 +461,7 @@ final class AttendanceWriter
             // The existing terminal protocol checks enabled on identify/grant use.
             // No PIN/card value, user field, work row or grant is read or changed.
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction),
-            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
+            lifecycleReady: $this->hasGenerationBoundAccountAuthority() && $lifecycleAuthority !== null);
     }
 
     /** Existing revoke_device only; no key reads, pairing creation or credential/module changes. */
@@ -445,7 +482,7 @@ final class AttendanceWriter
             // Exact native replacement generation, including repeated/zero-row
             // behavior. No existing generation, secret or pairing hash is read.
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction),
-            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
+            lifecycleReady: $this->hasGenerationBoundAccountAuthority() && $lifecycleAuthority !== null);
     }
 
     /** Native module toggle only; server permission is re-read, never written. */
@@ -470,7 +507,7 @@ final class AttendanceWriter
             }
             \terminal_save_module_settings_locked($this->pdo, $enabled);
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction),
-            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
+            lifecycleReady: $this->hasGenerationBoundAccountAuthority() && $lifecycleAuthority !== null);
     }
 
     /** Native new-device enrollment only; no signing-key source or protocol response. */
@@ -501,7 +538,7 @@ final class AttendanceWriter
 
             return new \App\Chrono\TerminalDevicePairing((int) $this->pdo->lastInsertId(), $code, $expires);
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction),
-            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
+            lifecycleReady: $this->hasGenerationBoundAccountAuthority() && $lifecycleAuthority !== null);
     }
 
     /** Anonymous self-registration only: fixed ordinary role and no caller actor/privileges. */
@@ -514,14 +551,14 @@ final class AttendanceWriter
         return $this->executeLocked(function () use ($username, $email, $passwordHash, $expectedPolicyRevision): bool {
             $this->requireIntakeLocked(\App\Accounts\IntakeMethod::Registration, $expectedPolicyRevision);
             // Do not strand first-admin bootstrap or trust an earlier page/count.
-            if ($this->accountLifecycleV5 ? ! $this->hasV5LocalAdministrationLocked()
+            if ($this->hasGenerationBoundAccountAuthority() ? ! $this->hasV5LocalAdministrationLocked()
                 : att_one($this->pdo, "SELECT id FROM users WHERE role='admin' AND auth_source='local' LIMIT 1") === null) {
                 throw new AuthorizationException('Ordinary registration requires existing local administration.');
             }
             if (att_one($this->pdo, 'SELECT id FROM users WHERE username=? OR email=? LIMIT 1', [$username, $email]) !== null) {
                 return false;
             }
-            $statement = $this->pdo->prepare($this->accountLifecycleV5
+            $statement = $this->pdo->prepare($this->hasGenerationBoundAccountAuthority()
                 ? "INSERT INTO users (username,password,email,role,auth_source,token,department_id,supervisor_id,regelarbeitszeit,ueberstunden,account_status,auth_generation) VALUES (?,?,?,'user','local',NULL,NULL,NULL,8,0,'active',1)"
                 : "INSERT INTO users (username,password,email,role,auth_source,token,department_id,supervisor_id,regelarbeitszeit,ueberstunden) VALUES (?,?,?,'user','local',NULL,NULL,NULL,8,0)");
             $statement->execute([$username, $passwordHash, $email]);
@@ -529,7 +566,7 @@ final class AttendanceWriter
             // Existing model/audit triggers remain inside this one transaction.
             return true;
         }, fn (Closure $transaction): mixed => $this->context->run('web:registration', 'Self-registration', $transaction),
-            lifecycleReady: $this->accountLifecycleV5);
+            lifecycleReady: $this->hasGenerationBoundAccountAuthority());
     }
 
     /** Trusted server Admin ID and completed materialized stage, never request identity. */
@@ -565,14 +602,15 @@ final class AttendanceWriter
         return $this->executeLocked(function () use ($user, $expectedWebVersion, $expectedPolicyRevision, $stage, $lifecycleAuthority): array {
             $this->assertIntakeProfileLocked(true);
             $this->assertExpectedWebPrincipal($user, 'local', $expectedWebVersion, 'admin', $lifecycleAuthority);
-            (new \App\Accounts\IntakePolicyStore)->requireAllowedLocked($this->pdo,
+            (new \App\Accounts\IntakePolicyStore($this->vacationAdmission))->requireAllowedLocked($this->pdo,
                 \App\Accounts\IntakeMethod::LdapSync, $expectedPolicyRevision, $this->accountLifecycleV5);
-            $stage->refuseLocalAccountCollisions($this->pdo, $this->accountLifecycleV5);
+            $stage->refuseLocalAccountCollisions($this->pdo, $this->hasGenerationBoundAccountAuthority());
 
             return \chrono_ldap_import_locked($this->pdo, $stage->entries, $stage->host, $stage->port,
-                $stage->bindUser, $stage->ciphertext, $stage->baseDn, $this->accountLifecycleV5);
+                $stage->bindUser, $stage->ciphertext, $stage->baseDn, $this->hasGenerationBoundAccountAuthority(),
+                $this->vacationAdmission !== null);
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'LDAP synchronization', $transaction),
-            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
+            lifecycleReady: $this->hasGenerationBoundAccountAuthority() && $lifecycleAuthority !== null);
     }
 
     /** Strict persisted V4 policy CAS only; not an intake path or arbitrary account command. */
@@ -582,9 +620,9 @@ final class AttendanceWriter
         $this->executeLocked(function () use ($user, $expectedWebVersion, $change, $lifecycleAuthority): void {
             $this->assertIntakeProfileLocked(true);
             $this->assertExpectedWebPrincipal($user, 'local', $expectedWebVersion, 'admin', $lifecycleAuthority);
-            (new \App\Accounts\IntakePolicyStore)->applyLocked($this->pdo, $user, $change, $this->accountLifecycleV5);
+            (new \App\Accounts\IntakePolicyStore($this->vacationAdmission))->applyLocked($this->pdo, $user, $change, $this->accountLifecycleV5);
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'Aufnahmewege ändern', $transaction),
-            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
+            lifecycleReady: $this->hasGenerationBoundAccountAuthority() && $lifecycleAuthority !== null);
     }
 
     /** Own Admin identity only; no request target/role/reason or general account mutation. */
@@ -617,7 +655,7 @@ final class AttendanceWriter
 
             return \settings_carry_in_float_text((float) $stored['ueberstunden']);
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'settings.php', $transaction),
-            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
+            lifecycleReady: $this->hasGenerationBoundAccountAuthority() && $lifecycleAuthority !== null);
     }
 
     /** Trusted own-user identity only; no caller-supplied audit actor/reason. */
@@ -644,6 +682,10 @@ final class AttendanceWriter
     {
         $versions = $this->pdo->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN);
         $policyType = $this->pdo->query("SELECT type FROM sqlite_schema WHERE type IN ('table','view') AND lower(name)='user_intake_policy'")->fetchColumn();
+        if ($this->vacationAdmission !== null) {
+            $this->requireVacationWriterProfile();
+            return;
+        }
         $matches = $this->accountLifecycleV5
             ? $this->intakePolicyV4 && $versions === [1, 2, 3, 4, 5] && $policyType === 'table'
             : ($this->intakePolicyV4
@@ -684,7 +726,7 @@ final class AttendanceWriter
             }
             $this->assertExpectedWebPrincipal($admin, 'local', $version, 'admin', $lifecycleAuthority);
         }
-        (new \App\Accounts\IntakePolicyStore)->requireAllowedLocked($this->pdo, $method, $revision, $this->accountLifecycleV5);
+        (new \App\Accounts\IntakePolicyStore($this->vacationAdmission))->requireAllowedLocked($this->pdo, $method, $revision, $this->accountLifecycleV5);
     }
 
     /** Anonymous registration still needs an active usable local recovery Admin. */
@@ -706,7 +748,7 @@ final class AttendanceWriter
     private function assertExpectedWebPrincipal(int $user, ?string $source, #[\SensitiveParameter] ?string $version,
         ?string $role = null, ?\App\Accounts\AccountLifecycleAuthority $lifecycleAuthority = null): void
     {
-        if ($this->accountLifecycleV5) {
+        if ($this->hasGenerationBoundAccountAuthority()) {
             if ($lifecycleAuthority === null || ! $lifecycleAuthority->binds($user, $source, $version, $role)) {
                 throw new \AttendanceError('Sitzung nicht mehr gültig. Bitte neu anmelden.', 401);
             }
@@ -743,7 +785,7 @@ final class AttendanceWriter
         // V5 is not globally active. Until every facade/channel carries a
         // captured generation, old operations (including API null/null) must
         // refuse V5 before BEGIN, rather than silently applying V4 rules.
-        if ($this->accountLifecycleV5 && ! $lifecycleReady) {
+        if ($this->hasGenerationBoundAccountAuthority() && ! $lifecycleReady) {
             throw new LogicException('This operation is not yet bound to V5 account authority.');
         }
         // The legacy operation still sets globals. Framework UDFs use scoped

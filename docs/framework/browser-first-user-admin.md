@@ -25,9 +25,9 @@ is installed by this source packet.
 
 ## Only a proven NEW local installation selects this policy
 
-The ordinary V4 producer and older V5/native installations are unchanged.
+The ordinary V4 producer and older V5/native installations are unchanged until an explicit supported migration. See [the standard vacation workflow](vacation-requests-standard.md).
 The existing NEW installation command's explicit `--local-browser-first-admin`
-selection creates a new random private V5 directory, then certifies canonical
+selection now creates a new random private V7 vacation-workflow directory, then certifies canonical
 empty state with the existing Runtime/reference reader. Only then does it write
 a private nonsecret policy file bound to that exact runtime-admission manifest.
 There is no browser endpoint or target/reset command to enable this on existing

@@ -19,7 +19,7 @@ trait LdapSessionWriterOperations
             throw new InvalidArgumentException('Ungültiges Verzeichniskonto.');
         }
 
-        if ($this->accountLifecycleV5
+        if ($this->hasGenerationBoundAccountAuthority()
             ? ($lifecycleAuthority === null || ! in_array($expectedTargetStatus, ['active', 'inactive', 'departed'], true)
                 || $expectedTargetGeneration === null || $expectedTargetGeneration < 1)
             : ($lifecycleAuthority !== null || $expectedTargetStatus !== null || $expectedTargetGeneration !== null)) {
@@ -28,7 +28,7 @@ trait LdapSessionWriterOperations
         $this->executeLocked(function () use ($admin, $expectedWebVersion, $target, $expectedTargetVersion,
             $lifecycleAuthority, $expectedTargetStatus, $expectedTargetGeneration): void {
             $this->assertExpectedWebPrincipal($admin, 'local', $expectedWebVersion, 'admin', $lifecycleAuthority);
-            $user = \att_one($this->pdo, $this->accountLifecycleV5
+            $user = \att_one($this->pdo, $this->hasGenerationBoundAccountAuthority()
                 ? 'SELECT auth_source,role,password,account_status,auth_generation FROM users WHERE id=?'
                 : 'SELECT auth_source,role,password FROM users WHERE id=?', [$target]);
             if ($user === null || $user['auth_source'] !== 'ldap' || ! in_array($user['role'], ['user', 'supervisor', 'admin'], true)
@@ -37,7 +37,7 @@ trait LdapSessionWriterOperations
             }
 
             if (! hash_equals($expectedTargetVersion, hash('sha256', $user['password']))
-                || ($this->accountLifecycleV5 && ($user['account_status'] !== $expectedTargetStatus
+                || ($this->hasGenerationBoundAccountAuthority() && ($user['account_status'] !== $expectedTargetStatus
                     || $user['auth_generation'] !== $expectedTargetGeneration))) {
                 throw new \AttendanceError('Der Sitzungsstand wurde geändert. Bitte neu laden; diese Aktion nicht wiederholen.', 409);
             }
@@ -59,6 +59,6 @@ trait LdapSessionWriterOperations
             // No session files, issued JWTs, directory settings/grants/history are read.
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin,
             'Explicit LDAP session revocation', $transaction),
-            lifecycleReady: $this->accountLifecycleV5 && $lifecycleAuthority !== null);
+            lifecycleReady: $this->hasGenerationBoundAccountAuthority() && $lifecycleAuthority !== null);
     }
 }

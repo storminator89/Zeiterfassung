@@ -82,10 +82,10 @@ final class SharedLoginBudgetServiceProvider extends ServiceProvider
         if ($config->get('chrono_login_budget.enabled') !== true
             || $config->get('chrono_fresh_web.enabled') !== true || ! $app->bound(FreshWebConfiguration::class)
             || $config->get('chrono_runtime.read_enabled') !== true || $config->get('chrono_runtime.write_enabled') !== true
-            || $config->get('chrono_runtime.admission') !== $manifest || ! in_array($admission->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5'], true)
+            || $config->get('chrono_runtime.admission') !== $manifest || ! in_array($admission->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5', 'vacation-requests-v7'], true)
             || ! $app->bound(RuntimeDatabase::class) || ! $app->bound(AttendanceWriter::class)
-            || ($admission->schemaProfile === 'account-lifecycle-v5'
-                && ! $app->make(RuntimeDatabase::class)->isAccountLifecycleV5())
+            || ($admission->isGenerationBoundAccountProfile()
+                && ! $app->make(RuntimeDatabase::class)->hasGenerationBoundAccountAuthority())
             || $config->get('database.connections.chrono') !== $admission->configuration()) {
             throw new LogicException('Shared login budget requires the complete selected fresh local read/write profile.');
         }

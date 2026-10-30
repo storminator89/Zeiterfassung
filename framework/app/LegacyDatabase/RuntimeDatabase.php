@@ -53,9 +53,25 @@ final class RuntimeDatabase
         return $this->admission->schemaProfile === 'account-lifecycle-v5';
     }
 
+    public function isVacationWorkflowV7(): bool
+    {
+        return $this->admission->schemaProfile === 'vacation-requests-v7';
+    }
+
+    /** Pure validated-manifest capability; the physical source is independently admitted on every open. */
+    public function hasGenerationBoundAccountAuthority(): bool
+    {
+        return $this->admission->isGenerationBoundAccountProfile();
+    }
+
+    public function vacationAdmission(): ?RuntimeAdmission
+    {
+        return $this->isVacationWorkflowV7() ? $this->admission : null;
+    }
+
     private function requireImplementedRuntime(): void
     {
-        if ($this->isAccountLifecycleV5()) {
+        if ($this->hasGenerationBoundAccountAuthority()) {
             $current = AccountLifecycleRuntimeCohort::requireCurrent($this->admission, $this->files);
             if ($this->accountLifecycleCohort !== null && $current !== $this->accountLifecycleCohort) {
                 throw new LogicException('The admitted NEW V5 runtime cohort changed.');
@@ -71,9 +87,10 @@ final class RuntimeDatabase
         try {
             return new AttendanceWriter($pdo, $this->admission->configuration(true), $context, $functions,
                 // V5 retains the V4 policy substrate without becoming isV4().
-                intakePolicyV4: $this->isIntakePolicyV4() || $this->isAccountLifecycleV5(),
+                intakePolicyV4: $this->isIntakePolicyV4() || $this->hasGenerationBoundAccountAuthority(),
                 loginBudgetSchemaVersion: $this->admission->schemaVersion,
-                accountLifecycleV5: $this->isAccountLifecycleV5());
+                accountLifecycleV5: $this->isAccountLifecycleV5(),
+                vacationAdmission: $this->vacationAdmission());
         } catch (Throwable) {
             throw new RuntimeException('Runtime database writer admission refused.');
         }
@@ -84,7 +101,7 @@ final class RuntimeDatabase
         #[\SensitiveParameter] ?AccountLifecycleAuthority $lifecycleAuthority = null): DatabaseSnapshotArtifact
     {
         $this->requireImplementedRuntime();
-        if (! $this->isAccountLifecycleV5() && $lifecycleAuthority !== null) {
+        if (! $this->hasGenerationBoundAccountAuthority() && $lifecycleAuthority !== null) {
             throw new LogicException('V5 snapshot authority cannot target an older account profile.');
         }
         $identifier = (int) $authenticated->getKey();
@@ -95,7 +112,7 @@ final class RuntimeDatabase
         if ($authenticated->role !== 'admin') {
             throw new AuthorizationException('Only administrators may export a database snapshot.');
         }
-        if ($this->isAccountLifecycleV5() && ($lifecycleAuthority === null
+        if ($this->hasGenerationBoundAccountAuthority() && ($lifecycleAuthority === null
             || ! $lifecycleAuthority->binds($identifier, 'local', hash('sha256', $password), 'admin'))) {
             throw new AuthenticationException;
         }
@@ -110,7 +127,7 @@ final class RuntimeDatabase
             }
             $transaction = true;
             $this->requireSnapshotSource($source);
-            if ($this->isAccountLifecycleV5()) {
+            if ($this->hasGenerationBoundAccountAuthority()) {
                 AccountLifecycleSnapshotAuthority::authorize($source, $lifecycleAuthority);
             } else {
                 $statement = $source->prepare('SELECT id,role,auth_source,password FROM users WHERE id=:actor');
@@ -187,6 +204,10 @@ final class RuntimeDatabase
         $this->requireImplementedRuntime();
         $source = null;
         try {
+            if ($this->isVacationWorkflowV7()) {
+                $checked = $this->open(false); // Full current canonical reference/relationship preflight.
+                unset($checked);
+            }
             @$this->identity(false);
             $source = new SQLite3($this->admission->path, SQLITE3_OPEN_READONLY);
             $source->enableExceptions(true);
@@ -239,6 +260,40 @@ final class RuntimeDatabase
         } elseif ($this->admission->schemaProfile === 'account-lifecycle-v5') {
             $versions = array_column($this->snapshotRows($source, 'SELECT version FROM app_migrations ORDER BY version'), 'version');
             $this->admission->assertAccountLifecycleState($versions, $this->snapshotRows($source, RuntimeAdmission::INTAKE_POLICY_SQL));
+        } elseif ($this->isVacationWorkflowV7()) {
+            $versions = array_column($this->snapshotRows($source, 'SELECT version FROM app_migrations ORDER BY version'), 'version');
+            $this->admission->assertVacationWorkflowState($versions, $this->snapshotRows($source, RuntimeAdmission::INTAKE_POLICY_SQL));
+            if ($this->snapshotRows($source, VacationWorkflowV7References::SCHEMA_SQL) !== $this->vacationReferences()->schemaInventory()) {
+                throw new RuntimeException('Canonical vacation snapshot schema required.');
+            }
+        }
+    }
+
+    private function vacationReferences(): VacationWorkflowV7References
+    {
+        $mapping = json_decode(file_get_contents(dirname(__DIR__, 3).'/docs/framework/schema-map.json'), true, 512, JSON_THROW_ON_ERROR);
+        return VacationWorkflowV7References::build($mapping);
+    }
+
+    private function requireVacationProfile(PDO $pdo): void
+    {
+        $references = $this->vacationReferences();
+        $expected = $references->signatures();
+        if ($expected !== ['base_schema_signature' => $this->admission->baseSchemaSignature,
+            'user_audit_schema_signature' => $this->admission->userAuditSchemaSignature,
+            'intake_policy_schema_signature' => $this->admission->intakePolicySchemaSignature,
+            'account_lifecycle_schema_signature' => $this->admission->accountLifecycleSchemaSignature(),
+            'schema_signature' => $this->admission->schemaSignature] || $pdo->inTransaction()) {
+            throw new RuntimeException('Canonical vacation admission lineage required.');
+        }
+        $pdo->beginTransaction();
+        try {
+            $references->inspect($pdo);
+            if ($pdo->query('SELECT id,migration,batch FROM framework_migrations ORDER BY id')->fetchAll(PDO::FETCH_ASSOC) !== $this->admission->expectedLedgerRows()) {
+                throw new RuntimeException('Vacation ledger changed.');
+            }
+        } finally {
+            if (!$pdo->rollBack()) { throw new RuntimeException('Vacation read admission cleanup failed.'); }
         }
     }
 
@@ -310,6 +365,10 @@ final class RuntimeDatabase
                     $pdo->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN),
                     $pdo->query(RuntimeAdmission::INTAKE_POLICY_SQL)->fetchAll(PDO::FETCH_ASSOC),
                 );
+            }
+            if ($this->isVacationWorkflowV7()) {
+                $phase = 'vacation workflow profile';
+                $this->requireVacationProfile($pdo);
             }
             $phase = 'final file identity';
             $this->identity($write);

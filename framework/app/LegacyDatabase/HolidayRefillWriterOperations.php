@@ -23,6 +23,6 @@ trait HolidayRefillWriterOperations
             }
             return \chrono_holiday_refill_locked($this->pdo, $year, $region, $json);
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, $reason, $transaction),
-            lifecycleReady: $this->accountLifecycleV5 && $authority !== null);
+            lifecycleReady: $this->hasGenerationBoundAccountAuthority() && $authority !== null);
     }
 }

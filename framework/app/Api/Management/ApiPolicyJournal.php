@@ -15,6 +15,8 @@ use UnexpectedValueException;
  */
 final class ApiPolicyJournal
 {
+    public function __construct(private readonly ?\App\LegacyDatabase\RuntimeAdmission $vacationAdmission = null) {}
+
     public function read(PDO $db, bool $legacyDefaultEnabled): ApiPolicyState
     {
         $this->requireV5Transaction($db);
@@ -86,6 +88,11 @@ final class ApiPolicyJournal
 
     private function requireV5Transaction(PDO $db): void
     {
+        if ($this->vacationAdmission !== null) {
+            if (!$db->inTransaction()) { throw new LogicException('Caller-owned vacation policy transaction required.'); }
+            \App\LegacyDatabase\VacationWorkflowV7References::requireAdmitted($db, $this->vacationAdmission);
+            return;
+        }
         if (! $db->inTransaction() || $db->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN) !== [1,2,3,4,5]) {
             throw new LogicException('The caller-owned admitted V5 transaction is required.');
         }

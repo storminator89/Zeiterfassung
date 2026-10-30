@@ -4,6 +4,7 @@ namespace App\Setup;
 
 use App\Api\ExistingApiKeyAdmission;
 use App\LegacyDatabase\AccountLifecycleV5References;
+use App\LegacyDatabase\VacationWorkflowV7References;
 use App\LegacyDatabase\IntakePolicyV4References;
 use App\LegacyDatabase\OfflineFiles;
 use App\LegacyDatabase\RuntimeAdmission;
@@ -34,7 +35,7 @@ final class FreshApiSigningKeyFiles
             self::requireUnstarted($instance);
             [$manifest, $manifestHash, $manifestState] = self::manifest($instance);
             $admission = RuntimeAdmission::fromConfiguration($manifest);
-            if (! in_array($admission->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5'], true)
+            if (! in_array($admission->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5', 'vacation-requests-v7'], true)
                 || $admission->path !== $instance.'/application.sqlite') {
                 throw new RuntimeException;
             }
@@ -140,7 +141,9 @@ final class FreshApiSigningKeyFiles
             }
             // Physical canonical countertable + EMPTY counters, not optional-table
             // signature normalization or merely an empty users table.
-            if ($admission->schemaProfile === 'account-lifecycle-v5') {
+            if ($admission->schemaProfile === 'vacation-requests-v7') {
+                VacationWorkflowV7References::build($mapping)->requireFreshLoginBudget($pdo);
+            } elseif ($admission->schemaProfile === 'account-lifecycle-v5') {
                 // Future admitted V5 must be canonical and physically budget-ready.
                 // The unchanged Runtime hold above still refuses before this branch.
                 AccountLifecycleV5References::build($mapping)->requireFreshLoginBudget($pdo);

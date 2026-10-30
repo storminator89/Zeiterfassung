@@ -24,6 +24,7 @@ case "$instance" in /var/lib/chrono-laravel/chrono-fresh-*) ;; *) fail ;; esac
 # Full canonical path/UID/mode/file-identity/digest/schema and origin admission
 # remain authoritative in the existing FreshWeb/Runtime guards, not this shell.
 [ -d "$instance" ] && [ ! -L "$instance" ] && [ -f "$instance/runtime-admission.json" ] || fail
+[ ! -e "$instance/vacation-v7-upgrade.json" ] && [ ! -L "$instance/vacation-v7-upgrade.json" ] || fail
 [ ! -e /opt/chrono/framework/bootstrap/cache/config.php ] || fail
 for cache in /opt/chrono/framework/bootstrap/cache/routes*.php; do [ ! -e "$cache" ] || fail; done
 case "${FRAMEWORK_FRESH_SETUP_ENABLED:-}" in

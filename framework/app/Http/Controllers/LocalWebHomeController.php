@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Chrono\ChronoReads;
 use App\Chrono\OwnStoredValuesExportReads;
 use App\Chrono\LocalWebAbsences;
+use App\Vacation\VacationWeb;
+use InvalidArgumentException;
 use App\View\ExistingUi\Copy;
 use App\View\ExistingUi\Interactions;
 use App\View\ExistingUi\TimeRecordsPage;
@@ -24,6 +26,7 @@ final class LocalWebHomeController extends Controller
         private LocalWebAbsences $absences,
         private Router $router,
         private Interactions $interactions = new Interactions,
+        private ?VacationWeb $vacation = null,
     ) {}
 
     public function records(Request $request): View|Response
@@ -83,6 +86,13 @@ final class LocalWebHomeController extends Controller
         }
 
         try {
+            if ($this->vacation?->enabled() === true && ($form['beschreibung']??null)==='Urlaub') {
+                $result=$this->vacation->apply(['action'=>'request','command_id'=>$form['vacation_command_id']??null,
+                    'start_date'=>$form['urlaubStart'],'end_date'=>$form['urlaubEnde'],'reason'=>$form['vacation_reason']??null]);
+                // A transport-only next identifier, never a different retry of the confirmed command.
+                $result['next_command_id']=bin2hex(random_bytes(16));
+                return new JsonResponse($result);
+            }
             // Match native save.php: raw POST isset/string casts, no normalization/422.
             return new JsonResponse($this->absences->create(
                 (string) $form['urlaubStart'], (string) $form['urlaubEnde'], (string) $form['beschreibung'],
@@ -91,6 +101,8 @@ final class LocalWebHomeController extends Controller
             throw $error;
         } catch (\AttendanceError $error) {
             return new JsonResponse(['success' => false, 'message' => $error->getMessage()], $error->status);
+        } catch (InvalidArgumentException $error) {
+            return new JsonResponse(['success'=>false,'message'=>$error->getMessage()],400);
         } catch (Throwable) {
             return new JsonResponse([
                 'success' => false,

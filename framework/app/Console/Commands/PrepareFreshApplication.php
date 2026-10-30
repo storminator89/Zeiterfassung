@@ -17,9 +17,10 @@ final class PrepareFreshApplication extends Command
         {--private-parent= : Canonical existing owner-only directory outside checkout and webroots}
         {--new-only : Explicitly prepare a NEW empty instance, never reuse/reset an existing database}
         {--dormant-account-lifecycle-v5 : Prepare only NEW empty V5 files; runtime and setup remain unavailable}
-        {--local-browser-first-admin : NEW V5 local install: first successful browser registration becomes Admin; no token}';
+        {--vacation-workflow-v7 : Prepare the NEW standard vacation workflow for explicit CLI first-admin setup}
+        {--local-browser-first-admin : NEW standard V7 local install: first successful browser registration becomes Admin; no token}';
 
-    protected $description = 'Prepare NEW private empty V4 files, or explicitly dormant V5 files; no users, secrets or runtime activation.';
+    protected $description = 'Prepare NEW private files: standard V7 with local first-user setup, or explicit legacy V4/V5 preparation; no users, secrets or runtime activation.';
 
     public function handle(): int
     {
@@ -33,10 +34,12 @@ final class PrepareFreshApplication extends Command
                 throw new RuntimeException;
             }
             $localBrowser = $this->option('local-browser-first-admin') === true;
-            if ($localBrowser && $this->option('dormant-account-lifecycle-v5') === true) { throw new RuntimeException; }
-            $result = $localBrowser || $this->option('dormant-account-lifecycle-v5') === true
+            $vacation=$localBrowser || $this->option('vacation-workflow-v7')===true;
+            if ($vacation && $this->option('dormant-account-lifecycle-v5') === true) { throw new RuntimeException; }
+            $result = $vacation ? FreshApplicationFiles::createNewVacationWorkflowV7($parent)
+                : ($this->option('dormant-account-lifecycle-v5') === true
                 ? FreshApplicationFiles::createNewDormantV5($parent)
-                : FreshApplicationFiles::createNew($parent);
+                : FreshApplicationFiles::createNew($parent));
             if ($localBrowser) {
                 $result += FirstAdminSetupFiles::prepareLocalBrowserNew($result['directory']);
                 unset($result['runtime_openable'], $result['setup_provisionable']);

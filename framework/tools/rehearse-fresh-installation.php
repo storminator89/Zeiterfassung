@@ -114,7 +114,7 @@ try {
         return $application;
     };
 
-    $phase = 'actual NEW V5 Artisan preparation and private application key';
+    $phase = 'actual standard NEW Artisan preparation and private application key';
     $app = $boot();
     $console = $app->make(ConsoleKernel::class);
     $console->bootstrap();
@@ -249,7 +249,7 @@ try {
         && (int) $pdo->query('SELECT COUNT(*) FROM break_intervals WHERE ended_at IS NOT NULL')->fetchColumn() === 1);
     fresh_rehearsal_require(hash_file('sha256', $instance.'/framework-app-key.env') === $keyHash
         && hash_file('sha256', $instance.'/runtime-admission.json') === $manifestHash);
-    $report += ['status' => 'PASS', 'requests' => $requests, 'accounts' => 1, 'attendance_events' => 4,
+    $report += ['status' => 'PASS', 'schema_profile' => $admission->schemaProfile, 'requests' => $requests, 'accounts' => 1, 'attendance_events' => 4,
         'php' => PHP_VERSION, 'laravel' => Application::VERSION,
         'sqlite' => $pdo->query('SELECT sqlite_version()')->fetchColumn(),
         'confirmed_retry_added_events' => 0, 'closed_sessions' => 1, 'closed_pauses' => 1,

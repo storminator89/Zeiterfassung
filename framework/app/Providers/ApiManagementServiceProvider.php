@@ -18,7 +18,7 @@ final class ApiManagementServiceProvider extends ServiceProvider
     public function register(): void
     {
         if (! $this->app->bound(FreshWebConfiguration::class) || ! $this->app->bound(RuntimeDatabase::class)
-            || ! $this->app->make(RuntimeDatabase::class)->isAccountLifecycleV5()) { return; }
+            || ! $this->app->make(RuntimeDatabase::class)->hasGenerationBoundAccountAuthority()) { return; }
         // Even an original Env-selected V5 API must honor a later UI Disable.
         // No DB/key access merely by binding this lazy snapshot factory.
         $this->app->scoped(ApiPolicyReadSnapshot::class, fn ($app) => new ApiPolicyReadSnapshot(
