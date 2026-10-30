@@ -13,11 +13,18 @@ function api_correction_status_request_id(mixed $value): string
     return $value;
 }
 
+/** Same exact stored-reference domain; not a record owner/existence check. */
+function api_correction_status_record_id(mixed $value): string
+{
+    try { return api_correction_status_request_id($value); }
+    catch (InvalidArgumentException) { throw new InvalidArgumentException('Invalid correction record ID.'); }
+}
+
 /** Raw PHP query only; there is deliberately no subject/actor selector. */
 function api_correction_status_query(array $query): array
 {
-    if (array_diff(array_keys($query), ['status', 'limit', 'offset', 'request_id']) !== []) {
-        throw new InvalidArgumentException('Invalid correction status query. Only status, limit, offset and request_id are accepted.');
+    if (array_diff(array_keys($query), ['status', 'limit', 'offset', 'request_id', 'record_id']) !== []) {
+        throw new InvalidArgumentException('Invalid correction status query. Only status, limit, offset, request_id and record_id are accepted.');
     }
     $status = array_key_exists('status', $query) ? $query['status'] : 'all';
     if (!is_string($status) || !in_array($status, ['all', 'pending', 'approved', 'rejected', 'withdrawn'], true)) {
@@ -28,6 +35,9 @@ function api_correction_status_query(array $query): array
     if (array_key_exists('request_id', $query)) {
         $page['request_id'] = api_correction_status_request_id($query['request_id']);
     }
+    if (array_key_exists('record_id', $query)) {
+        $page['record_id'] = api_correction_status_record_id($query['record_id']);
+    }
     return $page;
 }
 
@@ -36,7 +46,7 @@ function api_correction_status_query(array $query): array
  * The trusted owner comes from the existing guard, never from the query/body.
  * No review/request/withdrawal authority or notification read marker is created.
  */
-function api_own_correction_status_snapshot(PDO $db, int $trustedOwner, string $status, int $limit, ?int $offset, mixed $requestId = null): array
+function api_own_correction_status_snapshot(PDO $db, int $trustedOwner, string $status, int $limit, ?int $offset, mixed $requestId = null, mixed $recordId = null): array
 {
     if (!$db->inTransaction() || $trustedOwner < 1) {
         throw new LogicException('An authenticated own-user read snapshot is required.');
@@ -53,6 +63,11 @@ function api_own_correction_status_snapshot(PDO $db, int $trustedOwner, string $
         $requestId = api_correction_status_request_id($requestId);
         $where .= ' AND id = :request_id';
         $parameters[':request_id'] = $requestId;
+    }
+    if ($recordId !== null) {
+        $recordId = api_correction_status_record_id($recordId);
+        $where .= ' AND record_id = :record_id';
+        $parameters[':record_id'] = $recordId;
     }
     $count = $db->prepare('SELECT COUNT(*) FROM time_adjustments WHERE '.$where);
     $count->execute($parameters);
@@ -99,5 +114,6 @@ function api_own_correction_status_snapshot(PDO $db, int $trustedOwner, string $
         'offset' => $offset, 'status' => $status, 'order' => 'request_id_desc',
     ]];
     if ($requestId !== null) { $result['meta']['request_id'] = $requestId; }
+    if ($recordId !== null) { $result['meta']['record_id'] = $recordId; }
     return $result;
 }

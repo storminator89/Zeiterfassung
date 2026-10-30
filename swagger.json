@@ -413,7 +413,7 @@
     "/api.php/corrections": {
       "get": {
         "summary": "Get only the authenticated account's correction request statuses",
-        "description": "Read-only own-account snapshot, including for admin/supervisor tokens. No reason, proposed/original time, reviewer identity, mutation, notification/delivery receipt or review permission. IDs and epoch seconds are exact decimal strings. Offset pages can shift with new requests. Optional request_id narrows the same own-account snapshot to one exact request; foreign/nonexistent IDs both return an empty matching set. Pagination and status remain conjunctive filters; no notification or write retry is triggered. Native retains its existing bearer JWT/password-version guard. Laravel retains its separate API admission/generation/operating policy and raw HTTP method/URL rules; those gates are not added to Native.",
+        "description": "Read-only own-account snapshot, including for admin/supervisor tokens. No reason, proposed/original time, reviewer identity, mutation, notification/delivery receipt or review permission. IDs and epoch seconds are exact decimal strings. Offset pages can shift with new requests. Optional request_id narrows the same own-account snapshot to one exact request; foreign/nonexistent IDs both return an empty matching set. Pagination and status remain conjunctive filters; no notification or write retry is triggered. Native retains its existing bearer JWT/password-version guard. Laravel retains its separate API admission/generation/operating policy and raw HTTP method/URL rules; those gates are not added to Native. Optional record_id filters the stored record reference of the same own requests; it does not query or attest existence/ownership of that referenced booking. All selectors are conjunctive and counts precede pagination. Requests without a stored record reference do not match this filter.",
         "security": [
           {
             "bearerAuth": []
@@ -429,6 +429,18 @@
               "type": "string",
               "pattern": "^[1-9][0-9]{0,18}$",
               "maxLength": 19
+            }
+          },
+          {
+            "name": "record_id",
+            "in": "query",
+            "required": false,
+            "description": "Optional exact positive stored record reference (1..9223372036854775807), without leading zeros, signs, whitespace or exponent. Same own-request scope; conjunctive with status/request_id/pagination. Does not check booking existence or ownership.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "maxLength": 19,
+              "example": "9007199254740993"
             }
           },
           {
@@ -588,6 +600,12 @@
                           "enum": [
                             "request_id_desc"
                           ]
+                        },
+                        "record_id": {
+                          "type": "string",
+                          "pattern": "^[1-9][0-9]{0,18}$",
+                          "maxLength": 19,
+                          "description": "Present only when record_id was explicitly supplied; echoes the validated stored-reference selector, not proof of booking ownership/existence, review permission or delivery."
                         }
                       }
                     }

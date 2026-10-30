@@ -12,6 +12,10 @@ approval, withdrawal, creation, model/absence mutation or notification side effe
 - Optional `request_id`: one exact positive ASCII decimal **string** within
   `1..9223372036854775807`, without leading zeros, signs, spaces or exponents.
   It narrows the same own-account query, never selects another account.
+- Optional `record_id`: the same canonical positive ASCII decimal string domain,
+  matching the **stored record reference on an own correction request**. Requests
+  with null `record_id` do not match; this is not a booking lookup or proof that
+  the referenced booking exists or belongs to the account.
 - Existing strict API pagination: `limit` defaults to 100 and accepts 0..1000;
   `offset` accepts 0..2147483647. Omitted offset skips zero and is reported as null.
 - Values are parsed from the unnormalized PHP query. Arrays, whitespace, invalid
@@ -28,7 +32,8 @@ audit snapshots or account metadata are exposed. Null remains null, not zero.
 `meta` reports the selected status, total matching own rows, returned count,
 limit, offset and `order: request_id_desc` in the same read snapshot.
 Only when `request_id` was explicitly supplied, `meta.request_id` additionally
-echoes that validated string. Without it, the existing response keys/values and
+echoes that validated string. Explicit `record_id` likewise adds `meta.record_id`;
+without that selector, no record-filter metadata is added. Without it, the existing response keys/values and
 ordering remain unchanged. Unknown-parameter errors now name the additional
 accepted parameter; all existing parsing/guard/status rules otherwise remain.
 
@@ -96,3 +101,51 @@ credentials, secrets, file database, HTTP server, browser, notification service,
 runtime/security-setting change or deployment. A returned current status is
 still not a notification, delivery marker, approval grant, immutable export or
 booking receipt; no automatic poll, retry or write is added. **#68 stays partial.**
+
+
+## Own stored-record reference filter — partial #68
+
+Prepared against actual Main `bb980b1f2af4d34aab8fa5d40f34c70103f18f90`,
+complete tree `9104f0851fc3e6b1838e170bf890317bbfaa3c8a`. A client can now ask
+`GET /api.php/corrections?record_id=44` for its own correction statuses relating
+to that stored booking reference, without paging unrelated own requests. The
+same canonical ID recognizer is reused, with a fixed field-specific error;
+arrays, signs, leading zeroes, whitespace, final LF, exponents, non-ASCII digits
+and overflow return 400. Raw PHP query parsing stays authoritative in both
+transports; normalized Laravel query bags cannot repair invalid input.
+
+Status, optional request ID and record reference are AND filters in the same
+existing owner-constrained count and row SQL, before unchanged pagination.
+`record_id=44&request_id=13` therefore does not silently ignore either selector.
+IDs stay exact strings, including adjacent IDs above JavaScript's safe range and
+SQLite's maximum. Foreign/nonexistent matching requests both return zero rows;
+a stored own reference can match even when no current booking exists. No booking
+JOIN, subject selector, reviewer identity, reason or additional row field is added.
+The five-field DTO, descending order, no-store behavior and all old default and
+request-only response keys/values stay unchanged. Unrepresentable selected rows
+still refuse with the same fixed 503 rather than returning partial data.
+
+The original general/list/exact-request reader interfaces stay byte-identical.
+A separate optional record-filter capability handles this new selection inside
+the same actual current-actor snapshot; an older adapter lacking it returns 503,
+never an unfiltered list. Existing Native guard and separate Laravel admission,
+JWT/generation/operating-policy, route, auth, writer and deployment boundaries
+are unchanged. No notification, poller, booking retry, approval grant or UI is added.
+
+One coarse PHP 8.5.12 / SQLite 3.46.1 / Laravel 13.38.0 anonymous Memory journey
+reuses the actual current reader/router/controller/shared projection and verbatim
+extracted Native handler. It covers 17 new valid/conjunctive/reference cases,
+16 malformed wire cases, large neighboring/max IDs, null references, existing
+list/request-only behavior, own user/Admin/supervisor scopes, count-before-page,
+raw normalization, missing capability 503, a later stored status, fixed source
+errors and no private-field/mutation/transaction/session/timezone leakage.
+The baseline correctly rejected this formerly unknown parameter. A first harness
+attempt tried to change an already-final fabricated request and the original
+trigger refused; only the harness was corrected to use a pending request.
+
+Necessary PHP syntax, JSON schema syntax, whole-tree preservation and inverse/
+replay are separate checks. Composer lock is unchanged. No new repository suite,
+manual CI dispatch, real accounts/credentials/keys/data, file DB, server, browser,
+full App/auth/HTTP/concurrency/performance or production/deployment acceptance.
+Browser acceptance remains with the user; **#68 remains partial/open**.
+Frozen local evidence: `/tmp/chrono-api-record-filter-mainbb980b1f-support/`.
