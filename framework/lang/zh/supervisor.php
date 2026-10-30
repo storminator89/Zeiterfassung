@@ -45,4 +45,12 @@ return [
     'TEAM_ABSENCE_PEOPLE' => '团队成员分页',
     'TEAM_ABSENCE_PEOPLE_PREVIOUS' => '上一页成员',
     'TEAM_ABSENCE_PEOPLE_NEXT' => '更多成员',
+    'SUPERVISOR_PERIOD_NOTE' => '仅筛选明细表；上方的指标、图表和团队周计划保持不变。',
+    'SUPERVISOR_PERIOD_INVALID' => '明细时间范围无效。不显示明细行。请输入有效的起止日期，或取消时间范围筛选。',
+    'SUPERVISOR_PERIOD_UNAVAILABLE' => '此配置未连接明细时间范围筛选。不显示报告行。',
+    'SUPERVISOR_PERIOD_NOT_APPLIED' => '完整数据源存在尚未解决的数据质量提示，因此不应用明细时间范围筛选。',
+    'SUPERVISOR_PERIOD_APPLY' => '应用明细时间范围',
+    'SUPERVISOR_PERIOD_FROM' => '开始日期自（柏林）',
+    'SUPERVISOR_PERIOD_TO' => '开始日期至（柏林）',
+    'SUPERVISOR_PERIOD_CLEAR' => '取消时间范围',
 ];

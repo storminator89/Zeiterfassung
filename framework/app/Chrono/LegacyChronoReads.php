@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads
+final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -214,7 +214,17 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
 
     public function teamReport(string $userSearch = '', mixed $page = null): array
     {
-        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($userSearch, $page): array {
+        return $this->teamReportSnapshot($userSearch, $page, null, false);
+    }
+
+    public function teamReportPeriod(string $userSearch, mixed $page, ?array $range, bool $invalid): array
+    {
+        return $this->teamReportSnapshot($userSearch, $page, $range, $invalid);
+    }
+
+    private function teamReportSnapshot(string $userSearch, mixed $page, ?array $range, bool $invalid): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($userSearch, $page, $range, $invalid): array {
             // The snapshot freshly reloads role/team. A user's own-row policy
             // must NOT accidentally widen this native supervisor-only report.
             if (! in_array($actor->role, ['admin', 'supervisor'], true)) {
@@ -230,7 +240,7 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
                             WHERE u.supervisor_id = ? OR ?='admin'
                             ORDER BY chrono_report_start_epoch(z.startzeit) DESC, z.id DESC", [$actor->getKey(), $actor->role]);
 
-            $report = \supervisor_report_projection($pdo, $records, $userSearch, $page);
+            $report = \supervisor_report_projection($pdo, $records, $userSearch, $page, $range, $invalid);
 
             return $report + ['team_status' => $this->currentTeamStatus($pdo, $actor)];
         });

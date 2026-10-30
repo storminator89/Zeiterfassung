@@ -389,4 +389,12 @@ define('CORRECTION_TIME_UNAVAILABLE', '時間無法讀取');
 define('SETTINGS_SAVE_SUCCESS_TITLE', '成功！');
 define('SETTINGS_SAVE_SUCCESS_MESSAGE', '設定已成功更新！');
 define('LATEST_TIMESTAMP_REVIEW_HINT', '舊時間檢查提示：至少一個已保存的時間點已有格式、有效性或柏林夏令時間檢查結果。顯示與計算保持不變，並不表示舊時間可明確判定。請檢查原始紀錄。');
+define('SUPERVISOR_PERIOD_NOTE', '仅筛选明细表；上方的指标、图表和团队周计划保持不变。');
+define('SUPERVISOR_PERIOD_INVALID', '明细时间范围无效。不显示明细行。请输入有效的起止日期，或取消时间范围筛选。');
+define('SUPERVISOR_PERIOD_UNAVAILABLE', '此配置未连接明细时间范围筛选。不显示报告行。');
+define('SUPERVISOR_PERIOD_NOT_APPLIED', '完整数据源存在尚未解决的数据质量提示，因此不应用明细时间范围筛选。');
+define('SUPERVISOR_PERIOD_APPLY', '应用明细时间范围');
+define('SUPERVISOR_PERIOD_FROM', '开始日期自（柏林）');
+define('SUPERVISOR_PERIOD_TO', '开始日期至（柏林）');
+define('SUPERVISOR_PERIOD_CLEAR', '取消时间范围');
 ?>

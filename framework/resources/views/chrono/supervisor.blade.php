@@ -133,6 +133,7 @@
                         <form method="get" action="supervisor.php" class="flex flex-wrap gap-4 my-4">
                             <input type="hidden" name="lang" value="{{ $supervisor->language }}">
                             <input type="hidden" name="user_search" value="{{ $supervisor->search }}">
+                            @foreach ($supervisor->periodQuery() as $name => $value)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endforeach
                             <input type="hidden" name="page" value="{{ $supervisor->report['page'] }}">
                             <div class="form-control"><label for="team-absence-date">{{ $supervisor->text('TEAM_ABSENCE_DATE') }}</label><input class="input input-bordered" type="date" id="team-absence-date" name="team_date" value="{{ $absenceWeek['from'] }}"></div>
                             <button class="btn btn-primary self-end">{{ $supervisor->text('TEAM_ABSENCE_SHOW') }}</button>
@@ -166,7 +167,12 @@
                         <span>{{ $supervisor->text('NOT_SUPERVISOR_MESSAGE') }}</span>
                     </div>
                 </div>
+            @elseif ($supervisor->periodUnavailable)
+                <div class="alert alert-error mb-4" role="alert">{{ $supervisor->text('SUPERVISOR_PERIOD_UNAVAILABLE') }} <a class="link" href="{{ $supervisor->periodResetUrl() }}">{{ $supervisor->text('SUPERVISOR_PERIOD_CLEAR') }}</a></div>
             @elseif (! $supervisor->report['available'])
+                @if ($supervisor->periodInvalid)<div class="alert alert-error mb-4" role="alert">{{ $supervisor->text('SUPERVISOR_PERIOD_INVALID') }}</div>
+                @elseif ($supervisor->period !== null)<p class="text-sm opacity-70 mb-4">{{ $supervisor->text('SUPERVISOR_PERIOD_NOT_APPLIED') }}</p>@endif
+                @if ($supervisor->period !== null || $supervisor->periodInvalid)<p class="mb-4"><a class="link" href="{{ $supervisor->periodResetUrl() }}">{{ $supervisor->text('SUPERVISOR_PERIOD_CLEAR') }}</a></p>@endif
                 @if ($supervisor->report['absence_conflicts'] !== [])
                 <div class="alert alert-warning mb-4" role="alert"><span><strong>Klärung offen.</strong> Arbeitszeit und ganztägige Abwesenheit überschneiden sich im freigegebenen Berichtsumfang. Diese Auswertung enthält deshalb keine abschließenden Summen. Bitte die betroffenen Originaleinträge in der <a class="link" href="history.php">Historie</a> prüfen und die Korrektur durch die betroffene Person mit anschließender Vier-Augen-Freigabe klären. Die <a class="link" href="index.php">eigene Arbeitszeitliste</a> und <a class="link" href="adjustments.php">Korrekturanträge</a> bleiben verfügbar; es wurden keine Zeiten gelöscht oder gekürzt.</span></div>
                 @else
@@ -248,9 +254,15 @@
                     <div class="card bg-base-100 shadow-xl">
                         <div class="card-body">
                             <!-- Search and Filter Bar -->
+                            <p class="text-sm opacity-70 mb-4">{{ $supervisor->text('SUPERVISOR_PERIOD_NOTE') }}</p>
+                            @if ($supervisor->periodInvalid)<div class="alert alert-error mb-4" role="alert">{{ $supervisor->text('SUPERVISOR_PERIOD_INVALID') }}</div>@endif
                             <form method="get" action="supervisor.php" class="flex flex-wrap gap-4 mb-4">
                                 @if ($supervisor->absenceWeek !== null)<input type="hidden" name="team_date" value="{{ $supervisor->absenceWeek['from'] }}"><input type="hidden" name="team_page" value="{{ $supervisor->absenceWeek['page'] }}">@endif
                                 <input type="hidden" name="lang" value="{{ $supervisor->language }}">
+                                <label class="form-control self-center"><span><input class="checkbox checkbox-primary" type="checkbox" name="period" value="1" @checked($supervisor->period !== null || $supervisor->periodInvalid)> {{ $supervisor->text('SUPERVISOR_PERIOD_APPLY') }}</span></label>
+                                <div class="form-control"><label for="supervisor-period-from">{{ $supervisor->text('SUPERVISOR_PERIOD_FROM') }}</label><input class="input input-bordered" type="date" id="supervisor-period-from" name="from" min="0001-01-01" max="9999-12-31" value="{{ $supervisor->period['from'] ?? '' }}"></div>
+                                <div class="form-control"><label for="supervisor-period-to">{{ $supervisor->text('SUPERVISOR_PERIOD_TO') }}</label><input class="input input-bordered" type="date" id="supervisor-period-to" name="to" min="0001-01-01" max="9999-12-31" value="{{ $supervisor->period['to'] ?? '' }}"></div>
+                                @if ($supervisor->period !== null || $supervisor->periodInvalid)<a class="btn btn-outline self-end" href="{{ $supervisor->periodResetUrl() }}">{{ $supervisor->text('SUPERVISOR_PERIOD_CLEAR') }}</a>@endif
                                 <div class="form-control w-full max-w-xs">
                                     <div class="input-group">
                                         <input type="search"

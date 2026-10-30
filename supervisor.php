@@ -1,4 +1,10 @@
 <?php
+require_once __DIR__.'/lib/supervisor_table_period.php';
+$supervisorPeriod = supervisor_table_period((string) ($_SERVER['QUERY_STRING'] ?? ''));
+$tablePeriod = $supervisorPeriod['range'];
+$periodInvalid = $supervisorPeriod['invalid'];
+$tablePeriodQuery = supervisor_table_period_query($tablePeriod, $periodInvalid);
+if ($periodInvalid) { http_response_code(400); }
 include 'header.php';
 
 // Überprüfen, ob der Benutzer eingeloggt ist
@@ -22,7 +28,7 @@ $teamStatusUnavailable = false;
 $teamAbsenceWeek = null;
 $teamAbsenceUnavailable = false;
 $userSearch = isset($_GET['user_search']) && is_string($_GET['user_search']) ? trim($_GET['user_search']) : '';
-$tableQuery = ['lang' => $lang, 'user_search' => $userSearch];
+$tableQuery = ['lang' => $lang, 'user_search' => $userSearch] + $tablePeriodQuery;
 if ($user_role === 'admin' || $user_role === 'supervisor') {
     require_once __DIR__.'/lib/team_absence_week.php';
     try {
@@ -139,6 +145,7 @@ if ($user_role === 'admin' || $user_role === 'supervisor') {
     }
 }
 $pageUrl = static fn (int $page): string => '?' . htmlspecialchars(http_build_query(array_merge($tableQuery, ['page' => $page])), ENT_QUOTES, 'UTF-8');
+$periodResetUrl = '?'.http_build_query(array_merge(array_diff_key($tableQuery, array_flip(['period', 'from', 'to'])), ['page' => 1]));
 $planReportPage = isset($_GET['page']) && is_string($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
 ?>
 
@@ -350,6 +357,9 @@ $planReportPage = isset($_GET['page']) && is_string($_GET['page']) ? max(1, (int
                     </h3>
                     <div class="card bg-base-100 shadow-xl">
                         <div class="card-body">
+                            <p class="text-sm opacity-70 mb-4"><?= h(SUPERVISOR_PERIOD_NOTE) ?></p>
+                            <?php if ($periodInvalid) : ?><div class="alert alert-error mb-4" role="alert"><?= h(SUPERVISOR_PERIOD_INVALID) ?></div><?php endif; ?>
+                            <?php if (!$reportAvailable && $tablePeriod !== null) : ?><p class="text-sm opacity-70 mb-4"><?= h(SUPERVISOR_PERIOD_NOT_APPLIED) ?></p><?php endif; ?>
                             <?php if (!$reportAvailable) : ?>
                             <p class="text-sm opacity-70 mb-4"><?= htmlspecialchars(SUPERVISOR_SOURCE_VALUES, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></p>
                             <?php endif; ?>
@@ -357,6 +367,10 @@ $planReportPage = isset($_GET['page']) && is_string($_GET['page']) ? max(1, (int
                             <form method="get" action="supervisor.php" class="flex flex-wrap gap-4 mb-4">
                                 <input type="hidden" name="lang" value="<?= htmlspecialchars($lang, ENT_QUOTES, 'UTF-8') ?>">
                                 <?php if ($teamAbsenceWeek !== null) : ?><input type="hidden" name="team_date" value="<?= h($teamAbsenceWeek['from']) ?>"><input type="hidden" name="team_page" value="<?= h($teamAbsenceWeek['page']) ?>"><?php endif; ?>
+                                <label class="form-control self-center"><span><input class="checkbox checkbox-primary" type="checkbox" name="period" value="1" <?= $tablePeriod !== null || $periodInvalid ? 'checked' : '' ?>> <?= h(SUPERVISOR_PERIOD_APPLY) ?></span></label>
+                                <div class="form-control"><label for="supervisor-period-from"><?= h(SUPERVISOR_PERIOD_FROM) ?></label><input class="input input-bordered" type="date" id="supervisor-period-from" name="from" min="0001-01-01" max="9999-12-31" value="<?= h($tablePeriod['from'] ?? '') ?>"></div>
+                                <div class="form-control"><label for="supervisor-period-to"><?= h(SUPERVISOR_PERIOD_TO) ?></label><input class="input input-bordered" type="date" id="supervisor-period-to" name="to" min="0001-01-01" max="9999-12-31" value="<?= h($tablePeriod['to'] ?? '') ?>"></div>
+                                <?php if ($tablePeriod !== null || $periodInvalid) : ?><a class="btn btn-outline self-end" href="<?= h($periodResetUrl) ?>"><?= h(SUPERVISOR_PERIOD_CLEAR) ?></a><?php endif; ?>
                                 <div class="form-control w-full max-w-xs">
                                     <div class="input-group">
                                         <input type="search"
@@ -402,7 +416,7 @@ $planReportPage = isset($_GET['page']) && is_string($_GET['page']) ? max(1, (int
                                         if ($reportAvailable) {
                                         // Group entries by user and date
                                         $groupedEntries = [];
-                                        foreach ($zeiten as $zeit) {
+                                        foreach (supervisor_table_period_rows($zeiten, $tablePeriod, $periodInvalid) as $zeit) {
                                             $userId = $zeit['user_id'];
                                             $date = date('Y-m-d', strtotime($zeit['startzeit']));
                                             $key = $userId . '_' . $date;
@@ -458,7 +472,7 @@ $planReportPage = isset($_GET['page']) && is_string($_GET['page']) ? max(1, (int
 
                                         } else {
                                             // Raw source rows need no guessed day/group or calculated value.
-                                            $sourceRows = $zeiten;
+                                            $sourceRows = $periodInvalid ? [] : $zeiten;
                                             if ($userSearch !== '') {
                                                 $sourceRows = array_filter($sourceRows, static fn (array $row): bool => mb_stripos($row['username'], $userSearch) !== false);
                                             }

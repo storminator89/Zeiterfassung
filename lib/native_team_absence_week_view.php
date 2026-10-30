@@ -5,7 +5,7 @@ if ($teamAbsenceUnavailable) : ?>
 <?php elseif ($teamAbsenceWeek !== null) :
 $teamAbsenceUrl = static fn (string $day, int $page = 1): string => 'supervisor.php?'.http_build_query([
     'lang' => $lang, 'user_search' => $userSearch, 'page' => $planReportPage, 'team_date' => $day, 'team_page' => $page,
-], '', '&', PHP_QUERY_RFC3986);
+] + ($tablePeriodQuery ?? []), '', '&', PHP_QUERY_RFC3986);
 ?>
 <section class="card bg-base-100 shadow-xl mb-8" aria-labelledby="nativeTeamAbsenceTitle">
     <div class="card-body">
@@ -16,6 +16,7 @@ $teamAbsenceUrl = static fn (string $day, int $page = 1): string => 'supervisor.
             <input type="hidden" name="lang" value="<?= h($lang) ?>">
             <input type="hidden" name="user_search" value="<?= h($userSearch) ?>">
             <input type="hidden" name="page" value="<?= h($planReportPage) ?>">
+            <?php foreach (($tablePeriodQuery ?? []) as $name => $value) : ?><input type="hidden" name="<?= h($name) ?>" value="<?= h($value) ?>"><?php endforeach; ?>
             <div class="form-control"><label for="native-team-absence-date"><?= h(TEAM_ABSENCE_DATE) ?></label><input class="input input-bordered" type="date" id="native-team-absence-date" name="team_date" value="<?= h($teamAbsenceWeek['from']) ?>"></div>
             <button class="btn btn-primary self-end"><?= h(TEAM_ABSENCE_SHOW) ?></button>
         </form>

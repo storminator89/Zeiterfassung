@@ -400,4 +400,12 @@ define('CORRECTION_TIME_UNAVAILABLE', 'Zeitpunkt nicht auswertbar');
 define('SETTINGS_SAVE_SUCCESS_TITLE', 'Erfolg!');
 define('SETTINGS_SAVE_SUCCESS_MESSAGE', 'Einstellungen erfolgreich aktualisiert!');
 define('LATEST_TIMESTAMP_REVIEW_HINT', 'Altzeit-Prüfhinweis: Mindestens ein gespeicherter Zeitpunkt hat einen vorhandenen Befund zu Format, Gültigkeit oder Berliner Zeitumstellung. Anzeige und Berechnung bleiben unverändert und bestätigen keine eindeutige Altzeit. Bitte Original prüfen.');
+define('SUPERVISOR_PERIOD_NOTE', 'Nur die Detailtabelle wird gefiltert. Kennzahlen, Charts und Teamwochenplan darüber bleiben unverändert.');
+define('SUPERVISOR_PERIOD_INVALID', 'Ungültiger Detailzeitraum. Es werden keine Detailzeilen angezeigt. Gültige Von-/Bis-Daten eingeben oder den Zeitraum abwählen.');
+define('SUPERVISOR_PERIOD_UNAVAILABLE', 'Der Detailzeitraum ist in diesem Profil nicht verbunden. Es werden keine Berichtszeilen angezeigt.');
+define('SUPERVISOR_PERIOD_NOT_APPLIED', 'Die vollständige Quelle hat ungeklärte Datenhinweise. Der Detailzeitraum wird nicht angewendet.');
+define('SUPERVISOR_PERIOD_APPLY', 'Detailzeitraum anwenden');
+define('SUPERVISOR_PERIOD_FROM', 'Starttag von (Berlin)');
+define('SUPERVISOR_PERIOD_TO', 'Starttag bis (Berlin)');
+define('SUPERVISOR_PERIOD_CLEAR', 'Zeitraum entfernen');
 ?>

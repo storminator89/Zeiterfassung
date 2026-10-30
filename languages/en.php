@@ -397,4 +397,12 @@ define('CORRECTION_TIME_UNAVAILABLE', 'Time unavailable');
 define('SETTINGS_SAVE_SUCCESS_TITLE', 'Success!');
 define('SETTINGS_SAVE_SUCCESS_MESSAGE', 'Settings updated successfully!');
 define('LATEST_TIMESTAMP_REVIEW_HINT', 'Legacy-time review: At least one stored timestamp has an existing format, validity or Berlin daylight-saving finding. Display and calculation are unchanged and do not confirm an unambiguous legacy time. Review the original.');
+define('SUPERVISOR_PERIOD_NOTE', 'Only the detail table is filtered. Metrics, charts and the team-week plan above stay unchanged.');
+define('SUPERVISOR_PERIOD_INVALID', 'Invalid detail-table period. No detail rows are shown. Enter valid From/To dates or untick the period.');
+define('SUPERVISOR_PERIOD_UNAVAILABLE', 'Detail-table period filtering is not connected in this profile. No report rows are shown.');
+define('SUPERVISOR_PERIOD_NOT_APPLIED', 'The complete source has unresolved data-quality findings. The detail-table period is not applied.');
+define('SUPERVISOR_PERIOD_APPLY', 'Apply detail-table period');
+define('SUPERVISOR_PERIOD_FROM', 'Start day from (Berlin)');
+define('SUPERVISOR_PERIOD_TO', 'Start day through (Berlin)');
+define('SUPERVISOR_PERIOD_CLEAR', 'Remove period');
 ?>
