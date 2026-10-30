@@ -426,7 +426,7 @@ final readonly class FreshWebConfiguration
             'assets/kolibri_icon.png' => 'b450f436baec5dbde264c4fe21d9001c0b466ff44ae1311f5919315bd32430e4',
             'assets/css/main.css' => 'd293dcf9d31e0adfc0c6cda1c2f03f4c57afe325c79e223794460dc9f94c4e6f',
             'assets/css/app_ui.css' => '4f8bf76f83a5c5d3ea3807818a792aa2b4c12ec83aaf46a33342d1aadf4adc1e',
-            'assets/js/main.js' => 'a9ccf2539d158cd6548bfd6deda6e561bdd4025b8d8d32443da385d3d6b655d9',
+            'assets/js/main.js' => '2f9ed4299e2acca7b8b472c3099f5b14e499ed221d33b4be77ecabfade9f5ae3',
             'assets/js/attendance.js' => '45e7216884458380ebd0944c7a3fe1a5eae6a840b71bf80310b924126def48a2',
             'assets/js/chrono-local-web.js' => '9940b5723b21a2fa21f39db9471523ff5818bc6946a480607c2e5cac20516b3b',
         ] as $name => $hash) {
