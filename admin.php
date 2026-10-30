@@ -20,17 +20,33 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 
 // Fixed independent Native holiday command, before any existing Admin mutation.
 require_once __DIR__.'/lib/native_holiday_refill.php';
+require_once __DIR__.'/lib/native_holiday_refill_refusal.php';
+$holidayRefillDraft=null;
+$nativeHolidayRefillError=null;
 if ($_SERVER['REQUEST_METHOD']==='POST' && array_key_exists('refill_holidays',$_POST)) {
     unset($_SESSION['native_holiday_refill_receipt']); // Never show an older success after a new refused attempt.
     try {
         $receipt=native_holiday_refill($conn,(int)$_SESSION['user_id'],$_SESSION['role'],$_SESSION['auth_version']??null,$_POST);
-    } catch (InvalidArgumentException $error) { abort_request(400,$error->getMessage()); }
-    catch (DomainException $error) { abort_request(409,$error->getMessage()); }
+    } catch (InvalidArgumentException|DomainException $error) {
+        $refusalStatus=$error instanceof DomainException?409:400;
+        try {
+            $holidayRefillDraft=native_holiday_refill_refusal_draft($conn,(int)$_SESSION['user_id'],$_SESSION['role'],$_SESSION['auth_version']??null,$_POST);
+        } catch (NativeHolidayRefillError $displayError) { abort_request($displayError->status,$displayError->getMessage()); }
+        catch (Throwable) { abort_request(503,'Feiertagsergänzung nicht bestätigt. Neu laden und gespeichertes Jahr prüfen; nicht automatisch wiederholen.'); }
+        if ($holidayRefillDraft===null) { abort_request($refusalStatus,$error->getMessage()); }
+        // Only this closed sole-command payload can continue to page rendering;
+        // none of the existing Admin mutation selectors is permitted here.
+        $nativeHolidayRefillError=$error->getMessage();
+        http_response_code($refusalStatus);
+        header('Cache-Control: no-store');
+    }
     catch (NativeHolidayRefillError $error) { abort_request($error->status,$error->getMessage()); }
     catch (Throwable) { abort_request(503,'Feiertagsergänzung nicht bestätigt. Neu laden und gespeichertes Jahr prüfen; nicht automatisch wiederholen.'); }
+    if ($nativeHolidayRefillError===null) {
     // A minimal own receipt is retained only after a confirmed COMMIT; never the JSON.
     $_SESSION['native_holiday_refill_receipt']=['actor'=>(int)$_SESSION['user_id'],'result'=>array_intersect_key($receipt,array_flip(['year','inserted','unchanged','conditional_omitted']))];
     header('Cache-Control: no-store');header('Location: admin.php#holiday-refill',true,303);exit;
+    }
 }
 $nativeHolidayActor=att_one($conn,'SELECT auth_source FROM users WHERE id=?',[(int)$_SESSION['user_id']]);
 $nativeHolidayRefillEnabled=native_holiday_refill_available($nativeHolidayActor['auth_source']??null,$_SESSION['role'],$_SESSION['auth_version']??null);
@@ -40,7 +56,7 @@ unset($_SESSION['native_holiday_refill_receipt']);
 $user_role = isset($_SESSION['role']) ? $_SESSION['role'] : null;
 $theme_mode = $_SESSION['theme_mode'] ?? 'system';
 
-$error = '';
+$error = $nativeHolidayRefillError ?? '';
 $successMessage = '';
 $createUserDraft = null;
 require_once __DIR__.'/lib/admin_create_user_draft.php';
