@@ -85,7 +85,7 @@ final class LegacyTimeQuality
         $total = array_sum($counts);
 
         return [
-            'report_version' => 8,
+            'report_version' => 9,
             'scope_status' => 'partial_diagnostic_only',
             'read_only' => true,
             'records_checked' => $records,
@@ -101,7 +101,8 @@ final class LegacyTimeQuality
                 'original_session_break_boundaries' => 'checked_stored_integer_epochs_only_no_guessed_end',
                 'original_break_overlap' => 'checked_completed_positive_integer_original_break_pairs_same_session_only',
                 'original_session_overlap' => 'checked_completed_positive_integer_original_session_pairs_same_user_only',
-                'event_session_break_projection_reconciliation' => 'not_checked_beyond_original_interval_boundaries_and_completed_original_pairs',
+                'original_open_session_overlap' => 'possible_only_for_integer_original_session_pairs_same_user_no_guessed_end',
+                'event_session_break_projection_reconciliation' => 'not_checked_beyond_original_interval_boundaries_completed_original_pairs_and_possible_open_session_pairs',
                 'mapping_or_repair' => 'not_performed_requires_separate_confirmation',
             ],
             'offset_free_values_requiring_berlin_mapping_confirmation' => $offsetFree,
@@ -370,6 +371,7 @@ final class LegacyTimeQuality
         }
         $this->originalBreakPairs($pdo, $add);
         $this->originalSessionPairs($pdo, $add);
+        $this->originalOpenSessionPairs($pdo, $add);
     }
 
     /** Stored completed positive breaks in one original session; no inferred end or projection. */
@@ -426,6 +428,39 @@ final class LegacyTimeQuality
                             // Stored half-open original intervals only. No subtraction,
                             // owner in the output, pair list or projection reconciliation.
                             $add('work_sessions', (int) $session['id'], 'original_session_overlap', null, (int) $other['id']);
+                        }
+                    }
+                } finally {
+                    $others->closeCursor();
+                }
+            }
+        } finally {
+            $others->closeCursor();
+            $sessions->closeCursor();
+        }
+    }
+
+    /** Possible original conflicts only: NULL is unknown, never a chosen current/end instant. */
+    private function originalOpenSessionPairs(PDO $pdo, callable $add): void
+    {
+        $sessions = $pdo->query('SELECT id,user_id,started_at,ended_at FROM work_sessions ORDER BY id');
+        $others = $pdo->prepare('SELECT id,started_at,ended_at FROM work_sessions WHERE user_id=? AND id>? AND (CAST(? AS INTEGER)=1 OR ended_at IS NULL) ORDER BY id');
+        try {
+            while (($session = $sessions->fetch(PDO::FETCH_ASSOC)) !== false) {
+                if (!is_int($session['started_at']) || ($session['ended_at'] !== null
+                    && (!is_int($session['ended_at']) || $session['ended_at'] <= $session['started_at']))) {
+                    continue; // Invalid, reversed and empty closed spans cannot establish possible occupation.
+                }
+                $others->execute([$session['user_id'], $session['id'], (int) ($session['ended_at'] === null)]);
+                try {
+                    while (($other = $others->fetch(PDO::FETCH_ASSOC)) !== false) {
+                        if (is_int($other['started_at']) && ($other['ended_at'] === null
+                            || (is_int($other['ended_at']) && $other['ended_at'] > $other['started_at']))
+                            && ($session['ended_at'] === null || $other['started_at'] < $session['ended_at'])
+                            && ($other['ended_at'] === null || $session['started_at'] < $other['ended_at'])) {
+                            // At least one NULL end by the query above. Unknown duration
+                            // means possible overlap only, not a confirmed completed pair.
+                            $add('work_sessions', (int) $session['id'], 'possible_original_open_session_overlap', null, (int) $other['id']);
                         }
                     }
                 } finally {

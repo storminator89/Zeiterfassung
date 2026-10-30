@@ -530,3 +530,66 @@ Sidecar-/Betriebs-/V5-/App-/Auth-/HTTP-/Browser-/Konkurrenz-/Last-/Produktivabna
 Bestandsprüfung, vollständiger Eventabgleich, Mapping oder Reparatur. Keine realen
 Konten, Credentials/Keys, Datei-DB, Konfiguration, Hosts oder Deployment. #55
 bleibt ausdrücklich teilweise/offen; gehaltene/abgelehnte Pakete bleiben unberührt.
+
+## Format9: mögliche Überschneidung offener Originalsessions
+
+Quellbasis: veröffentlichter Main `22827470`, vollständiger Baum
+`8027e610aba2d5087e253a28267feaabfdc13917` nach #371. Der lokale Basiscommit ist
+nur ein vollständiger Inhalts-Snapshot, keine Behauptung entfernter Git-Abstammung.
+Format8 betrachtet abgeschlossene Originalpaare; ein gespeichertes offenes
+Original kann neben einem späteren abgeschlossenen Original desselben Kontos
+stehen, auch wenn ihre aktuellen Projektionen getrennt sind. Die bekannte
+V2-Beziehungsprüfung verbietet diesen Zustand nicht automatisch.
+
+Format9 ergänzt ausschließlich `possible_original_open_session_overlap`.
+Mindestens eine der beiden Originalsessions muss `ended_at=NULL` haben.
+Ein Start muss ein gespeicherter Integer sein; ein vorhandenes Ende ebenfalls
+Integer und strikt größer als der Start. Umgekehrte, leere oder nichtganzzahlige
+Intervalle nehmen nicht teil. Die unveränderte Originalschema-Regel erlaubt
+höchstens eine offene Session pro Konto; diese wird nicht abgeschwächt.
+
+Ein Paar ist nur **möglicherweise** überlappend, wenn kein bekanntes Ende seine
+Überschneidung ausschließt. Bekannte halboffene Grenzen werden strikt verglichen:
+endet die geschlossene Session genau am Start der offenen, gibt es kein Paar.
+Das unbekannte Ende wird weder durch Jetzt noch durch einen späteren Start,
+Projektionswert oder sonstige Zeit ersetzt. Keine Subtraktion oder neue
+Zeitkonversion, auch nicht an signed64-Grenzen. Diese Diagnose beweist weder
+eine tatsächliche Doppelbuchung noch eine falsche heutige Summe.
+
+Die feste Paarabfrage beschränkt auf dasselbe interne Konto und höhere Quell-ID;
+jeder Kandidat wird gestreamt, jedes Paar einmal ausgegeben. Exakte dezimale
+`entity_id`/`related_entity_id`, `entity=work_sessions` und `column=null` folgen
+dem vorhandenen Format8-Vertrag. Keine Benutzer-ID/-namen, Originalzeitwerte,
+Notizen, Ereignisinhalte, Credentials oder Pfade kommen hinzu. Alle bisherigen
+Befunde stehen unverändert vor den neuen; Detailgrenze und vollständige Zähler
+bleiben erhalten. Kein neues Laufzeitlimit oder Großbestands-Leistungsnachweis.
+
+`checks.original_open_session_overlap` benennt ausdrücklich den möglichen,
+begrenzten Umfang. Der bisherige Event-/Session-/Pausen-/Projektionscheck bleibt
+unvollständig. `needs_review` berücksichtigt wie bisher alle Befundzähler;
+ein zuvor hier unauffälliger Bericht kann nun zur Prüfung stehen. Kein
+Rekonstruktions-, Reparatur-, Mapping-, Schreib-, Migrations- oder Freigabepfad.
+CLI/Datei-/Sidecar-/V2-/Runtimezulassung, Datenmodell, Exitcodes, Konten und UI
+bleiben unverändert. Gehaltene/abgelehnte Pakete einschließlich #57 bleiben aus.
+
+### Grober Format9-Komponentenbeleg
+
+PHP8.5.12 / SQLite3.46.1 / Laravel13.38.0: ein zusammenhängender tatsächlicher
+Alt-/Neu-Klassenvergleich mit unveränderten Quellmigratoren und V2Preflight,
+ausschließlich anonymem query-only Memory. 28 erfundene Sessions und 2 Pausen
+ergeben 6 neue mögliche Paare; 7 alte Befunde bleiben samt Reihenfolge/Zählern
+und allen übrigen Berichtsfeldern exakt gleich. Beide ID-Reihenfolgen,
+Kontentrennung, Randberührung, Null-Dauer/umgekehrte/REAL-/TEXTwerte,
+signed64-Extrema und exakte IDs über 2^53 bis PHP_INT_MAX, getrennte aktuelle
+Projektionen, vollständige Zähler bei Limit 2 und Wiederholung sind geprüft.
+Ein zweiter zuvor befundfreier synthetischer Snapshot zeigt ausschließlich
+wegen eines möglichen Originalpaares jetzt `needs_review=true`. Tatsächliche
+V2-Komponentenvorprüfung besteht auf beiden Snapshots; Schema, Zeilen,
+Änderungszähler, query-only-/Transaktionszustand, Session und Zeitzone bleiben
+erhalten. Notwendige PHP-Syntax und Diff-/Quellerhaltung separat geprüft.
+
+Keine tatsächliche Dateiscanner-/CLI-/OfflineFiles-/Sidecar-/Bestands-/V5-/
+Runtime-/App-/Auth-/HTTP-/Browser-/Betriebs-/Konkurrenz-/Last-/Produktiv- oder
+Migrationsabnahme. Keine echten Daten, Konten, Zugangsdaten, Schlüssel, Datei-DB,
+Konfiguration, Host-/Sicherheitsänderung, Aktivierung oder Deployment. Keine neue
+Testsuite oder manuell ausgelöste CI. #55 bleibt ausdrücklich teilweise/offen.
