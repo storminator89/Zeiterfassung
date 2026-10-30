@@ -14,7 +14,15 @@
             <label class="form-control" for="holiday-refill-year"><span class="label-text">Jahr</span><input id="holiday-refill-year" name="holiday_year" type="number" min="1" max="9999" step="1" value="{{ $holidayRefillDraft['year'] ?? '' }}" required class="input input-bordered w-32"></label>
             <label class="form-control" for="holiday-refill-json"><span class="label-text">Vollständige JSON-Antwort (höchstens 128 KiB)</span><textarea id="holiday-refill-json" name="holiday_json" required maxlength="131072" rows="8" spellcheck="false" class="textarea textarea-bordered">{{ $holidayRefillDraft['json'] ?? '' }}</textarea></label>
             <label class="flex items-start gap-2"><input type="checkbox" name="confirm_bw_source" value="BW" required class="checkbox"><span>Ich habe Baden-Württemberg als richtigen Standort, das gewählte Jahr und die Antwort geprüft. Nur fehlende landesweite Daten dieses Jahres ergänzen; Auswirkungen auf angezeigte Sollwerte und Salden sind mir bekannt.</span></label>
+            @if ($holidayRefillPreviewEnabled ?? false)
+            <button type="button" id="holiday-refill-preview-button" class="btn btn-secondary" disabled>Nur vorab prüfen · nichts speichern</button>
+            @endif
             <button type="submit" class="btn btn-primary">Fehlende BW-Feiertage ergänzen</button>
         </form>
+        @if ($holidayRefillPreviewEnabled ?? false)
+        <p id="holiday-refill-preview-status" class="text-sm opacity-70 mt-4" role="status">Die Vorabprüfung wird mit JavaScript verfügbar; Speichern bleibt ein eigener bewusster Vorgang.</p>
+        <div id="holiday-refill-preview-result" class="mt-4"></div>
+        @include('chrono.partials.holiday-refill-preview-script')
+        @endif
     </div>
 </details>

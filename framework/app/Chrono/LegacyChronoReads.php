@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads
+final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, HolidayRefillPreviewReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -599,6 +599,19 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
                 (int) (new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')))->format('Y'));
 
             return holiday_inventory($pdo, $year['year']) + ['selection_invalid' => $year['invalid']];
+        });
+    }
+
+    /** Fresh local Admin and calendar data share the unchanged authorized web snapshot. */
+    public function holidayRefillPreview(mixed $year, mixed $region, #[\SensitiveParameter] mixed $json): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($year, $region, $json): array {
+            if ($actor->role !== 'admin' || $actor->auth_source !== 'local') {
+                throw new AuthorizationException('Nur lokale Verwaltung darf Feiertage vorab prüfen.');
+            }
+            require_once dirname(__DIR__, 3).'/lib/holiday_refill_preview.php';
+
+            return \chrono_holiday_refill_preview_snapshot($pdo, $year, $region, $json);
         });
     }
 
