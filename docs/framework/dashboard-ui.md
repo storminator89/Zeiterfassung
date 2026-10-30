@@ -218,3 +218,28 @@ Einpasshelfer bewahrt Gesamtwert, Sollformel und SQLzahl; der vorhandene Snapsho
 Planresolver bleibt nur operationseigen. Beide Werte werden bei unklaren Daten
 maskiert. Fehlende Solltage, Ein-/Austritt und Wertstellung werden nicht erfunden;
 dies ist kein vollständiges Vertragskonto (#40/#61) und keine neue Runtimefreigabe.
+
+## #79 – aktuelle Sitzungsbindung im Dashboardchrome
+
+Die Statusprojektion aus `calendarWeek()` enthält nun zusätzlich
+`expected_record`: die exakte Dezimalzeichenfolge der aktuell eigenen aktiven
+Buchung oder `null` bei Abwesenheit. Sie wird ausschließlich aus dem bereits im
+gleichen autorisierten Snapshot gelesenen `attendance_status()` abgeleitet,
+nicht aus sichtbaren Kalenderereignissen oder einem zweiten Statusaufruf.
+Dadurch erhält das bestehende `AttendancePage` bereits beim Seitenrendern die
+benötigte Bindung: Pause/Weiter/Gehen bleiben nicht unnötig bis zum separaten
+Status-GET deaktiviert. Eine historische oder leere Kalenderwoche darf die
+heutige eigene Sitzungsbindung nicht entfernen. IDs oberhalb der
+JavaScript-Ganzzahlpräzision bleiben Strings; ein Admin bekommt keine fremde
+aktive Buchung als eigene Bindung.
+
+Unverändert bleiben Header/Buttons/JavaScript, Kalenderereignisse und Karten,
+Anzahl und Quelle der kanonischen Statusabfragen, Rollen-/Snapshotgrenzen sowie
+sämtliche Writer-/Pending-/Retry-/CSRF-Prüfungen. Die Bindung ist keine
+Schreibfreigabe oder Garantie; der bestehende Writer prüft einen späteren
+bewussten Vorgang erneut. Kein automatisches Senden oder Wiederholen,
+keine neue Route/Runtimeaktivierung, kein Cutover und keine geschützte
+Browserabnahme. Der begrenzte Komponentenbeleg nutzt ausschließlich drei
+synthetische eigene Statusfälle (Arbeit, Pause, abwesender Admin), den echten
+Reader, DTO und vorhandenes Blade auf query-only SQLite-`:memory:`; Source-
+und Auditdigests sowie native Globals bleiben gleich.
