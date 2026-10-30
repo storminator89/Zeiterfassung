@@ -159,10 +159,12 @@ keine beliebige Rekursion, Notiz-, Standort-, Personen- oder Geheimnisfelder.
 Die vollständigen Originalsnapshots werden nicht an Blade weitergegeben.
 Ungültiges/zu großes/zu tiefes JSON, fehlende Zeitfelder und falsche Typen
 ergeben nur einen festen Hinweis, keine erfundenen Nullminuten. Der bestehende
-`report_record_calculation()` allein liefert Dauer, tatsächliche Pause und
-Offset-/Berlin-/DSTinterpretation. Gespeicherte beantragte Epochwerte werden
-auf darstellbare Ganzzahlen geprüft und über den vorhandenen kanonischen
-Instant-/Offsetpfad in denselben Kalkulator gegeben; keine neue lokale Zeitwahl.
+`report_record_calculation()` allein liefert die numerische Dauer und tatsächliche
+Pause, nachdem die vorhandene strikte Timestampdiagnose beide gespeicherten
+Endpunkte als unterstützt/eindeutig eingeordnet hat. Gespeicherte beantragte
+Epochwerte werden auf darstellbare Ganzzahlen geprüft und nur bei im bestehenden
+ISO-Minutenoffset darstellbaren Berliner Instants in denselben Kalkulator gegeben;
+keine neue lokale Zeitwahl oder gerundete historische Offsetsekunden.
 
 Ein Nachtrag ohne Original heißt „Kein vorheriger Eintrag“, eine offene
 Originalbuchung hat keine abgeschlossene Dauer. Storno heißt „kein neuer
@@ -380,3 +382,67 @@ GitHub-CI-Lauf oder Remote-Schreibzugriff. Das erste Prüfharness vergaß den
 reinen AttendanceError-Definitionsinclude; der Harness wurde korrigiert, nicht
 die Anwendung oder Assertions abgeschwächt. Saldo-/Vertretungs-/Eskalationspolicy,
 vollständige #50/#79-Abnahme und Aktivierung bleiben ausdrücklich offen.
+
+
+## #55/#50 — keine Scheingenauigkeit bei nicht auswertbaren Originalzeiten
+
+Basis tatsächlicher Main `f559cc1d1c6cfa5360c4b06d622839e6f2f06258`, Baum
+`83c6946c807c564d48ac1a4f31236f14be80614b`. Der bisherige Dauerhelper gab einen
+rein numerischen Vergleich aus, wenn der permissive Berichtsparser eine
+mehrdeutige oder nicht vorhandene Berliner Ortszeit normalisierte. Mit Original
+`2026-10-25 02:30:00` bis `2026-10-25T03:30:00+01:00` zeigte die tatsächliche
+alte Vorschau beispielsweise `01:00`, Antrag `02:00`, Differenz `+60 min`.
+Die offsetfreie doppelte Herbststunde besitzt aber keinen belegten Instant.
+Auch eine Frühlingslücke wurde auf diese Weise als normale Dauer dargestellt.
+
+Der gemeinsame reine Previewhelper nutzt deshalb vor der unveränderten
+numerischen Kalkulation dieselbe bestehende `legacy_timestamp_assessment`-Regel
+wie die Datenqualitätsdiagnose: unsupported/ungültige Zeitform, doppelte
+Herbststunde und Frühlingslücke werden nicht in einen geratenen Endpunkt verwandelt.
+Vorherige Dauer wird nicht auswertbar, Differenz bleibt NULL; ein weiterhin
+brauchbarer expliziter Antrag bleibt unabhängig davon darstellbar. Beide expliziten
+Herbstoffsets, eindeutige offsetfreie Bestände, Nacht und tatsächliche Pausen bleiben
+im bisherigen kanonischen Kalkulator. Keine andere Rechnung, Tagesaufteilung,
+Wahl des ersten/zweiten Instants oder Änderung eines Originalwerts.
+
+Der begrenzte Original-JSON muss außerdem als Objekt mit derselben bestehenden
+Standardkodierung roundtrippen. Doppelte/escaped-equivalente Schlüssel, Pretty-
+Formatting und nicht darstellbare Overflowwerte werden nicht als decoder-last-
+value-wins oder normalisierte Originalbytes ausgegeben. Das bestätigt **nur**
+Darstellbarkeit der JSONkodierung und ausgewählten Zeitfelder, nicht vollständiges
+Zeilenschema, Eigentum/Referenzkonsistenz, aktuelle Gleichheit oder reservierte
+Metadatenversion. Diese Entscheidungen bleiben im unveränderten Originalwriter.
+Keine Rohfelder/Privatwerte werden neu ausgegeben oder gespeichert.
+
+Die bestehende Vorschlagsdarstellung hat nur `+HH:MM`, keine Offsetsekunden.
+Ein echter Epochwert mit historischem Berliner Sekundenoffset darf deshalb nicht
+durch `format(P)` in einen anderen scheinbaren Instant umgerechnet werden.
+Dort bleiben beantragte Dauer und `proposed_usable` nicht verfügbar; vorhandene
+Native-/Laravel-Karten zeigen ihre bisherigen festen Ausweichtexte und keine
+scheinbar darstellbaren Vorschlagszeiten. Im beobachteten PHP-/TZ-Datenstand wurde
+sonst ein exakt zweistündiges Intervall über den Berliner Wechsel 1893 als `01:59`
+gezeigt. Keine neue fachliche Datumsgrenze oder Schreibsperre: nur die bestehende
+ISO-Darstellung kann diesen Wert nicht repräsentieren.
+
+Ausschließlich der bereits gemeinsame Helper und dieses Dokument ändern sich.
+Lifecycle-/Epochintegerhelper, Originale, SQL, Reader/Controller/DTO, Native-/Blade-
+Markup, Formfelder, Antrags-/Freigabe-/Stornodienst, Snapshotvergleich, Rollen,
+Vier-Augen-Prinzip, Salden, Audit, Schema, Runtime/Host/Security und Abhängigkeiten
+bleiben unverändert. Das ist weiterhin nur eine ausgewählte Buchungsdauervorschau,
+keine Kontosaldo-, Snapshotintegritäts-, Freigabe- oder Reparaturzusage.
+
+Grober PHP 8.5.12 / SQLite 3.46.1 / Laravel 13.38.0 Nachweis: tatsächlicher alter
+und neuer Helper reproduzieren acht falsche Präzisionsklassen (DST an beiden
+Endpunkten, JSON-Duplikat/unkanonisch/Overflow, historische Vorschlagsdarstellung).
+30 alte unterstützte Ergebnisparitäten über drei Defaultzeitzonen bleiben exakt.
+Vorhandener Memory-Reader-/Controller-/kompilierter-View-Journey bleibt erhalten:
+243 alte Controller-Inhaltsparitäten, zusätzlich 24 tatsächliche gezielte neue
+Native-/Blade-Previewdarstellungen in DE/EN/ZH aus bereits eigenen autorisierten
+Anträgen. Source/Schema/Audit/Änderungszähler/query_only/Transaktionen und echte
+Session-/Zeitzonenzustände bleiben während Reads gleich; Writerdouble unbenutzt.
+Notwendige PHP-/kompilierte Blade-Syntax und vollständige Quellerhaltung separat.
+Kein neuer Repository-Testbestand/manueller CIstart, kein echter App-/Bootstrap-/
+Auth-/CSRF-/HTTP-/Browser-/Layout-/Konkurrenz-/Produktivnachweis, keine realen Daten/
+Konten/Credentials/Schlüssel/Dateidatenbank, Aktivierung oder Deployment.
+#55/#50 bleiben für Mapping/Reparatur, vollständige Qualitäts-/Saldo-/Vertretungs-
+und operative Abnahmekriterien offen; dieser konkrete Previewfehler ist abgegrenzt.

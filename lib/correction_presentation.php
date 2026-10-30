@@ -1,6 +1,7 @@
 <?php
 // Definitions only: selected, already-authorized request presentation; no lookups/writes.
 require_once __DIR__.'/reporting.php';
+require_once __DIR__.'/legacy_timestamp_assessment.php';
 
 /** Only the three selected time fields, never arbitrary original JSON content. */
 function chrono_correction_duration(array $record): array {
@@ -9,6 +10,11 @@ function chrono_correction_duration(array $record): array {
         ||!is_string($record['startzeit'])||(!is_string($record['endzeit'])&&$record['endzeit']!==null)
         ||(!is_int($record['pause'])&&!is_string($record['pause']))) { return $unavailable; }
     try {
+        // A permissive report parse may choose an instant in a DST fold/gap.
+        // The existing strict diagnosis must permit both persisted endpoints first.
+        if (legacy_timestamp_assessment($record['startzeit'])['category']!==null
+            || ($record['endzeit']!==null && $record['endzeit']!==''
+                && legacy_timestamp_assessment($record['endzeit'])['category']!==null)) { return $unavailable; }
         $calculation=report_record_calculation($record);
         return match ($calculation['status']) {
             'completed'=>['state'=>'completed','text'=>report_format_hours($calculation['minutes']/60),'minutes'=>$calculation['minutes']],
@@ -31,7 +37,11 @@ function chrono_correction_preview(array $request): array {
     if (array_key_exists('record_id',$request)&&$request['record_id']===null&&$raw===null) {
         $before=['state'=>'absent','text'=>'Kein vorheriger Eintrag (Nachtrag)','minutes'=>null];
     } elseif (is_string($raw)&&$raw!==''&&strlen($raw)<=65536) {
-        try { $original=json_decode($raw,false,8,JSON_THROW_ON_ERROR); }
+        try {
+            $original=json_decode($raw,false,8,JSON_THROW_ON_ERROR);
+            // Do not accept decoder last-value-wins or normalize stored snapshot bytes.
+            if (!$original instanceof stdClass || json_encode($original,JSON_THROW_ON_ERROR)!==$raw) { $original=null; }
+        }
         catch (JsonException) { $original=null; }
         if ($original instanceof stdClass) {
             $selected=[];
@@ -52,10 +62,14 @@ function chrono_correction_preview(array $request): array {
         $pause=chrono_correction_preview_integer($request['proposed_pause']??null);
         if ($start!==false&&$end!==false&&$pause!==false&&$end>$start) {
             try {
-                $after=chrono_correction_duration([
-                    'startzeit'=>booking_local_date($start)->format('Y-m-d\TH:i:sP'),
-                    'endzeit'=>booking_local_date($end)->format('Y-m-d\TH:i:sP'),'pause'=>$pause,
-                ]);
+                $localStart=booking_local_date($start);$localEnd=booking_local_date($end);
+                // The existing ISO display has minute offsets, not historic offset seconds.
+                if ($localStart->getOffset()%60===0 && $localEnd->getOffset()%60===0) {
+                    $after=chrono_correction_duration([
+                        'startzeit'=>$localStart->format('Y-m-d\TH:i:sP'),
+                        'endzeit'=>$localEnd->format('Y-m-d\TH:i:sP'),'pause'=>$pause,
+                    ]);
+                }
             } catch (Throwable) { /* Fixed unavailable text, never source data or exception detail. */ }
         }
     }
