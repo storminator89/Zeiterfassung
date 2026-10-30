@@ -91,6 +91,18 @@
                         <button class="btn btn-primary" type="submit">{{ $settings->passwordText('submit') }}</button>
                     </form>
                 </section>
+                <div class="divider my-8">{{ $settings->passwordText('sessions_title') }}</div>
+                <section aria-labelledby="own-sessions-title">
+                    <h3 id="own-sessions-title" class="text-xl font-semibold mb-3">{{ $settings->passwordText('sessions_title') }}</h3>
+                    <p id="own-sessions-contract" class="text-sm opacity-70 mb-4">{{ $settings->passwordText('sessions_contract') }}</p>
+                    <form method="post" action="settings.php" class="space-y-6" aria-describedby="own-sessions-contract">
+                        @csrf
+                        <input type="hidden" name="session_action" value="revoke_web_api">
+                        <div class="form-control"><label class="label" for="sessions_current_password">{{ $settings->passwordText('current') }}</label><input class="input input-bordered w-full" type="password" id="sessions_current_password" name="current_password" autocomplete="current-password" maxlength="72" required></div>
+                        <label class="flex items-start gap-3"><input type="checkbox" name="session_confirmation" value="1" class="checkbox checkbox-primary" required><span>{{ $settings->passwordText('sessions_confirm') }}</span></label>
+                        <button class="btn btn-outline" type="submit">{{ $settings->passwordText('sessions_submit') }}</button>
+                    </form>
+                </section>
             @endif
 
             @if ($page->role === 'admin')
