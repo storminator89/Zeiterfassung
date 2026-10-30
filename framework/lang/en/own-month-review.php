@@ -1,6 +1,6 @@
 <?php
 return [
-    'title' => 'Your open items before monthly review',
+    'title' => 'Your items before monthly review',
     'month' => 'Month',
     'check' => 'Check your stored items',
     'invalid' => 'Choose a valid month. No other period was checked.',
@@ -12,6 +12,8 @@ return [
     'samples' => 'At most five examples from this own read snapshot:',
     'kind_open' => 'Open entry',
     'kind_request' => 'Pending request',
+    'closed_counts' => 'Closed entries needing review: %1$d starting in the month · %2$d with unclear start date. Date/pause checks, not a complete quality assessment.',
+    'kind_closed' => 'Closed entry needing review',
     'selected' => 'start in the month',
     'earlier' => 'earlier open start',
     'unclear' => 'unclear dates',

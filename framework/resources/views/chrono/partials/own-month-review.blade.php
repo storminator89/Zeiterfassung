@@ -13,10 +13,12 @@
             @php($monthCounts = $monthReview['counts'])
             <p>{{ sprintf($ownMonthReview->text('open_counts'), $monthCounts['open_selected'], $monthCounts['open_earlier'], $monthCounts['open_unclear']) }}</p>
             <p>{{ sprintf($ownMonthReview->text('pending_counts'), $monthCounts['pending_selected'], $monthCounts['pending_unclear']) }}</p>
-            @if (array_sum($monthCounts) === 0)<p role="status">{{ $ownMonthReview->text('empty') }}</p>
+            @php($closedCounts = $monthReview['closed_counts'])
+            @if ($closedCounts !== null)<p>{{ sprintf($ownMonthReview->text('closed_counts'), $closedCounts['selected'], $closedCounts['unclear']) }}</p>@endif
+            @if (array_sum($monthCounts) + array_sum($closedCounts ?? []) === 0)<p role="status">{{ $ownMonthReview->text('empty') }}</p>
             @else
                 <p>{{ $ownMonthReview->text('samples') }}</p><ul class="list-disc pl-5">
-                @foreach ($monthReview['samples'] as $sample)<li>{{ $ownMonthReview->text('kind_'.$sample['kind']) }} #{{ $sample['id'] }} · {{ $ownMonthReview->text($sample['relation']) }}@if ($sample['kind'] === 'open') · <a class="link" href="adjustments.php?record_id={{ rawurlencode($sample['id']) }}">{{ $ownMonthReview->text('correction') }}</a>@else · <a class="link" href="adjustments.php?request_status=pending&amp;request_id={{ rawurlencode($sample['id']) }}">{{ $ownMonthReview->text('pending_link') }}</a>@endif</li>@endforeach
+                @foreach ($monthReview['samples'] as $sample)<li>{{ $ownMonthReview->text('kind_'.$sample['kind']) }} #{{ $sample['id'] }} · {{ $ownMonthReview->text($sample['relation']) }}@if ($sample['kind'] !== 'request') · <a class="link" href="adjustments.php?record_id={{ rawurlencode($sample['id']) }}">{{ $ownMonthReview->text('correction') }}</a>@else · <a class="link" href="adjustments.php?request_status=pending&amp;request_id={{ rawurlencode($sample['id']) }}">{{ $ownMonthReview->text('pending_link') }}</a>@endif</li>@endforeach
                 </ul>
             @endif
             @if ($monthReview['limited'])<p>{{ $ownMonthReview->text('limited') }}</p>@endif
