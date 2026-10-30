@@ -88,7 +88,12 @@ $currentMonth = date("m");
 $currentMonthName = $months[$currentMonth];
 
 // Load the holiday calendar before calculating any target in this response.
-fetchFeiertageDB($currentYear);
+// A known explicit Native holiday-refill refusal must not become an automatic
+// import just because its existing Admin page is rendered again. The marker is
+// server-local response state, never a request option or global Runtime setting.
+if (($nativeHolidayRefillError ?? null) === null) {
+    fetchFeiertageDB($currentYear);
+}
 [$firstDayOfWeek,$lastDayOfWeek]=report_week_bounds(date('Y-m-d'));
 $reportInvalidRecords=[];
 $reportAbsenceConflicts=[];
