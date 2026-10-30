@@ -46,15 +46,25 @@ final readonly class ReadOnlyRuntimeDiagnostics
                 $rows = $statement->fetchAll(PDO::FETCH_COLUMN);
                 $statement->closeCursor();
                 $counts = ['recent' => 0, 'stale' => 0, 'missing' => 0, 'invalid' => 0];
+                $newestAge = $oldestAge = null;
                 foreach (array_slice($rows, 0, 1000) as $lastSeen) {
-                    $counts[\terminal_contact_status($lastSeen, $now)['state']]++;
+                    $contact = \terminal_contact_status($lastSeen, $now);
+                    $counts[$contact['state']]++;
+                    if ($contact['last_seen'] !== null) {
+                        // The existing status recognizer guarantees 1 <= last_seen <= now.
+                        // Missing/invalid/future values never become a zero-age observation.
+                        $age = $now - $contact['last_seen'];
+                        $newestAge = $newestAge === null ? $age : min($newestAge, $age);
+                        $oldestAge = $oldestAge === null ? $age : max($oldestAge, $age);
+                    }
                 }
                 $truncated = count($rows) > 1000;
 
                 return ['state' => $truncated ? 'incomplete' : ($rows === [] ? 'no_active_devices'
                     : ($counts['stale'] + $counts['missing'] + $counts['invalid'] > 0 ? 'degraded' : 'recent')),
                     'scanned' => min(1000, count($rows)), 'counts' => $counts,
-                    'truncated' => $truncated, 'maximum_contact_age_seconds' => TERMINAL_CONTACT_MAX_AGE];
+                    'truncated' => $truncated, 'maximum_contact_age_seconds' => TERMINAL_CONTACT_MAX_AGE,
+                    'observed_age_seconds' => ['newest' => $newestAge, 'oldest' => $oldestAge]];
             }, 1);
 
             // Only the already admitted database's volume, not an arbitrary
