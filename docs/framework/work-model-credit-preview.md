@@ -1,5 +1,54 @@
 # #61/#79 — Existing read-only model-credit preview in Laravel
 
+## Completed existing preview flow: navigation and uncertain timestamps
+
+On Main `64776b2f` the existing preview stopped at 100 rows; later matching
+credits could not be inspected. The same Native/Laravel form now navigates the
+whole currently matching set in 100-row pages. The optional additive
+`WorkModelCreditPreviewPageReads` capability returns an explicit version-1 page
+receipt (total, effective page, page count and size). Old capability-only
+implementations retain their bounded first preview and cannot silently accept
+a page request. The stable general read interface, providers and routes remain
+unchanged.
+
+Navigation buttons submit the **currently filled existing model form**, including
+its existing CSRF field, using `preview_page`. No cloned hidden candidate can
+discard later form edits. Presence of that field is always a read-only preview
+intent; mixing it with Save or an unknown explicit action is refused. It can
+never become an unmarked Save. The ordinary unmarked/explicit Save path remains
+separate and unchanged. Starting Preview again resets to page 1. Every page
+freshly checks the same Admin/password-version/target authority and all candidate
+values inside the existing read snapshot. No new actor, permission, write,
+credential, stored draft or retained snapshot is introduced.
+
+Only canonical positive decimal page strings are accepted; invalid shape or
+overflow is refused, while valid out-of-range pages clamp to the current last
+page. Matching count and selected page share the same transaction, existing
+candidate section (until the next stored model), and deterministic timestamp/ID
+order. New source data or changed form values may move pages between requests;
+the display states this explicitly and is not a month close/export batch.
+The old four-argument helper call remains bounded. No aggregate final credit or
+account balance is invented by adding page navigation.
+
+The existing strict `legacy_timestamp_assessment` now also protects this
+advisory comparison. A selected permissively readable but ambiguous, nonexistent
+or unsupported start cannot acquire a chosen historical instant/day: its
+comparison remains explicitly unknown. The existing model-section selection
+and inclusion of unplaceable starts remain unchanged; this is not a complete
+data-quality scan outside that scope. An uncertain nonmissing end also withholds retained net minutes
+and the numeric difference; a supported start day may still show its known
+hypothetical target. Open/malformed rows remain unknown, never zero. Supported
+offset-bearing/unambiguous local timestamps retain canonical calculations, historical
+holidays and the original target-minus-credit meaning. Stored timestamps,
+credits, models, reporting/export formulas and every writer are unchanged.
+
+This completes only the existing impact-inspection user flow. **#61 remains
+open:** no dated balance ledger, initial-credit policy, closed-period protection
+or new entitlement/accounting rules are supplied or assumed. No held #410
+monthly-findings code, #352 finding, correction/API filter or denied #66 packet
+is incorporated. Protected browser/HTTP/production/runtime/deployment acceptance
+remains a separate gate.
+
 Source basis: Main `ddddbd851028d4b3d5bddeb399f1c51769b7e3c5`, tree
 `f9e4217e093e337b0398d56416e5b4c6bada6039`.
 

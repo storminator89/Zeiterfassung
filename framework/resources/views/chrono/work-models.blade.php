@@ -12,7 +12,7 @@
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">Neues Modell hinterlegen</h2>
         <p class="opacity-70">Ein neues Modell ersetzt keine Historie. Bei gleichem Gültigkeitsdatum gilt die zuletzt gespeicherte Version. Rückwirkende Modelle ändern Sollzeit-Auswertungen, aber keine gebuchten Gutschriften.</p>
-        <form method="post">
+        <form method="post" id="work-model-form">
             @csrf
             <fieldset @disabled(! $workModels->enabled)>
                 <label class="block text-sm font-semibold mt-4 mb-2" for="user_id">Person</label>
@@ -48,12 +48,22 @@
         <p class="text-sm opacity-70 mt-3">Hypothetisches Tagessoll des eingegebenen Modells im Vergleich zur gespeicherten Netto-Gutschrift. Bereits erfasste Gutschriften werden weder neu berechnet noch geändert. Die Abweichung ist kein Kontosaldo und kein automatischer Korrekturauftrag. Nur bereits gespeicherte Feiertage werden berücksichtigt; deren Vollständigkeit ist nicht bestätigt.</p>
         @if ($creditPreview['truncated'] || $creditPreview['unknown'])<p class="mt-3" role="status">Die Vorschau ist begrenzt oder enthält nicht auswertbare Gutschriften. Unbekannte Werte sind nicht null Minuten; es gibt keine abschließende Summe.</p>@endif
         @if (! $creditPreview['items'])<p class="mt-3" role="status">Keine zuordenbaren gespeicherten Abwesenheiten im betrachteten Modellabschnitt gefunden. Dies ist kein Vollständigkeits- oder Datenqualitätsnachweis.</p>@else
-        <p class="text-sm mt-3">Bis zu 100 gespeicherte Gutschriften, nach Berliner Beginn sortiert. Nicht zuordenbare Datumswerte stehen zuerst.</p>
+        <p class="text-sm mt-3">Bis zu 100 gespeicherte Gutschriften je Seite in der bisherigen Beginn-/ID-Reihenfolge. Unlesbare Anfänge stehen zuerst; Ortszeit-/Formathinweise bleiben unabhängig davon ungeklärt.</p>
         <div class="table-responsive mt-3"><table class="table"><thead><tr><th>Buchung / Historie (neuer Tab)</th><th>Tag (Berlin)</th><th>Gespeicherte Netto-Gutschrift</th><th>Hypothetisches Tagessoll</th><th>Tagessoll minus Gutschrift</th></tr></thead><tbody>
         @foreach ($creditPreview['items'] as $credit)
-            <tr><td><a class="link link-primary" target="_blank" rel="noopener noreferrer" href="{{ 'history.php?'.http_build_query(['entity'=>'zeiterfassung','user_id'=>$creditPreview['person_id'],'record_id'=>$credit['id']]) }}">#{{ $credit['id'] }}</a></td><td>{{ $credit['day'] ?? 'Nicht zuordenbar' }}</td><td>{{ $credit['stored_minutes'] === null ? 'Nicht auswertbar' : $credit['stored_minutes'].' min' }}</td><td>{{ $credit['hypothetical_target'] === null ? 'Unbekannt' : $credit['hypothetical_target'].' min' }}</td><td>{{ $credit['difference'] === null ? 'Unbekannt' : ($credit['difference'] > 0 ? '+' : '').$credit['difference'].' min' }}</td></tr>
+            <tr><td><a class="link link-primary" target="_blank" rel="noopener noreferrer" href="{{ 'history.php?'.http_build_query(['entity'=>'zeiterfassung','user_id'=>$creditPreview['person_id'],'record_id'=>$credit['id']]) }}">#{{ $credit['id'] }}</a>@if ($credit['timestamp_review'] ?? false)<span class="block text-sm">Zeitformat/Ortszeit ungeklärt; keine erfundene Gutschrift.</span>@endif</td><td>{{ $credit['day'] ?? 'Nicht zuordenbar' }}</td><td>{{ $credit['stored_minutes'] === null ? 'Nicht auswertbar' : $credit['stored_minutes'].' min' }}</td><td>{{ $credit['hypothetical_target'] === null ? 'Unbekannt' : $credit['hypothetical_target'].' min' }}</td><td>{{ $credit['difference'] === null ? 'Unbekannt' : ($credit['difference'] > 0 ? '+' : '').$credit['difference'].' min' }}</td></tr>
         @endforeach
         </tbody></table></div>
+        @endif
+        @if (($creditPreview['pagination_version'] ?? null) === 1)
+        <p class="text-sm mt-3">{{ $creditPreview['total'] }} passende gespeicherte Buchungen · Vorschauseite {{ $creditPreview['page'] }} von {{ $creditPreview['pages'] }} · höchstens {{ $creditPreview['page_size'] }} je Seite.</p>
+        <p class="text-sm opacity-70 mt-2">Jeder Seitenaufruf prüft die aktuell ausgefüllte Modellmaske erneut, ohne Speichern. Neue Daten oder geänderte Eingaben können Seiten verschieben. Für eine geänderte Maske können Sie die Vorschau oben bewusst auf Seite 1 neu starten. Kein eingefrorener Abschlussstand.</p>
+        @if ($creditPreview['pages'] > 1)
+        <nav class="flex flex-wrap gap-3 mt-3" aria-label="Gutschriften-Vorschauseiten">
+            @if ($creditPreview['page'] > 1)<button type="submit" form="work-model-form" class="btn btn-outline" name="preview_page" value="1" formnovalidate @disabled(! $workModels->enabled)>Erste Seite</button><button type="submit" form="work-model-form" class="btn btn-outline" name="preview_page" value="{{ $creditPreview['page'] - 1 }}" formnovalidate @disabled(! $workModels->enabled)>Vorherige Seite</button>@endif
+            @if ($creditPreview['page'] < $creditPreview['pages'])<button type="submit" form="work-model-form" class="btn btn-outline" name="preview_page" value="{{ $creditPreview['page'] + 1 }}" formnovalidate @disabled(! $workModels->enabled)>Nächste Seite</button><button type="submit" form="work-model-form" class="btn btn-outline" name="preview_page" value="{{ $creditPreview['pages'] }}" formnovalidate @disabled(! $workModels->enabled)>Letzte Seite</button>@endif
+        </nav>
+        @endif
         @endif
         <p class="mt-4"><a class="link" href="#user_id">Zurück zum Modellformular (ohne Neuladen)</a></p>
     </section>
