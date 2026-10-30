@@ -27,6 +27,28 @@ if ($_SERVER['REQUEST_METHOD']==='GET' && ($_GET['format']??'')==='status') {
 if ($_SERVER['REQUEST_METHOD']==='POST') {
     attendance_json(fn() => attendance_transition($conn,$user,'web:'.$user,$_POST['event_id']??'',$_POST['action']??'',($_POST['confirm_end_pause']??'')==='1',attendance_expected_record($_POST),true,attendance_start_metadata($_POST)));
 }
+// Optional explicit own-period comparison; never runs on booking/status paths.
+require_once __DIR__.'/lib/own_period_comparison.php';
+require_once __DIR__.'/framework/app/View/ExistingUi/OwnPeriodComparison.php';
+$comparisonLanguage=valid_language(isset($_GET['lang'])?$_GET['lang']:($_SESSION['lang']??'de'));
+$comparisonLoaded=new DateTimeImmutable('now',new DateTimeZone('Europe/Berlin'));
+$comparisonThrough=$comparisonLoaded->modify('-1 day')->format('Y-m-d');
+$comparisonFrom=$comparisonLoaded->modify('-7 days')->format('Y-m-d');
+$ownPeriodComparison=new \App\View\ExistingUi\OwnPeriodComparison($comparisonFrom,$comparisonThrough,$comparisonLanguage);
+if ($_SERVER['REQUEST_METHOD']==='GET' && (array_key_exists('compare_from',$_GET) || array_key_exists('compare_through',$_GET))) {
+    try { [$comparisonFrom,$comparisonThrough]=own_period_comparison_range($_GET['compare_from']??null,$_GET['compare_through']??null,$comparisonLoaded); }
+    catch (InvalidArgumentException) { $comparisonFrom='';$comparisonThrough=''; }
+    if ($comparisonFrom==='') { $ownPeriodComparison=new \App\View\ExistingUi\OwnPeriodComparison('','',$comparisonLanguage,requested:true,invalid:true); }
+    else {
+        try {
+            $comparison= native_own_period_comparison($conn,$user,$_SESSION['auth_version']??null,$comparisonFrom,$comparisonThrough);
+            $ownPeriodComparison=new \App\View\ExistingUi\OwnPeriodComparison($comparisonFrom,$comparisonThrough,$comparisonLanguage,$comparison,requested:true);
+        } catch (AttendanceError $error) {
+            if (in_array($error->status,[401,403],true)) { abort_request($error->status,$error->getMessage()); }
+            $ownPeriodComparison=new \App\View\ExistingUi\OwnPeriodComparison($comparisonFrom,$comparisonThrough,$comparisonLanguage,requested:true,unavailable:true);
+        } catch (Throwable) { $ownPeriodComparison=new \App\View\ExistingUi\OwnPeriodComparison($comparisonFrom,$comparisonThrough,$comparisonLanguage,requested:true,unavailable:true); }
+    }
+}
 // Explicit own-month GET only, before header output; booking/status branches above stay unchanged.
 require_once __DIR__.'/lib/own_month_review.php';
 require_once __DIR__.'/framework/app/View/ExistingUi/OwnMonthReview.php';
@@ -138,6 +160,7 @@ try {
             </section>
         </aside>
     </div>
+    <?php require __DIR__.'/lib/native_own_period_comparison_view.php'; ?>
     <section id="timeRecordsContainer" class="mt-8" aria-label="Erfasste Arbeitszeiten"><p role="status">Arbeitszeiten werden geladen …</p></section>
 </main>
 </div>
