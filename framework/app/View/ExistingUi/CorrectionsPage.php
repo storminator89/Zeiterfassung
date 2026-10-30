@@ -33,6 +33,9 @@ final readonly class CorrectionsPage
         public string $requestLookupValue = '',
         public bool $requestLookupInvalid = false,
         public bool $requestLookupUnavailable = false,
+        public bool $ownRequestsOnly = false,
+        public bool $ownRequestsInvalid = false,
+        public bool $ownRequestsUnavailable = false,
     ) {}
 
     /** Display only after a known request rejection; never a command or stored/flash input. */

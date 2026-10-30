@@ -80,6 +80,8 @@
 
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">Anträge filtern</h2>
+        @if ($corrections->ownRequestsInvalid)<div class="alert alert-error mb-4" role="alert">Ungültige Auswahl für eigene Anträge. Es werden keine Anträge angezeigt. Bitte die Auswahl neu setzen.</div>
+        @elseif ($corrections->ownRequestsUnavailable)<div class="alert alert-error mb-4" role="alert">Eigene Antragsauswahl ist in diesem Profil nicht verbunden. Es werden keine Anträge angezeigt.</div>@endif
         @if ($corrections->requestLookupInvalid)<div class="alert alert-error mb-4" role="alert">Ungültige Antrags-ID. Bitte eine positive ganze ID ohne Leerzeichen oder führende Nullen eingeben. Es werden keine Anträge angezeigt.</div>
         @elseif ($corrections->requestLookupUnavailable)<div class="alert alert-error mb-4" role="alert">Antrags-ID-Suche ist in diesem Profil nicht verbunden. Es werden keine Anträge angezeigt.</div>@endif
         <p class="mb-4">Offene Anträge für diese Auswahl: <strong>{{ $corrections->requestCounts['pending'] }}</strong> · innerhalb Ihrer bisherigen Sichtrechte.</p>
@@ -91,6 +93,9 @@
                 <option value="{{ $status }}" @selected($corrections->requestStatus === $status)>{{ $label }} ({{ $corrections->requestCounts[$status] }})</option>
                 @endforeach
             </select>
+            <label class="block text-sm font-semibold mt-4 mb-2" for="own_requests">Antragsauswahl</label>
+            <select class="select select-bordered w-full" id="own_requests" name="own_requests"><option value="" @selected(! $corrections->ownRequestsOnly)>Alle bisher sichtbaren Anträge</option><option value="1" @selected($corrections->ownRequestsOnly)>Nur eigene Anträge</option></select>
+            <p class="text-sm opacity-70 mt-3">Die eigene Auswahl schränkt Status und Antrags-ID zusätzlich ein. Sichtrechte und Freigaberegeln bleiben unverändert.</p>
             <label class="block text-sm font-semibold mt-4 mb-2" for="request_id">Antrags-ID (optional)</label>
             <input class="input input-bordered w-full" type="text" inputmode="numeric" id="request_id" name="request_id" value="{{ $corrections->requestLookupValue }}">
             <p class="text-sm opacity-70 mt-3">Status und Antrags-ID gelten gemeinsam, nur innerhalb Ihrer bisherigen Sichtrechte. Ein leeres Ergebnis bestätigt weder Existenz noch Zugriff; auch ein anderer Status kann die Auswahl leeren.</p>
