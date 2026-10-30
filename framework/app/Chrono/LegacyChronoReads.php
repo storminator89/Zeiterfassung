@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads, OwnApiTimeEntryKindReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, HolidayRefillPreviewReads, OwnStoredValuesExportReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, OwnMonthReviewFindingReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads, TeamTimeRecordReviewReads, OwnPeriodComparisonReads, WorkModelCreditPreviewPageReads, OwnAbsenceYearReads
+final class LegacyChronoReads implements ChronoReads, OwnApiTimeEntryKindReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, OwnCorrectionDecisionsReads, HolidayInventoryReads, HolidayRefillPreviewReads, OwnStoredValuesExportReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, OwnMonthReviewFindingReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads, TeamTimeRecordReviewReads, OwnPeriodComparisonReads, WorkModelCreditPreviewPageReads, OwnAbsenceYearReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -672,6 +672,17 @@ final class LegacyChronoReads implements ChronoReads, OwnApiTimeEntryKindReads, 
                 (int) (new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')))->format('Y'));
 
             return holiday_inventory($pdo, $year['year']) + ['selection_invalid' => $year['invalid']];
+        });
+    }
+
+    /** Current own request outcomes only; metadata and current principal share one fresh snapshot. */
+    public function ownCorrectionDecisions(): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
+            require_once dirname(__DIR__, 3).'/lib/own_correction_decisions.php';
+
+            return \chrono_own_correction_decisions_snapshot($pdo, (int) $actor->getKey(),
+                new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')));
         });
     }
 

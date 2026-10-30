@@ -108,6 +108,7 @@
     @if ($page->interactions->home)
     @include('chrono.partials.own-month-review')
     @include('chrono.partials.own-period-comparison')
+    @include('chrono.partials.own-correction-decisions')
     <section id="timeRecordsContainer" class="mt-8" aria-label="Erfasste Arbeitszeiten"><p role="status">Arbeitszeiten werden geladen …</p></section>
     @else
     <section class="mt-8" aria-label="Erfasste Arbeitszeiten"><p role="status">Die bestehende Arbeitszeittabelle wird erst nach Freigabe des authentifizierten Laravel-HTML-Fragments verbunden. Hier wird noch nichts geladen.</p></section>
