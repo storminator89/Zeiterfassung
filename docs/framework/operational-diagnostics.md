@@ -65,6 +65,20 @@ php artisan chrono:diagnose --backup=/ABSOLUTER/PRIVATER/AKTUELLER/BACKUPDATEI -
   Credential-/Pairingdaten. Vorhandene reine `terminal_contact_status`-Regel mit90s
   wird wiederverwendet. Aggregierte recent/stale/missing/invalid-Zählung, maximal1000
   Geräte; darüber ausdrücklich incomplete/degradiert, keine vollständige Summe.
+  `observed_age_seconds.newest` und `.oldest` zeigen zusätzlich das jüngste
+  beziehungsweise älteste Alter **nur der tatsächlich gescannten gültigen
+  Kontaktwerte** in ganzen Sekunden zum selben Prüfzeitpunkt. So sind etwa
+  91 Sekunden und mehrere Tage alter Kontakt unterscheidbar, ohne Geräte-IDs
+  oder zusätzliche Abfragen auszugeben. Das bestehende 90s-Limit bleibt unter
+  `maximum_contact_age_seconds`; die Alterswerte sind keine neuen Grenzwerte.
+  Fehlende, ungültige oder zukünftige Kontaktwerte zählen weiterhin separat
+  und erhalten niemals ein erfundenes Alter. Ohne gültigen gescannten Kontakt
+  sind beide Alterswerte ausdrücklich `null`; echter Kontakt genau jetzt ist 0.
+  Bei `truncated=true` gelten auch diese Extremwerte **nur für die gescannten
+  ersten 1000 Geräte**, nicht für den ganzen Bestand. Ohne `--terminal` bleibt
+  ausschließlich `state=not_selected`, ohne Altersobjekt oder Gerätequery.
+  Dies ist ein additives Messobjekt im bestehenden Berichtsschema 2; bisherige
+  Zählungen, Zustände, Fehlercodes, Exitcodes und geschlossene Defaults bleiben.
   Keine aktiven Geräte bei expliziter Auswahl ist ebenfalls degradiert. Kontakt ist
   weder Gerätefreigabe noch Funktions-/Hardwarebeweis. Ohne Auswahl keine Gerätequery.
 
@@ -171,3 +185,47 @@ Betriebsdaten oder Konfiguration verändert. Keine neue Testsuite oder manuell
 gestartete CI. Die frühere HTTP-/Terminalkorrelation bleibt unverändert.
 **#66 bleibt teilweise und offen** für tatsächliche Logzustellung/Rotation,
 Alarmierungsregeln und Betriebsabnahme.
+
+
+## Begrenzter Altersmessungsnachtrag zu #66
+
+Quellbasis ist tatsächlicher Main
+`0c78588dc5d7cd1e06def7fab0babd2ffd71fc9c`, Baum
+`f221e82a1c36797a53f633a07bf603be6e292c54`. Nur der bestehende
+Terminal-Kontaktscan und diese Betriebsnotiz ändern sich. Derselbe unveränderte
+`terminal_contact_status`-Recognizer bestimmt sowohl Zählung als auch Teilnahme
+an der Altersaggregation; kein zweiter Zeitparser oder Threshold, keine
+zusätzliche SQL-/Datei-/Netzabfrage. Min/Max werden direkt in der vorhandenen
+begrenzten Schleife bestimmt, ohne Paarlisten oder Gerätewerte im Ergebnis.
+Konto, Name, Standort, Rohzeit, HMAC/Pairing/Grants und Hardware werden nicht
+neu abgefragt oder ausgegeben. Die Antwort ist weiterhin nur eine begrenzte
+Momentaufnahme, kein Nachweis für Erreichbarkeit, Freigabe oder Hardwarefunktion.
+Der Betreiber kann alte/fehlende Kontakte anhand der vorhandenen privaten
+Betriebsinformationen gezielt untersuchen; keine automatische Wiederholung,
+Neukopplung, Alarmzustellung oder Änderung einer Gerätefreigabe.
+
+Notwendige Syntax, grober alter/neuer Diagnosevergleich und Quellenerhaltung
+werden im eingefrorenen Paket festgehalten. Keine vollständige Geräte-/Agent-/
+HTTP-/Hardware-/Browser-/Produktions- oder Betriebsabnahme. Keine echten Geräte,
+Konten, Schlüssel, Zugangsdaten, Nutzdaten oder neue Sicherheits-/Runtime-/Host-
+Konfiguration und keine Bereitstellung. #66 bleibt teilweise und offen.
+
+Grober Nachweis: PHP 8.5.12 / SQLite 3.46.1 / Laravel 13.38.0, gesperrter
+unveränderter Composerstand, tatsächlicher CommandTester und alter/neuer Service
+mit dem originalen zugelassenen V4-Readonly-PDO auf ausschließlich erfundenen
+kurzlebigen Dateien. Zwölf zusammenhängende Phasen: leer/nur gesperrt, gesund mit
+aktuellen Kontakten, gemischte und fehlende/ungültige/zukünftige Kontakte,
+abgewählte Messung, 1001 Geräte mit explizit ausgeschlossener letzter Zeile,
+maximaler Integer-Prüfzeitpunkt, nächster frischer Zustand und closed/invalid/
+refused. Alte Reportwerte (außer ID/Ladezeit), Exitcodes, Runtimeauflösungen,
+Schema, Daten und Dateihashes bleiben identisch; kein Writer wird aufgelöst,
+voriger Errorhandler sowie Session/Zeitzone erhalten und eigene Tempdateien
+anschließend entfernt. Prüfzeit und freier Speicher sind externe feste
+Harness-Beobachtungen; kein aktueller Speicher-/Backup- oder Hostzustand wird
+attestiert. Die V4-Device-Fixture hat keine Konten, Grants, verwendbaren
+Gerätezugangsdaten oder Aktivierung und bestätigt keine V5-Geräteaufnahme.
+Der erste Harness wollte die schon vorhandene synthetische Default-Site erneut
+einfügen; die originale UNIQUE-Grenze verweigerte dies korrekt. Nur der Harness
+wurde auf Nutzung der vorhandenen Default-Site berichtigt. Kein neuer
+Repositorytest oder manuell gestarteter CI-Lauf. Evidenz:
+`/tmp/chrono-diagnostics-contact-age-main0c78588d-support/`.
