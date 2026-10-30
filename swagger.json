@@ -705,6 +705,19 @@
               "maximum": 2147483647,
               "default": 0
             }
+          },
+          {
+            "name": "entry_kind",
+            "in": "query",
+            "required": false,
+            "description": "Optional exact scalar work or absence. Uses the existing stored booking_is_absence classification: non-empty modern absence_kind or exact legacy Urlaub/Krankheit/Feiertag description. Not approval, entitlement, valid time or completed status. Omitted keeps the existing all-own-row response. Malformed, duplicate, array or other values return JSON 400; raw extraction does not lose a late kind field to max_input_vars. Combines with existing date and pagination rules; no subject selector.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "work",
+                "absence"
+              ]
+            }
           }
         ],
         "responses": {
@@ -739,7 +752,7 @@
             }
           },
           "400": {
-            "description": "Invalid pagination type/syntax/range, or invalid scalar date syntax (not a full calendar-validation guarantee). Pagination rejection is JSON 400 before SQL; bootstrap and authentication run earlier.",
+            "description": "Invalid pagination type/syntax/range, or invalid scalar date syntax (not a full calendar-validation guarantee). Pagination rejection is JSON 400 before SQL; bootstrap and authentication run earlier. Invalid entry_kind representation/value, duplicate or array also returns fixed JSON 400 before the entry read; existing pagination/date error precedence remains.",
             "content": {
               "application/json": {
                 "schema": {
@@ -767,7 +780,7 @@
             "bearerAuth": []
           }
         ],
-        "description": "Own raw reporting rows ordered before paging by chrono_report_start_epoch(startzeit) DESC, id DESC (instant order, descending ID tie-break; unreadable starts remain SQL NULL last); no user_id selector, overlap-window selection or normalization. Inclusive date bounds use the Europe/Berlin reporting start day via chrono_api_booking_day(startzeit), shared with report_day; no day splitting. Empty/unreadable starts are excluded under date filters, not repaired. Syntax-only query dates. Strict nonnegative integer pagination: limit defaults to 100, maximum 1000, 0 returns no rows; offset defaults to zero, maximum 2147483647. meta.limit is the effective integer limit; omitted meta.offset stays null. Deliberate compatibility change: omitted limit and offset-only no longer return unlimited rows. Iterate pages using explicit limit/offset; see docs/API-CONTRACT.md."
+        "description": "Own raw reporting rows ordered before paging by chrono_report_start_epoch(startzeit) DESC, id DESC (instant order, descending ID tie-break; unreadable starts remain SQL NULL last); no user_id selector, overlap-window selection or normalization. Inclusive date bounds use the Europe/Berlin reporting start day via chrono_api_booking_day(startzeit), shared with report_day; no day splitting. Empty/unreadable starts are excluded under date filters, not repaired. Syntax-only query dates. Strict nonnegative integer pagination: limit defaults to 100, maximum 1000, 0 returns no rows; offset defaults to zero, maximum 2147483647. meta.limit is the effective integer limit; omitted meta.offset stays null. Deliberate compatibility change: omitted limit and offset-only no longer return unlimited rows. Iterate pages using explicit limit/offset; see docs/API-CONTRACT.md. Optional entry_kind=work|absence filters only the existing stored classification before count/paging; no duration, approval or completeness calculation. An explicit valid kind adds meta.entry_kind; omission adds no key and retains the prior response. A Laravel profile without the optional kind-read capability returns JSON 503 with the fixed message Time-entry kind filtering unavailable., never an unfiltered fallback."
       }
     },
     "/api.php/timeentry/{id}": {
@@ -1729,7 +1742,7 @@
             "properties": {
               "total": {
                 "type": "integer",
-                "description": "Count of own date-filtered rows before pagination; PDO value is not explicitly cast."
+                "description": "Count of own date-filtered rows before pagination; PDO value is not explicitly cast. An explicit entry_kind also narrows this count before pagination."
               },
               "filtered": {
                 "type": "integer",
@@ -1749,6 +1762,14 @@
                 "maximum": 2147483647,
                 "nullable": true,
                 "description": "Validated explicit offset; null when omitted (effective zero)."
+              },
+              "entry_kind": {
+                "type": "string",
+                "enum": [
+                  "work",
+                  "absence"
+                ],
+                "description": "Present only for an explicit valid kind filter; confirms the applied stored classification. Omitted for the original default response."
               }
             }
           }

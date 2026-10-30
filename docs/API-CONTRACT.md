@@ -451,3 +451,13 @@ zählt nur verbleibende Treffer unterhalb der Grenze. Nur bei Auswahl kommt
 `meta.before` hinzu. Das ist kein Feed oder seitenübergreifender Snapshot, und die
 Grenz-ID wird nicht auf Existenz oder Eigentum geprüft.
 [Genauer Vertrag und offene Grenzen](framework/api-own-correction-status.md#exclusive-continuation-below-an-own-request-id--partial-68).
+
+### Eigene Rohzeilen nach gespeicherter Art filtern
+
+`GET /api.php/timeentries?entry_kind=work` beziehungsweise `entry_kind=absence`
+schränkt ausschließlich die eigene vorhandene Rohzeilenliste nach der bestehenden
+Arbeits-/Abwesenheitsklassifikation ein. Datum, Reihenfolge und Pagination gelten
+zusätzlich; `meta.total` zählt passende eigene Zeilen vor Paging. Nur beim Opt-in
+kommt `meta.entry_kind` hinzu. Ohne das Feld bleiben Antwort und Verhalten unverändert.
+Das ist keine Urlaubsfreigabe, Gutschriften-/Dauer-/Validitätszusage oder neue
+Schreibroute. [Exakter Vertrag und Grenzen](framework/api-timeentry-kinds.md).

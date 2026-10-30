@@ -198,6 +198,7 @@ function getUsers($conn, $user_id) {
  * @OA\Get(
  *     path="/api.php/timeentries",
  *     summary="Get filtered time entries for the authenticated user",
+ *     @OA\Parameter(name="entry_kind", in="query", required=false, description="Optional stored classification only: work or absence; no approval/validity promise. Omitted keeps all own rows.", @OA\Schema(type="string", enum={"work", "absence"})),
  *     @OA\Parameter(
  *         name="start_date",
  *         in="query",
@@ -266,6 +267,18 @@ function getTimeEntries($conn, $user_id) {
             $params[':end_date'] = $_GET['end_date'];
         }
 
+        require_once __DIR__.'/lib/api_time_entry_kind.php';
+        try {
+            $entryKind = api_time_entry_kind_query((string) ($_SERVER['QUERY_STRING'] ?? ''));
+        } catch (\InvalidArgumentException $error) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $error->getMessage()]);
+            return;
+        }
+        if ($entryKind !== null) {
+            $whereConditions[] = api_time_entry_kind_predicate($conn, $entryKind);
+        }
+
         if (isset($_GET['start_date']) || isset($_GET['end_date'])) {
             api_register_booking_day($conn);
         }
@@ -323,7 +336,7 @@ function getTimeEntries($conn, $user_id) {
                 'filtered' => count($entries),
                 'limit' => $pagination['limit'],
                 'offset' => $pagination['offset']
-            ]
+            ] + ($entryKind === null ? [] : ['entry_kind' => $entryKind])
         ], JSON_THROW_ON_ERROR);
     } catch (\Exception $exception) {
         http_response_code(500);
