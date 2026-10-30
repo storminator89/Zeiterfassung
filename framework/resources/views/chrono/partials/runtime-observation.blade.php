@@ -1,7 +1,7 @@
 <section id="runtime-observation" class="card bg-base-100 shadow-xl mb-8" aria-labelledby="runtime-observation-title">
     <div class="card-body">
-        <h2 id="runtime-observation-title" class="card-title text-2xl mb-4">{{ $observation->text('title') }}</h2>
-        <p class="text-sm opacity-70 mb-4">{{ $observation->text('scope') }}</p>
+
+
         <details @if ($observation->requested) open @endif>
             <summary>{{ $observation->text('title') }}</summary>
             <div class="flex flex-wrap gap-3 my-4">

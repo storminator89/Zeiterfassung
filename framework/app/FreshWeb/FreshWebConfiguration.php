@@ -74,6 +74,12 @@ final readonly class FreshWebConfiguration
         $setup = $config->get('chrono_fresh_web.setup_enabled', false);
         if (! is_bool($setup)) { throw new LogicException('Fresh setup requires a separate boolean opt-in.'); }
         $terminal = $config->get('chrono_terminal');
+        // Device ingress becomes available only after the first administrator has closed setup.
+        $setupDirectory=$config->get('chrono_fresh_web.instance_directory');
+        if (is_string($setupDirectory) && !is_file($setupDirectory.'/setup-closed') && is_array($terminal)) {
+            $terminal=['http_enabled'=>false,'existing_keys_enabled'=>false,'existing_key_admissions'=>null];
+            $config->set('chrono_terminal', $terminal);
+        }
         if (! is_array($terminal) || ! is_bool($terminal['http_enabled'] ?? null)
             || ($terminal['http_enabled'] && ($setup || ($terminal['existing_keys_enabled'] ?? null) !== true))) {
             throw new LogicException('Fresh terminal HTTP requires separate existing roots and closed setup mode.');
@@ -148,7 +154,7 @@ final readonly class FreshWebConfiguration
                 'chrono_terminal' => $terminal,
                 'chrono_ldap_sync.fresh' => $sync?->configuration() ?? ['enabled' => false],
                 'session.driver' => 'file', 'session.files' => $directory.'/sessions',
-                'session.cookie' => $namespace, 'session.secure' => true, 'session.http_only' => true,
+                'session.cookie' => $namespace, 'session.secure' => str_starts_with($origin, 'https://'), 'session.http_only' => true,
                 'session.same_site' => 'lax', 'session.domain' => null, 'session.path' => '/',
                 'session.partitioned' => false, 'session.encrypt' => true, 'session.serialization' => 'json',
                 'session.block' => true, 'session.block_store' => 'file',
@@ -335,23 +341,26 @@ final readonly class FreshWebConfiguration
 
     private static function origin(mixed $url): string
     {
-        if (! is_string($url)) { throw new LogicException('A trusted canonical HTTPS root origin is required.'); }
+        if (! is_string($url)) { throw new LogicException('A canonical HTTPS or private-network HTTP root origin is required.'); }
         try { $parts = @parse_url($url); } catch (Throwable) { $parts = false; }
-        if (! is_array($parts) || ($parts['scheme'] ?? null) !== 'https'
+        if (! is_array($parts) || ! in_array($parts['scheme'] ?? null, ['http','https'], true)
             || isset($parts['user']) || isset($parts['pass'])
             || isset($parts['query']) || isset($parts['fragment']) || ! in_array($parts['path'] ?? '', ['', '/'], true)
             || ! is_string($parts['host'] ?? null) || $parts['host'] !== strtolower($parts['host'])
             || preg_match('/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/D', $parts['host']) !== 1
             || str_contains($parts['host'], '..')) {
-            throw new LogicException('A trusted canonical HTTPS root origin is required.');
+            throw new LogicException('A canonical HTTPS or private-network HTTP root origin is required.');
         }
         foreach (explode('.', $parts['host']) as $label) {
             if (preg_match('/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/D', $label) !== 1) {
-                throw new LogicException('A trusted canonical HTTPS root origin is required.');
+                throw new LogicException('A canonical HTTPS or private-network HTTP root origin is required.');
             }
         }
-        $origin = 'https://'.$parts['host'].(isset($parts['port']) && $parts['port'] !== 443 ? ':'.$parts['port'] : '');
-        if (! in_array($url, [$origin, $origin.'/'], true)) { throw new LogicException('A trusted canonical HTTPS root origin is required.'); }
+        $scheme=$parts['scheme'];
+        if ($scheme === 'http' && !LocalNetworkOrigin::allowsHttp($parts['host'])) { throw new LogicException('HTTP requires a local-network origin.'); }
+        $defaultPort=$scheme === 'https' ? 443 : 80;
+        $origin = $scheme.'://'.$parts['host'].(isset($parts['port']) && $parts['port'] !== $defaultPort ? ':'.$parts['port'] : '');
+        if (! in_array($url, [$origin, $origin.'/'], true)) { throw new LogicException('A canonical HTTPS or private-network HTTP root origin is required.'); }
         return $origin;
     }
 
@@ -435,9 +444,9 @@ final readonly class FreshWebConfiguration
         foreach ([
             'assets/kolibri_icon.png' => 'b450f436baec5dbde264c4fe21d9001c0b466ff44ae1311f5919315bd32430e4',
             'assets/css/main.css' => 'd293dcf9d31e0adfc0c6cda1c2f03f4c57afe325c79e223794460dc9f94c4e6f',
-            'assets/css/app_ui.css' => '4f8bf76f83a5c5d3ea3807818a792aa2b4c12ec83aaf46a33342d1aadf4adc1e',
+            'assets/css/app_ui.css' => '2c21f4f2cce07ecab7633d8b098d98f4622e9efde08f289a3720b37b90062f91',
             'assets/js/main.js' => '2f9ed4299e2acca7b8b472c3099f5b14e499ed221d33b4be77ecabfade9f5ae3',
-            'assets/js/attendance.js' => 'ede45194c21152d9bcd67c63c3c62fd5a62c984cacbc713f677f15927c7d5710',
+            'assets/js/attendance.js' => '6da4612132495f3bb68089eccc769e40d8a9079b48daec15940e9b3e5161a785',
             'assets/js/chrono-local-web.js' => '9940b5723b21a2fa21f39db9471523ff5818bc6946a480607c2e5cac20516b3b',
         ] as $name => $hash) {
             $path = $public.'/'.$name;

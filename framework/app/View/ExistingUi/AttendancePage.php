@@ -68,6 +68,6 @@ final readonly class AttendancePage
     public function statusLabel(): string
     {
         // Preserve the existing labels, including their current German-only scope.
-        return ['absent' => 'Nicht angemeldet', 'working' => 'Arbeitszeit läuft', 'paused' => 'Pause läuft'][$this->state];
+        return ['absent' => 'Nicht eingestempelt', 'working' => 'Arbeitszeit läuft', 'paused' => 'Pause läuft'][$this->state];
     }
 }

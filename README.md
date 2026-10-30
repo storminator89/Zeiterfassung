@@ -24,27 +24,34 @@ Selbst gehostete Zeiterfassung für Beschäftigte, Führungskräfte und Verwaltu
 
 ## Installation
 
-Standard ist **Laravel 13 mit SQLite und dem zugelassenen NEW-V5-Profil**. Das Root-`Dockerfile` baut die Laravel-Anwendung mit digest-gepinntem PHP **8.5.12/Apache** und den gesperrten Composer-Abhängigkeiten; Root-`compose.yaml` startet standardmäßig deren HTTPS-Webdienst. Native PHP wird nicht mehr implizit durch diesen Docker-Start gewählt.
+Docker Engine und Docker Compose ab Version 2.20 auf Linux genügen. Der Standard startet Laravel mit SQLite über **HTTP im lokalen Netzwerk**, ohne TLS-Zertifikate oder manuell erzeugte Schlüssel:
 
 ```sh
 git clone https://github.com/storminator89/Zeiterfassung.git
 cd Zeiterfassung
-docker build -t chrono-laravel:local .
+./start.sh
 ```
 
-Vor dem Start bereitet ein berechtigter Betreiber einmal die **neue private Instanz**, den App-Key und bereits vertrauenswürdige TLS-Dateien vor. [Kurzer Standard-Installationsweg](docs/framework/laravel-default-installation.md) · [vollständiger Operator-/Betriebsvertrag](docs/framework/installation-docker.md). Keine bestehenden Datenbanken übernehmen, keine Schlüssel in Repository/Chat legen. Ohne diese Voraussetzungen verweigert der Start; ein Build richtet noch kein nutzbares Konto ein.
+Der Start baut das Image, erstellt einmal eine neue private Instanz samt App- und Terminalschlüsseln und zeigt die Browseradresse an. Standardport ist **8080**; als Adresse wird die lokale IPv4-Adresse verwendet, ersatzweise `localhost`. Im Browser den ersten Admin mit eigener E-Mail und eigenem Passwort einrichten. Danach ist das Terminal-Modul standardmäßig aktiv. Unter **Praxis-Terminals** Standorte, Geräte und persönliche PIN-/Karten-Zugänge verwalten; jedes Gerät muss ausdrücklich gekoppelt werden.
 
-Mit der vollständig vorbereiteten privaten Konfiguration:
+HTTP ist für `localhost`, Loopback und private IPv4-Netze (10/8, 172.16/12, 192.168/16) zugelassen. Anmeldung, PINs und Buchungen werden dabei unverschlüsselt übertragen. Nur in einem vertrauenswürdigen LAN nutzen, keine öffentliche Portweiterleitung einrichten. Für öffentliche Adressen HTTPS verwenden. Die erste Admin-Einrichtung zeitnah selbst abschließen: Wer die noch leere Instanz erreicht, könnte den ersten Admin registrieren.
+
+Optionale Einstellungen **beim ersten Start**:
 
 ```sh
-docker compose --env-file /absoluter/privater/pfad/chrono-local.env up -d
+CHRONO_HOST=192.168.1.20 CHRONO_HTTP_PORT=8080 ./start.sh
+# Nur auf diesem Rechner erreichbar:
+CHRONO_HOST=localhost CHRONO_BIND_ADDRESS=127.0.0.1 ./start.sh
 ```
 
-**Erster Admin im Browser:** Die installierte vertrauenswürdige HTTPS-Adresse öffnen. Login/Registrieren führt zum vorhandenen Einrichtungsformular: `admin` übernehmen oder ändern, E-Mail und eigenes Passwort mit Bestätigung eingeben. **Kein Setup-Token und kein Terminalschritt für den Benutzer.** Der erste erfolgreiche Registrierungsvorgang wird Admin; danach schließt die Ersteinrichtung und die normale Anmeldung folgt. **Jeder, der die noch nicht eingerichtete lokale App erreicht, könnte zuerst Admin werden:** nur im vertrauenswürdigen lokalen Umfeld einrichten, nicht öffentlich weiterleiten. Lokale Erreichbarkeit ist kein Identitätsnachweis. [Ablauf und Grenzen](docs/framework/browser-first-user-admin.md).
+Private Daten liegen standardmäßig unter `~/.local/share/quodara-chrono`, außerhalb des Checkouts. `CHRONO_DATA_DIR=/absoluter/privater/pfad` wählt eine andere Ablage; diese muss dem eigenen Benutzer gehören und Modus 0700 haben. Vorhandene Instanzen werden wiederverwendet, niemals automatisch zurückgesetzt oder importiert. Bei unterbrochener Erstinstallation stoppt der Installer zur Prüfung. Der Checkout merkt sich die gewählte Ablage in der ignorierten lokalen Datei `.chrono-data-dir`. Konfiguration später privat in `local.env` bearbeiten; die Browseradresse muss exakt mit `CHRONO_LARAVEL_ORIGIN` übereinstimmen.
 
-**Betriebsgrenzen:** einzelner unterstützter Linux-Docker-Host, gleiche nicht-root UID/GID und zugelassene private Datei-/Mountidentität; nur Loopback-Portbindung und echtes HTTPS, kein Zertifikatswarnungs-/HTTP-Fallback. API, LDAP und Terminal sind nicht durch den Standardstart aktiviert. Die API lässt sich danach als lokale Administration über die Oberfläche einrichten und schalten. Native Bestandsmigration, beliebige Backup-Adoption, anderer Datenträger und Mehrfachreplikate werden nicht automatisch zugelassen. Vollständige private Ablage einschließlich Schlüssel, Manifest und Setup-Abschluss kalt sichern; [V5-Runtime-/Restoregrenze](docs/framework/account-lifecycle-v5-runtime-profile.md) · [Sessionlocks und gestoppte Recovery](docs/framework/v5-nonexpiring-session-locks.md).
+```sh
+./stop.sh             # Stoppen, Daten behalten
+./start.sh            # Wieder starten / aktualisierten Quellstand bauen
+```
 
-**Nachweise:** ausgewählte Komponenten- und PHP-CGI/Laravel-HttpKernel-Pfade sind isoliert geprüft, die Browser-Ersteinrichtung mit Wegwerfdaten und kompilierten Ansichten. Das ist **keine vollständige End-to-End-, Browser-, TLS-, Docker- oder Produktionsabnahme** dieser Standardkomposition. Die Browserabnahme übernimmt der Benutzer. Die Quellumstellung erstellt keine echte Instanz, Zugangsdaten, Zertifikate oder laufende Anwendung.
+HTTPS bleibt mit `compose.https.yaml`, vorhandenen Zertifikaten und derselben privaten Instanz verfügbar. [Startdetails und HTTPS](docs/framework/laravel-default-installation.md). API und LDAP bleiben separat aktivierbar. Vollständige private Ablage einschließlich Schlüssel, Manifest und Setup-Abschluss kalt sichern.
 
 ### Native Kompatibilitätsvariante
 

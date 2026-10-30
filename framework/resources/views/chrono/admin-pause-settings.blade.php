@@ -9,61 +9,12 @@
     #account-lifecycle-tooltip[hidden] { display:none; }
 </style>
 <main class="container mx-auto px-4 py-8 chrono-page">
-    @if (! $adminPauseSettings->localSecurityControls)
-    <div class="alert alert-info mb-4" role="note">Fachverwaltung für das bestehende Verzeichnis-Administratorkonto: Pausenregeln, Abteilungen und <a class="link" href="work_models.php">Arbeitszeitmodelle</a>. Benutzer-, Zugangs-, Schlüssel- und Wiederherstellungsverwaltung bleiben lokaler Administration vorbehalten.</div>
-    @elseif ($managedUsersEnabled)
-    <div class="alert alert-info mb-4" role="note">Die vorhandene Benutzerverwaltung ist in diesem privaten Laravel-{{ $adminPauseSettings->accountLifecycleV5 ? 'V5-Profil' : 'V4-Profil' }} verbunden. Historiengeschützte Konten und die letzte lokale Administration bleiben erhalten. Persönliche API-Token werden hier nicht ausgegeben; LDAP benötigt weiterhin die getrennte HTTP- und Aufnahmefreigabe.</div>
-    @else
-    <div class="alert alert-info mb-4" role="note">In dieser Laravel-Ansicht sind die vorhandene Pausenregel-, Abteilungsverwaltung und das Erstellen lokaler Benutzer verbunden. Bestehende Benutzerdetails bleiben nur lesend; Änderungen, Löschen, Passwortänderungen und persönliche API-Token sind nicht angebunden. LDAP-Synchronisierung erfordert zusätzlich die ausdrücklich zugelassene V4-/V5-HTTP-Komposition und gespeicherte Aufnahmefreigabe.</div>
-    @endif
+    <h1 class="text-2xl font-bold mb-6">Administration</h1>
     @if ($adminPauseSettings->error)
     <div class="alert alert-error shadow-lg mb-4" role="alert"><div><i class="fas fa-exclamation-circle"></i><span>{{ $adminPauseSettings->error }}</span></div></div>
     @endif
     @if ($adminPauseSettings->success)
     <div class="alert alert-success shadow-lg mb-4" role="status"><div><i class="fas fa-check-circle"></i><span>{{ $adminPauseSettings->success }}</span></div></div>
-    @endif
-    @if (($runtimeObservation ?? null) !== null)
-        @include('chrono.partials.runtime-observation', ['observation' => $runtimeObservation])
-    @endif
-    @if ($holidayRefillEnabled ?? false)
-        @include('chrono.partials.holiday-refill')
-    @endif
-    @if (($apiManagement ?? null) !== null)
-        @include('chrono.partials.api-management')
-    @elseif ($apiManagementUnavailable ?? false)
-        <p class="alert alert-warning" role="alert">API-Verwaltung nicht bestätigt. Es wird kein Schlüssel oder Freigabestand automatisch repariert oder zurückgesetzt.</p>
-    @endif
-    @if ($adminPauseSettings->localSecurityControls && $adminPauseSettings->intakePolicy !== null)
-    <div id="user-intake-policy" class="card bg-base-100 shadow-xl mb-8">
-        <div class="card-body">
-            <h2 class="card-title text-2xl mb-4">Benutzeraufnahme · Laravel {{ $adminPauseSettings->accountLifecycleV5 ? 'V5 lokal' : 'V4' }}</h2>
-            <p class="mb-4">Aufnahmewege unabhängig freigeben. Bestehende Konten und Anmeldungen bleiben unverändert; die Erst-Admin-Einrichtung ist davon getrennt. LDAP benötigt zusätzlich einen zugelassenen Connector; Speichern startet keinen Verzeichnislauf.</p>
-            @if ($adminPauseSettings->accountLifecycleV5)
-            <p class="alert alert-info mb-4" role="note">V5 bewahrt Status- und Generationsbindung. LDAP-Anmeldung, LDAP-Synchronisierung, API und Terminal benötigen jeweils ihre getrennte Quellenzulassung; die Aufnahmeauswahl allein aktiviert keinen dieser Kanäle.</p>
-            @endif
-            <form method="post" class="space-y-4">
-                @csrf
-                <input type="hidden" name="update_intake_policy" value="1">
-                <input type="hidden" name="revision" value="{{ $adminPauseSettings->intakePolicy['revision'] }}">
-                <fieldset @disabled(! $adminPauseSettings->enabled) class="space-y-4">
-                    @foreach (['manual_enabled' => 'Manuelle Anlage', 'ldap_sync_enabled' => 'LDAP-Synchronisierung', 'registration_enabled' => 'Öffentliche Selbstregistrierung'] as $field => $label)
-                    <div class="form-control">
-                        <label class="label" for="intake-{{ $field }}"><span class="label-text">{{ $label }}</span></label>
-                        <select class="select select-bordered" id="intake-{{ $field }}" name="{{ $field }}">
-                            <option value="0" @selected(! $adminPauseSettings->intakePolicy[$field])>Aus</option>
-                            <option value="1" @selected($adminPauseSettings->intakePolicy[$field])>An</option>
-                        </select>
-                    </div>
-                    @endforeach
-                    <button class="btn btn-primary">Aufnahmewege speichern</button>
-                </fieldset>
-            </form>
-            <p class="text-sm opacity-70 mt-3">Stand: Revision {{ $adminPauseSettings->intakePolicy['revision'] }}. Veraltete Formulare überschreiben keine neuere Auswahl. Alle Wege dürfen aus sein; lokale Administration kann die Auswahl trotzdem wieder ändern.</p>
-        </div>
-    </div>
-    @endif
-    @if ($adminPauseSettings->localSecurityControls && $adminPauseSettings->intakePolicy !== null)
-        @include('chrono.partials.ldap-sync', ['ldap' => $adminPauseSettings])
     @endif
     @if ($adminPauseSettings->localSecurityControls)
     <div id="user-management" class="card bg-base-100 shadow-xl mb-8">
@@ -176,7 +127,7 @@
                             <td>
                                 <button type="button" class="btn btn-ghost btn-sm" data-read-user="{{ $user['id'] }}" title="{{ $page->copy->text('BUTTON_EDIT') }}"><i class="fas fa-edit"></i></button>
                                 @if (($user['has_audit_history'] ?? false) === true)
-                                <span class="inline-block text-sm">{{ $page->copy->text('ADMIN_USER_DELETE_HISTORY_LOCKED') }}</span>
+                                <span class="badge badge-ghost" title="{{ $page->copy->text('ADMIN_USER_DELETE_HISTORY_LOCKED') }}">Geschützt</span>
                                 @elseif ($managedUsersEnabled)
                                 <form method="post" class="inline" data-delete-managed-user>
                                     @csrf
@@ -214,35 +165,6 @@
         </div>
     </div>
     @endif
-    <div id="pause-settings" class="card bg-base-100 shadow-xl mb-8">
-        <div class="card-body">
-            <h2 class="card-title text-2xl mb-4">{{ $page->copy->text('PAUSE_SETTINGS_TITLE') }}</h2>
-            <form method="post" class="space-y-4">
-                @csrf
-                <input type="hidden" name="update_pause_settings" value="1">
-                <fieldset @disabled(! $adminPauseSettings->enabled) class="space-y-4">
-                <table class="table w-full" id="pauseSettingsTable">
-                    <thead><tr>
-                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_HOURS_THRESHOLD') }}</th>
-                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_MINIMUM_PAUSE') }}</th>
-                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_ACTIONS') }}</th>
-                    </tr></thead>
-                    <tbody>
-                    @foreach ($adminPauseSettings->rules as $setting)
-                        <tr>
-                            <td><input type="number" name="hours_threshold[]" class="input input-bordered w-full" value="{{ $setting['hours_threshold'] }}" required></td>
-                            <td><input type="number" name="minimum_pause[]" class="input input-bordered w-full" value="{{ $setting['minimum_pause'] }}" required></td>
-                            <td><button type="button" class="btn btn-ghost btn-sm remove-row" title="{{ $page->copy->text('BUTTON_DELETE') }}"><i class="fas fa-trash-alt"></i></button></td>
-                        </tr>
-                    @endforeach
-                    </tbody>
-                </table>
-                <button type="button" id="addRow" class="btn btn-secondary"><i class="fas fa-plus mr-2"></i>{{ $page->copy->text('BUTTON_ADD_ROW') }}</button>
-                <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-2"></i>{{ $page->copy->text('BUTTON_SAVE_CHANGES') }}</button>
-                </fieldset>
-            </form>
-        </div>
-    </div>
     <div id="department-management" class="card bg-base-100 shadow-xl mb-8">
         <div class="card-body">
             <h2 class="card-title text-2xl mb-4">{{ $page->copy->text('DEPARTMENT_MANAGEMENT_TITLE') }}</h2>
@@ -281,6 +203,75 @@
             </table>
         </div>
     </div>
+    <div id="pause-settings" class="card bg-base-100 shadow-xl mb-8">
+        <div class="card-body">
+            <h2 class="card-title text-2xl mb-4">{{ $page->copy->text('PAUSE_SETTINGS_TITLE') }}</h2>
+            <form method="post" class="space-y-4">
+                @csrf
+                <input type="hidden" name="update_pause_settings" value="1">
+                <fieldset @disabled(! $adminPauseSettings->enabled) class="space-y-4">
+                <table class="table w-full" id="pauseSettingsTable">
+                    <thead><tr>
+                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_HOURS_THRESHOLD') }}</th>
+                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_MINIMUM_PAUSE') }}</th>
+                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_ACTIONS') }}</th>
+                    </tr></thead>
+                    <tbody>
+                    @foreach ($adminPauseSettings->rules as $setting)
+                        <tr>
+                            <td><input type="number" name="hours_threshold[]" class="input input-bordered w-full" value="{{ $setting['hours_threshold'] }}" required></td>
+                            <td><input type="number" name="minimum_pause[]" class="input input-bordered w-full" value="{{ $setting['minimum_pause'] }}" required></td>
+                            <td><button type="button" class="btn btn-ghost btn-sm remove-row" title="{{ $page->copy->text('BUTTON_DELETE') }}"><i class="fas fa-trash-alt"></i></button></td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+                <button type="button" id="addRow" class="btn btn-secondary"><i class="fas fa-plus mr-2"></i>{{ $page->copy->text('BUTTON_ADD_ROW') }}</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-2"></i>{{ $page->copy->text('BUTTON_SAVE_CHANGES') }}</button>
+                </fieldset>
+            </form>
+        </div>
+    </div>
+    @if ($holidayRefillEnabled ?? false)
+        @include('chrono.partials.holiday-refill')
+    @endif
+    @if (($apiManagement ?? null) !== null)
+        @include('chrono.partials.api-management')
+    @elseif ($apiManagementUnavailable ?? false)
+        <p class="alert alert-warning" role="alert">API-Verwaltung nicht bestätigt. Es wird kein Schlüssel oder Freigabestand automatisch repariert oder zurückgesetzt.</p>
+    @endif
+    @if ($adminPauseSettings->localSecurityControls && $adminPauseSettings->intakePolicy !== null)
+    <div id="user-intake-policy" class="card bg-base-100 shadow-xl mb-8">
+        <div class="card-body">
+            <h2 class="card-title text-2xl mb-4">Benutzeraufnahme</h2>
+            <p class="mb-4">Aufnahmewege unabhängig freigeben. Bestehende Konten und Anmeldungen bleiben unverändert; die Erst-Admin-Einrichtung ist davon getrennt. LDAP benötigt zusätzlich einen zugelassenen Connector; Speichern startet keinen Verzeichnislauf.</p>
+            <form method="post" class="space-y-4">
+                @csrf
+                <input type="hidden" name="update_intake_policy" value="1">
+                <input type="hidden" name="revision" value="{{ $adminPauseSettings->intakePolicy['revision'] }}">
+                <fieldset @disabled(! $adminPauseSettings->enabled) class="space-y-4">
+                    @foreach (['manual_enabled' => 'Manuelle Anlage', 'ldap_sync_enabled' => 'LDAP-Synchronisierung', 'registration_enabled' => 'Öffentliche Selbstregistrierung'] as $field => $label)
+                    <div class="form-control">
+                        <label class="label" for="intake-{{ $field }}"><span class="label-text">{{ $label }}</span></label>
+                        <select class="select select-bordered" id="intake-{{ $field }}" name="{{ $field }}">
+                            <option value="0" @selected(! $adminPauseSettings->intakePolicy[$field])>Aus</option>
+                            <option value="1" @selected($adminPauseSettings->intakePolicy[$field])>An</option>
+                        </select>
+                    </div>
+                    @endforeach
+                    <button class="btn btn-primary">Aufnahmewege speichern</button>
+                </fieldset>
+            </form>
+            <p class="text-sm opacity-70 mt-3">Stand: Revision {{ $adminPauseSettings->intakePolicy['revision'] }}. Veraltete Formulare überschreiben keine neuere Auswahl. Alle Wege dürfen aus sein; lokale Administration kann die Auswahl trotzdem wieder ändern.</p>
+        </div>
+    </div>
+    @endif
+    @if ($adminPauseSettings->localSecurityControls && $adminPauseSettings->intakePolicy !== null)
+        @include('chrono.partials.ldap-sync', ['ldap' => $adminPauseSettings])
+    @endif
+    @if (($runtimeObservation ?? null) !== null)
+        @include('chrono.partials.runtime-observation', ['observation' => $runtimeObservation])
+    @endif
 </main>
 @if ($adminPauseSettings->lifecycleUsers !== [])
 @include('chrono.partials.account-lifecycle-dialog')

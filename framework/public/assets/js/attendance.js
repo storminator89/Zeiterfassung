@@ -31,7 +31,7 @@
         if (!initial || !token || !Number.isSafeInteger(userId) || userId < 1) return;
         document.documentElement.dataset.attendanceController = 'ready';
 
-        const labels = {absent: 'Nicht angemeldet', working: 'Arbeitszeit läuft', paused: 'Pause läuft'};
+        const labels = {absent: 'Nicht eingestempelt', working: 'Arbeitszeit läuft', paused: 'Pause läuft'};
         const allowed = {absent: ['start'], working: ['pause_start', 'end'], paused: ['pause_end', 'end']};
         const buttonSelector = '[data-attendance-action], #actions [data-action]';
         const pendingKey = 'chrono-attendance-pending';

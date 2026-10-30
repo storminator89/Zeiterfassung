@@ -18,7 +18,12 @@ esac
 [ "${FRAMEWORK_FRESH_WEB_ENABLED:-}" = true ] || fail
 [ "${FRAMEWORK_CHRONO_READ_ENABLED:-}" = true ] && [ "${FRAMEWORK_CHRONO_WRITE_ENABLED:-}" = true ] || fail
 [ -n "${FRAMEWORK_APP_KEY:-}" ] && [ -z "${FRAMEWORK_PREVIOUS_KEYS:-}" ] || fail
-case "${APP_URL:-}" in https://*) ;; *) fail ;; esac
+tls=true
+case "${APP_URL:-}" in
+    https://*) export CHRONO_APACHE_PORT=8443 ;;
+    http://*) tls=false; export CHRONO_APACHE_PORT=8080 ;;
+    *) fail ;;
+esac
 instance=${FRAMEWORK_FRESH_INSTANCE_DIRECTORY:-}
 case "$instance" in /var/lib/chrono-laravel/chrono-fresh-*) ;; *) fail ;; esac
 # Full canonical path/UID/mode/file-identity/digest/schema and origin admission
@@ -42,14 +47,18 @@ case "${FRAMEWORK_FRESH_SETUP_ENABLED:-}" in
         fi ;;
     *) fail ;;
 esac
-[ -r /run/chrono-tls/certificate.pem ] && [ -r /run/chrono-tls/private-key.pem ] || fail
+if [ "$tls" = true ]; then
+    [ -r /run/chrono-tls/certificate.pem ] && [ -r /run/chrono-tls/private-key.pem ] || fail
+fi
 # A syntax check may read the explicitly mounted TLS credentials but never
 # returns their bytes. Failure has no automatic repair or alternate HTTP mode.
-apache2ctl -t >/dev/null 2>&1 || fail
+if [ "$tls" = true ]; then apache2ctl -t -D CHRONO_TLS >/dev/null 2>&1 || fail
+else apache2ctl -t >/dev/null 2>&1 || fail; fi
 if [ "$mode" = clear_stopped_cache_locks ]; then
     # Original application boot must still admit this exact private Fresh store.
     # Clear ALL its cache locks only after external shutdown/restart exclusion.
     # Never clear sessions/cache/data/keys, reset a token or start an HTTP server.
     exec php artisan cache:clear file --locks
 fi
+if [ "$tls" = true ]; then exec apache2-foreground -D CHRONO_TLS; fi
 exec apache2-foreground

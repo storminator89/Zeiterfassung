@@ -1,3 +1,5 @@
+> Aktueller Standard: `./start.sh` mit HTTP im privaten LAN und automatischer neuer Instanzvorbereitung. Siehe [lokaler Standardstart](laravel-default-installation.md). Die folgenden manuellen HTTPS-Operatorabläufe gelten für den optionalen HTTPS-Betrieb; ihre früheren Freigabeschritte sind keine Voraussetzung für den neuen Installer.
+
 # Laravel Docker operator contract — explicit preparation, not activation
 
 The root Dockerfile and root Compose Web service are now the **Laravel standard**;

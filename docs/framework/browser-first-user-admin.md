@@ -8,7 +8,7 @@ through public forwarding; do not use this mode as a public-hosting bootstrap.
 
 ## User flow
 
-After the selected local installation has been prepared, open its trusted HTTPS
+After the selected local installation has been prepared, open its configured local HTTP/HTTPS
 address in the browser. Login/Register leads to the existing first-setup card:
 
 1. Accept the prefilled `admin` name or choose another.
@@ -35,7 +35,7 @@ data. This installation selection is not an extra step for the registering user.
 The preparer creates no password, account, setup token, key or listener.
 
 At every setup request, FreshWeb rechecks the admitted private cohort, policy
-binding and monotone closure. Setup accepts only canonical HTTPS localhost or
+binding and monotone closure. Setup accepts only canonical HTTP/HTTPS localhost or
 `.localhost`, loopback IPv4 or RFC1918 IPv4 origins; DNS/public-name aliases do
 not silently become an identity proof. Existing canonical scheme/host/port,
 stock V5 non-expiring session locks, encrypted secure cookies, CSRF and persistent

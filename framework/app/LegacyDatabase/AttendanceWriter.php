@@ -409,6 +409,9 @@ final class AttendanceWriter
                 : "INSERT INTO users (username,password,email,role,auth_source,token,department_id,supervisor_id,regelarbeitszeit,ueberstunden) VALUES (?,?,?,'admin','local',NULL,NULL,NULL,8,0)");
             $statement->execute([$username, $passwordHash, $email]);
             $statement->closeCursor();
+            if (getenv('APP_TERMINAL_ENABLED') === '1') {
+                $this->pdo->exec('UPDATE terminal_settings SET enabled=1 WHERE id=1');
+            }
             return true;
         }, fn (Closure $transaction): mixed => $this->context->run('setup:first-local-admin', 'First administrator setup', $transaction),
             lifecycleReady: $this->hasGenerationBoundAccountAuthority());
@@ -437,6 +440,35 @@ final class AttendanceWriter
             \terminal_create_site_locked($this->pdo, $name);
         }, fn (Closure $transaction): mixed => $this->context->run('web:'.$user, 'terminals.php', $transaction),
             lifecycleReady: $this->hasGenerationBoundAccountAuthority() && $lifecycleAuthority !== null);
+    }
+
+    public function saveTerminalCredential(int $admin, #[\SensitiveParameter] string $version,
+        #[\SensitiveParameter] array $command, ?\App\Accounts\AccountLifecycleAuthority $authority = null): void
+    {
+        foreach (['user_id', 'site_id', 'employee_code', 'pin', 'card'] as $field) {
+            if (!is_string($command[$field] ?? null)) throw new \InvalidArgumentException('Zugangsdaten prüfen.');
+        }
+        $user = filter_var($command['user_id'], FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
+        $site = filter_var($command['site_id'], FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
+        $code = trim($command['employee_code']); $card = trim($command['card']);
+        if (!$user || !$site || !preg_match('/^[a-zA-Z0-9_-]{2,32}$/D', $code)
+            || !preg_match('/^[0-9]{8}$/D', $command['pin']) || strlen($card)>128) {
+            throw new \InvalidArgumentException('Person, Standort, Personalcode und achtstellige PIN prüfen.');
+        }
+        $pinHash = password_hash($command['pin'], PASSWORD_DEFAULT);
+        $cardHash = $card === '' ? null : hash_hmac('sha256', strtoupper($card), app(\App\Terminal\AdmittedTerminalKeys::class)->cardSecret());
+        unset($command, $card);
+        $this->executeLocked(function () use ($admin, $version, $authority, $user, $site, $code, $pinHash, $cardHash): void {
+            $this->assertExpectedWebPrincipal($admin, 'local', $version, 'admin', $authority);
+            attendance_require_enabled($this->pdo);
+            if (!att_one($this->pdo, 'SELECT id FROM users WHERE id=?', [$user])
+                || !att_one($this->pdo, 'SELECT id FROM terminal_sites WHERE id=?', [$site])) {
+                throw new \AttendanceError('Person und Standort prüfen.', 400);
+            }
+            $statement=$this->pdo->prepare('INSERT INTO employee_credentials(user_id,site_id,employee_code,pin_hash,card_hash,enabled) VALUES(?,?,?,?,?,1) ON CONFLICT(user_id) DO UPDATE SET site_id=excluded.site_id,employee_code=excluded.employee_code,pin_hash=excluded.pin_hash,card_hash=excluded.card_hash,enabled=1');
+            $statement->execute([$user,$site,$code,$pinHash,$cardHash]); $statement->closeCursor();
+        }, fn (Closure $transaction): mixed => $this->context->run('web:'.$admin, 'terminals.php', $transaction),
+            lifecycleReady: $this->hasGenerationBoundAccountAuthority() && $authority !== null);
     }
 
     /** Existing revoke_credential only; no secrets, device/module changes or grant rewrites. */

@@ -9,8 +9,8 @@
     <title>{{ $page->copy->text('TITLE') }}</title>
 
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
-    @if ($page->cspNonce === null)
     <link href="assets/vendor/daisyui/3.9.4/full.css" rel="stylesheet" type="text/css" integrity="sha256-htj+jXV2EbqZMnbFtkmO5n8WwOKf0ZVYlc0doGP6YaI=" />
+    @if ($page->cspNonce === null)
 
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
@@ -277,16 +277,16 @@
                     <h2 class="sidebar-heading" id="sidebar-work-label">{{ $page->copy->text('NAV_SECTION_WORK') }}</h2>
                     <div class="sidebar-items">
                         <a href="index.php" class="sidebar-link {{ in_array($page->activePage, ['index.php', 'attendance.php'], true) ? 'active' : '' }}" @if (in_array($page->activePage, ['index.php', 'attendance.php'], true)) aria-current="page" @endif>
-                            <i class="fas fa-home w-6" aria-hidden="true"></i>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10 12 3l9 7M5 9v12h5v-7h4v7h5V9"/></svg>
                             <span>{{ $page->copy->text('NAV_HOME') }}</span>
                         </a>
                         <a href="dashboard.php" class="sidebar-link {{ $page->activePage === 'dashboard.php' ? 'active' : '' }}" @if ($page->activePage === 'dashboard.php') aria-current="page" @endif>
-                            <i class="fas fa-tachometer-alt w-6" aria-hidden="true"></i>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg>
                             <span>{{ $page->copy->text('NAV_DASHBOARD') }}</span>
                         </a>
-                        <a href="adjustments.php" class="sidebar-link {{ $page->activePage === 'adjustments.php' ? 'active' : '' }}" @if ($page->activePage === 'adjustments.php') aria-current="page" @endif><i class="fas fa-pen-to-square w-6" aria-hidden="true"></i><span>Korrekturanträge</span></a>
-                        <a href="work_models.php" class="sidebar-link {{ $page->activePage === 'work_models.php' ? 'active' : '' }}" @if ($page->activePage === 'work_models.php') aria-current="page" @endif><i class="fas fa-business-time w-6" aria-hidden="true"></i><span>Arbeitszeitmodelle</span></a>
-                        <a href="history.php" class="sidebar-link {{ $page->activePage === 'history.php' ? 'active' : '' }}" @if ($page->activePage === 'history.php') aria-current="page" @endif><i class="fas fa-history w-6" aria-hidden="true"></i><span>Änderungshistorie</span></a>
+                        <a href="adjustments.php" class="sidebar-link {{ $page->activePage === 'adjustments.php' ? 'active' : '' }}" @if ($page->activePage === 'adjustments.php') aria-current="page" @endif><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5 4 4M4 20l4-1L21 6l-4-4L4 15z"/></svg><span>Korrekturanträge</span></a>
+                        <a href="work_models.php" class="sidebar-link {{ $page->activePage === 'work_models.php' ? 'active' : '' }}" @if ($page->activePage === 'work_models.php') aria-current="page" @endif><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v14H3zM8 7V3h8v4M3 12h18M10 12v3h4v-3"/></svg><span>Arbeitszeitmodelle</span></a>
+                        <a href="history.php" class="sidebar-link {{ $page->activePage === 'history.php' ? 'active' : '' }}" @if ($page->activePage === 'history.php') aria-current="page" @endif><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2 7M3 4v7h7M12 7v6l4 2"/></svg><span>Änderungshistorie</span></a>
                     </div>
                 </section>
                 @if (in_array($page->role, ['supervisor', 'admin'], true))
@@ -294,7 +294,7 @@
                     <h2 class="sidebar-heading" id="sidebar-team-label">{{ $page->copy->text('NAV_SECTION_TEAM') }}</h2>
                     <div class="sidebar-items">
                         <a href="supervisor.php" class="sidebar-link {{ $page->activePage === 'supervisor.php' ? 'active' : '' }}" @if ($page->activePage === 'supervisor.php') aria-current="page" @endif>
-                            <i class="fas fa-user-tie w-6" aria-hidden="true"></i>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6a4 4 0 1 0 8 0 4 4 0 0 0-8 0M4 22v-3a8 8 0 0 1 16 0v3M12 14v8"/></svg>
                             <span>{{ $page->copy->text('NAV_SUPERVISOR') }}</span>
                         </a>
                     </div>
@@ -305,10 +305,10 @@
                     <h2 class="sidebar-heading" id="sidebar-admin-label">{{ $page->copy->text('NAV_SECTION_ADMIN') }}</h2>
                     <div class="sidebar-items">
                         <a href="admin.php" class="sidebar-link {{ $page->activePage === 'admin.php' ? 'active' : '' }}" @if ($page->activePage === 'admin.php') aria-current="page" @endif>
-                            <i class="fas fa-user-shield w-6" aria-hidden="true"></i>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20v-2a6 6 0 0 1 8-6M4 6a4 4 0 1 0 8 0 4 4 0 0 0-8 0M17 11l5 2v4c0 3-5 5-5 5s-5-2-5-5v-4z"/></svg>
                             <span>Admin</span>
                         </a>
-                        <a href="terminals.php" class="sidebar-link {{ $page->activePage === 'terminals.php' ? 'active' : '' }}" @if ($page->activePage === 'terminals.php') aria-current="page" @endif><i class="fas fa-desktop w-6" aria-hidden="true"></i><span>Praxis-Terminals</span></a>
+                        <a href="terminals.php" class="sidebar-link {{ $page->activePage === 'terminals.php' ? 'active' : '' }}" @if ($page->activePage === 'terminals.php') aria-current="page" @endif><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h20v14H2zM8 21h8M12 17v4"/></svg><span>Praxis-Terminals</span></a>
                     </div>
                 </section>
                 @endif
@@ -316,17 +316,17 @@
                     <h2 class="sidebar-heading" id="sidebar-account-label">{{ $page->copy->text('NAV_SECTION_ACCOUNT') }}</h2>
                     <div class="sidebar-items">
                         <a href="settings.php" class="sidebar-link {{ $page->activePage === 'settings.php' ? 'active' : '' }}" @if ($page->activePage === 'settings.php') aria-current="page" @endif>
-                            <i class="fas fa-cog w-6" aria-hidden="true"></i>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>
                             <span>{{ $page->copy->text('NAV_SETTINGS') }}</span>
                         </a>
                         <button type="button" class="sidebar-link w-full" @if ($page->cspNonce === null) onclick="showAboutModal()" @else data-local-about="open" @endif>
-                            <i class="fas fa-info-circle w-6" aria-hidden="true"></i>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 10v7M12 6v1M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20"/></svg>
                             <span>{{ $page->copy->text('NAV_ABOUT') }}</span>
                         </button>
                         <form action="logout.php" method="post">
                             @csrf
                             <button type="submit" @disabled(! $page->interactions->logout) class="sidebar-link w-full">
-                                <i class="fas fa-sign-out-alt w-6" aria-hidden="true"></i>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3H3v18h6M8 12h13M16 7l5 5-5 5"/></svg>
                                 <span>{{ $page->copy->text('NAV_LOGOUT') }}</span>
                             </button>
                         </form>
@@ -385,22 +385,7 @@
 
     <!-- Main content wrapper -->
     <div id="main-content" class="main-content">
-        <aside class="alert alert-info mb-4" role="note">
-            @if ($page->interactions->attendance)
-            Laravel-Anwesenheit: Stempeln und Abmelden sind verbunden.
-            @if ($page->interactions->home) Arbeitszeittabelle und Statistik sind verbunden. @endif
-            @if ($page->interactions->absences) Abwesenheiten sind verbunden. @else Abwesenheiten sind noch nicht verbunden. @endif
-            @if ($page->interactions->corrections) Korrekturanträge sind ebenfalls verbunden. @endif
-            @if ($page->interactions->workModels) Arbeitszeitmodelle sind ebenfalls verbunden. @endif
-            @if ($page->interactions->history) Änderungshistorie ist ebenfalls verbunden. @endif
-            @if ($page->interactions->supervisor) Vorgesetztenauswertung ist ebenfalls verbunden. @endif
-            @if ($page->interactions->adminPauseSettings) Nur die Pauseneinstellungen der Verwaltung sind zusätzlich verbunden; weitere Verwaltungsaktionen nicht. @endif
-            Weitere Seiten sind in dieser Vorschau noch nicht verbunden.
-            @else
-            Inaktive Laravel-Ansicht: Anmeldung, Buchungen, Abwesenheiten und Abmeldung sind noch nicht verbunden.
-            Navigationslinks behalten die bestehenden PHP-Ziele; diese Seiten sind weiterhin Legacy.
-            @endif
-        </aside>
+
         <div id="report-finality-notice" class="alert alert-warning mb-4" role="alert" @if (! $page->reportUnresolved) hidden @endif>
             <span data-report-finality-message><strong>Klärung offen: Arbeitszeit überschneidet sich mit ganztägiger Abwesenheit.</strong>
             Betroffene Tages- und Zeitraumssummen sind bis zur manuellen Klärung nicht abschließend und nicht zur Abrechnung geeignet.

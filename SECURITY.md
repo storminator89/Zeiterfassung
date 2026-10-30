@@ -1,3 +1,5 @@
+> Lokaler Standardbetrieb: `./start.sh` bietet HTTP auf privaten IPv4-/Loopback-Adressen und aktiviert das Terminal-Modul nach der ersten Admin-Einrichtung. HTTP überträgt Passwort, PIN und Buchungen unverschlüsselt und ist für ein vertrauenswürdiges LAN vorgesehen. Für öffentliche Bereitstellung HTTPS nutzen. Geräte bleiben kopplungspflichtig; Admin-, CSRF-, Signatur-, Sperr- und Replay-Prüfungen bleiben aktiv. Frühere ausschließlich HTTPS/Loopback betreffende Installationsbeschreibungen gelten für den optionalen HTTPS-Weg. Siehe [Standardinstallation](docs/framework/laravel-default-installation.md).
+
 # Secure operation and migration
 
 This application stores staff identities, work records, password hashes and optional LDAP credentials. Administrators may manage accounts and restore backups. Users may access only their own records; supervisors may view their assigned staff. Treat the database, backups and private keys as confidential.

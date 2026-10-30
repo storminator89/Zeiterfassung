@@ -49,6 +49,22 @@ final class LocalWebTerminalDevicesController extends Controller
     public function store(Request $request): Response|RedirectResponse
     {
         $command = array_diff_key($request->request->all(), array_flip(['_token', 'csrf_token']));
+        if (($command['action'] ?? null) === 'credential') {
+            abort_unless($this->config?->get('chrono_terminal_admin.credential_creation_enabled', false) === true, 403);
+            abort_if(array_diff(array_keys($command), ['action','user_id','site_id','employee_code','pin','card']) !== [], 400);
+            $actor=$this->auth->guard('web')->user();
+            abort_unless($actor instanceof \App\Auth\LegacyUser && $actor->role === 'admin' && $actor->auth_source === 'local', 403);
+            try {
+                $authority=app(\App\Auth\AccountLifecycleWebIdentity::class)->capture($actor);
+                app(\App\LegacyDatabase\AttendanceWriter::class)->saveTerminalCredential((int)$actor->getKey(), hash('sha256',$actor->getAuthPassword()), $command, $authority);
+                return new RedirectResponse('terminals.php?saved=1');
+            } catch (AuthenticationException|AuthorizationException $error) { throw $error;
+            } catch (InvalidArgumentException|AttendanceError $error) {
+                return $this->page($request, $error->getMessage(), allowSavedQuery: false);
+            } catch (Throwable) {
+                return $this->page($request, 'Zugang konnte nicht bestätigt werden. Personalcode oder Karte kann bereits vergeben sein. Gespeicherten Stand prüfen.', allowSavedQuery: false);
+            } finally { unset($command); }
+        }
         if (($command['action'] ?? null) === 'device') {
             if (! $this->devicePairingsEnabled()
                 || array_diff(array_keys($command), LocalWebTerminalDevicePairings::COMMAND_FIELDS) !== []) {
@@ -217,6 +233,9 @@ final class LocalWebTerminalDevicesController extends Controller
                 $actor->role, $this->reads->attendanceStatus(),
                 interactions: $this->interactions, activePage: 'terminals.php', cspNonce: $nonce,
             ),
+            'terminalCredentialCreationEnabled' => $this->config?->get('chrono_terminal_admin.credential_creation_enabled', false) === true,
+            'terminalCredentialUsers' => $this->config?->get('chrono_terminal_admin.credential_creation_enabled', false) === true ? $this->reads->adminTerminalUsers() : [],
+            'terminalCredentialSites' => $pairingSites,
             'terminalDevices' => new TerminalDevicesPage(
                 $projection['devices'], $projection['contact_max_age'], $this->interactions->terminalSites,
                 $error, $error === null && ($this->interactions->terminalSites || $allowRevocations || $allowDeviceRevocations || $allowModuleSettings) && $allowSavedQuery && $request->query->has('saved'),

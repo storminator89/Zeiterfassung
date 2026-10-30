@@ -3,15 +3,6 @@
 @section('content')
 <main class="container mx-auto px-4 py-8 chrono-page">
     <h1 class="text-2xl font-bold mb-6">Praxis-Terminals</h1>
-    @if ($terminalDevices->devicePairingsEnabled)
-    <div class="alert alert-info mb-6" role="note">Geräte können mit einem einmal angezeigten Code für den lokalen Gerätedienst vorbereitet werden. Das Speichern persönlicher Terminal-Zugänge ist nicht verbunden. Modulfreigabe, Standortanlage und Sperren sind nur bei gesonderter Freigabe verfügbar.</div>
-    @elseif ($terminalDevices->moduleSettingsEnabled)
-    <div class="alert alert-info mb-6" role="note">Optionaler Terminal-Betrieb und Geräteübersicht mit Standort und Kontaktstatus. Koppeln und das Speichern persönlicher Terminal-Zugänge sind in dieser Laravel-Ansicht nicht verbunden. Standortanlage, Geräte- und Zugangssperre sind nur bei gesonderter Freigabe verfügbar.</div>
-    @elseif ($terminalDevices->deviceRevocationsEnabled)
-    <div class="alert alert-info mb-6" role="note">Geräteübersicht mit Standort und Kontaktstatus. Koppeln, Modulfreigabe und das Speichern persönlicher Terminal-Zugänge sind in dieser Laravel-Ansicht nicht verbunden. Standortanlage, Geräte- und Zugangssperre sind nur bei gesonderter Freigabe verfügbar.</div>
-    @else
-    <div class="alert alert-info mb-6" role="note">Nur lesende Geräteübersicht mit Standort und Kontaktstatus. Koppeln, Sperren, Modulfreigabe und das Speichern persönlicher Terminal-Zugänge sind in dieser Laravel-Ansicht nicht verbunden. Standortanlage und Zugangssperre sind nur bei gesonderter Freigabe verfügbar.</div>
-    @endif
     @if ($terminalDevices->error)<div class="alert alert-error mb-6" role="alert">{{ $terminalDevices->error }}</div>@endif
     @if ($terminalDevices->saved)<div class="alert alert-success mb-6">Änderung gespeichert.</div>@endif
     @if ($terminalDevices->pairing)
@@ -19,13 +10,13 @@
     @endif
     @if ($terminalDevices->moduleSettingsEnabled)
     <div class="card bg-base-100 shadow-xl p-6 mb-6">
-        <h2 class="text-xl font-semibold mb-4">Optionaler Terminal-Betrieb</h2>
-        <p>Bei Aktivierung verwenden Web und Terminal dieselben Buchungen. Pausen werden tatsächlich erfasst; es erfolgt kein automatischer Mindestpausenabzug. Nachträgliche Änderungen laufen über Korrekturanträge.</p>
+        <h2 class="text-xl font-semibold mb-4">Terminal-Betrieb</h2>
+        <p>Arbeitszeiten über gekoppelte Praxisgeräte erfassen.</p>
         <p>Serverfreigabe: <strong>{{ $terminalDevices->moduleServerEnabled ? 'vorhanden' : 'aus – APP_TERMINAL_ENABLED=1 erforderlich' }}</strong></p>
         <form method="post">
             @csrf
             <input class="input input-bordered w-full" type="hidden" name="action" value="toggle">
-            <label class="block text-sm font-semibold mt-4 mb-2"><input class="checkbox checkbox-primary" type="checkbox" name="enabled" @checked($terminalDevices->moduleEnabled)> Modul aktivieren</label>
+            <label class="flex items-center gap-3 text-sm font-semibold mt-4 mb-2"><input class="checkbox checkbox-primary" type="checkbox" name="enabled" @checked($terminalDevices->moduleEnabled)> <span>Modul aktivieren</span></label>
             <button class="btn btn-primary">Speichern</button>
         </form>
     </div>
@@ -53,7 +44,7 @@
             <table class="table">
                 <thead><tr><th>Gerät</th><th>Standort</th><th>Freigabe</th><th>Kontaktstatus</th><th>Letzter Kontakt</th>@if ($terminalDevices->deviceRevocationsEnabled)<th></th>@endif</tr></thead>
                 <tbody>
-                @foreach ($terminalDevices->devices as $device)
+                @forelse ($terminalDevices->devices as $device)
                     <tr>
                         <td>{{ $device['name'] }} #{{ $device['id'] }}</td>
                         <td>{{ $device['site'] }}</td>
@@ -69,7 +60,9 @@
                         </form></td>
                         @endif
                     </tr>
-                @endforeach
+                @empty
+                    <tr><td colspan="6" class="opacity-70">Noch keine Geräte gekoppelt. Lege oben ein Gerät an, um einen Einmalcode zu erzeugen.</td></tr>
+                @endforelse
                 </tbody>
             </table>
         </div>
@@ -87,10 +80,27 @@
             </fieldset>
         </form>
     </section>
+    @if ($terminalCredentialCreationEnabled ?? false)
+    <section class="card bg-base-100 p-6 mb-6">
+      <h2 class="text-xl font-semibold mb-4">Persönlicher Terminal-Zugang</h2>
+      <form method="post" autocomplete="off">@csrf
+        <input type="hidden" name="action" value="credential">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <label class="form-control">Person<select class="select select-bordered" name="user_id" required>@foreach($terminalCredentialUsers as $person)<option value="{{ $person['id'] }}">{{ $person['username'] }}</option>@endforeach</select></label>
+          <label class="form-control">Standort<select class="select select-bordered" name="site_id" required>@foreach($terminalCredentialSites as $site)<option value="{{ $site['id'] }}">{{ $site['name'] }}</option>@endforeach</select></label>
+          <label class="form-control">Personalcode<input class="input input-bordered" name="employee_code" pattern="[a-zA-Z0-9_-]{2,32}" maxlength="32" required></label>
+          <label class="form-control">Neue PIN · 8 Ziffern<input class="input input-bordered" name="pin" type="password" inputmode="numeric" pattern="[0-9]{8}" autocomplete="new-password" required></label>
+          <label class="form-control">NFC-Kennung (optional)<input class="input input-bordered" name="card" maxlength="128"></label>
+        </div>
+        <p class="text-sm opacity-70 mt-3">Speichern ersetzt einen bestehenden Terminal-Zugang einschließlich PIN und Karte.</p>
+        <button class="btn btn-primary mt-4" @disabled(!$terminalCredentialSites)>Zugang speichern / ersetzen</button>
+      </form>
+    </section>
+    @endif
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">Terminal-Zugänge</h2>
         @if ($terminalDevices->credentialRevocationsEnabled)
-        <p class="opacity-70 mb-4">Vorhandene Zugänge können hier gesperrt werden. Zugang speichern / ersetzen ist nicht verbunden. PIN, Kartenwerte und Hashes werden nicht angezeigt.</p>
+        <p class="opacity-70 mb-4">Vorhandene Terminal-Zugänge verwalten. PIN und Kartenkennung werden nicht angezeigt.</p>
         @else
         <p class="opacity-70 mb-4">Nur lesende Übersicht der eingerichteten Zugänge. Zugang speichern / ersetzen und Zugang sperren sind hier nicht verbunden. PIN, Kartenwerte und Hashes werden nicht angezeigt.</p>
         @endif

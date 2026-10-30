@@ -2,7 +2,7 @@
 # Default Laravel image. Runtime provisioning remains explicit and separate.
 FROM php:8.5.12-apache-trixie@sha256:7cd25eb48f9763dfeabe8fda3939897aca2001802fadeafa1b602f26c735ef96 AS dependencies
 WORKDIR /opt/chrono/framework
-ENV APP_ENV=production APP_DEBUG=false \
+ENV CHRONO_APACHE_PORT=8443 APP_ENV=production APP_DEBUG=false \
     FRAMEWORK_FRESH_WEB_ENABLED=false \
     FRAMEWORK_CHRONO_READ_ENABLED=false FRAMEWORK_CHRONO_WRITE_ENABLED=false
 # Official Composer release, hash from https://getcomposer.org/download/.
@@ -24,7 +24,7 @@ RUN mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/sess
 
 FROM php:8.5.12-apache-trixie@sha256:7cd25eb48f9763dfeabe8fda3939897aca2001802fadeafa1b602f26c735ef96
 WORKDIR /opt/chrono/framework
-ENV APP_ENV=production APP_DEBUG=false \
+ENV CHRONO_APACHE_PORT=8443 APP_ENV=production APP_DEBUG=false \
     FRAMEWORK_FRESH_WEB_ENABLED=false \
     FRAMEWORK_CHRONO_READ_ENABLED=false FRAMEWORK_CHRONO_WRITE_ENABLED=false
 COPY --from=dependencies /opt/chrono/ /opt/chrono/
@@ -36,7 +36,7 @@ RUN cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini \
     && a2enmod ssl rewrite headers reqtimeout \
     && a2enconf docker-php \
     && a2ensite chrono-laravel \
-    && printf 'Listen 8443 https\n' > /etc/apache2/ports.conf \
+    && printf 'Listen ${CHRONO_APACHE_PORT}\n' > /etc/apache2/ports.conf \
     && printf 'ServerName localhost\nServerTokens Prod\nServerSignature Off\nTraceEnable Off\n' > /etc/apache2/conf-available/chrono-laravel.conf \
     && a2enconf chrono-laravel \
     && find /opt/chrono -type d -exec chmod 0755 {} + \

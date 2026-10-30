@@ -38,7 +38,7 @@
             @endif
 
             @if (! $page->interactions->login)
-            <p class="text-sm mb-4" role="note">Inaktive Laravel-Ansicht: Anmeldung noch nicht verbunden. Bestehender Einstieg bleibt login.php.</p>
+
             @endif
             <form method="post" action="login.php" class="space-y-4">
                 <fieldset @disabled(! $page->interactions->login) class="space-y-4">

@@ -117,3 +117,46 @@
 @media (max-width: 768px) {
     .chrono-local-ui .navbar-center img { width: 1.5rem; height: 1.5rem; }
 }
+/* Shared application chrome, including credential-protected administration. */
+.chrono-local-ui { font-family:system-ui,-apple-system,'Segoe UI',sans-serif; background:#f3f5f9; }
+.chrono-local-ui .sidebar-link { text-decoration:none; }
+.chrono-local-ui .sidebar-heading { margin-bottom:.65rem; }
+.chrono-local-ui .navbar { min-height:72px; background:hsl(var(--b1)); border-bottom:1px solid hsl(var(--b3)); }
+.chrono-local-ui .navbar-center { font-size:1.1rem; }
+.chrono-local-ui .chrono-page { padding:1.5rem; }
+.chrono-local-ui .card { box-shadow:0 2px 8px rgb(15 23 42 / .05); border:1px solid hsl(var(--b3)); border-radius:12px; }
+.chrono-local-ui .card-body { padding:1.5rem; }
+.chrono-local-ui .card-title { font-size:1.2rem; }
+.chrono-local-ui .btn { text-transform:none; letter-spacing:0; }
+.chrono-local-ui .table { font-size:.9rem; }
+.chrono-local-ui .table th { font-size:.75rem; }
+.chrono-local-ui .table td { vertical-align:middle; }
+.chrono-local-ui #user-management { overflow:auto; }
+.chrono-admin-credential main.chrono-page { display:flex; flex-direction:column; gap:1.25rem; }
+.chrono-admin-credential main.chrono-page > * { margin-bottom:0; }
+body.chrono-admin-credential .fas::before { content:'◇'; }
+body.chrono-admin-credential .fa-bars::before { content:'☰'; }
+body.chrono-admin-credential .fa-home::before { content:'⌂'; }
+body.chrono-admin-credential .fa-search::before { content:'⌕'; }
+body.chrono-admin-credential .fa-plus::before { content:'+'; }
+body.chrono-admin-credential .fa-edit::before { content:'✎'; }
+body.chrono-admin-credential .fa-save::before { content:'✓'; }
+body.chrono-admin-credential .fa-sign-out-alt::before { content:'↪'; }
+.chrono-local-ui .sidebar-link i { display:inline-flex; justify-content:center; flex:0 0 24px; }
+@media(max-width:768px) {
+ .chrono-local-ui .chrono-page { padding:1rem; }
+ .chrono-local-ui .navbar-center { font-size:.85rem; }
+ .chrono-local-ui .card-body { padding:1rem; }
+ .chrono-local-ui .navbar-center img { display:none; }
+}
+
+body.chrono-admin-credential .fa-tachometer-alt::before {content:"▦";}
+body.chrono-admin-credential .fa-search::before {content:"⌕";}
+body.chrono-admin-credential #user-management td:last-child {white-space:normal;min-width:12rem;}
+body.chrono-admin-credential #toggleUserForm {align-self:flex-start;}
+/* Keep long help popovers inside their card and out of the hidden page width. */
+body.chrono-local-ui #main-content .info-tooltip .tooltiptext {
+ display:none;left:auto;right:0;margin-left:0;width:min(350px,calc(100vw - 3rem));white-space:normal;
+}
+body.chrono-local-ui #main-content .info-tooltip:hover .tooltiptext,
+body.chrono-local-ui #main-content .info-tooltip:focus-within .tooltiptext {display:block;}

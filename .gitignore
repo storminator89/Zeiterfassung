@@ -47,3 +47,14 @@ dist/
 *.sass-cache
 *.next
 
+
+# Private local deployment material
+*.key
+*.pem
+*.env
+chrono-private/
+chrono-data/
+installation-ready
+preparation-receipt.json
+
+.chrono-data-dir

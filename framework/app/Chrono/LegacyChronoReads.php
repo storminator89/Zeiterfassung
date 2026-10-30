@@ -872,6 +872,16 @@ final class LegacyChronoReads implements ChronoReads, OwnApiTimeEntryKindReads, 
         });
     }
 
+    public function adminTerminalUsers(): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
+            if ($actor->role !== 'admin' || $actor->auth_source !== 'local') {
+                throw new AuthorizationException('Lokale Administration erforderlich.');
+            }
+            return $this->rows($pdo, 'SELECT id,username FROM users ORDER BY username', []);
+        });
+    }
+
     public function adminTerminalCredentials(): array
     {
         return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {

@@ -77,6 +77,8 @@ interface ChronoReads
     /** Existing configured terminal-access display only; fresh local Admin, never PIN/card hashes. */
     public function adminTerminalCredentials(): array;
 
+    public function adminTerminalUsers(): array;
+
     /** Separately enabled revocation form: current local Admin, display fields plus target user ID. */
     public function adminTerminalCredentialRevocationTargets(): array;
 

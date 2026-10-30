@@ -190,11 +190,11 @@ final class FirstAdminSetupFiles
         }
     }
 
-    /** Canonical HTTPS loopback/RFC1918 origins only; never an authentication claim. */
+    /** Canonical HTTP/HTTPS loopback/RFC1918 origins only; never an authentication claim. */
     private static function localOrigin(string $origin): bool
     {
         try { $parts = @parse_url($origin); } catch (Throwable) { return false; }
-        if (! is_array($parts) || ($parts['scheme'] ?? null) !== 'https' || isset($parts['user']) || isset($parts['pass'])
+        if (! is_array($parts) || !in_array($parts['scheme'] ?? null, ['http','https'], true) || isset($parts['user']) || isset($parts['pass'])
             || isset($parts['query']) || isset($parts['fragment']) || isset($parts['path'])
             || ! is_string($parts['host'] ?? null)
             || (isset($parts['port']) && (! is_int($parts['port']) || $parts['port'] < 1 || $parts['port'] > 65535))) { return false; }
@@ -203,7 +203,8 @@ final class FirstAdminSetupFiles
         foreach (explode('.', $host) as $label) {
             if (preg_match('/\A[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\z/D', $label) !== 1) { return false; }
         }
-        $canonical = 'https://'.$host.(isset($parts['port']) && $parts['port'] !== 443 ? ':'.$parts['port'] : '');
+        $defaultPort=$parts['scheme'] === 'https' ? 443 : 80;
+        $canonical = $parts['scheme'].'://'.$host.(isset($parts['port']) && $parts['port'] !== $defaultPort ? ':'.$parts['port'] : '');
         if ($host !== strtolower($host) || $origin !== $canonical) { return false; }
         if ($host === 'localhost' || str_ends_with($host, '.localhost')) { return true; }
         if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) { return false; }

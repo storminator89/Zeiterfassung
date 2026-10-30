@@ -72,6 +72,8 @@ final class FreshWebServiceProvider extends ServiceProvider
             $this->app->instance(Interactions::class, new Interactions(
                 login: true, attendance: true, logout: true, corrections: true, home: true, absences: true,
                 workModels: true, history: true, supervisor: true, dashboard: true, adminPauseSettings: true,
+                terminalSites: true, terminalCredentialRevocations: true, terminalDeviceRevocations: true,
+                terminalModuleSettings: true, terminalDevicePairings: true,
                 correctionWithdrawals: $includeCorrectionWithdrawals,
                 ldapSessionRevocations: $profile->ldapLoginEnabled(),
             ));
@@ -79,6 +81,9 @@ final class FreshWebServiceProvider extends ServiceProvider
             $router->group(['middleware' => [RequireFreshWebProfile::class]], function () use ($config, $profile, $includeCorrectionWithdrawals): void {
                 LocalWebRoutes::register($this->app, includeHistory: true, includeSupervisor: true, includeDashboard: true,
                     includeCsv: true, includeSettings: true, includeAdminPauseSettings: true,
+                    includeTerminalDevices: true, includeTerminalModuleSettings: true,
+                    includeTerminalSites: true, includeTerminalCredentialRevocations: true,
+                    includeTerminalDeviceRevocations: true, includeTerminalDevicePairings: true, includeTerminalCredentialCreation: true,
                     includeRegistration: true, includeSetup: $config->get('chrono_setup.enabled') === true,
                     includeLdapSync: $profile->ldapSyncProfile() !== null,
                     includeLdapSessionRevocations: $profile->ldapLoginEnabled(),

@@ -1,0 +1,68 @@
+# Default service is Laravel web, after explicit NEW-only preparation and TLS.
+# No init/operator dependency, automatic data/key/account creation or native fallback.
+name: ${CHRONO_PROJECT_NAME:-chrono}
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${CHRONO_LARAVEL_IMAGE:-chrono-laravel:local}
+    pull_policy: never
+    user: "${CHRONO_LARAVEL_UID:?Set a non-root Linux operator UID}:${CHRONO_LARAVEL_GID:?Set its GID}"
+    working_dir: /opt/chrono/framework
+    entrypoint: [/usr/local/bin/chrono-laravel-web]
+    env_file:
+      - path: ${CHRONO_LARAVEL_PRIVATE_PARENT:?Set private parent}/${CHRONO_LARAVEL_INSTANCE:?Set exact creator-returned basename}/framework-app-key.env
+        required: true
+      - path: ${CHRONO_LARAVEL_PRIVATE_PARENT}/terminal.env
+        required: true
+    environment:
+      APP_TERMINAL_ENABLED: "1"
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: ${CHRONO_LARAVEL_ORIGIN:?Set canonical HTTPS root origin}
+      APP_LOCALE: de
+      FRAMEWORK_PREVIOUS_KEYS: ""
+      FRAMEWORK_FRESH_WEB_ENABLED: "true"
+      FRAMEWORK_FRESH_INSTANCE_DIRECTORY: /var/lib/chrono-laravel/${CHRONO_LARAVEL_INSTANCE:?Set exact instance basename}
+      FRAMEWORK_FRESH_SETUP_ENABLED: ${CHRONO_LARAVEL_SETUP_ENABLED:-false}
+      # Capability only: API stays off until a confirmed local-Admin UI action.
+      FRAMEWORK_API_UI_MANAGEMENT_ENABLED: "true"
+      # Default NEW local installation is V5; old explicit V4 composition remains separate.
+      FRAMEWORK_SHARED_LOGIN_BUDGET_ENABLED: "${CHRONO_LARAVEL_SHARED_LOGIN_BUDGET_ENABLED:-true}"
+      FRAMEWORK_FRESH_SESSION_LOCK_SECONDS: ${CHRONO_LARAVEL_SESSION_LOCK_SECONDS:-0}
+      FRAMEWORK_FRESH_SESSION_WAIT_SECONDS: ${CHRONO_LARAVEL_SESSION_WAIT_SECONDS:-10}
+      FRAMEWORK_CHRONO_READ_ENABLED: "true"
+      FRAMEWORK_CHRONO_WRITE_ENABLED: "true"
+      APACHE_RUN_USER: "#${CHRONO_LARAVEL_UID:?Set operator UID}"
+      APACHE_RUN_GROUP: "#${CHRONO_LARAVEL_GID:?Set operator GID}"
+    ports:
+      - "127.0.0.1:${CHRONO_LARAVEL_HTTPS_PORT:?Set an unused explicit host TLS port}:8443"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: "no"
+    stop_grace_period: 120s
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,mode=1777
+      - /var/run/apache2:rw,nosuid,nodev,noexec,mode=0700,uid=${CHRONO_LARAVEL_UID},gid=${CHRONO_LARAVEL_GID}
+      - /var/run/apache2/socks:rw,nosuid,nodev,noexec,mode=0700,uid=${CHRONO_LARAVEL_UID},gid=${CHRONO_LARAVEL_GID}
+      - /var/lock/apache2:rw,nosuid,nodev,noexec,mode=0700,uid=${CHRONO_LARAVEL_UID},gid=${CHRONO_LARAVEL_GID}
+    volumes:
+      - type: bind
+        source: ${CHRONO_LARAVEL_PRIVATE_PARENT:?Set private parent}
+        target: /var/lib/chrono-laravel
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${CHRONO_LARAVEL_TLS_CERTIFICATE:?Set existing trusted TLS certificate file}
+        target: /run/chrono-tls/certificate.pem
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${CHRONO_LARAVEL_TLS_PRIVATE_KEY:?Set existing matching private TLS key file}
+        target: /run/chrono-tls/private-key.pem
+        read_only: true
+        bind:
+          create_host_path: false

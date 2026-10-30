@@ -1,5 +1,5 @@
-# Default service is Laravel web, after explicit NEW-only preparation and TLS.
-# No init/operator dependency, automatic data/key/account creation or native fallback.
+# Local-network HTTP default. Run ./start.sh for automatic private preparation.
+name: ${CHRONO_PROJECT_NAME:-chrono}
 services:
   web:
     build:
@@ -13,10 +13,13 @@ services:
     env_file:
       - path: ${CHRONO_LARAVEL_PRIVATE_PARENT:?Set private parent}/${CHRONO_LARAVEL_INSTANCE:?Set exact creator-returned basename}/framework-app-key.env
         required: true
+      - path: ${CHRONO_LARAVEL_PRIVATE_PARENT}/terminal.env
+        required: true
     environment:
+      APP_TERMINAL_ENABLED: "1"
       APP_ENV: production
       APP_DEBUG: "false"
-      APP_URL: ${CHRONO_LARAVEL_ORIGIN:?Set canonical HTTPS root origin}
+      APP_URL: ${CHRONO_LARAVEL_ORIGIN:?Set canonical local HTTP or HTTPS root origin}
       APP_LOCALE: de
       FRAMEWORK_PREVIOUS_KEYS: ""
       FRAMEWORK_FRESH_WEB_ENABLED: "true"
@@ -33,31 +36,26 @@ services:
       APACHE_RUN_USER: "#${CHRONO_LARAVEL_UID:?Set operator UID}"
       APACHE_RUN_GROUP: "#${CHRONO_LARAVEL_GID:?Set operator GID}"
     ports:
-      - "127.0.0.1:${CHRONO_LARAVEL_HTTPS_PORT:?Set an unused explicit host TLS port}:8443"
+      - "${CHRONO_BIND_ADDRESS:-0.0.0.0}:${CHRONO_HTTP_PORT:-8080}:8080"
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8080/up') === false ? 1 : 0);"]
+      interval: 3s
+      timeout: 5s
+      start_period: 10s
+      retries: 15
     restart: "no"
     stop_grace_period: 120s
     tmpfs:
       - /tmp:rw,nosuid,nodev,noexec,mode=1777
       - /var/run/apache2:rw,nosuid,nodev,noexec,mode=0700,uid=${CHRONO_LARAVEL_UID},gid=${CHRONO_LARAVEL_GID}
+      - /var/run/apache2/socks:rw,nosuid,nodev,noexec,mode=0700,uid=${CHRONO_LARAVEL_UID},gid=${CHRONO_LARAVEL_GID}
       - /var/lock/apache2:rw,nosuid,nodev,noexec,mode=0700,uid=${CHRONO_LARAVEL_UID},gid=${CHRONO_LARAVEL_GID}
     volumes:
       - type: bind
         source: ${CHRONO_LARAVEL_PRIVATE_PARENT:?Set private parent}
         target: /var/lib/chrono-laravel
-        bind:
-          create_host_path: false
-      - type: bind
-        source: ${CHRONO_LARAVEL_TLS_CERTIFICATE:?Set existing trusted TLS certificate file}
-        target: /run/chrono-tls/certificate.pem
-        read_only: true
-        bind:
-          create_host_path: false
-      - type: bind
-        source: ${CHRONO_LARAVEL_TLS_PRIVATE_KEY:?Set existing matching private TLS key file}
-        target: /run/chrono-tls/private-key.pem
-        read_only: true
         bind:
           create_host_path: false

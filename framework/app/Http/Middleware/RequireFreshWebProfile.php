@@ -54,7 +54,7 @@ final class RequireFreshWebProfile
     private function canonicalRequest(Request $request, Route $route, string $origin): bool
     {
         return $request->getPathInfo() === '/'.ltrim($route->uri(), '/')
-            && $request->isSecure() && $request->getSchemeAndHttpHost() === $origin;
+            && $request->getSchemeAndHttpHost() === $origin;
     }
 
     private function closed(): Response

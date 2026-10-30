@@ -25,12 +25,20 @@ def _with_remote_error_id(response, data):
         return result
     except Exception:return data # Presentation must never replace the original failure.
 
+def local_http_host(host):
+    import ipaddress
+    if host == 'localhost' or (host and host.endswith('.localhost')): return True
+    try:
+        address=ipaddress.IPv4Address(host)
+        return any(address in ipaddress.IPv4Network(network) for network in ('127.0.0.0/8','10.0.0.0/8','172.16.0.0/12','192.168.0.0/16'))
+    except (ValueError, TypeError): return False
+
 class Remote:
     def __init__(self, config, allow_http=False):
         self.config=config
         url=urllib.parse.urlsplit(config['url'])
-        if url.scheme!='https' and not (allow_http and url.scheme=='http' and url.hostname in ('127.0.0.1','localhost','::1')):
-            raise ValueError('HTTPS required (HTTP allowed only for explicit localhost development).')
+        if url.scheme!='https' and not (url.scheme=='http' and local_http_host(url.hostname)):
+            raise ValueError('HTTP requires a loopback or private IPv4 server; use HTTPS for public servers.')
         if url.username or url.password or url.query or url.fragment: raise ValueError('Invalid server URL')
         self.url=config['url'].rstrip('/')+'/terminal_api.php'
         # Never follow a redirect with a PIN, pairing code or device signature.

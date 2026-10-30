@@ -210,7 +210,7 @@ define('BUTTON_GENERATE_TOKEN', 'Token generieren');
 define('BUTTON_API_DOC', 'API-Dokumentation');
 define('MODAL_TITLE_EDIT_USER', 'Benutzer bearbeiten');
 define('FORM_REGULAR_WORKING_HOURS', 'Regelarbeitszeit');
-define('FORM_OVERTIME', '����berstunden');
+define('FORM_OVERTIME', 'Überstunden');
 define('FORM_NEW_PASSWORD', 'Neues Passwort (leer lassen für keine Änderung)');
 define('BUTTON_CANCEL', 'Abbrechen');
 define('SEARCH_USERS', 'Benutzer suchen');

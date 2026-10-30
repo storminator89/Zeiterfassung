@@ -53,7 +53,7 @@ use Symfony\Component\HttpFoundation\Response;
 /** Explicit opt-in registrar. Never called by bootstrap/providers/default routes. */
 final class LocalWebRoutes
 {
-    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false, bool $includeSetup = false, bool $includeLdapSync = false, bool $useSharedLoginBudget = false, bool $includeTerminalSites = false, bool $includeTerminalCredentialRevocations = false, bool $includeCorrectionWithdrawals = false, bool $includeTerminalDeviceRevocations = false, bool $includeLdapSessionRevocations = false, bool $includeTerminalModuleSettings = false, bool $includeTerminalDevicePairings = false): void
+    public static function register(Application $app, bool $includeHistory = false, bool $includeSupervisor = false, bool $includeDashboard = false, bool $includeCsv = false, bool $includeSettings = false, bool $includeAdminPauseSettings = false, bool $includeTerminalDevices = false, bool $includeDatabaseSnapshot = false, bool $includeRegistration = false, bool $includeSetup = false, bool $includeLdapSync = false, bool $useSharedLoginBudget = false, bool $includeTerminalSites = false, bool $includeTerminalCredentialRevocations = false, bool $includeCorrectionWithdrawals = false, bool $includeTerminalDeviceRevocations = false, bool $includeLdapSessionRevocations = false, bool $includeTerminalModuleSettings = false, bool $includeTerminalDevicePairings = false, bool $includeTerminalCredentialCreation = false): void
     {
         $vacationEnabled=$app->bound(RuntimeDatabase::class) && $app->make(RuntimeDatabase::class)->isVacationWorkflowV7();
         if ($vacationEnabled) {
@@ -73,6 +73,10 @@ final class LocalWebRoutes
         }
         if ($useSharedLoginBudget !== SharedLoginBudgetServiceProvider::selected($app)) {
             throw new LogicException('Login route and shared budget selection must agree.');
+        }
+        if ($includeTerminalCredentialCreation && (!$includeTerminalDevices || !$includeTerminalDevicePairings
+            || $app->make('config')->get('app.debug') !== false || !$app->bound(AttendanceWriter::class))) {
+            throw new LogicException('Terminal credential creation requires its authenticated page, non-debug mode and admitted writer.');
         }
         if ($includeTerminalSites && ! $includeTerminalDevices) {
             throw new LogicException('Terminal site creation requires its existing device page.');
@@ -126,6 +130,7 @@ final class LocalWebRoutes
         $app->make('config')->set('chrono_terminal_admin.device_revocations_enabled', $includeTerminalDeviceRevocations);
         $app->make('config')->set('chrono_terminal_admin.module_settings_enabled', $includeTerminalModuleSettings);
         $app->make('config')->set('chrono_terminal_admin.device_pairings_enabled', $includeTerminalDevicePairings);
+        $app->make('config')->set('chrono_terminal_admin.credential_creation_enabled', $includeTerminalCredentialCreation);
         // No opt-in page may be registered against missing or replaced chart bytes.
         if ($includeSupervisor) {
             self::requireSupervisorChartAssets();
