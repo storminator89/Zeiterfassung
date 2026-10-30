@@ -390,4 +390,8 @@ define('HOLIDAY_INVENTORY_YEARS_EMPTY', 'No recognized stored years. This means 
 define('HOLIDAY_INVENTORY_YEAR_ROWS', '%d · %d stored rows');
 define('HOLIDAY_INVENTORY_UNASSIGNED_ROWS', '%d stored rows without a recognized year prefix from 0001 to 9999 are missing from year selection. Ask your administrator to review the original values; nothing was assigned or repaired.');
 
+define('CORRECTION_REQUESTED_AT', 'Request submitted (Europe/Berlin)');
+define('CORRECTION_DECIDED_AT', 'Decision stored');
+define('CORRECTION_WITHDRAWN_AT', 'Withdrawal stored');
+define('CORRECTION_TIME_UNAVAILABLE', 'Time unavailable');
 ?>
