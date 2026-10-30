@@ -364,7 +364,7 @@ function getCorrectionStatus($conn, $user_id) {
     try {
         $conn->beginTransaction();
         try {
-            $result = api_own_correction_status_snapshot($conn, (int) $user_id, $page['status'], $page['limit'], $page['offset'], $page['request_id'] ?? null, $page['record_id'] ?? null);
+            $result = api_own_correction_status_snapshot($conn, (int) $user_id, $page['status'], $page['limit'], $page['offset'], $page['request_id'] ?? null, $page['record_id'] ?? null, $page['before'] ?? null);
             $conn->commit();
         } catch (Throwable $error) {
             if ($conn->inTransaction()) { $conn->rollBack(); }

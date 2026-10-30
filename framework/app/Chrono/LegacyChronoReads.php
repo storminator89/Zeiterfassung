@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads
+final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -309,6 +309,15 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
             require_once dirname(__DIR__, 3).'/lib/api_correction_status.php';
 
             return \api_own_correction_status_snapshot($pdo, (int) $actor->getKey(), $status, $limit, $offset, $requestId, $recordId);
+        }, false);
+    }
+
+    public function ownApiCorrectionCursorStatus(string $beforeId, ?string $requestId, ?string $recordId, string $status, int $limit, ?int $offset): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor) use ($beforeId, $requestId, $recordId, $status, $limit, $offset): array {
+            require_once dirname(__DIR__, 3).'/lib/api_correction_status.php';
+
+            return \api_own_correction_status_snapshot($pdo, (int) $actor->getKey(), $status, $limit, $offset, $requestId, $recordId, $beforeId);
         }, false);
     }
 

@@ -438,3 +438,16 @@ und bisheriger Pagination; keine fremde Kontoauswahl, Buchungsprüfung oder
 Schreibberechtigung. Nur bei ausdrücklicher Auswahl enthält `meta.record_id`
 den exakten String. Ohne Auswahl bleiben bisherige Antworten unverändert.
 [Vertrag, Fehler- und Abnahmegrenzen](framework/api-own-correction-status.md#own-stored-record-reference-filter--partial-68).
+
+
+### Eigene Korrekturstatus mit exklusiver ID-Fortsetzung
+
+`GET /api.php/corrections?before=14` liest nur die eigenen passenden Anträge mit
+ID kleiner als 14. Für die nächste ID-absteigende Seite den letzten gelieferten
+`request_id`-String unverändert als `before` verwenden; normalerweise ohne Offset.
+Später hinzugekommene höhere IDs verdrängen diese Fortsetzung nicht. Bestehende
+Status-/Antrags-/Referenzfilter und Pagination gelten zusätzlich; `meta.total`
+zählt nur verbleibende Treffer unterhalb der Grenze. Nur bei Auswahl kommt
+`meta.before` hinzu. Das ist kein Feed oder seitenübergreifender Snapshot, und die
+Grenz-ID wird nicht auf Existenz oder Eigentum geprüft.
+[Genauer Vertrag und offene Grenzen](framework/api-own-correction-status.md#exclusive-continuation-below-an-own-request-id--partial-68).

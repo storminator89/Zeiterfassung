@@ -16,6 +16,9 @@ approval, withdrawal, creation, model/absence mutation or notification side effe
   matching the **stored record reference on an own correction request**. Requests
   with null `record_id` do not match; this is not a booking lookup or proof that
   the referenced booking exists or belongs to the account.
+- Optional `before`: an exclusive exact request-ID boundary in the same canonical
+  positive string domain, selecting only own requests with `id < before`.
+  It is not a timestamp, opaque authority token, or lookup of the boundary row.
 - Existing strict API pagination: `limit` defaults to 100 and accepts 0..1000;
   `offset` accepts 0..2147483647. Omitted offset skips zero and is reported as null.
 - Values are parsed from the unnormalized PHP query. Arrays, whitespace, invalid
@@ -149,3 +152,71 @@ manual CI dispatch, real accounts/credentials/keys/data, file DB, server, browse
 full App/auth/HTTP/concurrency/performance or production/deployment acceptance.
 Browser acceptance remains with the user; **#68 remains partial/open**.
 Frozen local evidence: `/tmp/chrono-api-record-filter-mainbb980b1f-support/`.
+
+
+## Exclusive continuation below an own-request ID — partial #68
+
+Source Main `7225b2176c326b54bd4748f99268073e53ea743f`, complete base tree
+`cec66fba7e4affa3143b0878f80820b3ff36b4a0`. Clients can continue the existing
+ID-descending list with `before` set to the **last returned `request_id` string**,
+without converting it through a JavaScript Number. For example, after a page
+ending in `14`, `GET /api.php/corrections?before=14&limit=100` reads only older
+matching request IDs. Keep the same desired status/record filters; normally omit
+offset when using this continuation. No new route, UI, writer, notification or
+change feed is introduced.
+
+Unlike offset-only paging, later matching rows with IDs greater than the cursor
+do not displace this continuation. The boundary is strictly exclusive: `14`
+itself is not returned; `before=1` can legitimately return an empty set.
+Adjacent IDs above JavaScript's safe range and SQLite's maximum remain exact.
+The existing canonical positive ID recognizer is reused with a fixed cursor-
+specific 400. Whitespace/final LF, arrays, signs, leading zeros, exponent/non-ASCII
+forms and overflow refuse before the read; raw PHP query remains authoritative.
+Repeated names retain PHP parsing, not a new duplicate-parameter policy.
+
+The fixed owner predicate is unchanged, including Admin/supervisor tokens. The
+same `id < :before_id` predicate enters both count and row SQL in the existing
+own authenticated read snapshot, AND with status, optional request/record ID,
+and unchanged limit/offset. There is no silently overridden offset or selector.
+`meta.total` is the count of **remaining matching own rows below this boundary**,
+not an unfiltered account total. Only explicit cursor selection adds
+`meta.before`, echoing that validated exact string. All no-cursor default,
+request-only and record-only response keys/values, five-field row DTO, ordering,
+no-store and fixed 503 behavior remain unchanged; the unknown-field error now
+names the additional accepted parameter.
+
+An absent/nonexistent/foreign boundary row is never fetched or distinguished:
+`before` is only a numeric bound, not evidence of its existence/ownership.
+Reads on later pages are still fresh. Changed statuses, deletion/ownership or
+source changes and inserts at older IDs can change later matching data; this is
+**not** an immutable export, cross-page snapshot, stable feed or complete history.
+Starting again without `before` is how a caller sees newer IDs; no polling,
+checkpoint storage, automatic retry or write is added.
+
+The original general/list/request/record reader interfaces remain byte-identical.
+One separate optional cursor-reader capability delegates to the same named
+current-actor snapshot. Older adapters lacking it keep all old queries, but a
+cursor query gets fixed 503, never an unfiltered/offset-only fallback. Existing
+Native JWT/password and separate Laravel API admission/source/generation/
+operating-policy/raw-method/URL/guard boundaries are untouched. No schema/index,
+account/key/runtime/host/security/dependency change or held packet is transported.
+
+One reused coarse PHP 8.5.12 / SQLite 3.46.1 / Laravel 13.38.0 anonymous Memory
+journey uses the actual reader/router/controller/shared projection and extracted
+Native handler. It demonstrates offset displacement after greater matching
+fixture IDs arrive while cursor continuation remains byte-identical, 18 valid
+cursor/conjunctive cases and 17 malformed wire cases, exact adjacent/MAX IDs,
+count-before-page/zero/offset combinations, current own user/Admin/supervisor
+scope, raw normalization refusal, all old adapter capabilities with new-capability
+503, fresh later status and no source/schema/audit/query_only/session/timezone/
+transaction changes. Fixture writes are outside the handlers, not API workflow
+creation or JWT/login acceptance. The first harness expected three large-ID
+counts one too low after its fixture additions; only harness expectations were
+corrected, not source behavior.
+
+Necessary PHP/JSON syntax, source preservation/inverse and cold bundle/fsck are
+separate checks. No new repository suite/manual CI, GitHub Approval review,
+real accounts/credentials/keys/data/file DB/server/browser, full App/auth/HTTP/
+operating-policy/concurrency/performance/production or deployment acceptance.
+**#68 remains partial/open.** Evidence:
+`/tmp/chrono-api-correction-cursor-main7225b217-support/`.
