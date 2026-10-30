@@ -16,7 +16,7 @@
             @if (array_sum($monthCounts) === 0)<p role="status">{{ $ownMonthReview->text('empty') }}</p>
             @else
                 <p>{{ $ownMonthReview->text('samples') }}</p><ul class="list-disc pl-5">
-                @foreach ($monthReview['samples'] as $sample)<li>{{ $ownMonthReview->text('kind_'.$sample['kind']) }} #{{ $sample['id'] }} · {{ $ownMonthReview->text($sample['relation']) }}@if ($sample['kind'] === 'open') · <a class="link" href="adjustments.php?record_id={{ rawurlencode($sample['id']) }}">{{ $ownMonthReview->text('correction') }}</a>@endif</li>@endforeach
+                @foreach ($monthReview['samples'] as $sample)<li>{{ $ownMonthReview->text('kind_'.$sample['kind']) }} #{{ $sample['id'] }} · {{ $ownMonthReview->text($sample['relation']) }}@if ($sample['kind'] === 'open') · <a class="link" href="adjustments.php?record_id={{ rawurlencode($sample['id']) }}">{{ $ownMonthReview->text('correction') }}</a>@else · <a class="link" href="adjustments.php?request_status=pending&amp;request_id={{ rawurlencode($sample['id']) }}">{{ $ownMonthReview->text('pending_link') }}</a>@endif</li>@endforeach
                 </ul>
             @endif
             @if ($monthReview['limited'])<p>{{ $ownMonthReview->text('limited') }}</p>@endif

@@ -30,9 +30,14 @@ Die kompakte Ausgabe enthält zwei Zählzeilen, höchstens fünf eigene Beispiel
 Lesestempel und gewöhnliche Links auf vorhandene Listen/Korrektur. Beispiele
 sind offene Buchungen in absteigender ID-Reihenfolge, dann Pending-Anträge,
 insgesamt höchstens fünf. Bei mehr Treffern wird die Begrenzung ausdrücklich
-benannt. Antrags-IDs sind Suchhinweise, kein neuer direkter Antrag-/Seitenwähler;
-der Übersichtslink behält die bisherigen Sichtrechte. Admins sehen in dieser
-neuen Vorprüfung trotzdem ausschließlich eigene Daten. Nichts wird automatisch
+benannt. Jedes Antragsbeispiel verlinkt seine exakte ID über den bereits
+bestehenden Queue-Lookup (`request_status=pending&request_id=...`), ohne JS-Zahl-
+oder Floatkonvertierung. Das Ziel lädt einen frischen Stand und behält die
+bisherigen Sichtrechte sowie den Pending-Statusfilter. Ein inzwischen
+entschiedener, verborgener oder fehlender Antrag kann deshalb keine Treffer
+liefern; der Link öffnet nichts wieder und bestätigt keine Antragsentscheidung.
+Der allgemeine Übersichtslink bleibt erhalten. Admins sehen in dieser
+Vorprüfung trotzdem ausschließlich eigene Daten. Nichts wird automatisch
 korrigiert, beendet, beantragt oder wiederholt.
 
 ## Nur Startdatumsfakten, keine erfundenen Monatsauswirkungen
@@ -128,3 +133,28 @@ neue Abschluss-/Payroll-/Exportabnahme, echten Konten, nutzbaren Credentials,
 Schlüssel, Dateidatenbank, Server oder externen Aufrufe. Keine neue Testsuite,
 manuelle CI oder Aktivierung/Deployment. #44 bleibt für die eigentlichen
 Periodenfreigabe-/Sperr-/Revisions-/reproduzierbaren Exportkriterien offen.
+
+## Gezielte Navigation zum bereits vorhandenen Antrag
+
+Die Antragsbeispiele verwenden nur den vorhandenen exakten Queue-Lookup;
+keine neue Antragsdetailroute und kein neuer Read werden eingeführt. Der Link
+enthält ausschließlich den Pending-Status und die vom unveränderten eigenen
+Snapshot/DTO bereits validierte dezimale Antrags-ID. Er enthält weder eine
+Buchungs-ID, einen Owner noch eine Aktion, Vorschau- oder Erfolgsmeldung. Die
+bestehenden offenen Buchungslinks, Zähler, Reihenfolge, Fünfergrenze, Hinweise
+und allgemeine Listenlinks bleiben unverändert. Die Zielqueue beurteilt ihre
+aktuellen Sichtrechte erneut; es entsteht keine Freigabe oder Reservierung.
+
+Grober Zusatznachweis unter PHP 8.5.12 / SQLite 3.46.1 / Laravel 13.38.0:
+der bestehende achtteilige eigene Memory-Read-/Controller-Journey läuft weiter.
+42 tatsächliche Native-/kompilierte Blade-Darstellungen in DE/EN/ZH decken
+Default, ungültig, nicht verfügbar, leer, offene Buchungen, Anträge und gemischte
+Beispiele ab. 30 Antragslinks behalten die exakte ID einschließlich >2^53 und
+PHP_INT_MAX; der unveränderte Queue-Selector liest sie unverändert ein. Nach
+Entfernen ausschließlich der neuen Anker sind sämtliche bisherigen Renderbytes
+identisch. Wiederholte Darstellung und unveränderte query-only Quelldaten,
+Schema, Change-Zähler, Transaktionen, Session und Zeitzone sind geprüft.
+
+Dies ist ein Navigations-/Komponentennachweis, keine tatsächliche Queue-
+Entscheidung oder vollständige Browser-/Auth-/CSRF-/HTTP-/Betriebsabnahme.
+Keine neuen fachlichen Zustände, Writer, Testsuite, manuelle CI oder Bereitstellung.

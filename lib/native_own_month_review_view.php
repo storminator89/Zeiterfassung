@@ -10,7 +10,7 @@
         <p><?= h(sprintf($ownMonthReview->text('pending_counts'),$monthCounts['pending_selected'],$monthCounts['pending_unclear'])) ?></p>
         <?php if (array_sum($monthCounts)===0): ?><p role="status"><?= h($ownMonthReview->text('empty')) ?></p><?php else: ?>
         <p><?= h($ownMonthReview->text('samples')) ?></p><ul class="list-disc pl-5">
-            <?php foreach ($monthReview['samples'] as $sample): ?><li><?= h($ownMonthReview->text('kind_'.$sample['kind'])) ?> #<?= h($sample['id']) ?> · <?= h($ownMonthReview->text($sample['relation'])) ?><?php if ($sample['kind']==='open'): ?> · <a class="link" href="adjustments.php?record_id=<?= h(rawurlencode($sample['id'])) ?>"><?= h($ownMonthReview->text('correction')) ?></a><?php endif; ?></li><?php endforeach; ?>
+            <?php foreach ($monthReview['samples'] as $sample): ?><li><?= h($ownMonthReview->text('kind_'.$sample['kind'])) ?> #<?= h($sample['id']) ?> · <?= h($ownMonthReview->text($sample['relation'])) ?><?php if ($sample['kind']==='open'): ?> · <a class="link" href="adjustments.php?record_id=<?= h(rawurlencode($sample['id'])) ?>"><?= h($ownMonthReview->text('correction')) ?></a><?php else: ?> · <a class="link" href="adjustments.php?request_status=pending&amp;request_id=<?= h(rawurlencode($sample['id'])) ?>"><?= h($ownMonthReview->text('pending_link')) ?></a><?php endif; ?></li><?php endforeach; ?>
         </ul><?php endif; ?>
         <?php if ($monthReview['limited']): ?><p><?= h($ownMonthReview->text('limited')) ?></p><?php endif; ?>
         <p class="text-xs opacity-70"><?= h($ownMonthReview->text('snapshot')) ?> <time datetime="<?= h($monthReview['loaded_at']) ?>"><?= h($monthReview['loaded_at']) ?></time></p>
