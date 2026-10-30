@@ -73,6 +73,19 @@ if ($_SERVER['REQUEST_METHOD']==='GET' && array_key_exists('month_review',$_GET)
         } catch (Throwable) { $ownMonthReview=new \App\View\ExistingUi\OwnMonthReview($monthReviewMonth,$monthReviewLanguage,requested:true,unavailable:true); }
     }
 }
+// Optional in-app feedback reads only on the ordinary protected page, never a booking/status transport.
+$ownCorrectionDecisions=null;
+if ($_SERVER['REQUEST_METHOD']==='GET') {
+    require_once __DIR__.'/lib/own_correction_decisions.php';
+    require_once __DIR__.'/framework/app/View/ExistingUi/OwnCorrectionDecisions.php';
+    try {
+        $ownCorrectionDecisions=new \App\View\ExistingUi\OwnCorrectionDecisions($monthReviewLanguage,
+            chrono_native_own_correction_decisions($conn,(int)$user,$_SESSION['auth_version']??null));
+    } catch (AttendanceError $error) {
+        if (in_array($error->status,[401,403],true)) { abort_request($error->status,$error->getMessage()); }
+        $ownCorrectionDecisions=new \App\View\ExistingUi\OwnCorrectionDecisions($monthReviewLanguage,unavailable:true);
+    } catch (Throwable) { $ownCorrectionDecisions=new \App\View\ExistingUi\OwnCorrectionDecisions($monthReviewLanguage,unavailable:true); }
+}
 $strictAppUi = true;
 require __DIR__ . '/header.php';
 $state = $attendanceState;
@@ -164,6 +177,7 @@ try {
         </aside>
     </div>
     <?php require __DIR__.'/lib/native_own_period_comparison_view.php'; ?>
+    <?php require __DIR__.'/lib/native_own_correction_decisions_view.php'; ?>
     <section id="timeRecordsContainer" class="mt-8" aria-label="Erfasste Arbeitszeiten"><p role="status">Arbeitszeiten werden geladen …</p></section>
 </main>
 </div>

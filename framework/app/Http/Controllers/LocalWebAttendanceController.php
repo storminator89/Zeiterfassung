@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Chrono\ChronoReads;
 use App\Chrono\LocalWebAttendance;
 use App\Chrono\OwnOpenReviewReads;
+use App\Chrono\OwnCorrectionDecisionsReads;
+use App\View\ExistingUi\OwnCorrectionDecisions;
 use App\Chrono\OwnMonthReviewReads;
 use App\Chrono\OwnMonthReviewFindingReads;
 use App\Chrono\OwnPeriodComparisonReads;
@@ -86,6 +88,13 @@ final class LocalWebAttendanceController extends Controller
             }
         }
 
+        $ownCorrectionDecisions = null;
+        if ($request->isMethod('GET') && $this->interactions->home && $this->reads instanceof OwnCorrectionDecisionsReads) {
+            try { $ownCorrectionDecisions = new OwnCorrectionDecisions($language, $this->reads->ownCorrectionDecisions()); }
+            catch (AuthenticationException|AuthorizationException $error) { throw $error; }
+            catch (Throwable) { $ownCorrectionDecisions = new OwnCorrectionDecisions($language, unavailable: true); }
+        }
+
         $ownPeriodComparison = null;
         if ($this->interactions->home) {
             require_once dirname(__DIR__, 4).'/lib/own_period_comparison.php';
@@ -124,7 +133,7 @@ final class LocalWebAttendanceController extends Controller
             reportInvalidCount: count($summary['invalid_records'] ?? []),
             reportInvalidRecordIds: $summary['invalid_record_ids'] ?? [],
             reportUnresolved: $summary['report_finality']['all'] ?? false,
-        ), 'ownOpenReview' => $ownOpenReview, 'ownOpenReviewUnavailable' => $ownOpenReviewUnavailable, 'ownMonthReview' => $ownMonthReview, 'ownPeriodComparison' => $ownPeriodComparison]);
+        ), 'ownOpenReview' => $ownOpenReview, 'ownOpenReviewUnavailable' => $ownOpenReviewUnavailable, 'ownMonthReview' => $ownMonthReview, 'ownPeriodComparison' => $ownPeriodComparison, 'ownCorrectionDecisions' => $ownCorrectionDecisions]);
     }
 
     public function transition(Request $request): JsonResponse
