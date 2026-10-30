@@ -30,6 +30,9 @@ final readonly class CorrectionsPage
         public array $metadataDraft = [],
         public bool $metadataEnabled = false,
         public array $withdrawalDraft = [],
+        public string $requestLookupValue = '',
+        public bool $requestLookupInvalid = false,
+        public bool $requestLookupUnavailable = false,
     ) {}
 
     /** Display only after a known request rejection; never a command or stored/flash input. */
@@ -69,5 +72,13 @@ final readonly class CorrectionsPage
     public function pageUrl(int $page): string
     {
         return self::queueUrl($this->requestStatus, $page, $this->queueSelection);
+    }
+
+    public function requestLookupResetUrl(): string
+    {
+        $selection = $this->queueSelection;
+        unset($selection['request_id']);
+
+        return self::queueUrl($this->requestStatus, 1, $selection);
     }
 }

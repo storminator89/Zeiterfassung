@@ -80,16 +80,21 @@
 
     <section class="card bg-base-100 shadow-xl p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">Anträge filtern</h2>
-        <p class="mb-4">Offene Anträge: <strong>{{ $corrections->requestCounts['pending'] }}</strong> · innerhalb Ihrer bisherigen Sichtrechte.</p>
+        @if ($corrections->requestLookupInvalid)<div class="alert alert-error mb-4" role="alert">Ungültige Antrags-ID. Bitte eine positive ganze ID ohne Leerzeichen oder führende Nullen eingeben. Es werden keine Anträge angezeigt.</div>
+        @elseif ($corrections->requestLookupUnavailable)<div class="alert alert-error mb-4" role="alert">Antrags-ID-Suche ist in diesem Profil nicht verbunden. Es werden keine Anträge angezeigt.</div>@endif
+        <p class="mb-4">Offene Anträge für diese Auswahl: <strong>{{ $corrections->requestCounts['pending'] }}</strong> · innerhalb Ihrer bisherigen Sichtrechte.</p>
         <form method="get" action="adjustments.php">
-            @if ($corrections->queueSelection)<input type="hidden" name="record_id" value="{{ $corrections->queueSelection['record_id'] }}">@endif
+            @if (array_key_exists('record_id', $corrections->queueSelection))<input type="hidden" name="record_id" value="{{ $corrections->queueSelection['record_id'] }}">@endif
             <label class="block text-sm font-semibold mt-4 mb-2" for="request_status">Status</label>
             <select class="select select-bordered w-full" id="request_status" name="request_status">
                 @foreach ($corrections::STATUS_LABELS as $status => $label)
                 <option value="{{ $status }}" @selected($corrections->requestStatus === $status)>{{ $label }} ({{ $corrections->requestCounts[$status] }})</option>
                 @endforeach
             </select>
-            <div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary">Filtern</button></div>
+            <label class="block text-sm font-semibold mt-4 mb-2" for="request_id">Antrags-ID (optional)</label>
+            <input class="input input-bordered w-full" type="text" inputmode="numeric" id="request_id" name="request_id" value="{{ $corrections->requestLookupValue }}">
+            <p class="text-sm opacity-70 mt-3">Status und Antrags-ID gelten gemeinsam, nur innerhalb Ihrer bisherigen Sichtrechte. Ein leeres Ergebnis bestätigt weder Existenz noch Zugriff; auch ein anderer Status kann die Auswahl leeren.</p>
+            <div class="flex flex-wrap gap-3 mt-5"><button class="btn btn-primary">Filtern</button>@if ($corrections->requestLookupInvalid || $corrections->requestLookupUnavailable || $corrections->requestLookupValue !== '')<a class="btn btn-outline" href="{{ $corrections->requestLookupResetUrl() }}">Antrags-ID entfernen</a>@endif</div>
         </form>
     </section>
     <h2 class="text-xl font-semibold mb-4">Anträge: {{ $corrections::STATUS_LABELS[$corrections->requestStatus] }}</h2>
