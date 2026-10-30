@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
+use App\Chrono\OwnStoredValuesExportReads;
 use App\Chrono\LocalWebAbsences;
 use App\View\ExistingUi\Copy;
 use App\View\ExistingUi\Interactions;
@@ -63,6 +64,7 @@ final class LocalWebHomeController extends Controller
             csvExport: $this->router->has('chrono.export-csv'),
             reviewOnly: $reviewOnly, totalRecords: $totalRecords, localTimeFindings: $localTimeFindings,
             historyLinks: $this->interactions->history, workOverlapFindings: $workOverlapFindings,
+            storedValuesExport: $this->router->has('chrono.export-stored-values') && $this->reads instanceof OwnStoredValuesExportReads,
         )]);
     }
 

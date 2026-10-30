@@ -22,5 +22,12 @@ final readonly class TimeRecordsPage
         public bool $historyLinks = false,
         /** Visible own-row participant flags only; no counterpart/account data. */
         public array $workOverlapFindings = [],
+        public bool $storedValuesExport = false,
     ) {}
+
+    public function storedValuesText(string $key): string
+    {
+        $labels=require dirname(__DIR__,3).'/lang/'.$this->copy->language.'/stored-values-export.php';
+        return $labels[$key]??throw new \InvalidArgumentException('Unknown own stored-value export label.');
+    }
 }

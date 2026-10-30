@@ -15,6 +15,9 @@
     </button>
     @endif
 </div>
+@if ($records->storedValuesExport)
+<p class="text-sm opacity-70 mb-4"><a class="link" href="export_stored_values.php" target="_blank" rel="noopener noreferrer">{{ $records->storedValuesText('link') }}</a> {{ $records->storedValuesText('note') }}</p>
+@endif
 <div class="flex flex-wrap items-end gap-3 mb-4">
     <label class="text-sm font-semibold" for="time-record-review">Listenansicht<select id="time-record-review" data-record-review-filter data-page="{{ $records->page }}" class="select select-bordered select-sm block mt-1"><option value="all" @selected(! $records->reviewOnly)>Alle eigenen Einträge</option><option value="review" @selected($records->reviewOnly)>Vorhandene Prüfhinweise</option></select></label>
     <p class="text-sm opacity-70">@if ($records->reviewOnly){{ $records->totalRecords }} passende eigene Einträge. @endif Ungültige Zeiten, bestehende Arbeitszeit-/Abwesenheitskonflikte, eindeutig prüfbare Überschneidungen abgeschlossener Arbeitszeiten und erkannte Berliner Zeitlücken oder doppelte Stunden ohne Offset; außerdem lesbare Zeiten mit Format- oder Ungültigbefund der Altzeitdiagnose. Kein vollständiger Bestandscheck oder Vollständigkeitsnachweis; ein unmarkierter Eintrag ist keine Freigabe. Bestehende Dauer- und Summenberechnungen bleiben unverändert und bestätigen keine eindeutige Altzeit. Summen berücksichtigen weiterhin den vollständigen eigenen Tageskontext.</p>
