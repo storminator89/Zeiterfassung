@@ -318,6 +318,7 @@
             language: {!! \Illuminate\Support\Js::from($page->copy->language === 'zh' ? 'zh-tw' : $page->copy->language) !!},
             theme: {!! \Illuminate\Support\Js::from($page->theme) !!},
             events: {!! \Illuminate\Support\Js::from($dashboard->calendarEvents()) !!},
+            missingEndLabel: {!! \Illuminate\Support\Js::from($page->copy->text('DASHBOARD_CALENDAR_MISSING_END')) !!},
         });
         if (calendarStatus) { calendarStatus.hidden = true; }
         } catch {

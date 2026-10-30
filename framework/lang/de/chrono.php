@@ -251,6 +251,7 @@ return [
     'CSV_PERIOD_TO' => 'Bis einschließlich',
     'CSV_PERIOD_SUBMIT' => 'Zeitraum als CSV',
     'CSV_PERIOD_NOTE' => 'Nur eigene Buchungen nach Berliner Startdatum, unabhängig von Suche oder Listenseite. Nachtschichten bleiben vollständig beim Starttag. Die Qualitätsprüfung umfasst weiterhin Ihren gesamten Bestand; auch Fehler oder ungeklärte Überschneidungen außerhalb des Zeitraums können den Download blockieren. Kein Lohnsoftwareformat.',
+    'DASHBOARD_CALENDAR_MISSING_END' => 'Kein Ende gespeichert',
     'HOLIDAY_INVENTORY_YEARS_TITLE' => 'Gespeicherte Jahrgänge finden',
     'HOLIDAY_INVENTORY_YEARS_NOTE' => 'Nur erkannte Jahrespräfixe, höchstens die 20 neuesten. Zeilenzahlen bestätigen weder gültige Termine noch Vollständigkeit, Region oder Herkunft; andere fehlerhafte Jahrespräfixe fehlen hier.',
     'HOLIDAY_INVENTORY_YEARS_LIMITED' => 'Weitere gespeicherte Jahrgänge sind nicht aufgelistet; sie können weiterhin über die Jahreswahl geprüft werden.',

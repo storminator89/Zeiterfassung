@@ -41,7 +41,8 @@
                 if (!info.event.allDay) {
                     const clock = document.createElement('span');
                     clock.className = 'event-time';
-                    clock.textContent = time(values.start) + ' - ' + time(values.displayEnd);
+                    // The half-hour block is geometry only, never a stored end.
+                    clock.textContent = time(values.start) + ' - ' + (values.end === null ? options.missingEndLabel : time(values.displayEnd));
                     label.append(clock, document.createTextNode(' '));
                 }
                 const title = document.createElement('span');
@@ -56,7 +57,9 @@
             eventClick: function (info) {
                 const values = info.event.extendedProps.chrono;
                 document.getElementById('startTime').textContent = values.startDate + (info.event.allDay ? '' : ' ' + modalTime(values.start));
-                document.getElementById('endTime').textContent = values.endDate + (info.event.allDay ? '' : ' ' + modalTime(values.displayEnd));
+                document.getElementById('endTime').textContent = !info.event.allDay && values.end === null
+                    ? options.missingEndLabel
+                    : values.endDate + (info.event.allDay ? '' : ' ' + modalTime(values.displayEnd));
                 document.getElementById('eventDescription').textContent = info.event.title;
                 document.getElementById('eventLocation').textContent = values.location || '-';
                 modal.classList.add('modal-open');
