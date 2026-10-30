@@ -102,6 +102,10 @@ echo '<details class="card bg-base-100 shadow-xl p-4 mb-4">
     <p class="text-sm opacity-70 mt-2">' . h(CSV_EXPORT_NEW_CONTEXT_HINT) . '</p>
 </details>';
 
+require_once __DIR__.'/lib/language.php';
+$storedValuesCopy=require __DIR__.'/framework/lang/'.valid_language($lang).'/stored-values-export.php';
+echo '<p class="text-sm opacity-70 mb-4"><a class="link" href="export_stored_values.php" target="_blank" rel="noopener noreferrer">'.h($storedValuesCopy['link']).'</a> '.h($storedValuesCopy['note']).'</p>';
+
 echo '<div class="flex flex-wrap items-end gap-3 mb-4"><label class="text-sm font-semibold" for="time-record-review">Listenansicht<select id="time-record-review" data-record-review-filter data-page="' . (int)$page . '" class="select select-bordered select-sm block mt-1"><option value="all"' . (!$reviewOnly ? ' selected' : '') . '>Alle eigenen Einträge</option><option value="review"' . ($reviewOnly ? ' selected' : '') . '>Vorhandene Prüfhinweise</option></select></label><p class="text-sm opacity-70">' . ($reviewOnly ? (int)$totalRecords . ' passende eigene Einträge. ' : '') . 'Ungültige Zeiten, bestehende Arbeitszeit-/Abwesenheitskonflikte, eindeutig prüfbare Überschneidungen abgeschlossener Arbeitszeiten und erkannte Berliner Zeitlücken oder doppelte Stunden ohne Offset; außerdem lesbare Zeiten mit Format- oder Ungültigbefund der Altzeitdiagnose. Kein vollständiger Bestandscheck oder Vollständigkeitsnachweis; ein unmarkierter Eintrag ist keine Freigabe. Bestehende Dauer- und Summenberechnungen bleiben unverändert und bestätigen keine eindeutige Altzeit. Summen berücksichtigen weiterhin den vollständigen eigenen Tageskontext.</p></div>';
 if ($reviewOnly && $totalRecords === 0) {
     echo '<p class="text-sm mb-4" role="status">Keine passenden Prüfhinweise gefunden. Dies bestätigt weder einen fehlerfreien Bestand noch rekonstruierbare Altzeiten.</p>';

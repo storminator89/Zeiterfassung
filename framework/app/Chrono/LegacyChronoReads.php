@@ -18,7 +18,7 @@ use LogicException;
 use PDO;
 
 /** Thin projection adapter: no legacy bootstrap, HTTP, session globals or writes. */
-final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, HolidayRefillPreviewReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads, TeamTimeRecordReviewReads, OwnPeriodComparisonReads, WorkModelCreditPreviewPageReads
+final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewReads, OwnOpenReviewReads, HolidayInventoryReads, HolidayRefillPreviewReads, OwnStoredValuesExportReads, DepartmentIntegrityReads, OwnApiCorrectionStatusReads, OwnApiCorrectionRequestStatusReads, OwnApiCorrectionRecordStatusReads, OwnApiCorrectionCursorStatusReads, OwnApiWorkModelReads, OwnApiWorkModelVersionsReads, OwnSettingsProfileReads, OwnMonthReviewReads, CorrectionQueueRequestReads, OwnCorrectionQueueReads, TeamReportPeriodReads, TeamTimeRecordReviewReads, OwnPeriodComparisonReads, WorkModelCreditPreviewPageReads
 {
     public function __construct(
         private readonly DatabaseManager $database,
@@ -63,6 +63,17 @@ final class LegacyChronoReads implements ChronoReads, WorkModelCreditPreviewRead
             }
 
             return $this->rows($pdo, 'SELECT * FROM zeiterfassung WHERE user_id=? ORDER BY '.$order, [$actor->getKey()]);
+        });
+    }
+
+    /** Complete bounded current own SQL values, independently of report quality/calculation gates. */
+    public function ownStoredValuesExport(): array
+    {
+        return $this->snapshot(function (PDO $pdo, LegacyUser $actor): array {
+            require_once dirname(__DIR__, 3).'/lib/own_stored_values_export.php';
+
+            return \chrono_own_stored_values_export_snapshot($pdo, (int) $actor->getKey(),
+                new \DateTimeImmutable('now', new \DateTimeZone('Europe/Berlin')));
         });
     }
 

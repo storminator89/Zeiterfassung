@@ -7,6 +7,7 @@ use App\Http\Controllers\LocalWebAdminPauseSettingsController;
 use App\Http\Controllers\LocalWebAttendanceController;
 use App\Http\Controllers\LocalWebCorrectionsController;
 use App\Http\Controllers\LocalWebCsvExportController;
+use App\Http\Controllers\LocalWebStoredValuesExportController;
 use App\Http\Controllers\LocalWebDatabaseSnapshotController;
 use App\Http\Controllers\LocalWebDashboardController;
 use App\Http\Controllers\LocalWebHomeController;
@@ -177,6 +178,9 @@ final class LocalWebRoutes
                     $request->path() === 'delete.php' ? 401 : 403,
                     ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store', 'X-Content-Type-Options' => 'nosniff']);
             }
+            if ($includeCsv && $request->path() === 'export_stored_values.php') {
+                return new Response('Please sign in again.',401,['Content-Type'=>'text/plain; charset=UTF-8','Cache-Control'=>'no-store','X-Content-Type-Options'=>'nosniff']);
+            }
             if ($includeDatabaseSnapshot && $request->path() === 'download.php') {
                 return new Response('Please sign in again.', 401,
                     ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store']);
@@ -264,6 +268,7 @@ final class LocalWebRoutes
                 }
                 if ($includeCsv) {
                     $router->get('export_csv.php', [LocalWebCsvExportController::class, 'index'])->name('chrono.export-csv');
+                    $router->get('export_stored_values.php', [LocalWebStoredValuesExportController::class, 'index'])->name('chrono.export-stored-values');
                 }
                 if ($includeSettings) {
                     $router->get('settings.php', [LocalWebSettingsController::class, 'index']);
