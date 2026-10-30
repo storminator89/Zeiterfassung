@@ -248,6 +248,7 @@ return [
     'CSV_PERIOD_TO' => '结束日期（含当日）',
     'CSV_PERIOD_SUBMIT' => '将此范围导出为 CSV',
     'CSV_PERIOD_NOTE' => '仅按柏林开始日期选择您自己的记录，不受搜索条件或列表页码影响。跨夜班次完整归于开始日。质量检查仍覆盖您的全部记录；范围外的错误或尚未解决的重叠也可能阻止下载。此文件不是工资软件格式。',
+    'DASHBOARD_CALENDAR_MISSING_END' => '未保存結束時間',
     'HOLIDAY_INVENTORY_YEARS_TITLE' => '查找已存储的年份',
     'HOLIDAY_INVENTORY_YEARS_NOTE' => '仅列出可识别的年份前缀，最多显示最新的20年。行数不能证明日期有效、数据完整、地区或来源正确；其他错误的年份前缀不会列出。',
     'HOLIDAY_INVENTORY_YEARS_LIMITED' => '还有其他已存储年份未列出；仍可通过年份输入框查看。',
