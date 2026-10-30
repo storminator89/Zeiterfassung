@@ -22,6 +22,9 @@
     @if ($adminPauseSettings->success)
     <div class="alert alert-success shadow-lg mb-4" role="status"><div><i class="fas fa-check-circle"></i><span>{{ $adminPauseSettings->success }}</span></div></div>
     @endif
+    @if (($runtimeObservation ?? null) !== null)
+        @include('chrono.partials.runtime-observation', ['observation' => $runtimeObservation])
+    @endif
     @if ($holidayRefillEnabled ?? false)
         @include('chrono.partials.holiday-refill')
     @endif
