@@ -31,6 +31,8 @@
                     </details>
                     <a class="link link-primary text-sm" href="adjustments.php">Buchung vergessen oder Zeit korrigieren?</a>
 
+                    @php($vacationAvailable=app()->bound('router') && app('router')->has('chrono.vacation'))
+                    @if ($vacationAvailable)@php($vacationCopy=new \App\View\ExistingUi\VacationCopy($page->copy->language))@endif
                     <form id="absence-form" method="post" action="save.php" class="space-y-5 mt-6 border-t border-base-200 pt-5">
                         @csrf
                         <fieldset disabled @if ($page->interactions->absences) data-local-absence-enabled="1" @endif class="space-y-5">
@@ -54,6 +56,11 @@
                                 <div><label for="urlaubEnde" class="block text-sm font-semibold mb-2">Bis</label><input type="date" id="urlaubEnde" name="urlaubEnde" class="input input-bordered w-full" required></div>
                             </div>
                         </fieldset>
+                        @if ($vacationAvailable)
+                        <input type="hidden" name="vacation_command_id" value="{{ bin2hex(random_bytes(16)) }}">
+                        <label class="block text-sm">{{ $vacationCopy->text('home_reason') }}<textarea name="vacation_reason" maxlength="2000" class="textarea textarea-bordered w-full"></textarea></label>
+                        <p class="text-sm opacity-70">{{ $vacationCopy->text('home_note') }} <a class="link link-primary" href="vacation.php">{{ $vacationCopy->text('open') }}</a></p>
+                        @endif
                         <p class="text-sm opacity-70">Urlaub und Krankheit erhalten die Sollminuten Ihres Arbeitszeitmodells. Freie Tage und hinterlegte Feiertage werden ausgelassen. Gutschriften sind keine gestempelten Arbeitszeiten.</p>
                         @if ($page->interactions->dashboard)<p class="text-sm opacity-70"><a class="link link-primary" href="dashboard.php?holiday_inventory=1#holiday-inventory" target="_blank" rel="noopener noreferrer">{{ $page->copy->text('HOLIDAY_INVENTORY_ABSENCE_LINK') }}</a></p>@endif
                         <p id="absence-message" class="text-sm" role="status" aria-live="polite"></p>

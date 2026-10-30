@@ -66,6 +66,10 @@ final readonly class ExistingApiKeyAdmission implements JsonSerializable
         if ($database->schemaProfile === 'account-lifecycle-v5') {
             $metadata['intake_policy_schema_signature'] = $database->intakePolicySchemaSignature;
         }
+        if ($database->schemaProfile === 'vacation-requests-v7') {
+            $metadata['intake_policy_schema_signature'] = $database->intakePolicySchemaSignature;
+            $metadata['account_lifecycle_schema_signature'] = $database->accountLifecycleSchemaSignature();
+        }
 
         return hash('sha256', json_encode($metadata, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
     }

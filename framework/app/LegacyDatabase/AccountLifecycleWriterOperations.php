@@ -34,6 +34,9 @@ trait AccountLifecycleWriterOperations
         $this->requireLifecycleWebProfile();
         require_once dirname(__DIR__, 3).'/lib/practice.php';
         practice_absence_range($start, $end, $kind);
+        if ($this->vacationAdmission!==null && $kind==='Urlaub') {
+            throw new \AttendanceError('Urlaub bitte als begründeten Urlaubsantrag einreichen; keine direkte Gutschrift.',409);
+        }
 
         return $this->executeLocked(function () use ($actor, $start, $end, $kind): array {
             $this->assertLifecycleWebPrincipalLocked($actor);
@@ -71,7 +74,7 @@ trait AccountLifecycleWriterOperations
 
     private function requireLifecycleWebProfile(): void
     {
-        if (! $this->accountLifecycleV5) {
+        if (! $this->hasGenerationBoundAccountAuthority()) {
             throw new LogicException('V5 Web authority cannot target an older account profile.');
         }
     }
@@ -87,7 +90,7 @@ trait AccountLifecycleWriterOperations
     public function transitionApi(AccountLifecycleAuthority $actor, string $eventId, string $action,
         bool $confirm = false, ?int $expectedRecord = null, ?array $startMetadata = null): array
     {
-        if (! $this->accountLifecycleV5) {
+        if (! $this->hasGenerationBoundAccountAuthority()) {
             throw new LogicException('V5 API authority cannot target an older account profile.');
         }
         $source = 'api:'.$actor->id;
@@ -104,7 +107,7 @@ trait AccountLifecycleWriterOperations
     public function changeAccountLifecycle(AccountLifecycleAuthority $actor,
         AccountLifecycleChange $change): AccountLifecycleTransitionResult
     {
-        if (! $this->accountLifecycleV5) {
+        if (! $this->hasGenerationBoundAccountAuthority()) {
             throw new LogicException('Lifecycle transitions require the separate V5 profile.');
         }
 
@@ -141,7 +144,7 @@ trait AccountLifecycleWriterOperations
     private function assertLifecyclePrincipalLocked(AccountLifecycleAuthority $actor, bool $localAdmin = false): void
     {
         $this->assertActive();
-        if (! $this->accountLifecycleV5) {
+        if (! $this->hasGenerationBoundAccountAuthority()) {
             throw new LogicException('A V5 authority cannot target an older account profile.');
         }
         $this->assertIntakeProfile();
@@ -160,7 +163,7 @@ trait AccountLifecycleWriterOperations
     private function assertLocalRecoveryRetainedLocked(int $target, #[\SensitiveParameter] ?array $replacement): void
     {
         $this->assertActive();
-        if (! $this->accountLifecycleV5) {
+        if (! $this->hasGenerationBoundAccountAuthority()) {
             throw new LogicException('V5 local recovery checks require V5.');
         }
         if ($replacement !== null && AccountLifecycleAuthority::locallyLoginEligibleAdmin($replacement)) {

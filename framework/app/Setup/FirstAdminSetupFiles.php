@@ -5,6 +5,7 @@ namespace App\Setup;
 use App\Auth\FirstAdminSetupFields;
 use App\Auth\FirstAdminSetupInputRejected;
 use App\LegacyDatabase\AccountLifecycleV5References;
+use App\LegacyDatabase\VacationWorkflowV7References;
 use App\LegacyDatabase\AuditContext;
 use App\LegacyDatabase\AuditFunctions;
 use App\LegacyDatabase\IntakePolicyV4References;
@@ -56,7 +57,7 @@ final class FirstAdminSetupFiles
             self::requireNoSetup($instance);
             [$manifest, $manifestHash, $manifestState] = self::json($instance.'/runtime-admission.json');
             $admission = RuntimeAdmission::fromConfiguration($manifest);
-            if ($admission->schemaProfile !== 'account-lifecycle-v5' || $admission->path !== $instance.'/application.sqlite') {
+            if (!$admission->isGenerationBoundAccountProfile() || $admission->path !== $instance.'/application.sqlite') {
                 throw new RuntimeException;
             }
             if ($browserOrigin !== null) { self::requireLocalBrowserProfile($instance, $manifestHash); }
@@ -138,7 +139,7 @@ final class FirstAdminSetupFiles
             if (@lstat($instance.'/'.self::LOCAL_BROWSER_PROFILE) !== false) { throw new RuntimeException; }
             [$manifest, $hash, $manifestState] = self::json($instance.'/runtime-admission.json');
             $admission = RuntimeAdmission::fromConfiguration($manifest);
-            if ($admission->schemaProfile !== 'account-lifecycle-v5' || $admission->path !== $instance.'/application.sqlite') {
+            if (!$admission->isGenerationBoundAccountProfile() || $admission->path !== $instance.'/application.sqlite') {
                 throw new RuntimeException;
             }
             $root = dirname(__DIR__, 3);
@@ -172,7 +173,7 @@ final class FirstAdminSetupFiles
         self::requireNoSetup($instance);
         [$manifest, $hash] = self::json($instance.'/runtime-admission.json');
         $admission = RuntimeAdmission::fromConfiguration($manifest);
-        if ($admission->schemaProfile !== 'account-lifecycle-v5' || $admission->path !== $instance.'/application.sqlite') {
+        if (!$admission->isGenerationBoundAccountProfile() || $admission->path !== $instance.'/application.sqlite') {
             throw new RuntimeException;
         }
         self::requireLocalBrowserProfile($instance, $hash);
@@ -302,7 +303,7 @@ final class FirstAdminSetupFiles
             }
             [$manifest, $manifestHash, $manifestState] = self::json($instance.'/runtime-admission.json');
             $admission = RuntimeAdmission::fromConfiguration($manifest);
-            if (! in_array($admission->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5'], true)
+            if (! in_array($admission->schemaProfile, ['intake-policy-v4', 'account-lifecycle-v5', 'vacation-requests-v7'], true)
                 || $admission->path !== $instance.'/application.sqlite') {
                 throw new RuntimeException;
             }
@@ -420,7 +421,9 @@ final class FirstAdminSetupFiles
                 }
             }
             // Nested preflight returns metadata only, never the target handle.
-            if ($admission->schemaProfile === 'account-lifecycle-v5') {
+            if ($admission->schemaProfile === 'vacation-requests-v7') {
+                VacationWorkflowV7References::build($mapping)->requireFreshLoginBudget($pdo);
+            } elseif ($admission->schemaProfile === 'account-lifecycle-v5') {
                 // Future admitted V5 must be canonical and physically budget-ready.
                 // The unchanged Runtime hold above still refuses before this branch.
                 AccountLifecycleV5References::build($mapping)->requireFreshLoginBudget($pdo);

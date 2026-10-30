@@ -180,7 +180,7 @@ final readonly class LegacyLocalWebLdapSync implements LocalWebLdapSync
             if ($actor['role'] !== 'admin') {
                 throw new AuthorizationException('Only current local administration may synchronize LDAP.');
             }
-            $policy = $this->policies->read($pdo, $authority !== null);
+            $policy = $this->policies->readForAccountAuthority($pdo, $authority !== null);
             if (! $policy->allows(IntakeMethod::LdapSync)) {
                 throw new AuthorizationException('LDAP synchronization intake is disabled.');
             }

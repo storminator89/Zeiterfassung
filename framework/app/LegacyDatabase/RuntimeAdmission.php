@@ -12,6 +12,14 @@ final readonly class RuntimeAdmission
 {
     public const INTAKE_POLICY_SQL = 'SELECT id,manual_enabled,ldap_sync_enabled,registration_enabled,revision,updated_at,updated_by FROM user_intake_policy ORDER BY id LIMIT 2';
 
+    // Uninitialized for older profiles: their array/JSON/serialization bytes stay exact.
+    private string $accountLifecycleSchemaSignature;
+
+    public function accountLifecycleSchemaSignature(): ?string
+    {
+        return isset($this->accountLifecycleSchemaSignature) ? $this->accountLifecycleSchemaSignature : null;
+    }
+
     private function __construct(
         public string $path,
         public int $device,
@@ -25,7 +33,16 @@ final readonly class RuntimeAdmission
         public ?string $baseSchemaSignature = null,
         public ?string $userAuditSchemaSignature = null,
         public ?string $intakePolicySchemaSignature = null,
-    ) {}
+        ?string $accountLifecycleSignature = null,
+    ) {
+        if ($accountLifecycleSignature !== null) { $this->accountLifecycleSchemaSignature = $accountLifecycleSignature; }
+    }
+
+    /** Pure manifest lineage capability; runtime file admission is still mandatory. */
+    public function isGenerationBoundAccountProfile(): bool
+    {
+        return in_array($this->schemaProfile, ['account-lifecycle-v5', 'vacation-requests-v7'], true);
+    }
 
     // Pure configuration validation: no stat, file read, PDO or source bootstrap.
     public static function fromConfiguration(array $manifest): self
@@ -35,13 +52,23 @@ final readonly class RuntimeAdmission
         $baseSignature = null;
         $userAuditSignature = null;
         $intakePolicySignature = null;
+        $accountLifecycleSignature = null;
         if (array_key_exists('schema_profile', $manifest) || array_key_exists('base_schema_signature', $manifest)
             || array_key_exists('user_audit_schema_signature', $manifest)
             || array_key_exists('intake_policy_schema_signature', $manifest)) {
             $keys = [...$keys, 'schema_profile', 'base_schema_signature'];
             $profile = $manifest['schema_profile'] ?? null;
             $baseSignature = $manifest['base_schema_signature'] ?? null;
-            if ($profile === 'account-lifecycle-v5') {
+            if ($profile === 'vacation-requests-v7') {
+                $keys = [...$keys, 'user_audit_schema_signature', 'intake_policy_schema_signature', 'account_lifecycle_schema_signature'];
+                $userAuditSignature = $manifest['user_audit_schema_signature'] ?? null;
+                $intakePolicySignature = $manifest['intake_policy_schema_signature'] ?? null;
+                $accountLifecycleSignature = $manifest['account_lifecycle_schema_signature'] ?? null;
+                foreach ([$baseSignature, $userAuditSignature, $intakePolicySignature, $accountLifecycleSignature, $manifest['schema_signature'] ?? null] as $value) {
+                    if (!is_string($value)) { throw new LogicException('Complete distinct V2/V3/V4/V5/V7 signatures required.'); }
+                }
+                self::vacationWorkflowV7LedgerRows($baseSignature, $userAuditSignature, $intakePolicySignature, $accountLifecycleSignature, $manifest['schema_signature']);
+            } elseif ($profile === 'account-lifecycle-v5') {
                 $keys = [...$keys, 'user_audit_schema_signature', 'intake_policy_schema_signature'];
                 $userAuditSignature = $manifest['user_audit_schema_signature'] ?? null;
                 $intakePolicySignature = $manifest['intake_policy_schema_signature'] ?? null;
@@ -87,18 +114,40 @@ final readonly class RuntimeAdmission
             throw new LogicException('The runtime database identity and approved settings are invalid.');
         }
 
-        return new self($path, $device, $inode, $version, $signature, $foreignKeys, $manifest['journal_mode'], $synchronous, $profile, $baseSignature, $userAuditSignature, $intakePolicySignature);
+        return new self($path, $device, $inode, $version, $signature, $foreignKeys, $manifest['journal_mode'], $synchronous, $profile, $baseSignature, $userAuditSignature, $intakePolicySignature, $accountLifecycleSignature);
     }
 
     /** Pure exact ledger projection shared by all PDO/SQLite3 admission sites. */
     public function expectedLedgerRows(): array
     {
         return match ($this->schemaProfile) {
+            'vacation-requests-v7' => self::vacationWorkflowV7LedgerRows($this->baseSchemaSignature, $this->userAuditSchemaSignature, $this->intakePolicySchemaSignature, $this->accountLifecycleSchemaSignature(), $this->schemaSignature),
             'account-lifecycle-v5' => self::accountLifecycleV5LedgerRows($this->baseSchemaSignature, $this->userAuditSchemaSignature, $this->intakePolicySchemaSignature, $this->schemaSignature),
             'user-audit-v3' => self::userAuditV3LedgerRows($this->baseSchemaSignature, $this->schemaSignature),
             'intake-policy-v4' => self::intakePolicyV4LedgerRows($this->baseSchemaSignature, $this->userAuditSchemaSignature, $this->schemaSignature),
             default => [['id' => 1, 'migration' => V2Adoption::migrationName($this->schemaSignature), 'batch' => 1]],
         };
+    }
+
+    /** Explicit independent V7 lineage; never invent or adopt reserved V6. */
+    public static function vacationWorkflowV7LedgerRows(string $baseSignature, string $userAuditSignature,
+        string $intakePolicySignature, string $accountLifecycleSignature, string $postSignature): array
+    {
+        $signatures = [$baseSignature, $userAuditSignature, $intakePolicySignature, $accountLifecycleSignature, $postSignature];
+        foreach ($signatures as $signature) {
+            if (!preg_match('/^[a-f0-9]{64}$/D', $signature)) { throw new LogicException('Five complete vacation profile signatures required.'); }
+        }
+        if (count(array_unique($signatures)) !== 5) { throw new LogicException('Five distinct vacation profile signatures required.'); }
+        return [...self::accountLifecycleV5LedgerRows($baseSignature, $userAuditSignature, $intakePolicySignature, $accountLifecycleSignature),
+            ['id' => 5, 'migration' => '2026_10_30_000007_vacation_requests_v7_'.$postSignature, 'batch' => 5]];
+    }
+
+    public function assertVacationWorkflowState(array $versions, array $rows): void
+    {
+        if ($this->schemaProfile !== 'vacation-requests-v7' || $versions !== [1, 2, 3, 4, 5, 7] || count($rows) !== 1) {
+            throw new LogicException('Complete admitted vacation-requests-v7 state required.');
+        }
+        IntakePolicy::fromRow($rows[0]);
     }
 
     public static function accountLifecycleV5LedgerRows(string $baseSignature, string $userAuditSignature, string $intakePolicySignature, string $postSignature): array

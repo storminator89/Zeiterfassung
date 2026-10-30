@@ -461,3 +461,19 @@ zusätzlich; `meta.total` zählt passende eigene Zeilen vor Paging. Nur beim Opt
 kommt `meta.entry_kind` hinzu. Ohne das Feld bleiben Antwort und Verhalten unverändert.
 Das ist keine Urlaubsfreigabe, Gutschriften-/Dauer-/Validitätszusage oder neue
 Schreibroute. [Exakter Vertrag und Grenzen](framework/api-timeentry-kinds.md).
+
+
+## Standard-Laravel-V7: Urlaubsanträge sind keine gebuchten Zeiteinträge
+
+Der explizite Standard-Workflow `vacation-requests-v7` führt keine neue
+Bearer-REST- oder MCP-Urlaubsroute ein. Pending-Anträge erzeugen keine
+Zeiteinträge. Erst die berechtigte fremde Web-Freigabe erzeugt gespeicherte
+Gutschriften für das unveränderte eigene `GET /api.php/timeentries` (einschließlich
+`entry_kind=absence`); die getrennt freigegebene Stornierung entfernt nur die
+exakt zugeordneten unveränderten Originalgutschriften. `/api.php/corrections`
+bleibt die Buchungskorrektur, keine Urlaubsantrags- oder Freigabe-API. Bestehende
+JWT-Wireclaims und JSON-Leseformen bleiben unverändert. Web-Formvertrag,
+Same-Cohort-Upgrade, Kanalmetadaten und ausdrücklich offene Integrationen:
+[Urlaubsworkflow im Standard-Laravel](framework/vacation-requests-standard.md#web-transport-and-existing-api-contract).
+Ein Wrapper erhält dadurch keine zusätzliche Entscheidungs-, Team- oder
+Schreibberechtigung und darf die geschützte Web-/CSRF-Grenze nicht umgehen.

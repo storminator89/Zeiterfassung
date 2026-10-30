@@ -19,7 +19,7 @@ final readonly class AccountLifecycleWebIdentity
     /** RuntimeDatabase exposes immutable admission metadata without opening its source. */
     public static function fromRuntime(?RuntimeDatabase $runtime): self
     {
-        return new self($runtime?->isAccountLifecycleV5() ?? false);
+        return new self($runtime?->hasGenerationBoundAccountAuthority() ?? false);
     }
 
     public function requiresGeneration(): bool

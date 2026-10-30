@@ -14,13 +14,13 @@ trait ApiManagementWriterOperations
     public function changeApiPolicy(AccountLifecycleAuthority $actor, ApiPolicyChange $change,
         bool $legacyDefaultEnabled, ApiManagementFiles $files, ?ExistingApiFileSigningKey $legacyKey = null): ApiPolicyState
     {
-        if (! $this->accountLifecycleV5 || ($legacyDefaultEnabled && $legacyKey === null)) {
+        if (! $this->hasGenerationBoundAccountAuthority() || ($legacyDefaultEnabled && $legacyKey === null)) {
             throw new LogicException('Explicit V5 API policy/source required.');
         }
         return $this->executeLocked(function () use ($actor, $change, $legacyDefaultEnabled, $files, $legacyKey): ApiPolicyState {
             $files->requireLockedWriter($this->pdo);
             $this->assertLifecyclePrincipalLocked($actor, localAdmin: true);
-            $journal = new ApiPolicyJournal;
+            $journal = new ApiPolicyJournal($this->vacationAdmission);
             // Check current source/role/hash/generation AND expected policy revision
             // under this lock, before any new file reservation or key entropy.
             $journal->requireChangeLocked($this->pdo, $actor, $change, $legacyDefaultEnabled);
@@ -45,10 +45,10 @@ trait ApiManagementWriterOperations
     /** All V5 API mutations/replays recheck new policy under the same writer lock. */
     private function requireApiOperatingPolicyLocked(): void
     {
-        if (! $this->accountLifecycleV5) { throw new LogicException('V5 API policy guard required.'); }
+        if (! $this->hasGenerationBoundAccountAuthority()) { throw new LogicException('V5 API policy guard required.'); }
         // No event preserves the original already-admitted legacy API behavior.
         // Managed first enable always appends policy before a token can be issued.
-        if (! (new ApiPolicyJournal)->read($this->pdo, true)->enabled) {
+        if (! (new ApiPolicyJournal($this->vacationAdmission))->read($this->pdo, true)->enabled) {
             throw new \AttendanceError('API ist deaktiviert.', 503);
         }
     }

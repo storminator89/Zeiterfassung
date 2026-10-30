@@ -7,10 +7,15 @@ require_once __DIR__.'/native_ldap_session.php';
 require_once __DIR__.'/ldap_settings_audit.php';
 
 /** Legacy import plus reserved local Admin recovery; nonfatal manager conflicts stay. */
-function chrono_ldap_import_locked(PDO $conn, array $entries, string $ldapHost, string $ldapPort, string $ldapUser, string $encryptedLdapPass, string $ldapBaseDN, bool $accountLifecycleV5 = false): array
+function chrono_ldap_import_locked(PDO $conn, array $entries, string $ldapHost, string $ldapPort, string $ldapUser, string $encryptedLdapPass, string $ldapBaseDN, bool $accountLifecycleV5 = false, bool $vacationWorkflowV7 = false): array
 {
     if (!$conn->inTransaction()) {
         throw new LogicException('LDAP import requires an owned transaction.');
+    }
+    // Explicit V7 is selected only by the fully admitted framework writer.
+    // The existing boolean retains generation-aware account semantics; alone it remains exact V5.
+    if ($vacationWorkflowV7 && !$accountLifecycleV5) {
+        throw new LogicException('V7 LDAP import requires generation-bound account semantics.');
     }
     if (!$accountLifecycleV5) {
         // Check the WHOLE materialized stage in the existing transaction,
@@ -24,10 +29,10 @@ function chrono_ldap_import_locked(PDO $conn, array $entries, string $ldapHost, 
         }
     }
     if ($accountLifecycleV5) {
-        // Separate trusted Laravel V5 operation only. Preflight the WHOLE stage
+        // Separate trusted Laravel V5 or explicit V7 operation. Preflight the WHOLE stage
         // before settings/departments; Native/default predecessors stay exact.
-        if ($conn->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN) !== [1, 2, 3, 4, 5]) {
-            throw new LogicException('The explicit V5 LDAP import profile is required.');
+        if ($conn->query('SELECT version FROM app_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN) !== ($vacationWorkflowV7 ? [1, 2, 3, 4, 5, 7] : [1, 2, 3, 4, 5])) {
+            throw new LogicException($vacationWorkflowV7 ? 'The explicit V7 LDAP import profile is required.' : 'The explicit V5 LDAP import profile is required.');
         }
         $check = $conn->prepare('SELECT auth_source,account_status,auth_generation FROM users WHERE username=?');
         foreach ($entries as $entry) {

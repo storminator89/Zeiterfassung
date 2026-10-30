@@ -80,3 +80,12 @@ session locks, CSRF, writers, formulas, schemas and default-off flags stay intac
 The existing [Docker installation](laravel-default-installation.md),
 [SQLite writer proof](sqlite-write-proof.md) and all remaining #79/#82 gates
 remain separate. No held/denied package is included and neither issue is closed.
+
+## Current standard profile after vacation workflow integration
+
+The same unchanged `--local-browser-first-admin` installation choice now creates
+V7 rather than V5. The existing coarse tool reports the actual `schema_profile`
+and retains its original producers, middleware and assertions. Its historical
+V5 result above is not automatically a V7 acceptance. The dedicated standard
+vacation workflow evidence and untested boundaries are recorded in
+[vacation-requests-standard.md](vacation-requests-standard.md).
