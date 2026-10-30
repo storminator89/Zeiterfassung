@@ -44,4 +44,12 @@ return [
     'TEAM_ABSENCE_PEOPLE' => 'Teammitglieder-Seiten',
     'TEAM_ABSENCE_PEOPLE_PREVIOUS' => 'Vorige Personen',
     'TEAM_ABSENCE_PEOPLE_NEXT' => 'Weitere Personen',
+    'SUPERVISOR_PERIOD_NOTE' => 'Nur die Detailtabelle wird gefiltert. Kennzahlen, Charts und Teamwochenplan darüber bleiben unverändert.',
+    'SUPERVISOR_PERIOD_INVALID' => 'Ungültiger Detailzeitraum. Es werden keine Detailzeilen angezeigt. Gültige Von-/Bis-Daten eingeben oder den Zeitraum abwählen.',
+    'SUPERVISOR_PERIOD_UNAVAILABLE' => 'Der Detailzeitraum ist in diesem Profil nicht verbunden. Es werden keine Berichtszeilen angezeigt.',
+    'SUPERVISOR_PERIOD_NOT_APPLIED' => 'Die vollständige Quelle hat ungeklärte Datenhinweise. Der Detailzeitraum wird nicht angewendet.',
+    'SUPERVISOR_PERIOD_APPLY' => 'Detailzeitraum anwenden',
+    'SUPERVISOR_PERIOD_FROM' => 'Starttag von (Berlin)',
+    'SUPERVISOR_PERIOD_TO' => 'Starttag bis (Berlin)',
+    'SUPERVISOR_PERIOD_CLEAR' => 'Zeitraum entfernen',
 ];

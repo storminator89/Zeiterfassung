@@ -2,6 +2,7 @@
 require_once __DIR__.'/attendance.php';
 require_once __DIR__.'/reporting.php';
 require_once __DIR__.'/practice.php';
+require_once __DIR__.'/supervisor_table_period.php';
 
 /**
  * Transitional mechanical extraction from supervisor.php at main 729250b.
@@ -11,7 +12,7 @@ require_once __DIR__.'/practice.php';
  * Diagnostics intentionally refuse this WHOLE independent-rollup report before
  * search/page filtering; never expose a misleading final partial total.
  */
-function supervisor_report_projection(PDO $conn, array $zeiten, string $userSearch = '', mixed $requestedPage = null): array {
+function supervisor_report_projection(PDO $conn, array $zeiten, string $userSearch = '', mixed $requestedPage = null, ?array $tablePeriod = null, bool $periodInvalid = false): array {
     $invalidRecords = [];
     foreach ($zeiten as $row) {
         $calculation = report_record_calculation($row);
@@ -98,9 +99,11 @@ function supervisor_report_projection(PDO $conn, array $zeiten, string $userSear
     // END native aggregation.
 
     // BEGIN native group/search/page extraction (prepared Berlin day and raw page argument).
+    // Full-source diagnostics and all independent rollups above remain unfiltered.
+    $tableRows = supervisor_table_period_rows($zeiten, $tablePeriod, $periodInvalid);
     // Group entries by user and date
     $groupedEntries = [];
-    foreach ($zeiten as $zeit) {
+    foreach ($tableRows as $zeit) {
         $userId = $zeit['user_id'];
         $date = $zeit['day'];
         $key = $userId . '_' . $date;

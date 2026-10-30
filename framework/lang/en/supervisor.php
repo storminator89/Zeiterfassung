@@ -44,4 +44,12 @@ return [
     'TEAM_ABSENCE_PEOPLE' => 'Team member pages',
     'TEAM_ABSENCE_PEOPLE_PREVIOUS' => 'Previous people',
     'TEAM_ABSENCE_PEOPLE_NEXT' => 'More people',
+    'SUPERVISOR_PERIOD_NOTE' => 'Only the detail table is filtered. Metrics, charts and the team-week plan above stay unchanged.',
+    'SUPERVISOR_PERIOD_INVALID' => 'Invalid detail-table period. No detail rows are shown. Enter valid From/To dates or untick the period.',
+    'SUPERVISOR_PERIOD_UNAVAILABLE' => 'Detail-table period filtering is not connected in this profile. No report rows are shown.',
+    'SUPERVISOR_PERIOD_NOT_APPLIED' => 'The complete source has unresolved data-quality findings. The detail-table period is not applied.',
+    'SUPERVISOR_PERIOD_APPLY' => 'Apply detail-table period',
+    'SUPERVISOR_PERIOD_FROM' => 'Start day from (Berlin)',
+    'SUPERVISOR_PERIOD_TO' => 'Start day through (Berlin)',
+    'SUPERVISOR_PERIOD_CLEAR' => 'Remove period',
 ];

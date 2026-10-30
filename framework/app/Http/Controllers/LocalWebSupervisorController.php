@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Chrono\ChronoReads;
+use App\Chrono\TeamReportPeriodReads;
 use App\View\ExistingUi\AttendancePage;
 use App\View\ExistingUi\Copy;
 use App\View\ExistingUi\Interactions;
@@ -29,8 +30,17 @@ final class LocalWebSupervisorController extends Controller
         // Preserve native $_GET strings/arrays before Laravel's trimming/null normalization.
         parse_str((string) $request->server->get('QUERY_STRING', ''), $query);
         $search = isset($query['user_search']) && is_string($query['user_search']) ? trim($query['user_search']) : '';
+        require_once dirname(__DIR__, 4).'/lib/supervisor_table_period.php';
+        $period = \supervisor_table_period((string) $request->server->get('QUERY_STRING', ''));
+        $periodRequested = $period['range'] !== null || $period['invalid'];
+        $periodUnavailable = $periodRequested && ! $this->reads instanceof TeamReportPeriodReads;
         // teamReport rechecks fresh role and direct-team scope in its admitted snapshot.
-        $report = $this->reads->teamReport($search, $query['page'] ?? null);
+        $report = $periodUnavailable
+            ? ['available' => false, 'invalid_records' => [], 'absence_conflicts' => [], 'overtime' => [],
+                'details' => [], 'groups' => [], 'total_records' => 0, 'total_pages' => 1, 'page' => 1]
+            : ($periodRequested
+                ? $this->reads->teamReportPeriod($search, $query['page'] ?? null, $period['range'], $period['invalid'])
+                : $this->reads->teamReport($search, $query['page'] ?? null));
         $absenceWeek = $this->reads->teamAbsenceWeek($query['team_date'] ?? null, $query['team_page'] ?? null);
 
         return response()->view('chrono.supervisor', [
@@ -41,7 +51,8 @@ final class LocalWebSupervisorController extends Controller
                 $actor->role, $this->reads->attendanceStatus(),
                 interactions: $this->interactions, activePage: 'supervisor.php',
             ),
-            'supervisor' => new SupervisorPage($report, $search, $language, $absenceWeek),
-        ])->header('Cache-Control', 'no-store');
+            'supervisor' => new SupervisorPage($report, $search, $language, $absenceWeek,
+                $period['range'], $period['invalid'], $periodUnavailable),
+        ], $period['invalid'] ? 400 : ($periodUnavailable ? 503 : 200))->header('Cache-Control', 'no-store');
     }
 }
