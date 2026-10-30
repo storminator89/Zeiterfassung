@@ -64,6 +64,7 @@ Auch Administratoren lesen hier nur das eigene Konto, keine Mitarbeiterliste.
 | `POST /workentry` | Legacy-Startalias mit JSON-Objekt; `event_id` dringend mitsenden. Kein historischer Writer. Nichtleere `endzeit`/`pause` werden verweigert; `startzeit` und alte `beschreibung`/`standort`-Parameter bestimmen die Buchung nicht. Neue optionale `location`/`note` werden nach [CH-45](CH45-START-METADATA.md) gespeichert. |
 | `POST /setendzeit` | Legacy-Endalias, `id` muss zur eigenen offenen Buchung passen; `event_id` und `confirm_end_pause` mitsenden. Antwort ist dieselbe Quittung mit **`record_id`**, nicht `id`. |
 | `GET /users` | `{success:true,data:[{id,username,email,role}]}` für das eigene Konto. Normalerweise genau ein Element; bei Kontolöschung zwischen Prüfung und Lesen kann die Liste leer sein. |
+| `GET /work-models` | Eigene gespeicherte Modellversionen mit `limit`/`offset`, exakten IDs und sieben Wochenminuten; keine Soll-/Saldoberechnung. [Vertrag und Grenzen](framework/api-own-work-model-versions.md). |
 | `GET /timeentries` | Eigene rohe Berichtszeilen und `meta`; siehe Filtergrenzen unten. |
 | `DELETE /timeentry/{numericId}` | **Kein Erfolgspfad:** authentifizierte JSON-409-Sperre, auch ohne Datensatzabfrage. Keine direkte Löschung und keine implizite API zum Einreichen eines Korrekturantrags. |
 
