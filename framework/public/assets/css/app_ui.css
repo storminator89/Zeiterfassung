@@ -241,7 +241,8 @@
 .chrono-local-ui .chrono-form-panel,.chrono-local-ui .chrono-vacation-form {max-width:42rem;}
 .chrono-local-ui .chrono-vacation-form textarea {min-height:96px;}
 .chrono-local-ui .chrono-calendar-toolbar {display:flex;align-items:center;gap:var(--space-xs);flex-wrap:wrap;margin-left:auto;}
-.chrono-local-ui .chrono-dashboard .calendar-container {height:600px;}
+.chrono-local-ui .chrono-dashboard .chrono-calendar-frame {height:600px;min-width:0;}
+.chrono-local-ui .chrono-dashboard .calendar-container {height:100%;}
 .chrono-local-ui .chrono-calendar-event {background:var(--color-accent);color:var(--color-accent-ink);min-height:26px;}
 .chrono-local-ui .chrono-supervisor .chart-container {position:relative;height:300px;}
 .chrono-local-ui .chrono-admin-tabs {display:flex;gap:var(--space-lg);flex-wrap:nowrap;overflow-x:auto;margin-bottom:var(--space-lg);border-bottom:1px solid var(--color-rule);}
@@ -317,7 +318,7 @@
 .chrono-local-ui .chrono-calendar-event .event-time {font-weight:600;}
 .chrono-local-ui .chrono-calendar-event > div {overflow:clip;}
 .chrono-local-ui .chrono-calendar-event .event-title {display:none;}
-@media(max-width:640px) {.chrono-local-ui .chrono-dashboard .calendar-container {height:520px;}.chrono-local-ui .chrono-calendar-toolbar .btn {padding-inline:var(--space-xs);font-size:.75rem;}}
+@media(max-width:640px) {.chrono-local-ui .chrono-dashboard .chrono-calendar-frame {height:520px;}.chrono-local-ui .chrono-calendar-toolbar .btn {padding-inline:var(--space-xs);font-size:.75rem;}}
 
 .chrono-local-ui #calendar[data-color-scheme], .chrono-local-ui #calendar [data-color-scheme] {
  --fc-classic-background:var(--color-paper); --fc-classic-foreground:var(--color-ink);

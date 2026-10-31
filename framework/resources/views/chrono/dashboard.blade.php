@@ -65,7 +65,7 @@
             <div class="card-body">
                 <p id="calendarLoadStatus" class="text-sm opacity-70 mb-3" role="status"><span id="calendarLoadStatusText">{{ $page->copy->text('DASHBOARD_CALENDAR_LOADING') }}</span> <a class="link" href="attendance.php">{{ $page->copy->text('DASHBOARD_CALENDAR_FALLBACK') }}</a></p>
                 <noscript><p class="text-sm opacity-70 mb-3">{{ $page->copy->text('DASHBOARD_CALENDAR_NO_SCRIPT') }}</p></noscript>
-                <div id="calendar" class="calendar-container"></div>
+                <div class="chrono-calendar-frame"><div id="calendar" class="calendar-container"></div></div>
             </div>
         </section>
         </div>

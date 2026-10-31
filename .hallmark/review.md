@@ -69,3 +69,7 @@ All 34 final Blade templates passed compilation and PHP syntax parsing. Read-onl
 ## Calendar details repair
 
 The browser retained the pre-dialog calendar script: clicking filled old fields but only set `modal-open` on a closed native dialog. The calendar URL now has a content hash, and its handler opens the native task dialog. The own-scoped snapshot supplies the existing ledger presentation for duration, pause and note; no new query, booking or accounting formula was added. Non-booking calendar entries have no correction link. Verified by real browser click, Enter, close and Escape on two distinct records; authenticated render checks passed.
+
+## Calendar height regression
+
+FullCalendar sets an inline `height:100%` on its root. Without an explicitly sized parent this overrode the previous root-only CSS height and collapsed the timed grid to zero pixels, even while event nodes remained in the DOM. Added a dedicated fixed-height wrapper: 600 px desktop, 520 px mobile. Actual browser measurements confirmed 0 px before and 600/520 px after, with three positive-height event targets. Clicked a visible event, checked its details, closed it, and verified the calendar remained 600 px high. The screenshot now includes the timed grid and events, not just the modal. No booking values changed.

@@ -451,7 +451,7 @@ final readonly class FreshWebConfiguration
             'assets/illustrations/calendar-plan.png' => '6bf044fd0d3ce2fa6c4f85fb4b851cfb64e7df251f8e0b3f22682b2e68b03734',
             'assets/illustrations/system-access.png' => '5bdfc67370aa4fb5f1b589d70092c90afcc2411971ad475febc806b757aef9ff',
             'assets/illustrations/time-ledger.png' => '823f82d2b2c4640c3f3627c758ba834378712ce3990a65577d085df8c3162fab',
-            'assets/css/app_ui.css' => '1a3bec5d9b0218a5edbb6b4562956c7944d2ef9d0405b2d4c9afe7dc1ae9420f',
+            'assets/css/app_ui.css' => '87b44cb41968ac8ff2ffe4e5f612e5816b0b3cbf8a809abf3f082d6cbc21d69d',
             'assets/js/main.js' => '11bb9d367475614eefd30fba8c93055f74ef78d875f02d8ef96110c20340775e',
             'assets/js/attendance.js' => '3b87890d2ec04eeccbeeaa6a28b0d7f6d420f24d9d9910e9abc75ba5fdf5a9a4',
             'assets/js/chrono-local-web.js' => '9940b5723b21a2fa21f39db9471523ff5818bc6946a480607c2e5cac20516b3b',
