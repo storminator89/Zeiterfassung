@@ -6,11 +6,11 @@ namespace App\View\ExistingUi;
 final class CalendarEvents
 {
     /** @param list<array> $events Unchanged calendar_range_events() output. */
-    public static function fromNative(array $events): array
+    public static function fromNative(array $events, array $details = []): array
     {
         require_once dirname(__DIR__, 4).'/lib/booking.php';
 
-        return array_map(static function (array $event): array {
+        return array_map(static function (array $event) use ($details): array {
             $allDay = (bool) $event['isAllday'];
             $start = \booking_local_date(\booking_time($event['start']));
             $missingEnd = $event['end'] === null || $event['end'] === '';
@@ -40,6 +40,10 @@ final class CalendarEvents
                     'endDate' => $displayEnd->format('d.m.Y'),
                     'location' => (string) ($event['location'] ?? ''),
                     'borderColor' => (string) $event['borderColor'],
+                    'durationLabel' => $details[(string) $event['id']]['duration_label'] ?? null,
+                    'pause' => $details[(string) $event['id']]['pause'] ?? null,
+                    'note' => $details[(string) $event['id']]['comment'] ?? '',
+                    'recordId' => isset($details[(string) $event['id']]) ? (string) $event['id'] : null,
                 ]],
             ];
         }, $events);

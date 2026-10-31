@@ -70,6 +70,13 @@ final class LocalWebDashboardController extends Controller
             catch (Throwable) { $absenceYearState = 'unavailable'; }
         }
 
+        // Reuse the own-ledger presentation; no extra query or new duration formula.
+        require_once dirname(__DIR__, 4).'/lib/home_projection.php';
+        $calendarDetails = [];
+        foreach ($snapshot['records'] as $record) {
+            $calendarDetails[(string) $record['id']] = \report_time_record_detail($record);
+        }
+
         return view('chrono.dashboard', [
             // Separate prerequisites: dashboard.php must join the shared chrome
             // whitelist and a reviewed protected GET before this can be dispatched.
@@ -82,7 +89,7 @@ final class LocalWebDashboardController extends Controller
             'dashboard' => new DashboardPage(
                 $snapshot['statistics'], $snapshot['range'],
                 \calendar_range_events($snapshot['records'], $snapshot['holidays'], $snapshot['range'], $labels),
-                $snapshot['report_finality'], $snapshot['report_incomplete'],
+                $snapshot['report_finality'], $snapshot['report_incomplete'], $calendarDetails,
             ),
             'absenceYearSupported' => $absenceYearSupported,
             'absenceYearState' => $absenceYearState, 'absenceYearData' => $absenceYearData,

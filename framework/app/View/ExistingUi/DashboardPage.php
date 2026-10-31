@@ -18,6 +18,7 @@ final readonly class DashboardPage
         public array $events,
         public array $finality,
         public array $incomplete,
+        public array $calendarDetails = [],
     ) {}
 
     public function presentation(string $period): string
@@ -41,6 +42,6 @@ final readonly class DashboardPage
 
     public function calendarEvents(): array
     {
-        return CalendarEvents::fromNative($this->events);
+        return CalendarEvents::fromNative($this->events, $this->calendarDetails);
     }
 }

@@ -129,26 +129,24 @@
     </div>
 
     <!-- Schedule Modal -->
-    <dialog class="modal" id="scheduleModal" aria-labelledby="scheduleModalLabel">
-        <div class="modal-box">
-            <h3 class="modal-title mb-3" id="scheduleModalLabel">{{ $page->copy->text('MODAL_TITLE_SCHEDULE') }}</h3>
-            <dl class="row">
-                <dt class="col-sm-4">{{ $page->copy->text('FORM_START') }}</dt><dd class="col-sm-8" id="startTime"></dd>
-                <dt class="col-sm-4">{{ $page->copy->text('FORM_END') }}</dt><dd class="col-sm-8" id="endTime"></dd>
-                <dt class="col-sm-4">{{ $page->copy->text('FORM_DESCRIPTION') }}</dt><dd class="col-sm-8" id="eventDescription"></dd>
-                <dt class="col-sm-4">{{ $page->copy->text('FORM_LOCATION') }}</dt><dd class="col-sm-8" id="eventLocation"></dd>
-            </dl>
-            <div class="modal-action">
-                <button class="btn" data-calendar-close>{{ $page->copy->text('BUTTON_CLOSE') }}</button>
-            </div>
-        </div>
+    <dialog class="chrono-home-dialog chrono-calendar-details" id="scheduleModal" aria-labelledby="scheduleModalLabel">
+        <header class="chrono-home-dialog-header"><h2 id="scheduleModalLabel"><x-chrono-icon name="clock" size="22" /><span id="eventTitle">Buchungsdetails</span></h2><button type="button" class="btn btn-icon btn-ghost-secondary" data-calendar-close aria-label="Details schließen">×</button></header>
+        <dl class="chrono-calendar-detail-grid">
+            <div><dt>{{ $page->copy->text('FORM_START') }}</dt><dd id="startTime"></dd></div>
+            <div><dt>{{ $page->copy->text('FORM_END') }}</dt><dd id="endTime"></dd></div>
+            <div id="eventDurationRow"><dt>Dauer</dt><dd id="eventDuration"></dd></div>
+            <div id="eventPauseRow"><dt>Pause</dt><dd id="eventPause"></dd></div>
+            <div><dt>Arbeitsort</dt><dd id="eventLocation"></dd></div>
+            <div class="chrono-calendar-note"><dt>Notiz</dt><dd id="eventDescription"></dd></div>
+        </dl>
+        <footer class="chrono-dialog-footer"><a class="btn btn-outline-secondary" id="eventCorrection" hidden>Korrektur beantragen</a><button class="btn btn-primary" type="button" data-calendar-close>{{ $page->copy->text('BUTTON_CLOSE') }}</button></footer>
     </dialog>
 
     <script src="vendor/fullcalendar/7.1.3/all/global.js"></script>
     <script src="vendor/fullcalendar/7.1.3/themes/classic/global.js"></script>
     <script src="vendor/fullcalendar/7.1.3/locales/de/global.js"></script>
     <script src="vendor/fullcalendar/7.1.3/locales/zh-tw/global.js"></script>
-    <script src="assets/js/chrono-calendar.js"></script>
+    <script src="assets/js/chrono-calendar.js?v={{ substr(hash_file('sha256', public_path('assets/js/chrono-calendar.js')),0,12) }}"></script>
     <script>
         (function () {
         const calendarRoot = document.getElementById('calendar');

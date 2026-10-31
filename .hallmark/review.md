@@ -65,3 +65,7 @@ All 34 final Blade templates passed compilation and PHP syntax parsing. Read-onl
 - Persons have four columns and a separate contextual action menu; lifecycle, LDAP and guarded deletion controls retain their original contracts.
 - Browser checks: native dialog open/cancel/Escape, readonly persons menu, automatic 30 Oct 2026 +01:00 conversion, 29 Mar 2026 gap refusal, 25 Oct 2026 repeated-hour explicit selection. No requests, absences or account changes submitted.
 - Updated the render check to keep the accessible balance assertion while removing the obsolete Home accordion-class requirement. Authenticated page checks still pass.
+
+## Calendar details repair
+
+The browser retained the pre-dialog calendar script: clicking filled old fields but only set `modal-open` on a closed native dialog. The calendar URL now has a content hash, and its handler opens the native task dialog. The own-scoped snapshot supplies the existing ledger presentation for duration, pause and note; no new query, booking or accounting formula was added. Non-booking calendar entries have no correction link. Verified by real browser click, Enter, close and Escape on two distinct records; authenticated render checks passed.

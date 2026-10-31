@@ -10,13 +10,7 @@
         const time = value => new Date(value).toLocaleTimeString('de-DE', timeOptions);
         const modalTime = value => new Date(value).toLocaleTimeString('de-DE', timeOptions);
         const modal = document.getElementById('scheduleModal');
-        const close = modal.querySelector('[data-calendar-close]');
-        close.addEventListener('click', function () {
-            modal.close();
-            modal.classList.remove('modal-open');
-        });
-
-        modal.addEventListener('close', () => modal.classList.remove('modal-open'));
+        modal.querySelectorAll('[data-calendar-close]').forEach(close => close.addEventListener('click', () => modal.close()));
 
         const calendar = new window.FullCalendar.Calendar(element, {
             initialView: 'timeGridWeek',
@@ -65,10 +59,18 @@
                 document.getElementById('endTime').textContent = !info.event.allDay && values.end === null
                     ? options.missingEndLabel
                     : values.endDate + (info.event.allDay ? '' : ' ' + modalTime(values.displayEnd));
-                document.getElementById('eventDescription').textContent = info.event.title;
+                document.getElementById('eventTitle').textContent = info.event.allDay ? info.event.title : 'Arbeitszeit';
+                document.getElementById('eventDescription').textContent = values.note || '—';
+                document.getElementById('eventDurationRow').hidden = values.durationLabel == null;
+                document.getElementById('eventDuration').textContent = values.durationLabel ?? '—';
+                document.getElementById('eventPauseRow').hidden = info.event.allDay || values.pause == null;
+                document.getElementById('eventPause').textContent = values.pause == null ? '—' : values.pause + ' min';
+                const correction = document.getElementById('eventCorrection');
+                correction.hidden = !/^[1-9][0-9]*$/.test(values.recordId || '');
+                if (correction.hidden) correction.removeAttribute('href');
+                else correction.href = 'adjustments.php?record_id=' + encodeURIComponent(values.recordId);
                 document.getElementById('eventLocation').textContent = ({office: 'Büro', home_office: 'Home Office', business_trip: 'Dienstreise'})[values.location] || values.location || '—';
-                modal.classList.add('modal-open');
-                modal.showModal();
+                if (!modal.open) modal.showModal();
             },
             events: options.events,
         });

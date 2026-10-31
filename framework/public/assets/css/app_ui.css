@@ -535,3 +535,11 @@
 
 .chrono-local-ui .chrono-today-workspace .chrono-metadata fieldset {grid-template-columns:repeat(2,minmax(0,1fr));min-width:0;padding:0;}
 @media(max-width:640px) {.chrono-local-ui .chrono-today-workspace .chrono-metadata fieldset {grid-template-columns:minmax(0,1fr);}}
+
+.chrono-calendar-detail-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-lg);margin:var(--space-lg) 0;}
+.chrono-calendar-detail-grid dt {color:var(--color-muted);font-size:.8125rem;font-weight:400;margin-bottom:var(--space-2xs);}
+.chrono-calendar-detail-grid dd {font-size:1rem;font-weight:500;margin:0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+.chrono-calendar-note {grid-column:1/-1;}
+.chrono-calendar-note dd {white-space:pre-wrap;font-weight:400;}
+.chrono-calendar-event {cursor:pointer;}
+.chrono-calendar-details .chrono-dialog-footer {justify-content:space-between;}
