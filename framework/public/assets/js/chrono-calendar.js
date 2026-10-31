@@ -8,12 +8,15 @@
         }
         const timeOptions = {timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit'};
         const time = value => new Date(value).toLocaleTimeString('de-DE', timeOptions);
-        const modalTime = value => new Date(value).toLocaleTimeString(undefined, {timeZone: 'Europe/Berlin'});
+        const modalTime = value => new Date(value).toLocaleTimeString('de-DE', timeOptions);
         const modal = document.getElementById('scheduleModal');
         const close = modal.querySelector('[data-calendar-close]');
         close.addEventListener('click', function () {
+            modal.close();
             modal.classList.remove('modal-open');
         });
+
+        modal.addEventListener('close', () => modal.classList.remove('modal-open'));
 
         const calendar = new window.FullCalendar.Calendar(element, {
             initialView: 'timeGridWeek',
@@ -25,7 +28,9 @@
             weekends: true,
             headerToolbar: false,
             footerToolbar: false,
-            height: 700,
+            height: '100%',
+            eventMinHeight: 28,
+            eventShortHeight: 28,
             slotMinTime: '06:00:00',
             slotMaxTime: '22:00:00',
             allDaySlot: true,
@@ -61,8 +66,9 @@
                     ? options.missingEndLabel
                     : values.endDate + (info.event.allDay ? '' : ' ' + modalTime(values.displayEnd));
                 document.getElementById('eventDescription').textContent = info.event.title;
-                document.getElementById('eventLocation').textContent = values.location || '-';
+                document.getElementById('eventLocation').textContent = ({office: 'Büro', home_office: 'Home Office', business_trip: 'Dienstreise'})[values.location] || values.location || '—';
                 modal.classList.add('modal-open');
+                modal.showModal();
             },
             events: options.events,
         });

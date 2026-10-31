@@ -1,0 +1,21 @@
+{
+  "scanned": "2026-10-31",
+  "findings": {
+    "framework": "Laravel Blade, local DaisyUI",
+    "fonts": "system-ui in framework/public/assets/css/app_ui.css:121",
+    "palette": "violet 258 90% 56% in partials/admin-credential-style.blade.php:3",
+    "history": "54c0adb dated 2025-03-31: direct booking, flat navigation"
+  },
+  "preserve": [
+    "Kolibri",
+    "violet accent",
+    "all routes, forms and hooks",
+    "read/accounting logic"
+  ],
+  "introduce": [
+    "three primary destinations",
+    "quiet shared shell",
+    "clock before metadata",
+    "ledger before reports"
+  ]
+}

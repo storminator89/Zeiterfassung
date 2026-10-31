@@ -1,0 +1,16 @@
+[
+  {
+    "date": "2026-10-31",
+    "mode": "redesign",
+    "depth": "full",
+    "scope": "app",
+    "theme": "Tabler 1.7.1 with existing brand accent",
+    "genre": "modern-minimal",
+    "signature": "clock and ledger",
+    "nav": "Horizontal tasks and More; mobile drawer",
+    "prompt": "Make everyday time tracking simple, elegant and calm; compare 2025-03-31 history",
+    "preserve": "routes, form controls, scripts, all accounting",
+    "source": "Official @tabler/core 1.7.1 npm tarball",
+    "verification": "Authored CSS clean; 34 Blade views compile; ten render routes/five admin sections pass; live desktop/mobile and expanded-state review"
+  }
+]

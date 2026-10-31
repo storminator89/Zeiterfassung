@@ -1,0 +1,23 @@
+[
+  {
+    "file": "time-ledger.png",
+    "generator": "OpenAI built-in image_gen",
+    "mode": "generate, transparent background",
+    "prompt": "Compact desk clock and timesheet, charcoal outlines, neutral paper, violet accent, no text or logos.",
+    "sha256": "823f82d2b2c4640c3f3627c758ba834378712ce3990a65577d085df8c3162fab"
+  },
+  {
+    "file": "calendar-plan.png",
+    "generator": "OpenAI built-in image_gen",
+    "mode": "generate, transparent background",
+    "prompt": "Compact calendar and paper airplane, charcoal outlines, neutral paper, violet accent, transparent background, no text or logos.",
+    "sha256": "6bf044fd0d3ce2fa6c4f85fb4b851cfb64e7df251f8e0b3f22682b2e68b03734"
+  },
+  {
+    "file": "system-access.png",
+    "generator": "OpenAI built-in image_gen",
+    "mode": "generate, transparent background",
+    "prompt": "Compact gear, shield and key, charcoal outlines, neutral paper, violet accent, transparent background, no text or logos.",
+    "sha256": "5bdfc67370aa4fb5f1b589d70092c90afcc2411971ad475febc806b757aef9ff"
+  }
+]

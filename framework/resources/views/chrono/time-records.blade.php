@@ -1,40 +1,41 @@
 {{-- Native get_time_records.php fragment; all prepared values are escaped here. --}}
 <div class="flex justify-between items-center mb-4">
-    <h2 class="text-xl font-bold"><i class="fas fa-clock mr-2"></i>{{ $records->copy->text('UI_MY_RECORDS') }}</h2>
+    <h2 class="text-xl font-bold">{{ $records->copy->text('UI_MY_RECORDS') }}</h2>
     @if ($records->csvExport)
     <a href="export_csv.php" target="_blank" rel="noopener noreferrer" title="{{ $records->copy->text('CSV_EXPORT_NEW_CONTEXT_HINT') }}" aria-label="{{ $records->copy->text('BUTTON_EXPORT_CSV') }}"
-            class="btn btn-outline btn-success btn-sm gap-2 hover:scale-105 transform transition-transform duration-200">
-        <i class="fas fa-file-csv text-lg"></i>
+            class="btn btn-outline-secondary btn-sm gap-2">
+        <x-chrono-icon name="file-export" size="18" />
         <span class="hidden sm:inline">{{ $records->copy->text('BUTTON_EXPORT_CSV') }}</span>
     </a>
     @else
     <button disabled aria-label="{{ $records->copy->text('BUTTON_EXPORT_CSV') }}" title="CSV-Export ist in dieser Vorschau noch nicht verbunden."
-            class="btn btn-outline btn-success btn-sm gap-2 hover:scale-105 transform transition-transform duration-200">
-        <i class="fas fa-file-csv text-lg"></i>
+            class="btn btn-outline-secondary btn-sm gap-2">
+        <x-chrono-icon name="file-export" size="18" />
         <span class="hidden sm:inline">{{ $records->copy->text('BUTTON_EXPORT_CSV') }}</span>
     </button>
     @endif
 </div>
+<details class="chrono-record-tools" @if($records->reviewOnly) open @endif><summary>Filter &amp; Export</summary><div class="chrono-record-tools-body">
 @if ($records->storedValuesExport)
 <details class="chrono-export-options mb-3"><summary>Weitere Exportoptionen</summary><div class="text-sm opacity-70 mt-2"><a class="link" href="export_stored_values.php" target="_blank" rel="noopener noreferrer">Rohdaten (JSON)</a> <x-chrono-help><span>{{ $records->storedValuesText('note') }}</span></x-chrono-help></div></details>
 @endif
 <div class="flex flex-wrap items-end gap-3 mb-4">
-    <label class="text-sm font-semibold" for="time-record-review">Listenansicht<select id="time-record-review" data-record-review-filter data-page="{{ $records->page }}" class="select select-bordered select-sm block mt-1"><option value="all" @selected(! $records->reviewOnly)>Alle eigenen Einträge</option><option value="review" @selected($records->reviewOnly)>Vorhandene Prüfhinweise</option></select></label>
+    <label class="text-sm font-semibold" for="time-record-review">Listenansicht<select id="time-record-review" data-record-review-filter data-page="{{ $records->page }}" class="select select-bordered select-sm block mt-1 form-select"><option value="all" @selected(! $records->reviewOnly)>Alle eigenen Einträge</option><option value="review" @selected($records->reviewOnly)>Vorhandene Prüfhinweise</option></select></label>
     <x-chrono-help><p class="text-sm opacity-70">@if ($records->reviewOnly){{ $records->totalRecords }} passende eigene Einträge. @endif Ungültige Zeiten, bestehende Arbeitszeit-/Abwesenheitskonflikte, eindeutig prüfbare Überschneidungen abgeschlossener Arbeitszeiten und erkannte Berliner Zeitlücken oder doppelte Stunden ohne Offset; außerdem lesbare Zeiten mit Format- oder Ungültigbefund der Altzeitdiagnose. Kein vollständiger Bestandscheck oder Vollständigkeitsnachweis; ein unmarkierter Eintrag ist keine Freigabe. Bestehende Dauer- und Summenberechnungen bleiben unverändert und bestätigen keine eindeutige Altzeit. Summen berücksichtigen weiterhin den vollständigen eigenen Tageskontext.</p></x-chrono-help>
 </div>
+</div></details>
 @if ($records->reviewOnly && $records->totalRecords === 0)
 <p class="text-sm mb-4" role="status">Keine passenden Prüfhinweise gefunden. Dies bestätigt weder einen fehlerfreien Bestand noch rekonstruierbare Altzeiten.</p>
 @endif
-<div id="timeRecordsTable" class="card bg-base-100 shadow-xl">
-    <div class="card-body p-6">
-        <div class="overflow-x-auto rounded-lg border border-base-200">
+<div id="timeRecordsTable" class="card chrono-ledger">
+    <div class="chrono-ledger-body">
+        <div class="chrono-ledger-days">
             <table class="table w-full">
-                <thead class="bg-base-200">
+                <thead class="chrono-ledger-head">
                     <tr>
-                        <th class="text-left px-6 py-4 font-semibold text-sm uppercase tracking-wider w-48">Datum</th>
-                        <th class="text-center px-6 py-4 font-semibold text-sm uppercase tracking-wider w-32">{{ $records->copy->text('TABLE_HEADER_DURATION') }}</th>
-                        <th class="text-center px-6 py-4 font-semibold text-sm uppercase tracking-wider w-32">{{ $records->copy->text('TABLE_HEADER_BREAK') }}</th>
-                        <th></th>
+                        <th class="text-left px-6 py-4 font-semibold text-sm w-48">Datum</th>
+                        <th class="text-center px-6 py-4 font-semibold text-sm w-32">{{ $records->copy->text('TABLE_HEADER_DURATION') }}</th>
+                        <th class="text-center px-6 py-4 font-semibold text-sm w-32">Pause</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-base-200">
@@ -43,7 +44,7 @@
                         <td class="px-6 py-4 w-48">
                             <div class="flex items-center gap-3">
                                 <div class="w-6 flex justify-center transition-transform duration-200">
-                                    <i class="fas fa-chevron-right text-primary"></i>
+                                    <i class="fas fa-chevron-right text-primary" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg></i>
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <div class="font-medium">{{ $group['formatted_date'] }}</div>
@@ -54,41 +55,36 @@
                         </td>
                         <td class="px-6 py-4 w-32">
                             <div class="flex items-center justify-center gap-2">
-                                <i class="fas fa-clock text-primary/75"></i>
+                                <x-chrono-icon name="clock" size="18" />
                                 <span class="font-medium">{{ $group['total_duration'] }}</span>
                             </div>
                         </td>
                         <td class="px-6 py-4 w-32">
                             <div class="flex items-center justify-center gap-2">
-                                <i class="fas fa-pause text-primary/75"></i>
+                                <i class="fas fa-pause text-primary/75" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14M16 5v14"/></svg></i>
                                 <span class="font-medium">{{ $group['total_pause'] === null ? 'Ungültig' : $group['total_pause'] . ' min' }}</span>
                             </div>
                         </td>
-                        <td></td>
                     </tr>
                     <tr class="details-row bg-base-100/50" data-date="{{ $group['group_key'] }}" style="display: none;">
-                        <td colspan="4" class="p-0">
-                            <div class="pl-14 pr-6 py-4 border-l-4 border-primary/10">
+                        <td colspan="3" class="p-0">
+                            <div class="chrono-day-entries">
                                 @if ($group['is_partial'])<p class="text-sm opacity-70 mb-3">Teilansicht: {{ $group['entry_count'] }} / {{ $group['day_entry_count'] }} Einträge auf dieser Seite. Dauer und Pause berücksichtigen alle Einträge des Tages.</p>@endif
                                 @if ($group['invalid_count'] > 0)<p class="text-sm text-warning mb-3" role="alert">Datenqualität: {{ $group['invalid_count'] }} ungültige Einträge. Keine verlässliche Tagessumme; bitte „Korrektur / Storno“ verwenden.</p>@endif
                                 @if ($group['is_unresolved'])<p class="text-sm text-warning mb-3" role="alert">Klärung offen: Arbeitszeit und ganztägige Abwesenheit überschneiden sich. Die Tagessumme ist nicht abschließend. Einzelwerte bleiben unverändert; bitte über „Korrektur / Storno“ mit Freigabe klären.</p>@endif
-                                <table class="table w-full">
-                                    <thead class="bg-base-200/50">
-                                        <tr>
-
-                                            <th class="text-left px-4 py-3 text-sm font-medium">{{ $records->copy->text('TABLE_HEADER_START_TIME') }}</th>
-                                            <th class="text-left px-4 py-3 text-sm font-medium">{{ $records->copy->text('TABLE_HEADER_END_TIME') }}</th>
-                                            <th class="text-left px-4 py-3 text-sm font-medium">{{ $records->copy->text('TABLE_HEADER_DURATION') }}</th>
-                                            <th class="text-left px-4 py-3 text-sm font-medium">{{ $records->copy->text('TABLE_HEADER_BREAK') }}</th>
-                                            <th class="text-left px-4 py-3 text-sm font-medium">{{ $records->copy->text('TABLE_HEADER_LOCATION') }}</th>
-                                            <th class="text-left px-4 py-3 text-sm font-medium">{{ $records->copy->text('TABLE_HEADER_COMMENT') }}</th>
-                                            <th class="text-left px-4 py-3 text-sm font-medium w-12">{{ $records->copy->text('TABLE_HEADER_ACTIONS') }}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-base-200/50">
+                                <div class="chrono-entry-list">
                                     @foreach ($group['records'] as $row)
-                                        <tr><td title="{{ \App\View\ExistingUi\HumanTime::full($row['start_label']) }}">{{ \App\View\ExistingUi\HumanTime::clock($row['start_label']) }}</td><td title="{{ \App\View\ExistingUi\HumanTime::full($row['end_label']) }}">{{ \App\View\ExistingUi\HumanTime::clock($row['end_label'], $row['start_label']) }}</td><td>{{ $row['duration_label'] }}@if ($row['is_invalid'])<span class="block text-sm text-warning">{{ $row['validation_error'] }}</span>@endif @if ($row['is_unresolved'])<span class="block text-sm text-warning">Klärung offen · Überschneidung mit Arbeitszeit / Abwesenheit. Einzelwert unverändert.</span>@endif
-                                            @if (!empty($records->workOverlapFindings[(string) $row['id']]))<span class="block text-sm text-warning">Prüfhinweis · Abgeschlossene Arbeitszeiten überschneiden sich. Bruttointervalle, keine Pausenlage; keine automatische Kürzung. Dauer und Summen unverändert. Über Korrektur / Storno manuell klären.</span>@endif
+                                        <div class="chrono-entry">
+                                            <div class="chrono-entry-period"><x-chrono-icon name="clock" size="18" /><span title="{{ \App\View\ExistingUi\HumanTime::full($row['start_label']) }}">{{ \App\View\ExistingUi\HumanTime::clock($row['start_label']) }}</span><span class="text-secondary">–</span><span title="{{ \App\View\ExistingUi\HumanTime::full($row['end_label']) }}">{{ \App\View\ExistingUi\HumanTime::clock($row['end_label'], $row['start_label']) }}</span></div>
+                                            <div class="chrono-entry-duration"><span class="chrono-entry-caption">Dauer</span><strong>{{ $row['duration_label'] }}</strong></div>
+                                            <div class="chrono-entry-break"><span class="chrono-entry-caption">Pause</span>{{ $row['pause'] }} min</div>
+                                            <div class="chrono-entry-place">{{ $records->location($row['location']) }}</div>
+                                            <div class="chrono-entry-actions"><a class="btn btn-sm btn-ghost-secondary" href="adjustments.php?record_id={{ $row['id'] }}" aria-label="Buchung korrigieren"><x-chrono-icon name="pencil" size="18" /><span>Korrektur</span></a>
+                                            @if ($records->historyLinks && is_int($row['id']) && $row['id'] > 0)<a class="btn btn-sm btn-icon btn-ghost-secondary" href="{{ 'history.php?entity=zeiterfassung&record_id='.$row['id'].'&relations=1' }}" target="_blank" rel="noopener noreferrer" aria-label="Buchungshistorie" title="{{ $records->copy->text('TIME_RECORD_HISTORY_HINT') }}"><x-chrono-icon name="history" size="18" /></a>@endif
+                                            </div>
+                                            @if ($row['comment'] !== '')<p class="chrono-entry-note">{{ $row['comment'] }}</p>@endif
+                                            <div class="chrono-entry-findings">@if ($row['is_invalid'])<span class="block text-sm text-warning">{{ $row['validation_error'] }}</span>@endif @if ($row['is_unresolved'])<span class="block text-sm text-warning">Klärung offen: Überschneidung mit Arbeitszeit / Abwesenheit. Einzelwert unverändert.</span>@endif
+                                            @if (!empty($records->workOverlapFindings[(string) $row['id']]))<span class="block text-sm text-warning">Prüfhinweis: Abgeschlossene Arbeitszeiten überschneiden sich. Bruttointervalle, keine Pausenlage; keine automatische Kürzung. Dauer und Summen unverändert. Über Korrektur / Storno manuell klären.</span>@endif
                                             @foreach ($records->localTimeFindings[(string) $row['id']] ?? [] as $column => $category)
                                             @if ($category === 'invalid_timestamp')
                                             <span class="block text-sm text-warning">Altzeit-Prüfhinweis ({{ $column === 'startzeit' ? 'Start' : 'Ende' }}): von der strengen Altzeitdiagnose als ungültig erkannt. Bestehende Laufzeitberechnung unverändert, nicht neu bestätigt. Über Korrektur / Storno prüfen.</span>
@@ -98,14 +94,11 @@
                                             <span class="block text-sm text-warning">DST-Prüfhinweis ({{ $column === 'startzeit' ? 'Start' : 'Ende' }}): {{ $category === 'ambiguous_berlin_local_time' ? 'doppelte Berliner Stunde ohne Offset. Kein eindeutiger Zeitpunkt' : 'Berliner Zeitlücke ohne Offset. Kein existierender lokaler Zeitpunkt' }}; Dauer/Summen nicht bestätigt.</span>
                                             @endif
                                             @endforeach
-                                        </td><td>{{ $row['pause'] }}</td><td>{{ $records->location($row['location']) }}</td><td>{{ $row['comment'] }}</td><td><a class="link link-primary" href="adjustments.php?record_id={{ $row['id'] }}">Korrektur</a>
-                                            @if ($records->historyLinks && is_int($row['id']) && $row['id'] > 0)
-                                            <a class="link link-primary block mt-1 text-sm" href="{{ 'history.php?entity=zeiterfassung&record_id='.$row['id'].'&relations=1' }}" target="_blank" rel="noopener noreferrer" title="{{ $records->copy->text('TIME_RECORD_HISTORY_HINT') }}">Historie</a>
-                                            @endif
-                                        </td></tr>
+                                            </div>
+                                        </div>
                                     @endforeach
                                     </tbody>
-                                </table>
+                                </div>
                             </div>
                         </td>
                     </tr>

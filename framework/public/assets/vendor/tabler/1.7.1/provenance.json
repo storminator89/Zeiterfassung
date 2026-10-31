@@ -1,0 +1,8 @@
+{
+  "package": "@tabler/core",
+  "version": "1.7.1",
+  "source": "https://registry.npmjs.org/@tabler/core/-/core-1.7.1.tgz",
+  "license": "MIT",
+  "sha256": "dcf84d7b4319c29ab33450bfe2a7bbf607458d994ef71023f7509e912cafdbd5",
+  "usage": "Local CSS only; no remote scripts or fonts."
+}

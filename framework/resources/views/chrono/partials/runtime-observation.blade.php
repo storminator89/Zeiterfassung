@@ -5,8 +5,8 @@
         <details @if ($observation->requested) open @endif>
             <summary>{{ $observation->text('title') }}</summary>
             <div class="flex flex-wrap gap-3 my-4">
-                <a class="btn btn-outline" href="{{ $observation->url() }}">{{ $observation->text('storage_action') }}</a>
-                <a class="btn btn-outline" href="{{ $observation->url(true) }}">{{ $observation->text('terminal_action') }}</a>
+                <a class="btn btn-outline-secondary" href="{{ $observation->url() }}">{{ $observation->text('storage_action') }}</a>
+                <a class="btn btn-outline-secondary" href="{{ $observation->url(true) }}">{{ $observation->text('terminal_action') }}</a>
             </div>
             @if (!$observation->requested)
                 <p>{{ $observation->text('idle') }}</p>

@@ -5,7 +5,7 @@ return [
     'intro' => 'Urlaub wird erst nach Freigabe durch eine andere berechtigte Person gutgeschrieben. Krankheit wird weiterhin direkt erfasst. Kein Anspruchs- oder Resturlaubskonto.',
     'open' => 'Urlaubsanträge verwalten',
     'own' => 'Meine Anträge',
-    'review' => 'Fremde Anträge prüfen',
+    'review' => 'Zur Freigabe',
     'new' => 'Urlaub beantragen',
     'from' => 'Von',
     'through' => 'Bis',

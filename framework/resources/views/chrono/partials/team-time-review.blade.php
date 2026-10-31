@@ -3,9 +3,9 @@
         <h3 id="teamTimeReviewTitle" class="card-title">{{ $supervisor->text('TEAM_REVIEW_TITLE') }}</h3>
         <x-chrono-help><p class="text-sm opacity-70">{{ $supervisor->text('TEAM_REVIEW_NOTE') }}</p></x-chrono-help>
         @if ($supervisor->review === null)
-            <p class="mt-3"><a class="btn btn-outline" href="{{ $supervisor->reviewUrl(true) }}">{{ $supervisor->text('TEAM_REVIEW_OPEN') }}</a></p>
+            <p class="mt-3"><a class="btn btn-outline-secondary" href="{{ $supervisor->reviewUrl(true) }}">{{ $supervisor->text('TEAM_REVIEW_OPEN') }}</a></p>
         @else
-            <p class="mt-3"><a class="btn btn-outline" href="{{ $supervisor->reviewUrl(false) }}">{{ $supervisor->text('TEAM_REVIEW_CLOSE') }}</a></p>
+            <p class="mt-3"><a class="btn btn-outline-secondary" href="{{ $supervisor->reviewUrl(false) }}">{{ $supervisor->text('TEAM_REVIEW_CLOSE') }}</a></p>
             @if ($supervisor->review['state'] === 'invalid')
                 <p class="alert alert-error mt-3" role="alert">{{ $supervisor->text('TEAM_REVIEW_INVALID') }}</p>
             @elseif ($supervisor->review['state'] === 'unavailable')

@@ -1,6 +1,9 @@
 {{-- Existing header.php markup; no legacy PHP bootstrap, data or network scripts. --}}
+@php
+    $navPage = basename(parse_url(request()->getRequestUri(), PHP_URL_PATH) ?: '') ?: 'index.php';
+@endphp
 <!DOCTYPE html>
-<html lang="{{ $page->copy->language }}" data-theme="{{ $page->theme }}">
+<html lang="{{ $page->copy->language }}" data-theme="{{ $page->theme }}" data-bs-theme="{{ $page->theme }}">
 
 <head>
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -9,317 +12,57 @@
     <title>{{ $page->copy->text('TITLE') }}</title>
 
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
-    <link href="assets/vendor/daisyui/3.9.4/full.css" rel="stylesheet" type="text/css" integrity="sha256-htj+jXV2EbqZMnbFtkmO5n8WwOKf0ZVYlc0doGP6YaI=" />
-    @if ($page->cspNonce === null)
-
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600&display=swap" rel="stylesheet">
-
-
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
-
-
-    <!-- SweetAlert2 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
-
-    <!-- SweetAlert2 JS -->
-
-
-    <!-- Shepherd.js für die Tour -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shepherd.js@10.0.1/dist/css/shepherd.css"/>
-
-
-    @endif
-    <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
+    <link rel="stylesheet" href="assets/vendor/tabler/1.7.1/tabler.min.css">
     <link rel="stylesheet" href="assets/css/app_ui.css">
-    @if ($page->cspNonce !== null) @include('chrono.partials.admin-credential-style') @endif
     @if ($page->interactions->home)<script src="assets/js/main.js" defer></script>@endif
     @if ($page->interactions->attendance)<script src="assets/js/chrono-local-web.js" defer></script>@endif
-    @if ($page->activePage === 'supervisor.php')<script src="assets/vendor/chartjs/4.6.1/chart.umd.min.js" defer></script>@endif
-    <style>
-        @media (max-width: 640px) {
-            .table {
-                font-size: 0.8rem;
-            }
-
-            .table th,
-            .table td {
-                padding: 0.5rem;
-            }
-
-            .input,
-            .select {
-                font-size: 0.8rem;
-                padding: 0.3rem;
-            }
-        }
-
-        .flatpickr-calendar {
-            z-index: 9999 !important;
-        }
-
-        .editable-datetime {
-            cursor: pointer;
-        }
-
-        /* Styles for the time records table */
-        .summary-row {
-            border-bottom: 1px solid #eee;
-        }
-
-        .summary-row:hover {
-            background-color: rgba(0,0,0,0.05);
-        }
-
-        .rotate-90 {
-            transform: rotate(90deg);
-        }
-
-        .details-row {
-            background-color: rgba(0,0,0,0.02);
-        }
-
-        .details-row table {
-            margin: 0;
-            background: transparent;
-        }
-
-        .details-row td {
-            border-top: none;
-        }
-
-        /* Ensure proper spacing in nested table */
-        .details-row .table th,
-        .details-row .table td {
-            padding: 0.75rem;
-        }
-
-        /* Add subtle divider between days */
-        .summary-row {
-            border-top: 2px solid #eee;
-        }
-
-        /* Improved table styles */
-        .summary-row {
-            position: relative;
-        }
-
-        .summary-row:hover .fa-chevron-right {
-            color: var(--primary);
-            transform: scale(1.1);
-        }
-
-        .summary-row .fa-chevron-right {
-            transition: all 0.2s ease-in-out;
-        }
-
-        .rotate-90 {
-            transform: rotate(90deg) !important;
-        }
-
-        .details-row {
-            background: linear-gradient(to right, var(--primary-content/0.02), transparent);
-        }
-
-        /* Improved input styles */
-        .input-bordered {
-            transition: all 0.2s ease-in-out;
-            border-width: 2px;
-        }
-
-        .input-bordered:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 2px var(--primary/0.1);
-        }
-
-        /* Highlight animation */
-        @keyframes highlight {
-            0% { background-color: var(--primary/0.1); }
-            100% { background-color: transparent; }
-        }
-
-        .highlight {
-            animation: highlight 1s ease-out;
-        }
-
-        /* Improved button styles */
-        .edit-datetime-btn {
-            opacity: 0;
-            transition: all 0.2s ease-in-out;
-        }
-
-        tr:hover .edit-datetime-btn {
-            opacity: 1;
-        }
-
-        .btn-ghost:hover {
-            background-color: var(--primary/0.1);
-            color: var(--primary);
-        }
-
-        /* Responsive improvements */
-        @media (max-width: 640px) {
-            .table {
-                font-size: 0.875rem;
-            }
-
-            .table td {
-                padding: 0.75rem 0.5rem;
-            }
-
-            .details-row .table td {
-                padding: 0.5rem 0.25rem;
-            }
-        }
-
-        /* Accessibility improvements */
-        .summary-row:focus-visible {
-            outline: 2px solid var(--primary);
-            outline-offset: -2px;
-        }
-
-        /* Loading state */
-        .loading-overlay {
-            position: absolute;
-            inset: 0;
-            background: var(--base-100/0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            backdrop-filter: blur(2px);
-        }
-
-        /* Tooltip styles */
-        [data-tooltip] {
-            position: relative;
-        }
-
-        [data-tooltip]:hover::before {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 0.5rem;
-            background: var(--base-content);
-            color: var(--base-100);
-            border-radius: 0.25rem;
-            font-size: 0.75rem;
-            white-space: nowrap;
-            z-index: 10;
-        }
-
-        /* Updated Sidebar Styles */
-        .sidebar {
-            height: 100vh;
-            width: 250px;
-            position: fixed;
-            left: 0;
-            top: 0;
-            background: var(--base-300);
-            transition: transform 0.3s ease;
-            z-index: 100;
-            border-right: 1px solid var(--base-content/0.1);
-        }
-
-        .sidebar.collapsed {
-            transform: translateX(-250px);
-        }
-
-        .main-content {
-            margin-left: 250px;
-            transition: margin-left 0.3s ease;
-            padding: 1rem;
-            padding-top: 4rem;
-        }
-
-        .main-content.expanded {
-            margin-left: 0;
-        }
-
-        .navbar {
-            position: fixed;
-            top: 0;
-            right: 0;
-            width: calc(100% - 250px);
-            transition: width 0.3s ease, margin-left 0.3s ease;
-            background: var(--base-300);
-            border-bottom: 1px solid var(--base-content/0.1);
-            z-index: 50;
-        }
-
-        .navbar.expanded {
-            width: 100% !important;
-            margin-left: 0;
-        }
-
-        /* Remove media query that was auto-collapsing on mobile */
-        @media (max-width: 768px) {
-            .main-content {
-                transition: margin-left 0.3s ease;
-            }
-        }
-    </style>
+    @if ($navPage === 'supervisor.php')<script src="assets/vendor/chartjs/4.6.1/chart.umd.min.js" defer></script>@endif
 </head>
 
-<body class="chrono-local-ui{{ $page->cspNonce !== null ? ' chrono-admin-credential' : '' }}" data-attendance-state="{{ $page->state }}" data-attendance-user="{{ $page->userId }}" data-attendance-record="{{ $page->expectedRecord ?? '' }}">
-    <!-- Sidebar -->
-    <div class="sidebar chrono-sidebar" id="sidebar">
-        <div class="sidebar-shell">
-            <div class="sidebar-brand">
-                <div class="sidebar-brand-row"><span class="sidebar-brand-mark"><img src="assets/kolibri_icon.png" alt="" aria-hidden="true"></span><span>Quodara Chrono</span></div>
-                <button type="button" class="sidebar-close" id="sidebar-close"><span>{{ $page->copy->text('NAV_MENU_CLOSE') }}</span><i class="fas fa-times" aria-hidden="true"></i></button>
-            </div>
-            <nav class="sidebar-navigation" aria-label="{{ $page->copy->text('NAV_MAIN_MENU') }}">
-                <section class="sidebar-group" aria-labelledby="sidebar-work-label">
-                    <h2 class="sidebar-heading" id="sidebar-work-label">{{ $page->copy->text('NAV_SECTION_WORK') }}</h2>
-                    <div class="sidebar-items">
-                        <a href="index.php" class="sidebar-link {{ in_array($page->activePage, ['index.php', 'attendance.php'], true) ? 'active' : '' }}" @if (in_array($page->activePage, ['index.php', 'attendance.php'], true)) aria-current="page" @endif>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10 12 3l9 7M5 9v12h5v-7h4v7h5V9"/></svg>
-                            <span>{{ $page->copy->text('NAV_HOME') }}</span>
+<body class="chrono-local-ui chrono-calm{{ $page->cspNonce !== null ? ' chrono-admin-credential' : '' }}" data-attendance-state="{{ $page->state }}" data-attendance-user="{{ $page->userId }}" data-attendance-record="{{ $page->expectedRecord ?? '' }}">
+    <header class="chrono-header">
+        <div class="chrono-header-inner">
+            <button id="sidebar-toggle" type="button" class="btn btn-ghost chrono-mobile-menu" aria-label="Menü öffnen oder schließen" aria-controls="sidebar" aria-expanded="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+            <a href="index.php" class="sidebar-brand-row" aria-label="Quodara Chrono, Heute"><span class="sidebar-brand-mark"><img src="assets/kolibri_icon.png" alt="" aria-hidden="true"></span><span>Quodara Chrono</span></a>
+            <nav id="sidebar" class="sidebar-navigation" aria-label="{{ $page->copy->text('NAV_MAIN_MENU') }}">
+                <button type="button" class="sidebar-close btn btn-ghost" id="sidebar-close" aria-label="Menü schließen">Schließen</button><div class="sidebar-items chrono-primary-nav">
+                    <a href="index.php" class="sidebar-link {{ in_array($navPage, ['index.php', 'attendance.php'], true) ? 'active' : '' }}" @if (in_array($navPage, ['index.php', 'attendance.php'], true)) aria-current="page" @endif><x-chrono-icon name="clock" size="20" />
+                            <span>Heute</span>
                         </a>
-                        <a href="dashboard.php" class="sidebar-link {{ $page->activePage === 'dashboard.php' ? 'active' : '' }}" @if ($page->activePage === 'dashboard.php') aria-current="page" @endif>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg>
-                            <span>{{ $page->copy->text('NAV_DASHBOARD') }}</span>
+<a href="dashboard.php" class="sidebar-link {{ $navPage === 'dashboard.php' ? 'active' : '' }}" @if ($navPage === 'dashboard.php') aria-current="page" @endif><x-chrono-icon name="chart-bar" size="20" />
+                            <span>Übersicht</span>
                         </a>
-                        <a href="adjustments.php" class="sidebar-link {{ $page->activePage === 'adjustments.php' ? 'active' : '' }}" @if ($page->activePage === 'adjustments.php') aria-current="page" @endif><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5 4 4M4 20l4-1L21 6l-4-4L4 15z"/></svg><span>Korrekturanträge</span></a>
-                        <a href="work_models.php" class="sidebar-link {{ $page->activePage === 'work_models.php' ? 'active' : '' }}" @if ($page->activePage === 'work_models.php') aria-current="page" @endif><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v14H3zM8 7V3h8v4M3 12h18M10 12v3h4v-3"/></svg><span>Arbeitszeitmodelle</span></a>
-                        <a href="history.php" class="sidebar-link {{ $page->activePage === 'history.php' ? 'active' : '' }}" @if ($page->activePage === 'history.php') aria-current="page" @endif><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2 7M3 4v7h7M12 7v6l4 2"/></svg><span>Änderungshistorie</span></a>
-                    </div>
-                </section>
-                @if (in_array($page->role, ['supervisor', 'admin'], true))
-                <section class="sidebar-group" aria-labelledby="sidebar-team-label">
-                    <h2 class="sidebar-heading" id="sidebar-team-label">{{ $page->copy->text('NAV_SECTION_TEAM') }}</h2>
+                    @if (app('router')->has('chrono.vacation'))
+                    <a href="vacation.php" class="sidebar-link {{ $navPage === 'vacation.php' ? 'active' : '' }}" @if ($navPage === 'vacation.php') aria-current="page" @endif><x-chrono-icon name="calendar-check" size="20" /><span>Urlaub</span></a>
+                    @endif
+                </div>
+                <details class="chrono-nav-more">
+                    <summary>Mehr</summary>
                     <div class="sidebar-items">
-                        <a href="supervisor.php" class="sidebar-link {{ $page->activePage === 'supervisor.php' ? 'active' : '' }}" @if ($page->activePage === 'supervisor.php') aria-current="page" @endif>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6a4 4 0 1 0 8 0 4 4 0 0 0-8 0M4 22v-3a8 8 0 0 1 16 0v3M12 14v8"/></svg>
-                            <span>{{ $page->copy->text('NAV_SUPERVISOR') }}</span>
+                    <a href="adjustments.php" class="sidebar-link {{ $navPage === 'adjustments.php' ? 'active' : '' }}" @if ($navPage === 'adjustments.php') aria-current="page" @endif><x-chrono-icon name="pencil" size="20" /><span>Korrekturen</span></a>
+<a href="work_models.php" class="sidebar-link {{ $navPage === 'work_models.php' ? 'active' : '' }}" @if ($navPage === 'work_models.php') aria-current="page" @endif><x-chrono-icon name="briefcase" size="20" /><span>Arbeitszeitmodell</span></a>
+<a href="history.php" class="sidebar-link {{ $navPage === 'history.php' ? 'active' : '' }}" @if ($navPage === 'history.php') aria-current="page" @endif><x-chrono-icon name="history" size="20" /><span>Verlauf</span></a>
+                    @if (in_array($page->role, ['supervisor', 'admin'], true))
+                    <a href="supervisor.php" class="sidebar-link {{ $navPage === 'supervisor.php' ? 'active' : '' }}" @if ($navPage === 'supervisor.php') aria-current="page" @endif><x-chrono-icon name="users" size="20" />
+                            <span>Team</span>
                         </a>
-                    </div>
-                </section>
-                @endif
-                @if ($page->role === 'admin')
-                <section class="sidebar-group" aria-labelledby="sidebar-admin-label">
-                    <h2 class="sidebar-heading" id="sidebar-admin-label">{{ $page->copy->text('NAV_SECTION_ADMIN') }}</h2>
-                    <div class="sidebar-items">
-                        <a href="admin.php" class="sidebar-link {{ $page->activePage === 'admin.php' ? 'active' : '' }}" @if ($page->activePage === 'admin.php') aria-current="page" @endif>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20v-2a6 6 0 0 1 8-6M4 6a4 4 0 1 0 8 0 4 4 0 0 0-8 0M17 11l5 2v4c0 3-5 5-5 5s-5-2-5-5v-4z"/></svg>
-                            <span>Admin</span>
+                    @endif
+                    @if ($page->role === 'admin')
+                    <a href="admin.php" class="sidebar-link {{ $navPage === 'admin.php' ? 'active' : '' }}" @if ($navPage === 'admin.php') aria-current="page" @endif><x-chrono-icon name="settings" size="20" />
+                            <span>Verwaltung</span>
                         </a>
-                        <a href="terminals.php" class="sidebar-link {{ $page->activePage === 'terminals.php' ? 'active' : '' }}" @if ($page->activePage === 'terminals.php') aria-current="page" @endif><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h20v14H2zM8 21h8M12 17v4"/></svg><span>Praxis-Terminals</span></a>
-                    </div>
-                </section>
-                @endif
-                <section class="sidebar-group sidebar-account" aria-labelledby="sidebar-account-label">
-                    <h2 class="sidebar-heading" id="sidebar-account-label">{{ $page->copy->text('NAV_SECTION_ACCOUNT') }}</h2>
-                    <div class="sidebar-items">
-                        <a href="settings.php" class="sidebar-link {{ $page->activePage === 'settings.php' ? 'active' : '' }}" @if ($page->activePage === 'settings.php') aria-current="page" @endif>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>
+<a href="terminals.php" class="sidebar-link {{ $navPage === 'terminals.php' ? 'active' : '' }}" @if ($navPage === 'terminals.php') aria-current="page" @endif><x-chrono-icon name="device-desktop" size="20" /><span>Terminals</span></a>
+                    @endif
+                    <a href="settings.php" class="sidebar-link {{ $navPage === 'settings.php' ? 'active' : '' }}" @if ($navPage === 'settings.php') aria-current="page" @endif><x-chrono-icon name="user" size="20" />
                             <span>{{ $page->copy->text('NAV_SETTINGS') }}</span>
                         </a>
-                        <button type="button" class="sidebar-link w-full" @if ($page->cspNonce === null) onclick="showAboutModal()" @else data-local-about="open" @endif>
+                    </div>
+                </details>
+
+            </nav>
+            <div id="navbar" class="chrono-header-actions">
+                            <details class="chrono-account-menu"><summary>Konto</summary><div class="sidebar-items">
+                                            <button type="button" class="sidebar-link w-full" @if ($page->cspNonce === null) onclick="showAboutModal()" @else data-local-about="open" @endif>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 10v7M12 6v1M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20"/></svg>
                             <span>{{ $page->copy->text('NAV_ABOUT') }}</span>
                         </button>
@@ -330,32 +73,15 @@
                                 <span>{{ $page->copy->text('NAV_LOGOUT') }}</span>
                             </button>
                         </form>
-                    </div>
-                </section>
-            </nav>
-        </div>
-    </div>
 
-    <!-- Top navbar -->
-    <div class="navbar fixed top-0 right-0 z-50" style="width: calc(100% - 250px);" id="navbar">
-    <div class="navbar-start">
-        <button id="sidebar-toggle" type="button" class="btn btn-ghost btn-circle" aria-label="Menü öffnen oder schließen" aria-controls="sidebar" aria-expanded="true">
-            <i class="fas fa-bars"></i>
-        </button>
-    </div>
-    <div class="navbar-center"> <!-- Changed from navbar-end -->
-        <div class="flex items-center gap-2">
-            <img src="assets/kolibri_icon.png" alt="Time Tracking" class="h-8 w-8">
-            <span class="text-xl font-semibold whitespace-nowrap">{{ $page->copy->text('TITLE') }}</span> <!-- Added whitespace-nowrap -->
-        </div>
-    </div>
-    <div class="navbar-end">
+                </div></details>
+    <div class="navbar-end" @if(in_array($navPage,['index.php','attendance.php'],true)) data-home-header @endif>
         <div id="timer" data-attendance-status class="hidden lg:inline-block text-sm mr-3" role="status" aria-live="polite">{{ $page->statusLabel() }}</div>
         <div class="hidden lg:flex items-center gap-2 mr-3" aria-label="Arbeitszeit buchen">
-            <button id="startButton" type="button" disabled data-attendance-action="start" class="btn btn-primary btn-sm" @if ($page->state !== 'absent') hidden @endif><i class="fas fa-sign-in-alt"></i><span>Kommen</span></button>
-            <button id="pauseStartButton" type="button" disabled data-attendance-action="pause_start" class="btn btn-outline btn-sm" @if ($page->state !== 'working') hidden @endif><i class="fas fa-pause"></i><span>Pause</span></button>
-            <button id="pauseEndButton" type="button" disabled data-attendance-action="pause_end" class="btn btn-outline btn-sm" @if ($page->state !== 'paused') hidden @endif><i class="fas fa-play"></i><span>Pause beenden</span></button>
-            <button id="endButton" type="button" disabled data-attendance-action="end" class="btn btn-secondary btn-sm" @if ($page->state === 'absent') hidden @endif><i class="fas fa-sign-out-alt"></i><span>Gehen</span></button>
+            <button id="startButton" type="button" disabled data-attendance-action="start" class="btn btn-primary btn-sm" @if ($page->state !== 'absent') hidden @endif><i class="fas fa-sign-in-alt" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3h7v18h-7M3 12h14M11 6l6 6-6 6"/></svg></i><span>Kommen</span></button>
+            <button id="pauseStartButton" type="button" disabled data-attendance-action="pause_start" class="btn btn-outline-secondary btn-sm" @if ($page->state !== 'working') hidden @endif><i class="fas fa-pause" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14M16 5v14"/></svg></i><span>Pause</span></button>
+            <button id="pauseEndButton" type="button" disabled data-attendance-action="pause_end" class="btn btn-outline-secondary btn-sm" @if ($page->state !== 'paused') hidden @endif><i class="fas fa-play" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m7 4 14 8-14 8z"/></svg></i><span>Pause beenden</span></button>
+            <button id="endButton" type="button" disabled data-attendance-action="end" class="btn btn-secondary btn-sm" @if ($page->state === 'absent') hidden @endif><i class="fas fa-sign-out-alt" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H3v18h6M8 12h13M16 7l5 5-5 5"/></svg></i><span>Gehen</span></button>
         </div>
         <label class="swap swap-rotate mr-4">
             <input type="checkbox" id="theme-toggle" aria-label="Dunkles Design umschalten" />
@@ -366,15 +92,16 @@
                 <path d="M21.64,13a1,1,0,0,0-1.05-.14,8.05,8.05,0,0,1-3.37.73A8.15,8.15,0,0,1,9.08,5.49a8.59,8.59,0,0,1,.25-2A1,1,0,0,0,8,2.36,10.14,10.14,0,1,0,22,14.05,1,1,0,0,0,21.64,13Zm-9.5,6.69A8.14,8.14,0,0,1,7.08,5.22v.27A10.15,10.15,0,0,0,17.22,15.63a9.79,9.79,0,0,0,2.1-.22A8.11,8.11,0,0,1,12.14,19.73Z" />
             </svg>
         </label>
-
-    </div>
-</div>
+            </div>
+            </div>
+        </div>
+    </header>
 
     <!-- About Modal -->
     <dialog id="aboutModal" class="modal">
         <div class="modal-box">
             <h3 class="font-bold text-lg">Über Quodara Chrono</h3>
-            <p class="py-4">Quodara Chrono ist eine umfassende Zeiterfassungssoftware, die entwickelt wurde, um Ihre Arbeitszeiten effizient zu verwalten und zu verfolgen. Mit benutzerfreundlichen Funktionen und einem intuitiven Design hilft es Ihnen, Ihre Produktivität zu maximieren.</p>
+            <p class="py-4">Quodara Chrono, Ihre Zeiterfassung.</p>
             <div class="modal-action">
                 <button class="btn" @if ($page->cspNonce === null) onclick="closeAboutModal()" @else data-local-about="close" @endif>Schließen</button>
             </div>
@@ -384,7 +111,7 @@
     <p id="attendance-message" class="attendance-feedback text-sm" role="status" aria-live="polite"></p>
 
     <!-- Main content wrapper -->
-    <div id="main-content" class="main-content">
+    <div id="main-content" class="main-content page-wrapper">
 
         <div id="report-finality-notice" class="alert alert-warning mb-4" role="alert" @if (! $page->reportUnresolved) hidden @endif>
             <span data-report-finality-message><strong>Klärung offen: Arbeitszeit überschneidet sich mit ganztägiger Abwesenheit.</strong>
@@ -455,6 +182,7 @@
                 ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
                 : preference;
             html.setAttribute('data-theme', resolved);
+            html.setAttribute('data-bs-theme', resolved);
             chronoWritePreference('theme', preference);
             themeToggle.checked = resolved === 'dark';
             // Settings must show the same raw browser choice, not a stale
@@ -515,6 +243,11 @@
 
         // Record changes and cancellations are handled by approved correction requests.
 
+        document.querySelectorAll('.chrono-header details').forEach(menu => {
+            document.addEventListener('click', e => { if (!menu.contains(e.target)) menu.open = false; });
+            menu.addEventListener('keydown', e => { if (e.key === 'Escape') { menu.open = false; menu.querySelector('summary').focus(); } });
+        });
+
         // Sidebar toggle functionality
         const sidebar = document.getElementById('sidebar');
         const navbar = document.getElementById('navbar');
@@ -522,6 +255,7 @@
         const sidebarToggle = document.getElementById('sidebar-toggle');
 
         function setSidebarCollapsed(collapsed) {
+            if (window.innerWidth >= 960) collapsed = false;
             sidebar.classList.toggle('collapsed', collapsed);
             navbar.classList.toggle('expanded', collapsed);
             mainContent.classList.toggle('expanded', collapsed);
@@ -537,7 +271,7 @@
         }
 
         // Off-canvas links must not remain in the keyboard order on narrow screens.
-        setSidebarCollapsed(window.innerWidth <= 768 || chronoReadPreference('sidebarCollapsed') === 'true');
+        setSidebarCollapsed(window.innerWidth < 960);
         sidebarToggle.addEventListener('click', toggleSidebar);
         document.getElementById('sidebar-close').addEventListener('click', function() {
             setSidebarCollapsed(true);
@@ -546,18 +280,18 @@
             }
         });
         document.addEventListener('click', function(e) {
-            if (window.innerWidth <= 768 && !sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
+            if (window.innerWidth < 960 && !sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
                 setSidebarCollapsed(true);
             }
         });
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && !sidebar.classList.contains('collapsed') && window.innerWidth <= 768) {
+            if (e.key === 'Escape' && !sidebar.classList.contains('collapsed') && window.innerWidth < 960) {
                 setSidebarCollapsed(true);
                 sidebarToggle.focus();
             }
         });
         window.addEventListener('resize', function() {
-            setSidebarCollapsed(window.innerWidth <= 768 || chronoReadPreference('sidebarCollapsed') === 'true');
+            setSidebarCollapsed(window.innerWidth < 960);
         });
 
     </script>

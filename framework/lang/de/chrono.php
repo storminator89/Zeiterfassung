@@ -30,7 +30,7 @@ return [
     'LOGIN_TITLE' => 'Login - Quodara Chrono',
     'USERNAME_LABEL' => 'Benutzername',
     'PASSWORD_LABEL' => 'Passwort',
-    'LOGIN_BUTTON' => 'Login',
+    'LOGIN_BUTTON' => 'Anmelden',
     'REGISTER_BUTTON' => 'Registrieren',
     'ERROR_ALL_FIELDS_REQUIRED' => 'Bitte füllen Sie alle Felder aus.',
     'ERROR_INVALID_CREDENTIALS' => 'Benutzername oder Passwort falsch!',

@@ -354,7 +354,7 @@ final class LocalWebRoutes
             'vendor/fullcalendar/7.1.3/themes/classic/global.js' => 'a66eb65fc730f3b662f9c1ef30f8f741c42dcfe381d089f78dac322bf4dfbd5d',
             'vendor/fullcalendar/7.1.3/themes/classic/palette.css' => '5fa284fcef81b68bca7780f72fd110929284d0bf993b9ce5a8bffed54e3d38ee',
             'vendor/fullcalendar/7.1.3/themes/classic/theme.css' => 'e284a8b53bc52d362d172d37fdc59fe3ae821bc11d6a85d6fab7e20bdf45f043',
-            'assets/js/chrono-calendar.js' => '67a0e4ce674c06297e2ae2603d0a681f21290d56b0c52c300de89c7e19ea39e9',
+            'assets/js/chrono-calendar.js' => '96f69a5721306e30e27c5ddcf95545c4bbcc7bfbbab4254502ad5eec6d17aa71',
         ];
         foreach ($assets as $name => $hash) {
             $path = $directory.$name;

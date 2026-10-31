@@ -4,22 +4,16 @@
 @php
     $managedUsersEnabled = $managedUsersEnabled ?? false;
 @endphp
-<style>
-    #user-management > .card-body > .card-title { position:relative; }
-    #account-lifecycle-help { display:inline-flex;align-self:stretch;align-items:center; }
-    #account-lifecycle-tooltip { position:absolute;left:0;top:100%;z-index:20;width:min(24rem,100%);padding:.75rem;border:1px solid hsl(var(--b3,214 16% 91%));border-radius:.5rem;background:hsl(var(--b1,0 0% 100%));color:hsl(var(--bc,215 28% 17%));font-size:.875rem;font-weight:400;line-height:1.4;box-shadow:0 .25rem .75rem rgb(0 0 0 / .15); }
-    #account-lifecycle-tooltip[hidden] { display:none; }
-</style>
 <main class="container mx-auto px-4 py-8 chrono-page">
-    <h1 class="text-2xl font-bold mb-6">Administration</h1>
+    <div class="chrono-page-intro"><h1 class="text-2xl font-bold"><x-chrono-icon name="settings" size="24" /> Verwaltung</h1><img src="assets/illustrations/system-access.png" alt="" width="88" height="76" class="chrono-page-illustration"></div>
     @if ($adminPauseSettings->error)
-    <div class="alert alert-error shadow-lg mb-4" role="alert"><div><i class="fas fa-exclamation-circle"></i><span>{{ $adminPauseSettings->error }}</span></div></div>
+    <div class="alert alert-error shadow-lg mb-4" role="alert"><div><i class="fas fa-exclamation-circle" aria-hidden="true"></i><span>{{ $adminPauseSettings->error }}</span></div></div>
     @endif
     @if ($adminPauseSettings->success)
-    <div class="alert alert-success shadow-lg mb-4" role="status"><div><i class="fas fa-check-circle"></i><span>{{ $adminPauseSettings->success }}</span></div></div>
+    <div class="alert alert-success shadow-lg mb-4" role="status"><div><i class="fas fa-check-circle" aria-hidden="true"></i><span>{{ $adminPauseSettings->success }}</span></div></div>
     @endif
 @php
-    $adminSections = ['users'=>'Benutzer', 'departments'=>'Abteilungen', 'rules'=>'Arbeitszeit', 'access'=>'Zugänge', 'system'=>'System'];
+    $adminSections = ['users'=>'Personen', 'departments'=>'Abteilungen', 'rules'=>'Arbeitszeit', 'access'=>'Zugänge', 'system'=>'System'];
     if (!$adminPauseSettings->localSecurityControls) { unset($adminSections['users'], $adminSections['access']); }
     $adminSection=request()->query('section', array_key_first($adminSections));
     if (!is_string($adminSection) || !array_key_exists($adminSection,$adminSections)) { $adminSection=array_key_first($adminSections); }
@@ -52,8 +46,8 @@
             @unless ($managedUsersEnabled)
             <div id="user-mutations-hold" class="alert alert-info mb-4" role="note">Bestehende Benutzer bleiben nur lesend: Ändern, Löschen und Passwortänderungen sind nicht verbunden.</div>
             @endunless
-            <button type="button" class="btn btn-primary mb-4" id="toggleUserForm" @disabled($adminPauseSettings->departments === [] || ! $adminPauseSettings->enabled || ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled']))><i class="fas fa-plus mr-2"></i>{{ $page->copy->text('BUTTON_CREATE_USER') }}</button>
-            @if ($adminPauseSettings->departments === [])<a class="btn btn-outline mb-4" href="admin.php?section=departments">Zuerst Abteilung anlegen</a>@endif
+            <button type="button" class="btn btn-primary mb-4" id="toggleUserForm" @disabled($adminPauseSettings->departments === [] || ! $adminPauseSettings->enabled || ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled']))><i class="fas fa-plus mr-2" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M4 12h16"/></svg></i>{{ $page->copy->text('BUTTON_CREATE_USER') }}</button>
+            @if ($adminPauseSettings->departments === [])<a class="btn btn-outline-secondary mb-4" href="admin.php?section=departments">Zuerst Abteilung anlegen</a>@endif
             @php($createUserDraft = $adminPauseSettings->createUserDraft)
             <div id="userForm" class="{{ $createUserDraft === null ? 'hidden ' : '' }}mb-6">
                 <form method="post" class="space-y-4">
@@ -61,39 +55,39 @@
                     @csrf
                     <input type="hidden" name="add_user" value="1">
                     <fieldset @disabled(! $adminPauseSettings->enabled || ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled'])) class="chrono-user-create-grid">
-                    <div class="form-control">
+                    <div class="chrono-field">
                         <label class="label" for="username"><span class="label-text">{{ $page->copy->text('FORM_USERNAME') }}</span></label>
-                        <input type="text" id="username" name="username"@if ($createUserDraft !== null) value="{{ $createUserDraft['username'] ?? '' }}"@endif class="input input-bordered" required>
+                        <input type="text" id="username" name="username"@if ($createUserDraft !== null) value="{{ $createUserDraft['username'] ?? '' }}"@endif class="input input-bordered form-control" required>
                     </div>
-                    <div class="form-control">
+                    <div class="chrono-field">
                         <label class="label" for="password"><span class="label-text">{{ $page->copy->text('FORM_PASSWORD') }}</span></label>
-                        <input type="password" id="password" name="password" class="input input-bordered" required>
+                        <input type="password" id="password" name="password" class="input input-bordered form-control" required>
                     </div>
-                    <div class="form-control">
+                    <div class="chrono-field">
                         <label class="label" for="email"><span class="label-text">{{ $page->copy->text('FORM_EMAIL') }}</span></label>
-                        <input type="email" id="email" name="email"@if ($createUserDraft !== null) value="{{ $createUserDraft['email'] ?? '' }}"@endif class="input input-bordered" required>
+                        <input type="email" id="email" name="email"@if ($createUserDraft !== null) value="{{ $createUserDraft['email'] ?? '' }}"@endif class="input input-bordered form-control" required>
                     </div>
-                    <div class="form-control">
+                    <div class="chrono-field">
                         <label class="label" for="role"><span class="label-text">{{ $page->copy->text('FORM_ROLE') }}</span></label>
-                        <select id="role" name="role" class="select select-bordered" required>
+                        <select id="role" name="role" class="select select-bordered form-select" required>
                             @if ($createUserDraft !== null)<option value="" disabled selected>Rolle erneut wählen</option>@endif
                             <option value="user">{{ $page->copy->text('FORM_ROLE_USER') }}</option>
                             <option value="admin">{{ $page->copy->text('FORM_ROLE_ADMIN') }}</option>
                             <option value="supervisor">{{ $page->copy->text('FORM_ROLE_SUPERVISOR') }}</option>
                         </select>
                     </div>
-                    <div class="form-control">
+                    <div class="chrono-field">
                         <label class="label" for="department"><span class="label-text">{{ $page->copy->text('FORM_DEPARTMENT') }}</span></label>
-                        <select id="department" name="department" class="select select-bordered" required>
+                        <select id="department" name="department" class="select select-bordered form-select" required>
                             @if ($createUserDraft !== null)<option value="" disabled selected>Abteilung erneut wählen</option>@endif
                             @foreach ($adminPauseSettings->departments as $department)
                             <option value="{{ $department['id'] }}">{{ $department['name'] }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="form-control">
+                    <div class="chrono-field">
                         <label class="label" for="supervisor"><span class="label-text">{{ $page->copy->text('FORM_SUPERVISOR') }}</span></label>
-                        <select id="supervisor" name="supervisor" class="select select-bordered">
+                        <select id="supervisor" name="supervisor" class="select select-bordered form-select">
                             @if ($createUserDraft !== null)<option value="" disabled selected>Vorgesetzten oder ausdrücklich keinen erneut wählen</option>@endif
                             <option value="">{{ $page->copy->text('FORM_NO_SUPERVISOR') }}</option>
                             @foreach ($adminPauseSettings->supervisors as $supervisor)
@@ -101,23 +95,23 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="form-control">
+                    <div class="chrono-field">
                         <label class="label" for="regelarbeitszeit"><span class="label-text">{{ $page->copy->text('FORM_REGULAR_WORKING_HOURS') }}</span></label>
-                        <input type="number" id="regelarbeitszeit" name="regelarbeitszeit" value="{{ $createUserDraft['regelarbeitszeit'] ?? '8' }}" class="input input-bordered" step="0.01" required>
+                        <input type="number" id="regelarbeitszeit" name="regelarbeitszeit" value="{{ $createUserDraft['regelarbeitszeit'] ?? '8' }}" class="input input-bordered form-control" step="0.01" required>
                     </div>
-                    <div class="form-control">
+                    <div class="chrono-field">
                         <label class="label" for="ueberstunden"><span class="label-text">{{ $page->copy->text('UI_CARRY_IN') }}</span></label>
-                        <input type="number" id="ueberstunden" name="ueberstunden" class="input input-bordered" step="0.01" value="{{ $createUserDraft === null ? '0' : ($createUserDraft['ueberstunden'] ?? '') }}">
+                        <input type="number" id="ueberstunden" name="ueberstunden" class="input input-bordered form-control" step="0.01" value="{{ $createUserDraft === null ? '0' : ($createUserDraft['ueberstunden'] ?? '') }}">
                     </div>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus mr-2"></i>{{ $page->copy->text('BUTTON_CREATE_USER') }}</button>
+                    <button type="submit" class="btn btn-primary"><x-chrono-icon name="user" size="18" />{{ $page->copy->text('BUTTON_CREATE_USER') }}</button>
                     </fieldset>
                 </form>
             </div>
             <div id="user-detail-error" class="alert alert-error mb-4 hidden" role="alert"></div>
             <form action="" method="GET" class="mb-4">
-                <div class="form-control"><div class="input-group">
-                    <input type="text" name="search" id="userSearch" class="input input-bordered" placeholder="{{ $page->copy->text('SEARCH_USERS') }}" value="{{ $adminPauseSettings->users['search'] ?? '' }}">
-                    <button class="btn btn-square" type="submit"><i class="fas fa-search"></i></button>
+                <div class="chrono-field"><div class="input-group">
+                    <input type="text" name="search" id="userSearch" aria-label="Benutzer suchen" class="input input-bordered form-control" placeholder="{{ $page->copy->text('SEARCH_USERS') }}" value="{{ $adminPauseSettings->users['search'] ?? '' }}">
+                    <button class="btn btn-square" type="submit"><i class="fas fa-search" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg></i></button>
                 </div></div>
             </form>
 
@@ -128,8 +122,8 @@
 
                         <th class="text-left">{{ $page->copy->text('TABLE_HEADER_ROLE') }}</th>
                         <th class="text-left">{{ $page->copy->text('TABLE_HEADER_DEPARTMENT') }}</th>
-                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_SUPERVISOR') }}</th>
-                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_REGULAR_WORKING_HOURS') }}</th>
+                        <th class="text-left">Vorgesetzte Person</th>
+                        <th class="text-left">Std. / Tag</th>
                         <th class="text-left">{{ $page->copy->text('UI_CARRY_IN') }}</th>
                         <th class="text-left">{{ $page->copy->text('TABLE_HEADER_ACTIONS') }}</th>
                     </tr></thead>
@@ -140,18 +134,18 @@
                             <td>{{ $user['department_name'] ?? '' }}@if (($user['department_reference_status'] ?? null) === 'missing')<small class="block text-warning mt-1">Zugeordnete Abteilung fehlt. Zuordnung über „Bearbeiten“ prüfen.</small>@elseif (in_array($user['department_reference_status'] ?? null, ['invalid', 'unknown'], true))<small class="block text-warning mt-1">Abteilungszuordnung nicht eindeutig prüfbar. Bestand über „Bearbeiten“ prüfen.</small>@endif</td><td>{{ $user['supervisor_name'] ?? '' }}@if (($user['supervisor_reference_status'] ?? null) === 'missing')<small class="block text-warning mt-1">Zugeordnete vorgesetzte Person fehlt. Zuordnung über „Bearbeiten“ prüfen.</small>@elseif (in_array($user['supervisor_reference_status'] ?? null, ['invalid', 'unknown'], true))<small class="block text-warning mt-1">Vorgesetztenzuordnung nicht eindeutig prüfbar. Bestand über „Bearbeiten“ prüfen.</small>@endif</td>
                             <td>{{ number_format((float)$user['regelarbeitszeit'], 2, ',', '') }} h</td><td>{{ number_format((float)$user['ueberstunden'], 2, ',', '') }} h</td>
                             <td>
-                                <button type="button" class="btn btn-ghost btn-sm" data-read-user="{{ $user['id'] }}" title="{{ $page->copy->text('BUTTON_EDIT') }}"><i class="fas fa-edit"></i></button>
+                                <button type="button" class="btn btn-ghost btn-sm" data-read-user="{{ $user['id'] }}" title="{{ $page->copy->text('BUTTON_EDIT') }}" aria-label="{{ $page->copy->text('BUTTON_EDIT') }}"><span>Bearbeiten</span></button>
                                 @if (($user['has_audit_history'] ?? false) === true)
-                                <span class="badge badge-ghost" title="{{ $page->copy->text('ADMIN_USER_DELETE_HISTORY_LOCKED') }}">Geschützt</span>
+                                <span class="sr-only">{{ $page->copy->text('ADMIN_USER_DELETE_HISTORY_LOCKED') }}</span>
                                 @elseif ($managedUsersEnabled)
                                 <form method="post" class="inline" data-delete-managed-user>
                                     @csrf
                                     <input type="hidden" name="delete_user" value="1">
                                     <input type="hidden" name="user_id" value="{{ $user['id'] }}">
-                                    <button type="submit" class="btn btn-ghost btn-sm" title="{{ $page->copy->text('BUTTON_DELETE') }}"><i class="fas fa-trash-alt"></i></button>
+                                    <button type="submit" class="btn btn-ghost btn-sm" title="{{ $page->copy->text('BUTTON_DELETE') }}"><i class="fas fa-trash-alt" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg></i></button>
                                 </form>
                                 @else
-                                <button type="button" class="btn btn-ghost btn-sm" title="{{ $page->copy->text('BUTTON_DELETE') }}" disabled aria-describedby="user-mutations-hold"><i class="fas fa-trash-alt"></i></button>
+                                <button type="button" class="btn btn-ghost btn-sm" title="{{ $page->copy->text('BUTTON_DELETE') }}" disabled aria-describedby="user-mutations-hold"><i class="fas fa-trash-alt" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg></i></button>
                                 @endif
                                 <details class="chrono-row-actions"><summary>Weitere Aktionen</summary><div>
                                 @if (isset($adminPauseSettings->lifecycleUsers[$user['id']]))
@@ -163,7 +157,7 @@
                                     <input type="hidden" name="revoke_ldap_sessions" value="1">
                                     <input type="hidden" name="user_id" value="{{ $user['id'] }}">
                                     <input type="hidden" name="confirmation" value="{{ $adminPauseSettings->ldapSessionConfirmations[$user['id']] }}">
-                                    <label class="label cursor-pointer inline-flex gap-2"><input type="checkbox" class="checkbox checkbox-sm" name="confirm" value="1" required><span class="label-text">Sitzungen für {{ $user['username'] }} beenden</span></label>
+                                    <label class="form-check d-flex align-items-start gap-2 mb-2"><input type="checkbox" class="checkbox checkbox-sm form-check-input" name="confirm" value="1" required><span class="form-check-label">Sitzungen für {{ $user['username'] }} beenden</span></label>
                                     <button type="submit" class="btn btn-ghost btn-sm">LDAP-Sitzungen beenden</button>
                                 </form>
                                 @endif
@@ -188,17 +182,17 @@
 
 </section>
 <section class="chrono-admin-pane" data-admin-pane="departments" @if($adminSection !== 'departments') hidden @endif>
-    <div id="department-management" class="card bg-base-100 shadow-xl mb-8">
+    <div id="department-management" class="card mb-4">
+        <div class="card-header"><h2 class="card-title">Abteilungen</h2></div>
         <div class="card-body">
-            <h2 class="card-title text-2xl mb-4">{{ $page->copy->text('DEPARTMENT_MANAGEMENT_TITLE') }}</h2>
-            <form method="post" class="flex space-x-2 mb-4">
+            <form method="post" class="d-flex flex-wrap align-items-center gap-2 mb-3">
                 @csrf
                 <input type="hidden" name="add_department" value="1">
-                <input type="text" name="department_name" class="input input-bordered flex-grow" placeholder="{{ $page->copy->text('FORM_NEW_DEPARTMENT') }}" required @disabled(! $adminPauseSettings->enabled)>
-                <button type="submit" class="btn btn-primary" @disabled(! $adminPauseSettings->enabled)><i class="fas fa-plus mr-2"></i>{{ $page->copy->text('BUTTON_ADD_DEPARTMENT') }}</button>
+                <input type="text" name="department_name" aria-label="Neue Abteilung" class="input input-bordered flex-grow form-control" placeholder="{{ $page->copy->text('FORM_NEW_DEPARTMENT') }}" required @disabled(! $adminPauseSettings->enabled)>
+                <button type="submit" class="btn btn-primary" @disabled(! $adminPauseSettings->enabled)><i class="fas fa-plus mr-2" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M4 12h16"/></svg></i>{{ $page->copy->text('BUTTON_ADD_DEPARTMENT') }}</button>
             </form>
-            <div class="form-control mb-4">
-                <input type="text" id="departmentSearch" class="input input-bordered" placeholder="{{ $page->copy->text('SEARCH_DEPARTMENTS') }}">
+            <div class="chrono-field mb-4">
+                <input type="text" id="departmentSearch" aria-label="Abteilungen suchen" class="input input-bordered form-control" placeholder="{{ $page->copy->text('SEARCH_DEPARTMENTS') }}">
             </div>
             <table class="table w-full">
                 <thead><tr>
@@ -212,12 +206,12 @@
                         <td>{{ $department['id'] }}</td>
                         <td>{{ $department['name'] }}</td>
                         <td>
-                            <button type="button" class="btn btn-ghost btn-sm" data-edit-department data-department-id="{{ $department['id'] }}" data-department-name="{{ json_encode($department['name'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) }}" title="{{ $page->copy->text('BUTTON_EDIT') }}" @disabled(! $adminPauseSettings->enabled)><i class="fas fa-edit"></i></button>
+                            <button type="button" class="btn btn-ghost btn-sm" data-edit-department data-department-id="{{ $department['id'] }}" data-department-name="{{ json_encode($department['name'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) }}" title="{{ $page->copy->text('BUTTON_EDIT') }}" @disabled(! $adminPauseSettings->enabled)><i class="fas fa-edit" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 4 4M4 20l4-1L21 6l-4-4L4 15z"/></svg></i></button>
                             <form method="post" class="inline" data-delete-department>
                                 @csrf
                                 <input type="hidden" name="delete_department" value="1">
                                 <input type="hidden" name="department_id" value="{{ $department['id'] }}">
-                                <button type="submit" class="btn btn-ghost btn-sm" title="{{ $page->copy->text('BUTTON_DELETE') }}" @disabled(! $adminPauseSettings->enabled)><i class="fas fa-trash-alt"></i></button>
+                                <button type="submit" class="btn btn-ghost btn-sm" title="{{ $page->copy->text('BUTTON_DELETE') }}" @disabled(! $adminPauseSettings->enabled)><i class="fas fa-trash-alt" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg></i></button>
                             </form>
                         </td>
                     </tr>
@@ -229,31 +223,33 @@
 
 </section>
 <section class="chrono-admin-pane" data-admin-pane="rules" @if($adminSection !== 'rules') hidden @endif>
-    <div id="pause-settings" class="card bg-base-100 shadow-xl mb-8">
+    <div id="pause-settings" class="card mb-4">
+        <div class="card-header"><h2 class="card-title">Pausenregeln</h2></div>
         <div class="card-body">
-            <h2 class="card-title text-2xl mb-4">{{ $page->copy->text('PAUSE_SETTINGS_TITLE') }}</h2>
             <form method="post" class="space-y-4">
                 @csrf
                 <input type="hidden" name="update_pause_settings" value="1">
                 <fieldset @disabled(! $adminPauseSettings->enabled) class="space-y-4">
-                <table class="table w-full" id="pauseSettingsTable">
+                <div class="table-responsive"><table class="table table-vcenter mb-3" id="pauseSettingsTable">
                     <thead><tr>
-                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_HOURS_THRESHOLD') }}</th>
-                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_MINIMUM_PAUSE') }}</th>
+                        <th class="text-left">Arbeitszeit ab (Std.)</th>
+                        <th class="text-left">Mindestpause (Min.)</th>
                         <th class="text-left">{{ $page->copy->text('TABLE_HEADER_ACTIONS') }}</th>
                     </tr></thead>
                     <tbody>
                     @foreach ($adminPauseSettings->rules as $setting)
                         <tr>
-                            <td><input type="number" name="hours_threshold[]" class="input input-bordered w-full" value="{{ $setting['hours_threshold'] }}" required></td>
-                            <td><input type="number" name="minimum_pause[]" class="input input-bordered w-full" value="{{ $setting['minimum_pause'] }}" required></td>
-                            <td><button type="button" class="btn btn-ghost btn-sm remove-row" title="{{ $page->copy->text('BUTTON_DELETE') }}"><i class="fas fa-trash-alt"></i></button></td>
+                            <td><input type="number" name="hours_threshold[]" aria-label="Arbeitszeit ab (Stunden)" class="input input-bordered w-full form-control" value="{{ $setting['hours_threshold'] }}" required></td>
+                            <td><input type="number" name="minimum_pause[]" aria-label="Mindestpause (Minuten)" class="input input-bordered w-full form-control" value="{{ $setting['minimum_pause'] }}" required></td>
+                            <td><button type="button" class="btn btn-ghost btn-sm remove-row" title="{{ $page->copy->text('BUTTON_DELETE') }}"><i class="fas fa-trash-alt" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg></i></button></td>
                         </tr>
                     @endforeach
                     </tbody>
-                </table>
-                <button type="button" id="addRow" class="btn btn-secondary"><i class="fas fa-plus mr-2"></i>{{ $page->copy->text('BUTTON_ADD_ROW') }}</button>
-                <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-2"></i>{{ $page->copy->text('BUTTON_SAVE_CHANGES') }}</button>
+                </table></div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                <button type="button" id="addRow" class="btn btn-outline-secondary"><i class="fas fa-plus mr-2" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M4 12h16"/></svg></i>Regel ergänzen</button>
+                <button type="submit" class="btn btn-primary ms-auto"><i class="fas fa-save mr-2" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h12l4 4v14H3V3zM7 3v6h10V3M7 21v-8h10v8"/></svg></i>Speichern</button>
+                </div>
                 </fieldset>
             </form>
         </div>
@@ -262,28 +258,29 @@
 </section>
 <section class="chrono-admin-pane" data-admin-pane="access" @if($adminSection !== 'access') hidden @endif>
     @if ($adminPauseSettings->localSecurityControls && $adminPauseSettings->intakePolicy !== null)
-    <div id="user-intake-policy" class="card bg-base-100 shadow-xl mb-8">
+    <div id="user-intake-policy" class="card mb-4">
+        <div class="card-header"><h2 class="card-title">Neue Konten</h2>
+            <div class="card-actions"><x-chrono-help label="Welche Aufnahmewege sind erlaubt?"><p>Aufnahmewege unabhängig freigeben. Bestehende Konten und Anmeldungen bleiben unverändert; die Erst-Admin-Einrichtung ist davon getrennt. LDAP benötigt zusätzlich einen zugelassenen Connector; Speichern startet keinen Verzeichnislauf.</p><p>Stand: Revision {{ $adminPauseSettings->intakePolicy['revision'] }}. Veraltete Formulare überschreiben keine neuere Auswahl. Alle Wege dürfen aus sein; lokale Administration kann die Auswahl trotzdem wieder ändern.</p></x-chrono-help></div>
+        </div>
         <div class="card-body">
-            <h2 class="card-title text-2xl mb-4">Benutzeraufnahme</h2>
-            <x-chrono-help><p class="mb-4">Aufnahmewege unabhängig freigeben. Bestehende Konten und Anmeldungen bleiben unverändert; die Erst-Admin-Einrichtung ist davon getrennt. LDAP benötigt zusätzlich einen zugelassenen Connector; Speichern startet keinen Verzeichnislauf.</p></x-chrono-help>
-            <form method="post" class="space-y-4">
+            <form method="post">
                 @csrf
                 <input type="hidden" name="update_intake_policy" value="1">
                 <input type="hidden" name="revision" value="{{ $adminPauseSettings->intakePolicy['revision'] }}">
-                <fieldset @disabled(! $adminPauseSettings->enabled) class="space-y-4">
-                    @foreach (['manual_enabled' => 'Manuelle Anlage', 'ldap_sync_enabled' => 'LDAP-Synchronisierung', 'registration_enabled' => 'Öffentliche Selbstregistrierung'] as $field => $label)
-                    <div class="form-control">
-                        <label class="label" for="intake-{{ $field }}"><span class="label-text">{{ $label }}</span></label>
-                        <select class="select select-bordered" id="intake-{{ $field }}" name="{{ $field }}">
-                            <option value="0" @selected(! $adminPauseSettings->intakePolicy[$field])>Aus</option>
-                            <option value="1" @selected($adminPauseSettings->intakePolicy[$field])>An</option>
-                        </select>
-                    </div>
+                <fieldset @disabled(! $adminPauseSettings->enabled)>
+                    <div class="table-responsive"><table class="table table-vcenter mb-3"><tbody>
+                    @foreach (['manual_enabled' => 'Direkt anlegen', 'ldap_sync_enabled' => 'LDAP-Abgleich', 'registration_enabled' => 'Selbst registrieren'] as $field => $label)
+                        <tr><th scope="row"><label class="form-label mb-0" for="intake-{{ $field }}">{{ $label }}</label></th><td>
+                            <select class="select select-bordered form-select" id="intake-{{ $field }}" name="{{ $field }}">
+                                <option value="0" @selected(! $adminPauseSettings->intakePolicy[$field])>Deaktiviert</option>
+                                <option value="1" @selected($adminPauseSettings->intakePolicy[$field])>Erlaubt</option>
+                            </select>
+                        </td></tr>
                     @endforeach
-                    <button class="btn btn-primary">Aufnahmewege speichern</button>
+                    </tbody></table></div>
+                    <button type="submit" class="btn btn-primary">Speichern</button>
                 </fieldset>
             </form>
-            <x-chrono-help><p class="text-sm opacity-70 mt-3">Stand: Revision {{ $adminPauseSettings->intakePolicy['revision'] }}. Veraltete Formulare überschreiben keine neuere Auswahl. Alle Wege dürfen aus sein; lokale Administration kann die Auswahl trotzdem wieder ändern.</p></x-chrono-help>
         </div>
     </div>
     @endif
@@ -293,17 +290,24 @@
 
 </section>
 <section class="chrono-admin-pane" data-admin-pane="system" @if($adminSection !== 'system') hidden @endif>
-    @if ($holidayRefillEnabled ?? false)
-        @include('chrono.partials.holiday-refill')
-    @endif
     @if (($apiManagement ?? null) !== null)
         @include('chrono.partials.api-management')
     @elseif ($apiManagementUnavailable ?? false)
-        <p class="alert alert-warning" role="alert">API-Verwaltung nicht bestätigt. Es wird kein Schlüssel oder Freigabestand automatisch repariert oder zurückgesetzt.</p>
+        <div class="alert alert-warning" role="alert">API-Einstellungen derzeit nicht verfügbar. <x-chrono-help><p>API-Verwaltung nicht bestätigt. Es wird kein Schlüssel oder Freigabestand automatisch repariert oder zurückgesetzt.</p></x-chrono-help></div>
     @endif
-    @if ($adminPauseSettings->localSecurityControls) @include('chrono.partials.department-integrity') @endif
-    @if (($runtimeObservation ?? null) !== null)
-        @include('chrono.partials.runtime-observation', ['observation' => $runtimeObservation])
+    @if ($holidayRefillEnabled ?? false)
+        @include('chrono.partials.holiday-refill')
+    @endif
+    @if ($adminPauseSettings->localSecurityControls || ($runtimeObservation ?? null) !== null)
+    <details class="chrono-disclosure mt-4" id="admin-diagnostics" @if ($adminPauseSettings->departmentIntegrityRequested || (($runtimeObservation ?? null) !== null && $runtimeObservation->requested)) open @endif>
+        <summary>Diagnose</summary>
+        <div class="mt-3">
+            @if ($adminPauseSettings->localSecurityControls) @include('chrono.partials.department-integrity') @endif
+            @if (($runtimeObservation ?? null) !== null)
+                @include('chrono.partials.runtime-observation', ['observation' => $runtimeObservation])
+            @endif
+        </div>
+    </details>
     @endif
 
 </section>
@@ -315,6 +319,8 @@ document.addEventListener('DOMContentLoaded', function () {
  if (pane) {
   document.querySelectorAll('[data-admin-pane]').forEach(el=>{el.hidden=el.dataset.adminPane!==pane;});
   document.querySelectorAll('.chrono-admin-tabs a').forEach(el=>{if(new URL(el.href).searchParams.get('section')===pane)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});
+  let target=document.getElementById(location.hash.slice(1));
+  while(target) { if(target.tagName==='DETAILS') target.open=true; target=target.parentElement; }
  }
 });
 </script>
@@ -336,27 +342,27 @@ document.addEventListener('DOMContentLoaded', function () {
         <div id="user-detail-hold" class="alert alert-info mb-4" role="note">Nur lesende Benutzerdetails. Änderungen und Passwortaktionen sind nicht verbunden; es gibt hier keine Speicherung.</div>
         @endunless
         <input type="hidden" id="edit_user_id" name="user_id">
-        <div class="form-control mb-4"><label class="label" for="edit_username"><span class="label-text">{{ $page->copy->text('FORM_USERNAME') }}</span></label><input type="text" id="edit_username" name="username" class="input input-bordered" required @readonly(! $managedUsersEnabled)></div>
-        <div class="form-control mb-4"><label class="label" for="edit_email"><span class="label-text">{{ $page->copy->text('FORM_EMAIL') }}</span></label><input type="email" id="edit_email" name="email" class="input input-bordered" required @readonly(! $managedUsersEnabled)></div>
-        <div class="form-control mb-4"><label class="label" for="edit_role"><span class="label-text">{{ $page->copy->text('FORM_ROLE') }}</span></label>
-            <select id="edit_role" name="role" class="select select-bordered" required @disabled(! $managedUsersEnabled)>
+        <div class="chrono-field mb-4"><label class="label" for="edit_username"><span class="label-text">{{ $page->copy->text('FORM_USERNAME') }}</span></label><input type="text" id="edit_username" name="username" class="input input-bordered form-control" required @readonly(! $managedUsersEnabled)></div>
+        <div class="chrono-field mb-4"><label class="label" for="edit_email"><span class="label-text">{{ $page->copy->text('FORM_EMAIL') }}</span></label><input type="email" id="edit_email" name="email" class="input input-bordered form-control" required @readonly(! $managedUsersEnabled)></div>
+        <div class="chrono-field mb-4"><label class="label" for="edit_role"><span class="label-text">{{ $page->copy->text('FORM_ROLE') }}</span></label>
+            <select id="edit_role" name="role" class="select select-bordered form-select" required @disabled(! $managedUsersEnabled)>
                 <option value="user">{{ $page->copy->text('FORM_ROLE_USER') }}</option><option value="admin">{{ $page->copy->text('FORM_ROLE_ADMIN') }}</option><option value="supervisor">{{ $page->copy->text('FORM_ROLE_SUPERVISOR') }}</option>
             </select>
         </div>
-        <div class="form-control mb-4"><label class="label" for="edit_department"><span class="label-text">{{ $page->copy->text('FORM_DEPARTMENT') }}</span></label><select id="edit_department" name="department" class="select select-bordered" required @disabled(! $managedUsersEnabled)>
+        <div class="chrono-field mb-4"><label class="label" for="edit_department"><span class="label-text">{{ $page->copy->text('FORM_DEPARTMENT') }}</span></label><select id="edit_department" name="department" class="select select-bordered form-select" required @disabled(! $managedUsersEnabled)>
             @if ($managedUsersEnabled) @foreach ($adminPauseSettings->departments as $department)<option value="{{ $department['id'] }}">{{ $department['name'] }}</option>@endforeach @endif
         </select></div>
-        <div class="form-control mb-4"><label class="label" for="edit_supervisor"><span class="label-text">{{ $page->copy->text('FORM_SUPERVISOR') }}</span></label><select id="edit_supervisor" name="supervisor" class="select select-bordered" @disabled(! $managedUsersEnabled)>
+        <div class="chrono-field mb-4"><label class="label" for="edit_supervisor"><span class="label-text">{{ $page->copy->text('FORM_SUPERVISOR') }}</span></label><select id="edit_supervisor" name="supervisor" class="select select-bordered form-select" @disabled(! $managedUsersEnabled)>
             @if ($managedUsersEnabled)
             <option value="">{{ $page->copy->text('FORM_NO_SUPERVISOR') }}</option>
             @foreach ($adminPauseSettings->supervisors as $supervisor)<option value="{{ $supervisor['id'] }}">{{ $supervisor['username'] }}</option>@endforeach
             @endif
         </select></div>
-        <div class="form-control mb-4"><label class="label" for="edit_regelarbeitszeit"><span class="label-text">{{ $page->copy->text('FORM_REGULAR_WORKING_HOURS') }}</span></label>
-            <p>Änderungen am Soll bitte unter <a href="work_models.php">Arbeitszeitmodelle</a> mit Gültigkeitsdatum speichern.</p><input readonly type="number" id="edit_regelarbeitszeit" name="regelarbeitszeit" class="input input-bordered" step="0.01" required>
+        <div class="chrono-field mb-4"><label class="label" for="edit_regelarbeitszeit"><span class="label-text">{{ $page->copy->text('FORM_REGULAR_WORKING_HOURS') }}</span></label>
+            <p>Änderungen am Soll bitte unter <a href="work_models.php">Arbeitszeitmodelle</a> mit Gültigkeitsdatum speichern.</p><input readonly type="number" id="edit_regelarbeitszeit" name="regelarbeitszeit" class="input input-bordered form-control" step="0.01" required>
         </div>
-        <div class="form-control mb-4"><label class="label" for="edit_ueberstunden"><span class="label-text">{{ $page->copy->text('UI_CARRY_IN') }}</span></label><input type="number" id="edit_ueberstunden" name="ueberstunden" class="input input-bordered" step="0.01" required @readonly(! $managedUsersEnabled)></div>
-        <div class="form-control mb-4"><label class="label" for="edit_password"><span class="label-text">{{ $page->copy->text('FORM_NEW_PASSWORD') }}</span></label><input type="password" id="edit_password" name="password" class="input input-bordered" value="" autocomplete="new-password" @disabled(! $managedUsersEnabled) @unless ($managedUsersEnabled) aria-describedby="user-detail-hold" @endunless></div>
+        <div class="chrono-field mb-4"><label class="label" for="edit_ueberstunden"><span class="label-text">{{ $page->copy->text('UI_CARRY_IN') }}</span></label><input type="number" id="edit_ueberstunden" name="ueberstunden" class="input input-bordered form-control" step="0.01" required @readonly(! $managedUsersEnabled)></div>
+        <div class="chrono-field mb-4"><label class="label" for="edit_password"><span class="label-text">{{ $page->copy->text('FORM_NEW_PASSWORD') }}</span></label><input type="password" id="edit_password" name="password" class="input input-bordered form-control" value="" autocomplete="new-password" @disabled(! $managedUsersEnabled) @unless ($managedUsersEnabled) aria-describedby="user-detail-hold" @endunless></div>
         <div class="modal-action">
             <button type="{{ $managedUsersEnabled ? 'submit' : 'button' }}" id="save-managed-user" class="btn btn-primary" disabled @unless ($managedUsersEnabled) aria-describedby="user-detail-hold" @endunless>{{ $page->copy->text('BUTTON_SAVE_CHANGES') }}</button>
             <button type="button" class="btn" @if ($page->cspNonce === null) onclick="closeEditUserModal()" @else data-local-close-user @endif>{{ $page->copy->text('BUTTON_CANCEL') }}</button>
@@ -370,9 +376,9 @@ document.addEventListener('DOMContentLoaded', function () {
         <h3 class="font-bold text-lg mb-4">{{ $page->copy->text('MODAL_TITLE_EDIT_DEPARTMENT') }}</h3>
         <input type="hidden" id="edit_department_id" name="department_id">
         <input type="hidden" name="edit_department" value="1">
-        <div class="form-control mb-4">
+        <div class="chrono-field mb-4">
             <label class="label" for="edit_department_name"><span class="label-text">{{ $page->copy->text('FORM_DEPARTMENT_NAME') }}</span></label>
-            <input type="text" id="edit_department_name" name="department_name" class="input input-bordered" required @disabled(! $adminPauseSettings->enabled)>
+            <input type="text" id="edit_department_name" name="department_name" class="input input-bordered form-control" required @disabled(! $adminPauseSettings->enabled)>
         </div>
         <div class="modal-action">
             <button type="submit" class="btn btn-primary" @disabled(! $adminPauseSettings->enabled)>{{ $page->copy->text('BUTTON_SAVE_CHANGES') }}</button>
@@ -389,9 +395,9 @@ document.addEventListener('DOMContentLoaded', function () {
         addRowButton.addEventListener('click', function () {
             const newRow = pauseSettingsTable.insertRow(-1);
             newRow.innerHTML = `
-                <td><input type="number" name="hours_threshold[]" class="input input-bordered w-full" required></td>
-                <td><input type="number" name="minimum_pause[]" class="input input-bordered w-full" required></td>
-                <td><button type="button" class="btn btn-ghost btn-sm remove-row"><i class="fas fa-trash-alt"></i></button></td>
+                <td><input type="number" name="hours_threshold[]" aria-label="Arbeitszeit ab (Stunden)" class="input input-bordered w-full form-control" required></td>
+                <td><input type="number" name="minimum_pause[]" aria-label="Mindestpause (Minuten)" class="input input-bordered w-full form-control" required></td>
+                <td><button type="button" class="btn btn-ghost btn-sm remove-row"><i class="fas fa-trash-alt" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg></i></button></td>
             `;
             newRow.querySelector('.remove-row').title = {!! \Illuminate\Support\Js::from($page->copy->text('BUTTON_DELETE')) !!};
         });

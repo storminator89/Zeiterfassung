@@ -2,102 +2,14 @@
 
 @section('content')
 {{-- Native supervisor UI only. Route/chrome and existing Chart asset admission remain separate; no executable CDN is added. --}}
-<style>
-        /* Remove the specific background-color from [data-theme="dark"] as it's not needed */
-        .chrono-supervisor {
-            color: hsl(var(--bc));
-        }
 
-        /* Existing styles */
-        .chrono-supervisor .modal-box {
-            width: 90vw;
-            max-width: 70vw;
-            height: 70vh;
-            max-height: 90vh;
-        }
-
-        .chrono-supervisor th {
-            text-align: left !important;
-        }
-
-        /* Card animations */
-        .chrono-supervisor .stats-card {
-            transition: transform 0.2s ease-in-out;
-        }
-
-        .chrono-supervisor .stats-card:hover {
-            transform: translateY(-5px);
-        }
-
-        /* Loading animation */
-        .chrono-supervisor .loading-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 200px;
-        }
-
-        /* Search bar styles */
-        .chrono-supervisor .search-container {
-            margin-bottom: 1rem;
-        }
-
-        .chrono-supervisor .search-input {
-            width: 100%;
-            max-width: 300px;
-        }
-
-        /* Filter badges */
-        .chrono-supervisor .filter-badge {
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .chrono-supervisor .filter-badge:hover {
-            transform: scale(1.05);
-        }
-
-        /* Chart container */
-        .chrono-supervisor .chart-container {
-            position: relative;
-            height: 300px;
-            margin-bottom: 2rem;
-        }
-
-        /* Native utility equivalents: scoped here instead of a remote JS CSS compiler. */
-        .chrono-supervisor .min-h-screen { min-height: 100vh; }
-        .chrono-supervisor .text-4xl { font-size: 2.25rem; line-height: 2.5rem; }
-        .chrono-supervisor .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
-        .chrono-supervisor .mb-8 { margin-bottom: 2rem; }
-        .chrono-supervisor .mb-12 { margin-bottom: 3rem; }
-        .chrono-supervisor .gap-4 { gap: 1rem; }
-        .chrono-supervisor .justify-end { justify-content: flex-end; }
-        .chrono-supervisor .max-w-xs { max-width: 20rem; }
-        .chrono-supervisor .col-span-full { grid-column: 1 / -1; }
-        .chrono-supervisor .space-y-6 > * + * { margin-top: 1.5rem; }
-        .chrono-supervisor .hover\:shadow-2xl:hover { box-shadow: 0 25px 50px -12px rgb(0 0 0 / .25); }
-        .chrono-supervisor .transition-shadow { transition-property: box-shadow; }
-        .chrono-supervisor .duration-300 { transition-duration: 300ms; }
-        .chrono-supervisor .transition-transform { transition-property: transform; }
-        .chrono-supervisor .duration-200 { transition-duration: 200ms; }
-        @media (min-width: 1024px) {
-            .chrono-supervisor .lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .chrono-supervisor .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-        }
-        @media (min-width: 1280px) {
-            .chrono-supervisor .xl\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-        }
-</style>
-<div class="min-h-screen bg-base-100 chrono-supervisor">
+<div class="chrono-supervisor">
     <div class="container mx-auto px-4 py-8">
-            <h2 class="text-4xl font-bold mb-8 text-center">{{ $supervisor->text('SUPERVISOR_TIMES_TITLE') }}</h2>
-
-            @include('chrono.partials.team-time-review')
+            <header class="page-header mb-4"><h1 class="page-title"><x-chrono-icon name="users" size="24" /> Team</h1></header>
 
             @if (in_array($page->role, ['supervisor', 'admin'], true) && isset($supervisor->report['team_status']))
-                <section class="card bg-base-100 shadow-xl mb-8" aria-labelledby="teamStatusTitle">
-                    <div class="card-body">
-                        <h3 id="teamStatusTitle" class="card-title">{{ $supervisor->text('TEAM_STATUS_TITLE') }}</h3>
+                <section class="card mb-4" aria-labelledby="teamStatusTitle">
+                    <div class="card-header"><h2 id="teamStatusTitle" class="card-title">{{ $supervisor->text('TEAM_STATUS_TITLE') }}</h2></div><div class="card-body">
                         <x-chrono-help><p class="text-sm opacity-70">{{ $supervisor->text('TEAM_STATUS_SNAPSHOT_NOTE') }} <time datetime="{{ $supervisor->report['team_status']['loaded_at'] }}">{{ $supervisor->report['team_status']['loaded_at'] }}</time></p></x-chrono-help>
                         <div class="overflow-x-auto">
                             <table class="table table-zebra w-full">
@@ -112,51 +24,13 @@
                                                 default => 'TEAM_STATUS_UNKNOWN',
                                             };
                                         @endphp
-                                        <tr><td>{{ $person['username'] }}</td><td><span class="badge badge-outline">{{ $supervisor->text($stateLabel) }}</span></td></tr>
+                                        <tr><td>{{ $person['username'] }}</td><td><span class="badge bg-secondary-lt">{{ $supervisor->text($stateLabel) }}</span></td></tr>
                                     @empty
                                         <tr><td colspan="2" class="opacity-70">{{ $supervisor->text('TEAM_STATUS_EMPTY') }}</td></tr>
                                     @endforelse
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                </section>
-            @endif
-
-            @if ($supervisor->absenceWeek !== null)
-                @php
-                    $absenceWeek = $supervisor->absenceWeek;
-                @endphp
-                <section class="card bg-base-100 shadow-xl mb-8" aria-labelledby="teamAbsenceTitle">
-                    <div class="card-body">
-                        <h3 id="teamAbsenceTitle" class="card-title">{{ $supervisor->text('TEAM_ABSENCE_TITLE') }}</h3>
-                        <x-chrono-help><p class="text-sm opacity-70">{{ $supervisor->text('TEAM_ABSENCE_NOTE') }}</p></x-chrono-help>
-                        <p class="text-sm">{{ $absenceWeek['from'] }} – {{ $absenceWeek['through'] }} · Europe/Berlin</p>
-                        <form method="get" action="supervisor.php" class="flex flex-wrap gap-4 my-4">
-                            <input type="hidden" name="lang" value="{{ $supervisor->language }}">
-                            <input type="hidden" name="user_search" value="{{ $supervisor->search }}">
-                            @foreach ($supervisor->reviewQuery() as $name => $value)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endforeach
-                            @foreach ($supervisor->periodQuery() as $name => $value)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endforeach
-                            <input type="hidden" name="page" value="{{ $supervisor->report['page'] }}">
-                            <div class="form-control"><label for="team-absence-date">{{ $supervisor->text('TEAM_ABSENCE_DATE') }}</label><input class="input input-bordered" type="date" id="team-absence-date" name="team_date" value="{{ $absenceWeek['from'] }}"></div>
-                            <button class="btn btn-primary self-end">{{ $supervisor->text('TEAM_ABSENCE_SHOW') }}</button>
-                        </form>
-                        <nav class="flex flex-wrap gap-3 mb-4" aria-label="{{ $supervisor->text('TEAM_ABSENCE_NAV') }}">
-                            <a class="btn btn-outline" href="{{ $supervisor->absenceWeekUrl($absenceWeek['previous']) }}">{{ $supervisor->text('TEAM_ABSENCE_PREVIOUS') }}</a>
-                            <a class="btn btn-outline" href="{{ $supervisor->absenceWeekUrl($absenceWeek['today']) }}">{{ $supervisor->text('TEAM_ABSENCE_TODAY') }}</a>
-                            <a class="btn btn-outline" href="{{ $supervisor->absenceWeekUrl($absenceWeek['next']) }}">{{ $supervisor->text('TEAM_ABSENCE_NEXT') }}</a>
-                        </nav>
-                        @if ($absenceWeek['incomplete'] || $absenceWeek['truncated'])<p class="alert alert-warning mb-4" role="status">{{ $supervisor->text('TEAM_ABSENCE_INCOMPLETE') }}</p>@endif
-                        <div class="overflow-x-auto"><table class="table table-zebra w-full">
-                            <caption class="text-sm text-left mb-2">{{ $supervisor->text('TEAM_ABSENCE_LEGEND') }}</caption>
-                            <thead><tr><th scope="col">{{ $supervisor->text('TABLE_HEADER_USERNAME') }}</th>@foreach ($absenceWeek['days'] as $day)<th scope="col"><time datetime="{{ $day }}">{{ $day }}</time></th>@endforeach</tr></thead>
-                            <tbody>@forelse ($absenceWeek['people'] as $person)<tr><th scope="row">{{ $person['username'] }}</th>@foreach ($person['days'] as $absent)<td>{{ $absent ? $supervisor->text('TEAM_ABSENCE_MARKER') : '—' }}</td>@endforeach</tr>@empty<tr><td colspan="8">{{ $supervisor->text('TEAM_STATUS_EMPTY') }}</td></tr>@endforelse</tbody>
-                        </table></div>
-                        <p class="text-sm my-3">{{ $supervisor->text('TEAM_ABSENCE_PAGE') }} {{ $absenceWeek['page'] }} / {{ $absenceWeek['pages'] }}</p>
-                        <nav class="flex flex-wrap gap-3" aria-label="{{ $supervisor->text('TEAM_ABSENCE_PEOPLE') }}">
-                            @if ($absenceWeek['page'] > 1)<a class="btn btn-outline" href="{{ $supervisor->absenceWeekUrl($absenceWeek['from'], $absenceWeek['page'] - 1) }}">{{ $supervisor->text('TEAM_ABSENCE_PEOPLE_PREVIOUS') }}</a>@endif
-                            @if ($absenceWeek['page'] < $absenceWeek['pages'])<a class="btn btn-outline" href="{{ $supervisor->absenceWeekUrl($absenceWeek['from'], $absenceWeek['page'] + 1) }}">{{ $supervisor->text('TEAM_ABSENCE_PEOPLE_NEXT') }}</a>@endif
-                        </nav>
                     </div>
                 </section>
             @endif
@@ -182,102 +56,33 @@
                 <div class="alert alert-warning mb-4" role="alert"><span><strong>Datenqualität: {{ count($supervisor->report['invalid_records']) }} ungültige Zeiteinträge.</strong> Diese Auswertung enthält deshalb keine abschließenden Summen. Bitte die Originaleinträge in der <a class="link" href="history.php">Historie</a> prüfen und durch die betroffene Person mit anschließender Vier-Augen-Freigabe klären. Die <a class="link" href="index.php">eigene Arbeitszeitliste</a> und <a class="link" href="adjustments.php">Korrekturanträge</a> bleiben verfügbar; es wurden keine Zeiten gelöscht oder gekürzt.</span></div>
                 @endif
             @else
-                <!-- Search and Filter Section -->
-                <div class="mb-6">
-                    <div class="flex flex-wrap gap-4 items-center justify-between">
-                        <div class="search-container">
-                            <input type="text"
-                                id="searchInput"
-                                class="input input-bordered search-input"
-                                placeholder="Suche nach Mitarbeiter...">
-                        </div>
-                        <div class="flex gap-2 flex-wrap">
-                            <span class="badge badge-primary filter-badge" data-filter="all">Alle</span>
-                            <span class="badge badge-secondary filter-badge" data-filter="overtime">Überstunden</span>
-                            <span class="badge badge-warning filter-badge" data-filter="undertime">Minusstunden</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Charts Section -->
-                <div class="mb-8">
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div class="card bg-base-100 shadow-xl">
-                            <div class="card-body">
-                                <h3 class="card-title">Überstunden Übersicht</h3>
-                                <x-chrono-help><p class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p></x-chrono-help>
-                                <div class="chart-container">
-                                    <canvas id="overtimeChart"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card bg-base-100 shadow-xl">
-                            <div class="card-body">
-                                <h3 class="card-title">Regelarbeitszeit pro Mitarbeiter</h3>
-                                <div class="chart-container">
-                                    <canvas id="regularHoursChart"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Overtime Cards Section -->
-                <div class="mb-12">
-                    <h3 class="text-2xl font-semibold mb-6">
-                        <i class="fas fa-hourglass mr-2"></i>{{ $supervisor->text('TOTAL_OVERTIME_TITLE') }}
-                    </h3>
-                    <x-chrono-help><p class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p></x-chrono-help>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="overtimeCards">
-                        @if ($supervisor->report['overtime'] !== [])
-                            @foreach ($supervisor->report['overtime'] as $userId => $data)
-                                <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300 fade-in stats-card" data-overtime-minutes="{{ $data['overtime_minutes'] }}">
-                                    <div class="card-body">
-                                        <h2 class="card-title text-lg">{{ $data['username'] }}</h2>
-                                        <p class="text-3xl font-bold {{ substr($data['ueberstunden'], 0, 1) === '-' ? 'text-error' : 'text-success' }}">
-                                            {{ $data['ueberstunden'] }}
-                                        </p>
-                                        <div class="card-actions justify-end">
-                                            <button class="btn btn-primary btn-sm" onclick="showDetails('{{ $userId }}')">Details</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        @else
-                            <p class="col-span-full text-center opacity-70">{{ $supervisor->text('NO_ENTRIES_FOUND') }}</p>
-                        @endif
-                    </div>
-                </div>
-
                 <!-- Time Records Table Section -->
                 <div class="mb-8">
-                    <h3 class="text-2xl font-semibold mb-6">
-                        <i class="fas fa-clock mr-2"></i>{{ $supervisor->text('ACTUAL_WORKED_TIMES') }}
-                    </h3>
-                    <div class="card bg-base-100 shadow-xl">
+                    <div class="card">
+                        <div class="card-header"><h2 class="card-title">{{ $supervisor->text('ACTUAL_WORKED_TIMES') }}</h2></div>
                         <div class="card-body">
                             <!-- Search and Filter Bar -->
                             <x-chrono-help><p class="text-sm opacity-70 mb-4">{{ $supervisor->text('SUPERVISOR_PERIOD_NOTE') }}</p></x-chrono-help>
                             @if ($supervisor->periodInvalid)<div class="alert alert-error mb-4" role="alert">{{ $supervisor->text('SUPERVISOR_PERIOD_INVALID') }}</div>@endif
-                            <form method="get" action="supervisor.php" class="flex flex-wrap gap-4 mb-4">
+                            <form method="get" action="supervisor.php" class="d-flex flex-wrap align-items-end gap-3 mb-4">
                                 @foreach ($supervisor->reviewQuery() as $name => $value)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endforeach
                                 @if ($supervisor->absenceWeek !== null)<input type="hidden" name="team_date" value="{{ $supervisor->absenceWeek['from'] }}"><input type="hidden" name="team_page" value="{{ $supervisor->absenceWeek['page'] }}">@endif
                                 <input type="hidden" name="lang" value="{{ $supervisor->language }}">
-                                <label class="form-control self-center"><span><input class="checkbox checkbox-primary" type="checkbox" name="period" value="1" @checked($supervisor->period !== null || $supervisor->periodInvalid)> {{ $supervisor->text('SUPERVISOR_PERIOD_APPLY') }}</span></label>
-                                <div class="form-control"><label for="supervisor-period-from">{{ $supervisor->text('SUPERVISOR_PERIOD_FROM') }}</label><input class="input input-bordered" type="date" id="supervisor-period-from" name="from" min="0001-01-01" max="9999-12-31" value="{{ $supervisor->period['from'] ?? '' }}"></div>
-                                <div class="form-control"><label for="supervisor-period-to">{{ $supervisor->text('SUPERVISOR_PERIOD_TO') }}</label><input class="input input-bordered" type="date" id="supervisor-period-to" name="to" min="0001-01-01" max="9999-12-31" value="{{ $supervisor->period['to'] ?? '' }}"></div>
-                                @if ($supervisor->period !== null || $supervisor->periodInvalid)<a class="btn btn-outline self-end" href="{{ $supervisor->periodResetUrl() }}">{{ $supervisor->text('SUPERVISOR_PERIOD_CLEAR') }}</a>@endif
-                                <div class="form-control w-full max-w-xs">
-                                    <div class="input-group">
+                                <label class="form-check align-self-center"><span><input class="form-check-input" type="checkbox" name="period" value="1" @checked($supervisor->period !== null || $supervisor->periodInvalid)> {{ $supervisor->text('SUPERVISOR_PERIOD_APPLY') }}</span></label>
+                                <div><label class="form-label" for="supervisor-period-from">{{ $supervisor->text('SUPERVISOR_PERIOD_FROM') }}</label><input class="form-control" type="date" id="supervisor-period-from" name="from" min="0001-01-01" max="9999-12-31" value="{{ $supervisor->period['from'] ?? '' }}"></div>
+                                <div><label class="form-label" for="supervisor-period-to">{{ $supervisor->text('SUPERVISOR_PERIOD_TO') }}</label><input class="form-control" type="date" id="supervisor-period-to" name="to" min="0001-01-01" max="9999-12-31" value="{{ $supervisor->period['to'] ?? '' }}"></div>
+                                @if ($supervisor->period !== null || $supervisor->periodInvalid)<a class="btn btn-outline-secondary align-self-end" href="{{ $supervisor->periodResetUrl() }}">{{ $supervisor->text('SUPERVISOR_PERIOD_CLEAR') }}</a>@endif
+                                <div class="max-w-xs">
+                                    <div class="input-group input-group-flat">
                                         <input type="search"
                                             id="userSearchInput"
                                             name="user_search"
                                             value="{{ $supervisor->search }}"
-                                            class="input input-bordered w-full"
+                                            class="form-control"
                                             aria-label="{{ $supervisor->text('SEARCH_USERS') }}"
                                             placeholder="Mitarbeiter suchen...">
-                                        <button type="submit" class="btn btn-square" aria-label="{{ $supervisor->text('SEARCH_USERS') }}">
-                                            <i class="fas fa-search" aria-hidden="true"></i>
+                                        <button type="submit" class="btn btn-outline-secondary" aria-label="{{ $supervisor->text('SEARCH_USERS') }}">
+                                            <i class="fas fa-search" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg></i>
                                         </button>
                                     </div>
                                 </div>
@@ -299,7 +104,7 @@
                                     <tbody id="timeRecordsBody">
                                         @forelse ($supervisor->report['groups'] as $group)
                                             <tr class="group-header hover:bg-base-200 cursor-pointer" data-user-id="{{ $group['user_id'] }}" data-date="{{ $group['date'] }}">
-                                                <td><button type="button" class="btn btn-ghost btn-xs" aria-expanded="false" aria-controls="{{ $group['detail_id'] }}" aria-label="Details"><i class="fas fa-chevron-right transition-transform duration-200" aria-hidden="true"></i></button></td>
+                                                <td><button type="button" class="btn btn-ghost btn-xs" aria-expanded="false" aria-controls="{{ $group['detail_id'] }}" aria-label="Details"><i class="fas fa-chevron-right transition-transform duration-200" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg></i></button></td>
                                                 <td>{{ $group['username'] }}</td>
                                                 <td>{{ $group['date_formatted'] }}</td>
                                                 <td>{{ $group['duration_formatted'] }}</td>
@@ -343,7 +148,7 @@
                             </div>
                         </div>
                     </div>
-                    @if ($supervisor->report['total_records'] > 0)
+                    @if ($supervisor->report['total_pages'] > 1)
                     <div class="flex justify-center mt-4">
                         <div class="btn-group">
                             @if ($supervisor->report['page'] > 1)
@@ -377,17 +182,127 @@
                     </div>
                     @endif
                 </div>
+                <details class="chrono-disclosure mb-6" id="team-statistics"><summary>Salden und Diagramme</summary><div class="mt-4">                <!-- Search and Filter Section -->
+                <div class="mb-6">
+                    <div class="flex flex-wrap gap-4 items-center justify-between">
+                        <div class="search-container mb-3">
+                            <input type="text"
+                                id="searchInput"
+                                class="form-control search-input"
+                                placeholder="Mitarbeiter suchen" aria-label="Mitarbeiter suchen">
+                        </div>
+                        <div class="flex gap-2 flex-wrap">
+                            <button type="button" class="badge badge-primary filter-badge" data-filter="all">Alle</button>
+                            <button type="button" class="badge badge-secondary filter-badge" data-filter="overtime">Überstunden</button>
+                            <button type="button" class="badge badge-warning filter-badge" data-filter="undertime">Minusstunden</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="mb-8">
+                    <div class="row row-cards">
+                        <div class="col-lg-6"><div class="card">
+                            <div class="card-body">
+                                <h3 class="card-title">Salden</h3>
+                                <x-chrono-help><p class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p></x-chrono-help>
+                                <div class="chart-container">
+                                    <canvas id="overtimeChart"></canvas>
+                                </div>
+                            </div>
+                        </div></div>
+                        <div class="col-lg-6"><div class="card">
+                            <div class="card-body">
+                                <h3 class="card-title">Regelarbeitszeit</h3>
+                                <div class="chart-container">
+                                    <canvas id="regularHoursChart"></canvas>
+                                </div>
+                            </div>
+                        </div></div>
+                    </div>
+                </div>
+
+                <!-- Overtime Cards Section -->
+                <div class="mb-12">
+                    <h3 class="text-2xl font-semibold mb-6">
+                        Salden
+                    </h3>
+                    <x-chrono-help><p class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p></x-chrono-help>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="overtimeCards">
+                        @if ($supervisor->report['overtime'] !== [])
+                            @foreach ($supervisor->report['overtime'] as $userId => $data)
+                                <div class="card stats-card" data-overtime-minutes="{{ $data['overtime_minutes'] }}">
+                                    <div class="card-body">
+                                        <h2 class="card-title text-lg">{{ $data['username'] }}</h2>
+                                        <p class="text-3xl font-bold {{ substr($data['ueberstunden'], 0, 1) === '-' ? 'text-error' : 'text-success' }}">
+                                            {{ $data['ueberstunden'] }}
+                                        </p>
+                                        <div class="card-actions justify-end">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="showDetails('{{ $userId }}')">Details</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        @else
+                            <p class="col-span-full text-center opacity-70">{{ $supervisor->text('NO_ENTRIES_FOUND') }}</p>
+                        @endif
+                    </div>
+                </div>
+
+</div></details>
             @endif
+            @if ($supervisor->absenceWeek !== null)
+                @php
+                    $absenceWeek = $supervisor->absenceWeek;
+                @endphp
+                <details class="chrono-disclosure mb-6" @if (request()->has('team_date') || request()->has('team_page') || $absenceWeek['incomplete'] || $absenceWeek['truncated']) open @endif><summary id="teamAbsenceTitle">{{ $supervisor->text('TEAM_ABSENCE_TITLE') }}</summary>
+                    <div class="card-body">
+                        <x-chrono-help><p class="text-sm opacity-70">{{ $supervisor->text('TEAM_ABSENCE_NOTE') }}</p></x-chrono-help>
+                        <p class="text-sm">{{ (new \DateTimeImmutable($absenceWeek['from']))->format('d.m.Y') }} bis {{ (new \DateTimeImmutable($absenceWeek['through']))->format('d.m.Y') }}</p>
+                        <form method="get" action="supervisor.php" class="d-flex flex-wrap align-items-end gap-3 my-4">
+                            <input type="hidden" name="lang" value="{{ $supervisor->language }}">
+                            <input type="hidden" name="user_search" value="{{ $supervisor->search }}">
+                            @foreach ($supervisor->reviewQuery() as $name => $value)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endforeach
+                            @foreach ($supervisor->periodQuery() as $name => $value)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endforeach
+                            <input type="hidden" name="page" value="{{ $supervisor->report['page'] }}">
+                            <div><label class="form-label" for="team-absence-date">{{ $supervisor->text('TEAM_ABSENCE_DATE') }}</label><input class="form-control" type="date" id="team-absence-date" name="team_date" value="{{ $absenceWeek['from'] }}"></div>
+                            <button class="btn btn-primary align-self-end">{{ $supervisor->text('TEAM_ABSENCE_SHOW') }}</button>
+                        </form>
+                        <nav class="flex flex-wrap gap-3 mb-4" aria-label="{{ $supervisor->text('TEAM_ABSENCE_NAV') }}">
+                            <a class="btn btn-outline-secondary" href="{{ $supervisor->absenceWeekUrl($absenceWeek['previous']) }}">{{ $supervisor->text('TEAM_ABSENCE_PREVIOUS') }}</a>
+                            <a class="btn btn-outline-secondary" href="{{ $supervisor->absenceWeekUrl($absenceWeek['today']) }}">{{ $supervisor->text('TEAM_ABSENCE_TODAY') }}</a>
+                            <a class="btn btn-outline-secondary" href="{{ $supervisor->absenceWeekUrl($absenceWeek['next']) }}">{{ $supervisor->text('TEAM_ABSENCE_NEXT') }}</a>
+                        </nav>
+                        @if ($absenceWeek['incomplete'] || $absenceWeek['truncated'])<p class="alert alert-warning mb-4" role="status">{{ $supervisor->text('TEAM_ABSENCE_INCOMPLETE') }}</p>@endif
+                        <div class="overflow-x-auto"><table class="table table-zebra w-full">
+                            <caption class="text-sm text-left mb-2">{{ $supervisor->text('TEAM_ABSENCE_LEGEND') }}</caption>
+                            <thead><tr><th scope="col">{{ $supervisor->text('TABLE_HEADER_USERNAME') }}</th>@foreach ($absenceWeek['days'] as $day)<th scope="col"><time datetime="{{ $day }}">{{ $day }}</time></th>@endforeach</tr></thead>
+                            <tbody>@forelse ($absenceWeek['people'] as $person)<tr><th scope="row">{{ $person['username'] }}</th>@foreach ($person['days'] as $absent)<td>{{ $absent ? $supervisor->text('TEAM_ABSENCE_MARKER') : '—' }}</td>@endforeach</tr>@empty<tr><td colspan="8">{{ $supervisor->text('TEAM_STATUS_EMPTY') }}</td></tr>@endforelse</tbody>
+                        </table></div>
+                        <p class="text-sm my-3">{{ $supervisor->text('TEAM_ABSENCE_PAGE') }} {{ $absenceWeek['page'] }} / {{ $absenceWeek['pages'] }}</p>
+                        <nav class="flex flex-wrap gap-3" aria-label="{{ $supervisor->text('TEAM_ABSENCE_PEOPLE') }}">
+                            @if ($absenceWeek['page'] > 1)<a class="btn btn-outline-secondary" href="{{ $supervisor->absenceWeekUrl($absenceWeek['from'], $absenceWeek['page'] - 1) }}">{{ $supervisor->text('TEAM_ABSENCE_PEOPLE_PREVIOUS') }}</a>@endif
+                            @if ($absenceWeek['page'] < $absenceWeek['pages'])<a class="btn btn-outline-secondary" href="{{ $supervisor->absenceWeekUrl($absenceWeek['from'], $absenceWeek['page'] + 1) }}">{{ $supervisor->text('TEAM_ABSENCE_PEOPLE_NEXT') }}</a>@endif
+                        </nav>
+                    </div>
+                </details>
+            @endif
+
+            <details class="chrono-disclosure mb-6" @if ($supervisor->review !== null) open @endif><summary>Buchungen prüfen</summary><div class="mt-4">
+            @include('chrono.partials.team-time-review')
+            </div></details>
+
+
         </div>
 
     @if (in_array($page->role, ['supervisor', 'admin'], true) && $supervisor->report['available'])
     <!-- Enhanced Modal -->
     <dialog id="details_modal" class="modal">
-        <div class="modal-box w-11/12 max-w-7xl bg-base-200">
-            <div class="modal-header flex justify-between items-center mb-6">
-                <h3 class="font-bold text-2xl" id="modal_title">Detaillierte Übersicht</h3>
+        <div class="modal-box">
+            <div class="modal-header d-flex justify-content-between align-items-center mb-3">
+                <h3 class="modal-title" id="modal_title">Detaillierte Übersicht</h3>
                 <form method="dialog">
-                    <button class="btn btn-circle btn-ghost">✕</button>
+                    <button type="submit" class="btn-close" aria-label="Schließen"></button>
                 </form>
             </div>
             <x-chrono-help><p class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p></x-chrono-help>
@@ -418,63 +333,14 @@ function escapeHTML(value) {
             if (userData) {
                 modalTitle.textContent = `Übersicht für ${userData.username}`;
                 modalContent.innerHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div class="stat bg-base-100 rounded-box shadow-lg">
-                    <div class="stat-figure text-primary">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
-                    </div>
-                    <div class="stat-title">Regelarbeitszeit</div>
-                    <div class="stat-value">${escapeHTML(userData.regelarbeitszeit)}h</div>
-                    <div class="stat-desc">pro Tag</div>
-                </div>
-
-                <div class="stat bg-base-100 rounded-box shadow-lg">
-                    <div class="stat-figure text-secondary">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
-                    </div>
-                    <div class="stat-title">Gearbeitete Tage</div>
-                    <div class="stat-value">${userData.total_days}</div>
-                    <div class="stat-desc">in diesem Zeitraum</div>
-                </div>
-
-                <div class="stat bg-base-100 rounded-box shadow-lg">
-                    <div class="stat-figure text-secondary">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    </div>
-                    <div class="stat-title">Gesamtarbeitsstunden</div>
-                    <div class="stat-value">${userData.total_hours.toFixed(2)}</div>
-                    <div class="stat-desc">Stunden insgesamt</div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="stat bg-base-100 rounded-box shadow-lg">
-                    <div class="stat-figure text-primary">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
-                    </div>
-                    <div class="stat-title">Durchschnitt pro Tag</div>
-                    <div class="stat-value">${userData.avg_hours_per_day.toFixed(2)}h</div>
-                    <div class="stat-desc">Arbeitsstunden</div>
-                </div>
-
-                <div class="stat bg-base-100 rounded-box shadow-lg">
-                    <div class="stat-figure ${userData.ueberstunden.startsWith('-') ? 'text-error' : 'text-success'}">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </div>
-                    <div class="stat-title">Überstunden</div>
-                    <div class="stat-value ${userData.ueberstunden.startsWith('-') ? 'text-error' : 'text-success'}">${userData.ueberstunden}</div>
-                    <div class="stat-desc">${userData.ueberstunden.startsWith('-') ? 'Minusstunden' : 'Überstunden'}</div>
-                </div>
-            </div>
-
-            <div class="alert alert-info shadow-lg mt-6">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                <div>
-                    <h3 class="font-bold">Hinweis</h3>
-                    <div class="text-xs">Diese Übersicht basiert auf den aktuellen Daten und kann sich täglich ändern.</div>
-                </div>
-            </div>
-        `;
+                    <dl class="row mb-0">
+                        <dt class="col-sm-7 text-secondary">Regelarbeitszeit pro Tag</dt><dd class="col-sm-5">${escapeHTML(userData.regelarbeitszeit)} h</dd>
+                        <dt class="col-sm-7 text-secondary">Gearbeitete Tage</dt><dd class="col-sm-5">${escapeHTML(userData.total_days)}</dd>
+                        <dt class="col-sm-7 text-secondary">Arbeitsstunden insgesamt</dt><dd class="col-sm-5">${escapeHTML(userData.total_hours.toFixed(2))} h</dd>
+                        <dt class="col-sm-7 text-secondary">Durchschnitt pro Tag</dt><dd class="col-sm-5">${escapeHTML(userData.avg_hours_per_day.toFixed(2))} h</dd>
+                        <dt class="col-sm-7 text-secondary">Saldo</dt><dd class="col-sm-5">${escapeHTML(userData.ueberstunden)}</dd>
+                    </dl>
+                `;
             } else {
                 modalContent.innerHTML = '<div class="alert alert-warning">Keine detaillierten Daten verfügbar.</div>';
             }
@@ -560,6 +426,12 @@ function escapeHTML(value) {
                 }
             });
         }
+
+        document.getElementById('team-statistics')?.addEventListener('toggle', function () {
+            if (this.open && typeof Chart !== 'undefined') {
+                ['overtimeChart', 'regularHoursChart'].forEach(id => Chart.getChart(id)?.resize());
+            }
+        });
 
         let cardSearchTerm = '';
         let cardFilter = 'all';

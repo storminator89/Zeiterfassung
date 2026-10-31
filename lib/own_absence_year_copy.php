@@ -4,17 +4,17 @@ function chrono_own_absence_year_copy(string $language): array
 {
     $copy=[
         'de'=>[
-            'title'=>'Eigene Abwesenheitsgutschriften nach Jahr', 'load'=>'Jahresübersicht laden', 'loaded_at'=>'Geladen (Berliner Zeit)',
+            'title'=>'Abwesenheiten', 'load'=>'Jahr anzeigen', 'loaded_at'=>'Geladen (Berliner Zeit)',
             'note'=>'Aktuell gespeicherte Gutschriftprojektionen, keine Urlaubsansprüche, Anträge oder Genehmigungen. Die Berichtsminuten stammen aus den vorhandenen Zeitintervallen, nicht aus einem neu berechneten Sollmodell.',
             'limit'=>'Bis heute gebucht bedeutet nicht verbraucht oder genehmigt. Künftige Buchungen sind keine Freigabezusage. Tage zählen nur verschiedene Daten mit positiver Gutschrift; Nullminuten sind keine Abwesenheitstage. Rest, Übertrag und Verfall werden nicht berechnet.',
-            'year'=>'Jahr', 'show'=>'Anzeigen', 'kind'=>'Art', 'phase'=>'Buchungsdatum', 'records'=>'Buchungen', 'days'=>'Positive Gutschrifttage', 'minutes'=>'Berichtsminuten',
-            'vacation'=>'Urlaub', 'sickness'=>'Krankheit', 'holiday'=>'Feiertag', 'other'=>'Sonstige gespeicherte Gutschrift',
-            'through_today'=>'Bis einschließlich heute', 'after_today'=>'Nach heute', 'unknown'=>'Nicht zuordenbar',
+            'year'=>'Jahr', 'show'=>'Anzeigen', 'kind'=>'Art', 'phase'=>'Zeitraum', 'records'=>'Buchungen', 'days'=>'Tage mit Gutschrift', 'minutes'=>'Berechnet (Min.)',
+            'vacation'=>'Urlaub', 'sickness'=>'Krankheit', 'holiday'=>'Feiertag', 'other'=>'Sonstige',
+            'through_today'=>'Bis heute', 'after_today'=>'Künftig', 'unknown'=>'Nicht zuordenbar',
             'current'=>'Auswertbar', 'incomplete'=>'Unvollständig', 'unresolved'=>'Klärung offen',
             'quality'=>'Summen und Tageszahlen sind nicht abschließend: nicht auswertbare Zeitwerte, unbekannte Datumszuordnung oder kollidierende Buchungen benötigen manuelle Klärung. Es wird weder ein Wert ergänzt noch eine Buchung geändert.',
             'unknown_note'=>'Gutschriften ohne sicher zuordenbares Datum erscheinen vorsorglich in jedem gewählten Jahr; sie sind nicht als Buchungen dieses Jahres bestätigt.',
-            'details'=>'Einzelne aktuelle Gutschriftprojektionen', 'date'=>'Berliner Startdatum', 'record'=>'Buchung', 'state'=>'Stand', 'review'=>'Korrekturantrag öffnen',
-            'empty'=>'Keine diesem Jahr zuordenbaren oder undatierten Gutschriften vorhanden.', 'previous'=>'Vorherige Seite', 'next'=>'Nächste Seite', 'page'=>'Seite', 'of'=>'von',
+            'details'=>'Gutschriften', 'date'=>'Datum', 'record'=>'Buchung', 'state'=>'Stand', 'review'=>'Korrekturantrag öffnen',
+            'empty'=>'Keine Gutschriften für dieses Jahr vorhanden.', 'previous'=>'Vorherige Seite', 'next'=>'Nächste Seite', 'page'=>'Seite', 'of'=>'von',
             'invalid'=>'Jahr oder Seite ungültig. Jahr 1–9999 und eine positive ganze Seitennummer verwenden.', 'unavailable'=>'Jahresübersicht derzeit nicht verfügbar. Bitte neu laden.',
         ],
         'en'=>[
