@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
     <title>{{ $page->copy->text('SETUP_TITLE') }}</title>
-    <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
+    <link rel="icon" href="assets/brand/favicon-32.png?v={{ substr(hash_file('sha256', public_path('assets/brand/favicon-32.png')),0,12) }}" type="image/png" sizes="32x32">
+    <link rel="icon" href="assets/brand/favicon-16.png?v={{ substr(hash_file('sha256', public_path('assets/brand/favicon-16.png')),0,12) }}" type="image/png" sizes="16x16">
+    <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png?v={{ substr(hash_file('sha256', public_path('assets/brand/apple-touch-icon.png')),0,12) }}" sizes="180x180">
+    <link rel="manifest" href="site.webmanifest?v={{ substr(hash_file('sha256', public_path('site.webmanifest')),0,12) }}">
+    <meta name="theme-color" content="#662af4">
     <link rel="stylesheet" href="assets/vendor/tabler/1.7.1/tabler.min.css">
     <link rel="stylesheet" href="assets/css/app_ui.css">
 </head>
@@ -14,7 +18,7 @@
         <div class="container container-tight py-4">
             <div class="text-center mb-4">
                 <span class="navbar-brand navbar-brand-autodark d-inline-flex align-items-center gap-2">
-                    <img src="assets/kolibri_icon.png" width="36" height="36" alt="">
+                    <img src="assets/brand/app-icon-192.png?v={{ substr(hash_file('sha256', public_path('assets/brand/app-icon-192.png')),0,12) }}" width="36" height="36" alt="">
                     Quodara Chrono
                 </span>
             </div>

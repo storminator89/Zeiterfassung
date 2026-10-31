@@ -32,7 +32,7 @@ switch ($argv[1]) {
     case 'core-client':
         // Partial HTTP-client test driver only. This deliberately does not load
         // or imitate Laravel MCP, OwnTool, JSON-RPC, or the Blade resource.
-        foreach (['ApiFailure', 'LocalProfile', 'OwnProjection', 'OwnApiClient'] as $class) {
+        foreach (['ApiFailure', 'LocalProfile', 'OwnProjection', 'OwnApiGateway', 'OwnApiClient'] as $class) {
             require dirname(__DIR__).'/app/Mcp/'.$class.'.php';
         }
         if (! preg_match('~\Ahttps://localhost:[1-9][0-9]{0,4}\z~D', getenv('CHRONO_MCP_API_ORIGIN') ?: '')

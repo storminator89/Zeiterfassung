@@ -112,6 +112,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
         if ($this->accountLifecycleEnabled()) {
             $supported['change_account_lifecycle'] = LocalWebAccountLifecycle::COMMAND_FIELDS;
         }
+        $supported['mcp_management'] = \App\Mcp\ManagedProfile::FIELDS;
         if ($this->apiManagement !== null) { $supported['api_management'] = ApiPolicyChange::FIELDS; }
         if ($this->holidayRefill !== null && $this->interactions->adminPauseSettings) {
             $supported['refill_holidays'] = \App\Chrono\LocalWebHolidayRefill::COMMAND_FIELDS;
@@ -155,6 +156,7 @@ final class LocalWebAdminPauseSettingsController extends Controller
             return $this->synchronizeLdap($request, $form);
         }
 
+        if ($actions[0] === 'mcp_management') { return $this->changeMcp($request, $form); }
         if ($actions[0] === 'api_management') { return $this->changeApi($request, $form); }
         if ($actions[0] === 'update_intake_policy') {
             return $this->intakePolicy($request, $form);
@@ -485,6 +487,29 @@ final class LocalWebAdminPauseSettingsController extends Controller
         return $actor;
     }
 
+    private function changeMcp(Request $request, #[\SensitiveParameter] array $form): Response|RedirectResponse
+    {
+        $actor = $this->adminActor();
+        if ($actor->auth_source !== 'local' || $this->config?->get('app.debug') !== false
+            || ! app()->bound(\App\FreshWeb\FreshWebConfiguration::class)) {
+            throw new AuthorizationException('MCP-Verwaltung erfordert lokale Administration.');
+        }
+        try {
+            app(\App\Api\Management\ApiAdminBudget::class)->consume((int) $actor->getKey(), (string) $request->server('REMOTE_ADDR', 'local'));
+            $password = $form['current_password'] ?? null;
+            if (! is_string($password) || $password === '' || strlen($password) > 4096
+                || ! app(\Illuminate\Contracts\Hashing\Hasher::class)->check($password, $actor->getAuthPassword())) {
+                throw new InvalidArgumentException('Aktuelles Passwort prüfen.');
+            }
+            app(\App\Mcp\ManagedProfile::class)->change($form);
+        } catch (HttpResponseException $error) { throw $error; }
+        catch (InvalidArgumentException $error) { return $this->page($request, error: $error->getMessage())->setStatusCode(400); }
+        catch (DomainException $error) { return $this->page($request, error: $error->getMessage())->setStatusCode(409); }
+        catch (Throwable) { return $this->page($request, error: 'MCP-Einstellungen nicht bestätigt. Bitte neu laden.')->setStatusCode(503); }
+        $request->session()->flash('chrono_mcp_notice', 'MCP-Einstellungen gespeichert. Die Freigabe gilt für jeden neuen HTTP-Aufruf.');
+        return (new RedirectResponse('admin.php?section=system#mcp-management', 303))->header('Cache-Control', 'no-store');
+    }
+
     private function changeApi(Request $request, #[\SensitiveParameter] array $form): Response|RedirectResponse
     {
         if ($this->apiManagement === null) { throw new AuthorizationException('API-Verwaltung nicht zugelassen.'); }
@@ -696,6 +721,8 @@ final class LocalWebAdminPauseSettingsController extends Controller
         }
 
         $response = response()->view('chrono.admin-pause-settings', [
+            'mcpManagement' => $localSecurityControls ? app(\App\Mcp\ManagedProfile::class)->status() : null,
+            'mcpNotice' => $localSecurityControls ? $request->session()->pull('chrono_mcp_notice') : null,
             'runtimeObservation' => $runtimeObservation,
             'managedUsersEnabled' => $localSecurityControls && $this->userMutationsEnabled(),
             'apiManagement' => $apiManagement, 'apiManagementUnavailable' => $apiManagementUnavailable,

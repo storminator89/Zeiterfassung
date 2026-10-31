@@ -442,7 +442,14 @@ final readonly class FreshWebConfiguration
     private static function assets(string $public): void
     {
         foreach ([
-            'assets/kolibri_icon.png' => 'b450f436baec5dbde264c4fe21d9001c0b466ff44ae1311f5919315bd32430e4',
+            'assets/brand/app-icon-512.png' => 'c860fb7440e3aa1cc127dc7e7232cd410756c8b33823e8b52f08d903f0f89427',
+            'assets/brand/app-icon-192.png' => '173a9b1c0636d7b7aa283c3977d41d5d8875fbca89c0c8ea6b0809f1ed57591e',
+            'assets/brand/apple-touch-icon.png' => 'e4432a4ee447042bdcee9bc42d6b07383ca4415d598577aa9d955a02c406103c',
+            'assets/brand/favicon-32.png' => '542bc3d1e4154505a6546060028323d71af6e7a2354f6117ae87a0fc912dd3cd',
+            'assets/brand/favicon-16.png' => '1d5b0a1451ba667844ad1f1600e252ac4cbd15413c4124bbf880a53148d573aa',
+            'favicon.ico' => 'abd9b750aadd72ccddde4604798bf2901b2fd3d0d42eed97da50dfa2d1020e4c',
+            'site.webmanifest' => '7b597400d2cd9faec67c5a462c3119ef566bc0edc0d281151c3289477593f68f',
+            'assets/kolibri_icon.png' => '173a9b1c0636d7b7aa283c3977d41d5d8875fbca89c0c8ea6b0809f1ed57591e',
             'assets/css/main.css' => 'd293dcf9d31e0adfc0c6cda1c2f03f4c57afe325c79e223794460dc9f94c4e6f',
             'assets/css/tokens.css' => 'd4a0b55858679a731daec994141a8c11b5567ec6266432b04c653d5a71c631b2',
             'assets/css/base.css' => 'b1af34b2cddc43ec320d7c664c2e94a529057cbab0654e09d8784ccaf4ba3b5d',
@@ -450,11 +457,15 @@ final readonly class FreshWebConfiguration
             'assets/vendor/tabler-icons/3.50.0/icons.svg' => '201655260188504fa0160c0f0ae2f49a199cc71c51364bccaf984460015f1f65',
             'assets/illustrations/calendar-plan.png' => '6bf044fd0d3ce2fa6c4f85fb4b851cfb64e7df251f8e0b3f22682b2e68b03734',
             'assets/illustrations/system-access.png' => '5bdfc67370aa4fb5f1b589d70092c90afcc2411971ad475febc806b757aef9ff',
+            'assets/illustrations/focus-work.png' => '39e221e534fe0e33c3d8cd004b8ef9a7d9b2417a88d68bee8de1ec8da59f39bd',
+            'assets/illustrations/calm-break.png' => '55ec1d2b0307cf7a2587c1e162e37b1f3c0ab66bbf50e5e4087263a2198af0cc',
+            'assets/illustrations/day-complete.png' => '0e821f4737369e065888be366afe078ae1497d758770a466d05768a9deee78a9',
             'assets/illustrations/time-ledger.png' => '823f82d2b2c4640c3f3627c758ba834378712ce3990a65577d085df8c3162fab',
-            'assets/css/app_ui.css' => '87b44cb41968ac8ff2ffe4e5f612e5816b0b3cbf8a809abf3f082d6cbc21d69d',
+            'assets/css/supervisor_ui.css' => '2aa7dee7471b3aae875ab241b9d7f31e3099c12f1bb88486c862e694a2111e2a',
+            'assets/css/app_ui.css' => '7955c919964c2c8326cab12532a7ce747753c126eb4d11bd5127227bea04e8fb',
             'assets/js/main.js' => '11bb9d367475614eefd30fba8c93055f74ef78d875f02d8ef96110c20340775e',
-            'assets/js/attendance.js' => '3b87890d2ec04eeccbeeaa6a28b0d7f6d420f24d9d9910e9abc75ba5fdf5a9a4',
-            'assets/js/chrono-local-web.js' => '9940b5723b21a2fa21f39db9471523ff5818bc6946a480607c2e5cac20516b3b',
+            'assets/js/attendance.js' => '5246899141faa987c93373a36a0c64493dc342d8ff46b3fba4c9b9a9c3c4d813',
+            'assets/js/chrono-local-web.js' => '7c2d604dbb88920f6d9c6f1b0307bbb368b6e703d2b5d64b5831865c37ead831',
         ] as $name => $hash) {
             $path = $public.'/'.$name;
             if (is_link($path) || ! is_file($path) || ! is_readable($path)

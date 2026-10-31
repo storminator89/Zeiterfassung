@@ -13,6 +13,11 @@
                         <x-chrono-help label="Arbeitszeit und Pausen"><p>Buchungen verwenden die Serverzeit. Pausen werden mit Beginn und Ende erfasst; es wird keine Mindestpause automatisch abgezogen.</p></x-chrono-help>
                     </header>
                     <div id="status" data-attendance-status class="text-2xl font-bold" role="status">{{ $page->statusLabel() }}</div>
+                    <img class="chrono-clock-illustration" data-live-session-image src="assets/illustrations/{{ ['working'=>'focus-work.png','paused'=>'calm-break.png','absent'=>'day-complete.png'][$page->state] }}" alt="" width="160" height="130">
+                    <div class="chrono-live-session" data-live-session @if ($page->state === 'absent') hidden @endif>
+                        <span class="chrono-live-session-label">Arbeitszeit <span class="text-secondary">(ohne Pausen)</span></span>
+                        <span class="chrono-live-session-value" data-live-session-value role="timer" aria-live="off" aria-label="Laufende Arbeitszeit ohne Pausen">—</span>
+                    </div>
                     <p id="message" class="text-sm" role="status" aria-live="polite"></p>
                     <div id="actions" data-state="{{ $page->state }}" class="flex flex-wrap gap-3" aria-label="Arbeitszeit buchen">
                         <button type="button" disabled data-action="start" class="btn btn-primary" @if ($page->state !== 'absent') hidden @endif><i class="fas fa-sign-in-alt" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3h7v18h-7M3 12h14M11 6l6 6-6 6"/></svg></i>Kommen</button>
@@ -37,13 +42,10 @@
         <aside class="min-w-0 chrono-balance-strip" aria-label="Zeitkonto">
             <section class="chrono-today-account">
                 <div class="card-body p-4 sm:p-6">
-                    <div class="stats w-full">
-
-                        <div class="stat"><div class="stat-title">Saldo <x-chrono-help label="Berechnung des Saldos"><p class="text-sm opacity-70 mt-2" style="white-space: normal;">{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p><p>{{ $page->currentMonthName }}: {{ $page->workingDaysThisMonth }} Arbeitstage.</p></x-chrono-help></div><div data-home-balance aria-label="{{ $page->copy->text('UI_RECORDED_BALANCE') }}" data-report-period="all" data-report-presentation="{{ $page->overtimePresentation() }}" class="stat-value {{ $page->reportUnresolved || $page->reportInvalidCount > 0 || $page->positiveOvertime === null || $page->overtimeLabel() === '00:00' ? '' : ($page->positiveOvertime ? 'text-success' : 'text-error') }}">{{ $page->overtimeLabel() }}</div></div>
-                        <div class="stat"><div class="stat-title">Soll heute</div><div class="stat-value">{{ $page->dailyHoursFormatted ?? '—' }}</div></div>
-                    </div>
-
-                    <a href="dashboard.php" class="link link-primary mt-4">Zur Auswertung</a>
+                    <header class="chrono-account-heading"><span class="chrono-account-symbol"><x-chrono-icon name="clock" size="20" /></span><span>Dein Zeitkonto</span><x-chrono-help label="Berechnung des Saldos"><p>{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p><p>{{ $page->currentMonthName }}: {{ $page->workingDaysThisMonth }} Arbeitstage.</p></x-chrono-help></header>
+                    <div class="chrono-account-balance"><span class="chrono-account-caption">Saldo</span><div data-home-balance aria-label="{{ $page->copy->text('UI_RECORDED_BALANCE') }}" data-report-period="all" data-report-presentation="{{ $page->overtimePresentation() }}" class="chrono-account-value {{ $page->reportUnresolved || $page->reportInvalidCount > 0 || $page->positiveOvertime === null || $page->overtimeLabel() === '00:00' ? '' : ($page->positiveOvertime ? 'text-success' : 'text-error') }}">{{ $page->overtimeLabel() }}</div><span class="chrono-account-unit">Stunden</span></div>
+                    <div class="chrono-account-goal"><x-chrono-icon name="briefcase" size="18" /><span>Soll heute</span><strong>{{ $page->dailyHoursFormatted ?? '—' }}<small> h</small></strong></div>
+                    <a href="dashboard.php" class="chrono-account-link"><span>Zeitkonto öffnen</span><x-chrono-icon name="arrow-right" size="18" /></a>
                 </div>
             </section>
         </aside>

@@ -23,7 +23,7 @@ $user_role = $_SESSION['role'];
 
 // Keep the configured connection with audit context.
 
-$kolibri_icon = 'assets/kolibri_icon.png';
+$kolibri_icon = 'assets/brand/app-icon-192.png?v=chrono-q1';
 $attendanceSnapshot = attendance_status($conn, (int)$user_id);
 $attendanceState = $attendanceSnapshot['state'];
 $attendanceLabels = ['absent' => 'Nicht angemeldet', 'working' => 'Arbeitszeit läuft', 'paused' => 'Pause läuft'];
@@ -39,7 +39,7 @@ $attendanceLabels = ['absent' => 'Nicht angemeldet', 'working' => 'Arbeitszeit l
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= TITLE ?></title>
 
-    <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
+    <link rel="icon" href="assets/brand/favicon-32.png?v=chrono-q1" type="image/png">
     <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />
     <?php if (!$strictAppUi): ?><script src="https://cdn.tailwindcss.com"></script><?php endif; ?>
     <?php if (!$strictAppUi): ?><script src="https://code.jquery.com/jquery-3.7.1.min.js"></script><?php endif; ?>
@@ -307,7 +307,7 @@ $attendanceLabels = ['absent' => 'Nicht angemeldet', 'working' => 'Arbeitszeit l
     <div class="sidebar chrono-sidebar" id="sidebar">
         <div class="sidebar-shell">
             <div class="sidebar-brand">
-                <div class="sidebar-brand-row"><span class="sidebar-brand-mark"><img src="assets/kolibri_icon.png" alt="" aria-hidden="true"></span><span>Quodara Chrono</span></div>
+                <div class="sidebar-brand-row"><span class="sidebar-brand-mark"><img src="assets/brand/app-icon-192.png?v=chrono-q1" alt="" aria-hidden="true"></span><span>Quodara Chrono</span></div>
                 <button type="button" class="sidebar-close" id="sidebar-close"><span><?= h(NAV_MENU_CLOSE) ?></span><i class="fas fa-times" aria-hidden="true"></i></button>
             </div>
             <nav class="sidebar-navigation" aria-label="<?= h(NAV_MAIN_MENU) ?>">

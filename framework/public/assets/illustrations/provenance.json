@@ -19,5 +19,26 @@
     "mode": "generate, transparent background",
     "prompt": "Compact gear, shield and key, charcoal outlines, neutral paper, violet accent, transparent background, no text or logos.",
     "sha256": "5bdfc67370aa4fb5f1b589d70092c90afcc2411971ad475febc806b757aef9ff"
+  },
+  {
+    "file": "focus-work.png",
+    "generator": "OpenAI built-in image_gen",
+    "mode": "generate, transparent background",
+    "prompt": "Calm focused work: sculpted silver clock, paper checklist and small violet leaf, transparent background, no text.",
+    "sha256": "39e221e534fe0e33c3d8cd004b8ef9a7d9b2417a88d68bee8de1ec8da59f39bd"
+  },
+  {
+    "file": "calm-break.png",
+    "generator": "OpenAI built-in image_gen",
+    "mode": "generate, transparent background",
+    "prompt": "Restorative short break: matte ceramic cup, silver pause token and small violet leaf, transparent background, no text.",
+    "sha256": "55ec1d2b0307cf7a2587c1e162e37b1f3c0ab66bbf50e5e4087263a2198af0cc"
+  },
+  {
+    "file": "day-complete.png",
+    "generator": "OpenAI built-in image_gen",
+    "mode": "generate, transparent background",
+    "prompt": "Finished workday: closed silver notebook, violet check token and small sunset disc, transparent background, no text.",
+    "sha256": "0e821f4737369e065888be366afe078ae1497d758770a466d05768a9deee78a9"
   }
 ]

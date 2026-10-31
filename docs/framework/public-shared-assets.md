@@ -139,3 +139,7 @@ aktuellen Main-Blobs ausgerichtet; die Assetdateien und sämtliche Validatoren
 bleiben bytegleich. Die obige `main.js`-Zeile beschreibt die aktuelle feste
 Native-/Public-Kopie. Manipulierte Bytes bleiben vor DB-/Routenfreigabe verweigert.
 Kein Runtime-/Host-Cutover und keine zusätzliche Asset- oder Securityfreigabe.
+
+
+## Aktueller Design-Nachtrag, 31. Oktober 2026
+Die obige Tabelle dokumentiert den ursprünglichen Import, nicht die heutigen Designbytes. Die aktuellen verbindlichen Prüfsummen stehen in `FreshWebConfiguration::assets()`. Das App-Zeichen wurde durch den generierten Q-Uhrenring ersetzt; Formatvarianten liegen unter `assets/brand` und bytegleich unter `framework/public/assets/brand`. Die frühere Kolibri-URL liefert aus Kompatibilitätsgründen ebenfalls das neue Zeichen. Logo, Favicons, Apple-Touch-Icon, Webmanifest und Erweiterungssymbole verwenden dieselbe Identität. Die Uhrzeitgrafiken haben eigene Herkunftsmetadaten. Der bestehende Attendanceclient erhält einen rein lesenden, servergebundenen Netto-Livezähler; Loader und Client werden über Inhaltshashes versioniert.

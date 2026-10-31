@@ -127,6 +127,7 @@
             @endif
         </div>
     </div>
+    @include('chrono.partials.mcp-connection')
 </main>
 
 @if ($settings->saved)

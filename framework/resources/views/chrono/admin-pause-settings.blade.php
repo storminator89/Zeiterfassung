@@ -292,6 +292,7 @@
 
 </section>
 <section class="chrono-admin-pane" data-admin-pane="system" @if($adminSection !== 'system') hidden @endif>
+    @include('chrono.partials.mcp-management')
     @if (($apiManagement ?? null) !== null)
         @include('chrono.partials.api-management')
     @elseif ($apiManagementUnavailable ?? false)
@@ -316,7 +317,7 @@
 </main>
 <script @if ($page->cspNonce !== null) nonce="{{ $page->cspNonce }}" @endif>
 document.addEventListener('DOMContentLoaded', function () {
- const map={'#user-management':'users','#department-management':'departments','#pause-settings':'rules','#user-intake-policy':'access','#ldap-sync':'access','#api-management':'system','#holiday-refill':'system','#runtime-observation':'system','#department-integrity':'system'};
+ const map={'#user-management':'users','#department-management':'departments','#pause-settings':'rules','#user-intake-policy':'access','#ldap-sync':'access','#mcp-management':'system','#api-management':'system','#holiday-refill':'system','#runtime-observation':'system','#department-integrity':'system'};
  const pane=map[location.hash];
  if (pane) {
   document.querySelectorAll('[data-admin-pane]').forEach(el=>{el.hidden=el.dataset.adminPane!==pane;});

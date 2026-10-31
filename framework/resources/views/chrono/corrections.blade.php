@@ -3,80 +3,95 @@
 @section('content')
 <main class="container mx-auto px-4 py-8 chrono-page chrono-corrections">
     <div class="chrono-today-heading"><h1>Korrekturen</h1><img src="assets/illustrations/time-ledger.png" alt="" width="104" height="88"></div>
-    <x-chrono-help><p class="opacity-70">Nachträgliche Änderungen mit Begründung und Freigabe. Originalereignisse bleiben erhalten. Eigene Anträge müssen von einer anderen berechtigten Person freigegeben werden.</p></x-chrono-help>
-    @if ($corrections->error)<div class="alert alert-error mb-6" role="alert">{{ $corrections->error }}</div>@endif
-    @if ($corrections->saved)<div class="alert alert-success mb-6">Gespeichert.</div>@endif
-
+    @php
+        $selectedBooking = collect($corrections->recordOptions)->firstWhere('id', $corrections->selectedRecordId);
+        $editMode = request()->query('edit', 'time');
+        if ($corrections->metadataDraft) { $editMode = 'metadata'; }
+        elseif ($corrections->requestDraft) { $editMode = !empty($corrections->requestDraft['cancel']) ? 'cancel' : 'time'; }
+        if (!is_string($editMode) || !in_array($editMode, ['time','metadata','cancel'], true)) { $editMode = 'time'; }
+        if (!$corrections->metadataEnabled && $editMode === 'metadata') { $editMode = 'time'; }
+        if (!$selectedBooking && $editMode === 'cancel') { $editMode = 'time'; }
+        $editQuery = $corrections->selectedRecordId > 0 ? ['record_id'=>$corrections->selectedRecordId] : [];
+        $timeDraft = $corrections->requestDraft;
+        $metaDraft = $corrections->metadataDraft;
+    @endphp
+    @if ($corrections->error)<div class="alert alert-error mb-4" role="alert">{{ $corrections->error }}</div>@endif
+    @if ($corrections->saved)<div class="alert alert-success mb-4" role="status">Antrag eingereicht.</div>@endif
     @if (! $corrections->selectionInvalid)
     <section class="card chrono-correction-editor mb-6">
-        <header class="chrono-editor-header"><h2><x-chrono-icon name="pencil" size="20" /> Zeit korrigieren</h2></header>
-        <section class="chrono-editor-body">
-        @if ($corrections->requestDraft)<p class="text-sm opacity-70 mb-4" role="status">Entwurf beibehalten. Bitte prüfen und erneut senden.</p>@endif
-        <form method="post" id="correction-request-form" class="chrono-form-panel">
-            @csrf
-            <fieldset @disabled(! $corrections->enabled)>
-                <input class="input input-bordered w-full form-control" type="hidden" name="action" value="request">
-                <label class="block text-sm font-semibold mt-4 mb-2" for="record_id">Buchung</label>
-                <select class="select select-bordered w-full form-select" id="record_id" name="record_id">
-                    <option value="0">Fehlende Buchung nachtragen</option>
-                    @foreach ($corrections->recordOptions as $r)
-                    <option value="{{ $r['id'] }}" @selected($corrections->selectedRecordId === $r['id'])>#{{ $r['id'] }}, {{ \App\View\ExistingUi\HumanTime::full($r['start']) }} bis {{ \App\View\ExistingUi\HumanTime::full($r['end']) }}</option>
-                    @endforeach
-                </select>
-        <section id="correction-time-helper" class="chrono-correction-time" hidden>
-
-            <div class="chrono-form-pair">
-                @foreach (['start' => 'Beginn', 'end' => 'Ende'] as $field => $label)
-                <div data-correction-time="{{ $field }}">
-                    <label class="block text-sm font-semibold mb-2" for="{{ $field }}-local">{{ $label }}</label>
-                    <input class="input input-bordered w-full form-control" id="{{ $field }}-local" type="datetime-local" step="1" aria-describedby="{{ $field }}-time-status">
-                    <div data-time-occurrence hidden>
-                        <label class="block text-sm font-semibold mt-3 mb-2" for="{{ $field }}-occurrence">Welcher Zeitpunkt?</label>
-                        <select class="select select-bordered w-full form-select" id="{{ $field }}-occurrence"></select>
-                    </div>
-                    <p id="{{ $field }}-time-status" class="text-sm opacity-70 mt-2" role="status" aria-live="polite"></p>
-                    <button type="button" class="btn btn-outline-secondary btn-sm mt-2" data-time-apply disabled>Übernehmen</button>
-                </div>
-                @endforeach
-            </div>
-        </section>
-
-                <label class="block text-sm font-semibold mt-4 mb-2"><input class="checkbox checkbox-primary form-check-input" type="checkbox" name="cancel" value="1" @checked($corrections->requestDraft['cancel'] ?? false)> Buchung stornieren</label>
-                <details class="mb-4"><summary>Erweiterte Zeitangaben</summary><div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div><label class="block text-sm font-semibold mt-4 mb-2" for="start">Beginn mit Zeitzone</label><input class="input input-bordered w-full form-control" id="start" name="start" value="{{ $corrections->requestDraft['start'] ?? '' }}" placeholder="2026-10-25T09:00+01:00"></div>
-                    <div><label class="block text-sm font-semibold mt-4 mb-2" for="end">Ende mit Zeitzone</label><input class="input input-bordered w-full form-control" id="end" name="end" value="{{ $corrections->requestDraft['end'] ?? '' }}" placeholder="2026-10-25T17:00+01:00"></div>
-                </div></details><div>
-                    <div><label class="block text-sm font-semibold mt-4 mb-2" for="pause">Pause in Minuten</label><input class="input input-bordered w-full form-control" id="pause" name="pause" value="{{ $corrections->requestDraft['pause'] ?? '' }}" type="number" min="0"></div>
-                </div>
-                <x-chrono-help><small class="block opacity-70 mt-3">Deutschland: Winterzeit +01:00, Sommerzeit +02:00. Abwesenheitsgutschriften beginnen um 00:00 Uhr Ortszeit; als Ende 00:00 plus Sollminuten und als Pause 0 eintragen. Arbeitsnachträge dürfen nicht in der Zukunft liegen. Bei Zeitumstellungen den Offset für jeden Zeitpunkt einzeln angeben.</small></x-chrono-help>
-                <label class="block text-sm font-semibold mt-4 mb-2" for="reason">Begründung</label>
-                <textarea class="textarea textarea-bordered w-full form-control" id="reason" name="reason" minlength="5" maxlength="1000" required>{{ $corrections->requestDraft['reason'] ?? '' }}</textarea>
-                <div class="flex flex-wrap gap-3 mt-5"><button type="submit" class="btn btn-primary">Antrag stellen</button></div>
-            </fieldset>
-        </form>
-        @if ($corrections->metadataEnabled)
-        <details class="mt-5" @if ($corrections->metadataDraft) open @endif>
-            <summary class="cursor-pointer font-semibold">Arbeitsort oder Notiz ändern</summary>
-            <x-chrono-help><p class="text-sm opacity-70 mt-3">Nur bestehende abgeschlossene eigene Arbeitsbuchungen, keine Abwesenheiten. Beide Angaben ersetzen die bisherigen Werte nach fremder berechtigter Freigabe; eine leere Notiz löscht die alte Notiz. Zeiten, Pausen und Originalereignisse bleiben unverändert.</p></x-chrono-help>
-            @if ($corrections->metadataDraft)<p class="text-sm opacity-70 mt-3" role="status">Felder nur zur Prüfung beibehalten. Ersetzen erneut bewusst bestätigen; nichts wird automatisch gesendet.</p>@endif
-            <form method="post">
-                @csrf
-                <fieldset @disabled(! $corrections->enabled)>
-                    <input type="hidden" name="action" value="request_metadata_v1">
-                    <label class="block text-sm font-semibold mt-4 mb-2" for="metadata_record_id">Buchung</label>
-                    <select class="select select-bordered w-full form-select" id="metadata_record_id" name="record_id"><option value="0">Bitte bestehende Buchung wählen</option>@foreach ($corrections->recordOptions as $r)<option value="{{ $r['id'] }}" @selected($corrections->selectedRecordId === $r['id'])>#{{ $r['id'] }}, {{ \App\View\ExistingUi\HumanTime::full($r['start']) }} bis {{ \App\View\ExistingUi\HumanTime::full($r['end']) }}</option>@endforeach</select>
-                    <label class="block text-sm font-semibold mt-4 mb-2" for="metadata_location">Neuer Arbeitsort</label>
-                    <select class="select select-bordered w-full form-select" id="metadata_location" name="location">@foreach (['office'=>'Büro','home_office'=>'Homeoffice','business_trip'=>'Dienstreise'] as $code=>$label)<option value="{{ $code }}" @selected(($corrections->metadataDraft['location'] ?? 'office') === $code)>{{ $label }}</option>@endforeach</select>
-                    <label class="block text-sm font-semibold mt-4 mb-2" for="metadata_note">Neue Notiz (leer löscht)</label>
-                    <textarea class="textarea textarea-bordered w-full form-control" id="metadata_note" name="note" maxlength="1000">{{ $corrections->metadataDraft['note'] ?? '' }}</textarea>
-                    <label class="block text-sm font-semibold mt-4 mb-2" for="metadata_reason">Begründung</label><textarea class="textarea textarea-bordered w-full form-control" id="metadata_reason" name="reason" minlength="5" maxlength="1000" required>{{ $corrections->metadataDraft['reason'] ?? '' }}</textarea>
-                    <label class="block text-sm mt-4"><input class="checkbox checkbox-primary form-check-input" type="checkbox" name="metadata_confirm" value="1" required> Arbeitsort und Notiz durch diese Angaben ersetzen.</label>
-                    <div class="flex flex-wrap gap-3 mt-5"><button type="submit" class="btn btn-primary">Änderung beantragen</button></div>
-                </fieldset>
+        <div class="chrono-editor-body chrono-correction-flow">
+            <header class="chrono-correction-context">
+                <h2>{{ $selectedBooking ? 'Buchung bearbeiten' : 'Buchung nachtragen' }}</h2>
+                <x-chrono-help label="Freigabe der Änderung"><p>Änderungen werden als Antrag gespeichert. Eine andere berechtigte Person gibt sie frei; die ursprüngliche Buchung bleibt in der Historie.</p></x-chrono-help>
+            </header>
+            <form method="get" action="adjustments.php" id="correction-booking-picker" class="chrono-booking-picker">
+                <input type="hidden" name="edit" value="{{ $editMode }}">
+                <label for="correction-booking" class="form-label">{{ $selectedBooking ? 'Ausgewählte Buchung' : 'Oder bestehende Buchung auswählen' }}</label>
+                <div class="flex gap-2"><select id="correction-booking" name="record_id" class="form-select" required>
+                    <option value="" disabled @selected(!$selectedBooking)>Buchung auswählen</option>
+                    @foreach($corrections->recordOptions as $r)<option value="{{ $r['id'] }}" @selected($corrections->selectedRecordId === $r['id'])>{{ \App\View\ExistingUi\HumanTime::full($r['start']) }} – {{ \App\View\ExistingUi\HumanTime::clock($r['end'], $r['start']) }}</option>@endforeach
+                </select><button class="btn btn-outline-secondary" type="submit" id="correction-booking-load">Auswählen</button></div>
+                @if($selectedBooking)<a href="adjustments.php" class="text-sm">Neue Buchung nachtragen</a>@endif
             </form>
-        </details>
-        @endif
-        </section>
+            @if($selectedBooking)
+            <nav class="chrono-correction-modes" aria-label="Was möchtest du ändern?">
+                <a href="{{ 'adjustments.php?'.http_build_query([...$editQuery,'edit'=>'time']) }}" @if($editMode === 'time') aria-current="page" @endif><x-chrono-icon name="clock" size="18" />Zeiten</a>
+                @if($corrections->metadataEnabled)<a href="{{ 'adjustments.php?'.http_build_query([...$editQuery,'edit'=>'metadata']) }}" @if($editMode === 'metadata') aria-current="page" @endif><x-chrono-icon name="pencil" size="18" />Arbeitsort &amp; Notiz</a>@endif
+                <a href="{{ 'adjustments.php?'.http_build_query([...$editQuery,'edit'=>'cancel']) }}" @if($editMode === 'cancel') aria-current="page" @endif><x-chrono-icon name="calendar-off" size="18" />Stornieren</a>
+            </nav>
+            @endif
+            @if($editMode === 'metadata')
+                @if($selectedBooking)
+                <form method="post" action="adjustments.php?edit=metadata" class="chrono-focused-form">
+                    @csrf
+                    <fieldset @disabled(!$corrections->enabled)>
+                        <input type="hidden" name="action" value="request_metadata_v1"><input type="hidden" id="metadata_record_id" name="record_id" value="{{ $corrections->selectedRecordId }}">
+                        <label class="form-label" for="metadata_location">Arbeitsort</label>
+                        @php
+                            $currentLocation = $metaDraft['location'] ?? ($selectedBooking['location'] ?? '');
+                        @endphp
+                        <select class="form-select" id="metadata_location" name="location">
+                            @if(!in_array($currentLocation,['office','home_office','business_trip'],true))<option value="" selected>Bitte auswählen</option>@endif
+                            @foreach(['office'=>'Büro','home_office'=>'Homeoffice','business_trip'=>'Dienstreise'] as $code=>$label)<option value="{{ $code }}" @selected($currentLocation === $code)>{{ $label }}</option>@endforeach
+                        </select>
+                        <label class="form-label" for="metadata_note">Notiz</label><textarea class="form-control" id="metadata_note" name="note" maxlength="1000" rows="2">{{ $metaDraft['note'] ?? ($selectedBooking['note'] ?? '') }}</textarea>
+                        <label class="form-label" for="metadata_reason">Grund der Änderung</label><textarea class="form-control" id="metadata_reason" name="reason" minlength="5" maxlength="1000" rows="2" placeholder="Was möchtest du korrigieren?" required>{{ $metaDraft['reason'] ?? '' }}</textarea>
+                        <label class="form-check"><input class="form-check-input" type="checkbox" name="metadata_confirm" value="1" required><span>Arbeitsort und Notiz durch diese Angaben ersetzen.</span></label>
+                        <footer class="chrono-correction-submit"><span>Änderung benötigt Freigabe</span><button class="btn btn-primary" type="submit">Änderung beantragen</button></footer>
+                    </fieldset>
+                </form>
+                @else<p role="status">Bitte zuerst eine Buchung auswählen.</p>@endif
+            @else
+                <form method="post" action="{{ 'adjustments.php?edit='.$editMode }}" id="correction-request-form" class="chrono-focused-form">
+                    @csrf
+                    <fieldset @disabled(!$corrections->enabled)>
+                        <input type="hidden" name="action" value="request"><input type="hidden" id="record_id" name="record_id" value="{{ $corrections->selectedRecordId }}">
+                        <input type="checkbox" name="cancel" value="1" hidden @checked($editMode === 'cancel')>
+                        @if($editMode === 'cancel')
+                            <p class="chrono-cancel-summary">Diese Buchung soll nach Freigabe storniert werden.</p>
+                            <input type="hidden" name="start" value=""><input type="hidden" name="end" value=""><input type="hidden" name="pause" value="0">
+                        @else
+                            <section id="correction-time-helper" class="chrono-correction-time" hidden>
+                                <div class="chrono-form-pair">
+                                @foreach(['start'=>'Beginn','end'=>'Ende'] as $field=>$label)
+                                    <div data-correction-time="{{ $field }}"><label class="form-label" for="{{ $field }}-local">{{ $label }}</label><input class="form-control" id="{{ $field }}-local" type="datetime-local" step="60" aria-describedby="{{ $field }}-time-status">
+                                    <div data-time-occurrence hidden><label class="form-label" for="{{ $field }}-occurrence">Welcher Zeitpunkt?</label><select class="form-select" id="{{ $field }}-occurrence"></select></div>
+                                    <p id="{{ $field }}-time-status" class="text-sm text-warning" role="status" aria-live="polite"></p><button type="button" class="btn btn-outline-secondary" data-time-apply disabled>Übernehmen</button></div>
+                                @endforeach
+                                </div>
+                            </section>
+                            <details id="correction-raw-times" class="mb-3" open><summary>Zeitangaben prüfen</summary><div class="chrono-form-pair">
+                                <div><label class="form-label" for="start">Beginn mit Zeitzone</label><input class="form-control" id="start" name="start" value="{{ $timeDraft ? ($timeDraft['start'] ?? '') : ($selectedBooking['start'] ?? '') }}"></div>
+                                <div><label class="form-label" for="end">Ende mit Zeitzone</label><input class="form-control" id="end" name="end" value="{{ $timeDraft ? ($timeDraft['end'] ?? '') : ($selectedBooking['end'] ?? '') }}"></div>
+                            </div></details>
+                            <div class="chrono-pause-input"><label class="form-label" for="pause">Pause</label><div class="input-group"><input class="form-control" id="pause" name="pause" value="{{ $timeDraft ? ($timeDraft['pause'] ?? '') : ($selectedBooking ? ($selectedBooking['pause'] ?? '') : '0') }}" type="number" min="0" required><span class="input-group-text">Minuten</span></div></div>
+                        @endif
+                        <label class="form-label" for="reason">{{ $editMode === 'cancel' ? 'Grund der Stornierung' : 'Grund der Änderung' }}</label><textarea class="form-control" id="reason" name="reason" minlength="5" maxlength="1000" rows="2" placeholder="Zum Beispiel: Ausstempeln vergessen" required>{{ $timeDraft['reason'] ?? '' }}</textarea>
+                        <footer class="chrono-correction-submit"><span>Änderung benötigt Freigabe</span><button class="btn {{ $editMode === 'cancel' ? 'btn-outline-danger' : 'btn-primary' }}" type="submit">{{ $editMode === 'cancel' ? 'Stornierung beantragen' : 'Änderung beantragen' }}</button></footer>
+                    </fieldset>
+                </form>
+            @endif
+        </div>
     </section>
     @else
     <p class="mb-6"><a class="btn btn-outline-secondary" href="adjustments.php">Buchung auswählen</a></p>
@@ -108,54 +123,46 @@
         </form>
         </div>
     </details>
-    <h2 class="text-xl font-semibold mb-4">Anträge ({{ $corrections::STATUS_LABELS[$corrections->requestStatus] }})</h2>
-    @if ($corrections->requestTotal > 0)<p class="text-sm opacity-70 mb-4">{{ $corrections->requestTotal }} Anträge @if ($corrections->requestPages > 1), Seite {{ $corrections->requestPage }} von {{ $corrections->requestPages }}@endif</p>@endif
+    <h2 class="text-xl font-semibold mb-4">Anträge</h2>
+    @if ($corrections->requestTotal > 0)<p class="text-sm opacity-70 mb-4">{{ $corrections->requestTotal }} {{ $corrections->requestTotal === 1 ? 'Antrag' : 'Anträge' }} @if ($corrections->requestPages > 1), Seite {{ $corrections->requestPage }} von {{ $corrections->requestPages }}@endif</p>@endif
     @if (! $corrections->requests)<p class="mb-6" role="status">Keine Anträge in dieser Auswahl.</p>@endif
     @foreach ($corrections->requests as $a)
-    @php($metadataPreview = $a['metadata_preview'] ?? null)
-    <details class="chrono-disclosure mb-4" @if ($corrections->balancePreviewRequestId === $a['id'] || ($corrections->withdrawalDraft['id'] ?? null) === $a['id'] || ($corrections->reviewDraft['id'] ?? null) === $a['id'] || $corrections->requestLookupValue === (string) $a['id']) open @endif>
-        <summary>#{{ $a['id'] }} {{ $a['username'] }}: {{ ['pending' => 'Offen', 'approved' => 'Freigegeben', 'rejected' => 'Abgelehnt', 'withdrawn' => 'Zurückgenommen'][$a['status']] }}</summary>
-        <section class="mt-4">
-        @if (isset($a['lifecycle']))
-        <p class="text-sm opacity-70 mb-3" data-correction-lifecycle>{{ $page->copy->text('CORRECTION_REQUESTED_AT') }}: {{ $a['lifecycle']['created'] ?? $page->copy->text('CORRECTION_TIME_UNAVAILABLE') }}@if ($a['lifecycle']['resolved_kind'] !== null), {{ $page->copy->text($a['lifecycle']['resolved_kind'] === 'withdrawal' ? 'CORRECTION_WITHDRAWN_AT' : 'CORRECTION_DECIDED_AT') }}: {{ $a['lifecycle']['resolved'] ?? $page->copy->text('CORRECTION_TIME_UNAVAILABLE') }}@endif</p>
+    @php
+        $metadataPreview = $a['metadata_preview'] ?? null;
+        $requestKind = $metadataPreview !== null ? 'Arbeitsort & Notiz' : ($a['cancel'] ? 'Stornierung' : 'Zeitänderung');
+    @endphp
+    <article id="balance-preview-{{ $a['id'] }}" class="card chrono-request-card mb-4" aria-label="{{ $requestKind.' #'.$a['id'] }}">
+        <header class="chrono-request-header"><div><h3>{{ $requestKind }}</h3>
+            @if($a['user_id'] !== $page->userId)<p>{{ $a['username'] }}</p>@endif
+            @if(isset($a['lifecycle']))<p data-correction-lifecycle>Eingereicht {{ \App\View\ExistingUi\HumanTime::full($a['lifecycle']['created'] ?? null) }}</p>@endif
+        </div><span class="badge {{ $a['status'] === 'pending' ? 'bg-warning-lt' : ($a['status'] === 'approved' ? 'bg-success-lt' : 'bg-secondary-lt') }}">{{ ['pending'=>'Offen','approved'=>'Freigegeben','rejected'=>'Abgelehnt','withdrawn'=>'Zurückgenommen'][$a['status']] }}</span></header>
+        <div class="chrono-request-body">
+        @if($metadataPreview !== null)
+            @if($metadataPreview['available'])
+            <div class="chrono-request-comparison"><div><span>Bisher</span><strong>{{ $metadataPreview['before_location'] }}</strong><p>{{ $metadataPreview['before_note'] }}</p></div><div><span>Beantragt</span><strong>{{ $metadataPreview['after_location'] }}</strong><p>{{ $metadataPreview['after_note'] }}</p></div></div>
+            @else<p role="status">Diese Änderung lässt sich nicht darstellen. Bitte den Antrag prüfen.</p>@endif
+        @elseif(!$a['cancel'] && $a['preview']['proposed_usable'])
+            <p class="chrono-request-period"><x-chrono-icon name="calendar" size="18" />{{ \App\View\ExistingUi\HumanTime::full($a['start']) }} – {{ \App\View\ExistingUi\HumanTime::clock($a['end'], $a['start']) }}<span>{{ $a['pause'] }} min Pause</span></p>
+        @elseif(!$a['cancel'])<p role="status">Beantragte Zeitangaben bitte prüfen.</p>@endif
+        @if($metadataPreview === null)
+            <div class="chrono-request-comparison"><div><span>Bisherige Dauer</span><strong>{{ $a['preview']['before'] }}</strong></div><div><span>Beantragte Dauer</span><strong>{{ $a['preview']['after'] }}</strong></div></div>
+            <div class="chrono-request-difference">{{ $a['preview']['difference'] === null ? 'Änderung nicht berechenbar' : 'Änderung: '.$a['preview']['difference'] }} <x-chrono-help label="Vergleich der Buchungsdauer"><p>Nur ausgewählte Zeitfelder des gespeicherten Originals und Antrags. Keine Freigabe- oder Saldozusage; die Entscheidung prüft den aktuellen Datensatz erneut.</p></x-chrono-help></div>
         @endif
-        @if ($metadataPreview !== null)
-        <div class="text-sm my-3"><p class="font-semibold">Arbeitsort und Notiz</p>
-            @if ($metadataPreview['available'])
-            <p>Arbeitsort vorher: {{ $metadataPreview['before_location'] }}, Beantragt: {{ $metadataPreview['after_location'] }}</p>
-            <p>Notiz vorher: {{ $metadataPreview['before_note'] }}</p><p>Notiz beantragt: {{ $metadataPreview['after_note'] }}</p>
-            @else<p>Metadaten-Antrag nicht auswertbar; keine Freigabezusage.</p>@endif
-        </div>
-        @elseif ($a['cancel'])<p>Stornierung</p>
-        @elseif ($a['preview']['proposed_usable'])<p>{{ \App\View\ExistingUi\HumanTime::full($a['start']) }} bis {{ \App\View\ExistingUi\HumanTime::full($a['end']) }}, {{ $a['pause'] }} Minuten Pause</p>
-        @else<p>Beantragte Zeitangaben nicht auswertbar.</p>@endif
-        @if ($metadataPreview === null)
-        <div class="text-sm my-3">
-            <p class="font-semibold">Buchungsdauer</p>
-            <p>Vorher: {{ $a['preview']['before'] }}, Beantragt: {{ $a['preview']['after'] }}</p>
-            <p>{{ $a['preview']['difference'] === null ? 'Keine verlässliche Dauer-Differenz verfügbar.' : 'Dauer-Differenz: ' . $a['preview']['difference'] }}</p>
-            <x-chrono-help><p class="opacity-70">Nur ausgewählte Zeitfelder des gespeicherten Originals und Antrags. Keine Freigabe- oder Saldozusage; die Entscheidung prüft den aktuellen Datensatz erneut.</p></x-chrono-help>
-        </div>
+        <div class="chrono-request-reason"><span>Grund</span><p>{{ $a['reason'] }}</p></div>
+        @if($a['review_reason'])<div class="chrono-request-reason"><span>{{ $a['status'] === 'withdrawn' ? 'Rücknahme' : 'Entscheidung' }}</span><p>{{ $a['review_reason'] }}</p></div>@endif
+        @if(isset($a['lifecycle']) && $a['lifecycle']['resolved_kind'] !== null)<p class="text-sm text-secondary">{{ $a['lifecycle']['resolved_kind'] === 'withdrawal' ? 'Zurückgenommen' : 'Entschieden' }} {{ \App\View\ExistingUi\HumanTime::full($a['lifecycle']['resolved'] ?? null) }}</p>@endif
+        @if($metadataPreview === null && $a['status'] === 'pending' && $a['user_id'] === $page->userId && $corrections->balancePreviewRequestId === $a['id'] && $corrections->balancePreview)
+            <section class="chrono-request-balance" aria-label="Saldo-Vorschau">
+                @if($corrections->balancePreview['available'])<div class="chrono-request-comparison"><div><span>Saldo jetzt</span><strong>{{ $corrections->balancePreview['before'] }}</strong></div><div><span>Mit diesem Antrag</span><strong>{{ $corrections->balancePreview['after'] }}</strong></div></div><p>Änderung: {{ $corrections->balancePreview['difference'] }}</p>
+                @else<p role="status">Keine verlässliche Vorschau verfügbar. Aktuellen Eintrag und Datenhinweise prüfen.</p>@endif
+                <x-chrono-help label="Berechnung der Vorschau"><p>Nur dieser Antrag auf dem aktuell gelesenen Stand: Startguthaben plus abgeschlossene Buchungstage minus deren Soll, wie Home. Kein vollständiges Vertragszeitkonto, keine Freigabezusage. Andere offene Anträge sind nicht eingerechnet; vor der Entscheidung wird erneut geprüft.</p></x-chrono-help>
+            </section>
         @endif
-        @if ($metadataPreview === null && $a['status'] === 'pending' && $a['user_id'] === $page->userId)
-        <div class="text-sm my-3" id="balance-preview-{{ $a['id'] }}">
-            @if ($corrections->balancePreviewRequestId === $a['id'] && $corrections->balancePreview)
-            <p class="font-semibold">Saldo mit diesem Antrag</p>
-                @if ($corrections->balancePreview['available'])
-                <p>Jetzt: {{ $corrections->balancePreview['before'] }}, Mit diesem Antrag: {{ $corrections->balancePreview['after'] }}, Änderung: {{ $corrections->balancePreview['difference'] }}</p>
-                @else
-                <p role="status">Keine verlässliche Vorschau verfügbar. Aktuellen Eintrag und Datenhinweise prüfen.</p>
-                @endif
-            <x-chrono-help><p class="opacity-70">Nur dieser Antrag auf dem aktuell gelesenen Stand: Startguthaben plus abgeschlossene Buchungstage minus deren Soll, wie Home. Kein vollständiges Vertragszeitkonto, keine Freigabezusage. Andere offene Anträge sind nicht eingerechnet; vor der Entscheidung wird erneut geprüft.</p></x-chrono-help>
-            @else
-            <a class="btn btn-outline-secondary btn-sm mt-2" href="{{ $corrections->balancePreviewUrl($a['id']) }}">Saldo-Vorschau</a>
-            @endif
         </div>
-        @endif
-        <p>{{ $a['reason'] }}</p>
-        @if ($a['review_reason'])<p class="opacity-70">{{ $a['status'] === 'withdrawn' ? 'Rücknahme' : 'Entscheidung' }}: {{ $a['review_reason'] }}</p>@endif
+        <footer class="chrono-request-actions">
+        @if($metadataPreview === null && $a['status'] === 'pending' && $a['user_id'] === $page->userId && !($corrections->balancePreviewRequestId === $a['id'] && $corrections->balancePreview))<a class="btn btn-outline-secondary btn-sm" href="{{ $corrections->balancePreviewUrl($a['id']) }}">Saldo-Vorschau</a>@endif
         @if ($corrections->withdrawalsEnabled && $a['status'] === 'pending' && $a['user_id'] === $page->userId)
-        <details class="chrono-disclosure mt-4" @if (($corrections->withdrawalDraft['id'] ?? null) === $a['id']) open @endif><summary>Antrag zurücknehmen</summary>
+        <details class="chrono-request-withdraw" @if (($corrections->withdrawalDraft['id'] ?? null) === $a['id']) open @endif><summary class="btn btn-ghost-secondary btn-sm">Zurücknehmen</summary>
         <form method="post">
             @csrf
             <input type="hidden" name="action" value="withdraw">
@@ -181,8 +188,8 @@
             </fieldset>
         </form>
         @endif
-        </section>
-    </details>
+        </footer>
+    </article>
     @endforeach
     @if ($corrections->requestPages > 1)
     <nav class="flex flex-wrap gap-3 mb-6" aria-label="Antragsseiten">
@@ -191,5 +198,12 @@
     </nav>
     @endif
 </main>
+<script>
+(function () {
+    const picker = document.getElementById('correction-booking');
+    const load = document.getElementById('correction-booking-load');
+    if (picker && load) { load.hidden = true; picker.addEventListener('change', () => picker.form.requestSubmit()); }
+}());
+</script>
 @include('chrono.partials.correction-time-helper')
 @endsection

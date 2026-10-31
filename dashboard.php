@@ -118,7 +118,7 @@ function calculateRemainingHours($workedHours, $expectedHours)
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= TITLE ?> - Dashboard</title>
-    <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
+    <link rel="icon" href="assets/brand/favicon-32.png?v=chrono-q1" type="image/png">
 
     <!-- DaisyUI and Tailwind CSS -->
     <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />

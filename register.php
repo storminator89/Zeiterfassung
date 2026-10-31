@@ -81,7 +81,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <title>Registrieren - Quodara Chrono</title>
 
     <!-- Favicon and external stylesheets -->
-    <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
+    <link rel="icon" href="assets/brand/favicon-32.png?v=chrono-q1" type="image/png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" type="text/css" href="./assets/css/main.css">
@@ -95,7 +95,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom pl-3">
         <a class="navbar-brand" href="#">
-            <img class="pl-3" src="assets/kolibri_icon_weiß.png" alt="Time Tracking" height="50">
+            <img class="pl-3" src="assets/brand/app-icon-192.png?v=chrono-q1" alt="Time Tracking" height="50">
         </a>
     </nav>
 

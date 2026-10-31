@@ -156,7 +156,7 @@ $planReportPage = isset($_GET['page']) && is_string($_GET['page']) ? max(1, (int
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= SUPERVISOR_TIMES_TITLE ?></title>
-    <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
+    <link rel="icon" href="assets/brand/favicon-32.png?v=chrono-q1" type="image/png">
     <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">

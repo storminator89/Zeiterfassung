@@ -29,3 +29,7 @@ Ein Arbeitswerkzeug für Zeiterfassung. Bestehende Funktionen und Daten bleiben 
 ## Exports
 Gemeinsame Styles: `framework/public/assets/css/app_ui.css`, `tokens.css`, `base.css`.
 Vorlagen: `framework/resources/views/chrono`.
+
+
+## Zeitkonto und Identität
+Das neue App-Zeichen verbindet ein Q mit einem Uhrenring auf einer violetten Kachel. Es ersetzt den Vogel in Navigation, Anmeldung, Favicons und App-Icons. Vorlagen unter `assets/brand`, öffentliche Laufzeitkopien unter `framework/public/assets/brand`; Herkunft und Größenexporte sind dokumentiert. Zustandsgrafiken bleiben klein und zeigen jeweils nur Arbeiten, Pause oder Feierabend. Der Live-Zähler steht optisch vor den sekundären Kontowerten; das Zeitkonto bündelt Saldo, Tagesziel und den Zugang zur Auswertung.

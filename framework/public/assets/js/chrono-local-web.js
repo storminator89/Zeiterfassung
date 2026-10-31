@@ -31,7 +31,9 @@
         return; // Never load the booking client when pending cannot safely be adopted.
     }
     const script = document.createElement('script');
-    script.src = 'assets/js/attendance.js';
+    const source = document.currentScript?.dataset.attendanceSrc;
+    script.src = typeof source === 'string' && /^assets\/js\/attendance\.js\?v=[a-f0-9]{12}$/.test(source)
+        ? source : 'assets/js/attendance.js';
     script.addEventListener('load', () => {
         // Absence uses the existing client too. Never enable a bare form when
         // pending storage blocked that client or initialization did not finish.

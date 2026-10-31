@@ -4,11 +4,51 @@ This implements #422 on the Laravel foundation, using exactly `laravel/mcp`
 `1.1.2` (locked source `ab9238ce6c89095679651dd3d19d67641d73a436`).
 Composer uses the closed range `1.1.2 - 1.1.2` to retain exactly that version
 while keeping strict Composer validation free of its optional exact-pin warning.
-There is one server, explicitly started through STDIO. Installation and ordinary
-web boot register no MCP HTTP route, enable no API, and provision no credentials.
-Existing Chrono web pages and README media remain unchanged.
+The primary user-facing transport is stateless **Streamable HTTP** at `/mcp`.
+Every user connects that same URL with their own existing personal API key in
+`Authorization: Bearer <key>`. There is no shared account selector or server-side
+user token file for HTTP. Ordinary startup keeps the operating policy disabled;
+local administrators enable it in Administration → System → MCP-Server. Every
+user can find the URL and connection details in Settings.
 
-## Private local operator configuration
+## Streamable HTTP
+
+The installed Laravel MCP SDK owns JSON-RPC initialization, discovery and tool
+responses. This is a real SDK HTTP transport, not a STDIO relay. The endpoint is
+stateless: POST carries MCP messages; GET and DELETE return 405 as allowed by the
+transport specification. No OAuth or CORS grant is advertised; clients must support
+explicit Bearer headers. Foreign Origin headers, query parameters, noncanonical
+origins/paths and payloads larger than 64 KiB are refused.
+
+The HTTP policy is stored outside the web root in the admitted private installation
+as `mcp-http-policy.json` (0600). Changes require a current local admin, CSRF,
+password reauthentication, persistent administration attempt accounting and revision
+comparison under a private lock. Writes replace the file atomically. The policy
+contains only revision, enabled and optional App enabled. It never contains tokens,
+account IDs or URLs. Disabling is effective on the next request.
+
+API administration must first prepare the existing signing key and enable the
+existing API operating policy. Each MCP request rechecks that policy and uses the
+existing JWT signature/expiry/password-version/account-generation guard. A web
+session is never accepted instead of a key. The validated bearer identity selects
+only that user's existing API controllers, read projections and writer. The HTTP
+adapter has a closed endpoint catalog, no account selector and the same bounded
+MCP projections and explicit write confirmations. It makes no network request and
+avoids a loopback HTTP relay. The profile binding includes installation origin,
+private installation identifier, caller ID and token fingerprint. Another caller's
+binding cannot authorize a write. API disabling, expiration and account revocation
+continue to deny access.
+
+The endpoint follows the application's admitted canonical local-network HTTP or
+HTTPS origin. Existing native `/api.php` transport rules are unchanged. API keys
+are the existing issued JWTs, with their existing expiry; this feature does not
+create permanent credentials or invent a new issuance flow. Use HTTPS for remote
+exposure and a client that can reach the application's network address.
+
+The earlier explicitly configured STDIO transport remains available to operators
+as described below; it is not the connection advertised to users.
+
+## Optional legacy STDIO operator configuration
 
 Use PHP 8.5 and the existing locked Composer dependencies in `framework/`.
 The target API must already be admitted, enabled and reachable over trusted HTTPS.

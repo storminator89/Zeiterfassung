@@ -1,0 +1,65 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: Tabler 1.7.1 · scope: supervisor */
+/* Hallmark · pre-emit critique: one team ledger, aligned filters, optional bounded diagrams. */
+.chrono-supervisor .chrono-team-presence {
+    display:flex;
+    flex-wrap:wrap;
+    gap:var(--space-sm) var(--space-xl);
+    margin:0;
+    padding:0;
+    list-style:none;
+}
+.chrono-supervisor .chrono-team-presence li {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:var(--space-md);
+    min-width:12rem;
+}
+.chrono-supervisor .chrono-team-filters {
+    display:flex;
+    flex-wrap:wrap;
+    align-items:flex-end;
+    gap:var(--space-sm);
+}
+.chrono-supervisor .chrono-team-period-toggle {
+    display:flex;
+    align-items:center;
+    gap:var(--space-xs);
+    min-height:40px;
+    margin:0 var(--space-sm) 0 0;
+    white-space:nowrap;
+}
+.chrono-supervisor .chrono-team-period-toggle input { margin:0; }
+.chrono-supervisor .chrono-team-date { flex:0 1 11rem;min-width:9rem; }
+.chrono-supervisor .chrono-team-search { flex:1 1 15rem;min-width:12rem; }
+.chrono-supervisor .chrono-team-expand { width:40px;min-width:40px;padding:var(--space-xs); }
+.chrono-supervisor .detail-row > td > div { padding:var(--space-md);background:var(--color-paper-2); }
+.chrono-supervisor .detail-row table { background:var(--color-paper);margin:0; }
+.chrono-supervisor .chrono-team-accounts { padding-top:var(--space-md); }
+.chrono-supervisor .chrono-team-account-toolbar {
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:var(--space-sm);
+    margin-bottom:var(--space-md);
+}
+.chrono-supervisor .chrono-team-account-search { flex:1 1 15rem;max-width:24rem;margin:0; }
+.chrono-supervisor #overtimeCards td { vertical-align:middle; }
+.chrono-supervisor .chrono-team-diagrams > summary { cursor:pointer;color:var(--color-muted);min-height:40px;display:flex;align-items:center; }
+.chrono-local-ui .chrono-supervisor .chart-container.chrono-team-chart { position:relative;height:180px;max-height:180px;margin:0; }
+.chrono-supervisor .chrono-team-chart canvas { max-height:180px; }
+.chrono-supervisor #details_modal .modal-box { width:min(36rem,calc(100dvi - 32px)); }
+.chrono-supervisor #modal_content { padding-top:var(--space-md);font-variant-numeric:tabular-nums; }
+.chrono-supervisor table { font-variant-numeric:tabular-nums; }
+@media(max-width:640px) {
+    .chrono-supervisor .chrono-team-period-toggle { flex-basis:100%; }
+    .chrono-supervisor .chrono-team-date { flex:1 1 calc(50% - var(--space-sm));min-width:0; }
+    .chrono-supervisor .chrono-team-search { flex-basis:100%; }
+    .chrono-supervisor .chrono-team-account-search { max-width:none;flex-basis:100%; }
+    .chrono-supervisor .chrono-team-presence li { width:100%;min-width:0; }
+}
+@media(prefers-reduced-motion:reduce) {
+    .chrono-supervisor .chrono-team-expand i { transition:none; }
+}
+.chrono-supervisor :is(button,a,input,summary):focus-visible { outline:2px solid var(--color-focus);outline-offset:2px; }
+.chrono-supervisor .chrono-team-expand:active { transform:translateY(1px); }

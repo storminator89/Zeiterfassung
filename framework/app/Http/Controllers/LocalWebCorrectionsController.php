@@ -195,6 +195,7 @@ final class LocalWebCorrectionsController extends Controller
         }
         $records = array_map(static fn (array $row): array => [
             'id' => (int) $row['id'], 'start' => $row['startzeit'], 'end' => $row['endzeit'],
+            'pause' => $row['pause'] ?? null, 'location' => $row['standort'] ?? '', 'note' => $row['beschreibung'] ?? '',
         ], $recordOptions);
         [$requestStatus, $requestedPage] = $this->queueFilters($request);
         $preview = $request->isMethod('GET') ? $request->query('balance_preview') : null;

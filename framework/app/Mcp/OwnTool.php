@@ -85,7 +85,7 @@ final class OwnTool extends Tool
         try {
             $input = $request->all();
             $this->validateInput($input);
-            $client = app(OwnApiClient::class);
+            $client = app(OwnApiGateway::class);
             if ($this->write()) {
                 if (! hash_equals($client->binding(), $input['profile_binding']) || $input['event_id'] !== $input['confirmed_event_id']
                     || ($this->operation !== 'start' && $input['expected_record'] !== $input['confirmed_record_id'])) {

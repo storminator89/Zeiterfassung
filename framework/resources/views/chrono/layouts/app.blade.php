@@ -11,11 +11,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $page->copy->text('TITLE') }}</title>
 
-    <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
+    <link rel="icon" href="assets/brand/favicon-32.png?v={{ substr(hash_file('sha256', public_path('assets/brand/favicon-32.png')),0,12) }}" type="image/png" sizes="32x32">
+    <link rel="icon" href="assets/brand/favicon-16.png?v={{ substr(hash_file('sha256', public_path('assets/brand/favicon-16.png')),0,12) }}" type="image/png" sizes="16x16">
+    <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png?v={{ substr(hash_file('sha256', public_path('assets/brand/apple-touch-icon.png')),0,12) }}" sizes="180x180">
+    <link rel="manifest" href="site.webmanifest?v={{ substr(hash_file('sha256', public_path('site.webmanifest')),0,12) }}">
+    <meta name="theme-color" content="#662af4">
     <link rel="stylesheet" href="assets/vendor/tabler/1.7.1/tabler.min.css">
     <link rel="stylesheet" href="assets/css/app_ui.css?v={{ substr(hash_file('sha256', public_path('assets/css/app_ui.css')),0,12) }}">
     @if ($page->interactions->home)<script src="assets/js/main.js?v={{ substr(hash_file('sha256', public_path('assets/js/main.js')),0,12) }}" defer></script>@endif
-    @if ($page->interactions->attendance)<script src="assets/js/chrono-local-web.js" defer></script>@endif
+    @if ($page->interactions->attendance)<script src="assets/js/chrono-local-web.js?v={{ substr(hash_file('sha256', public_path('assets/js/chrono-local-web.js')),0,12) }}" data-attendance-src="assets/js/attendance.js?v={{ substr(hash_file('sha256', public_path('assets/js/attendance.js')),0,12) }}" defer></script>@endif
     @if ($navPage === 'supervisor.php')<script src="assets/vendor/chartjs/4.6.1/chart.umd.min.js" defer></script>@endif
 </head>
 
@@ -23,7 +27,7 @@
     <header class="chrono-header">
         <div class="chrono-header-inner">
             <button id="sidebar-toggle" type="button" class="btn btn-ghost chrono-mobile-menu" aria-label="Menü öffnen oder schließen" aria-controls="sidebar" aria-expanded="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-            <a href="index.php" class="sidebar-brand-row" aria-label="Quodara Chrono, Heute"><span class="sidebar-brand-mark"><img src="assets/kolibri_icon.png" alt="" aria-hidden="true"></span><span>Quodara Chrono</span></a>
+            <a href="index.php" class="sidebar-brand-row" aria-label="Quodara Chrono, Heute"><span class="sidebar-brand-mark"><img src="assets/brand/app-icon-192.png?v={{ substr(hash_file('sha256', public_path('assets/brand/app-icon-192.png')),0,12) }}" alt="" aria-hidden="true"></span><span>Quodara Chrono</span></a>
             <nav id="sidebar" class="sidebar-navigation" aria-label="{{ $page->copy->text('NAV_MAIN_MENU') }}">
                 <button type="button" class="sidebar-close btn btn-ghost" id="sidebar-close" aria-label="Menü schließen">Schließen</button><div class="sidebar-items chrono-primary-nav">
                     <a href="index.php" class="sidebar-link {{ in_array($navPage, ['index.php', 'attendance.php'], true) ? 'active' : '' }}" @if (in_array($navPage, ['index.php', 'attendance.php'], true)) aria-current="page" @endif><x-chrono-icon name="clock" size="20" />

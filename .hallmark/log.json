@@ -27,5 +27,21 @@
     ],
     "changed": "direct bookings, shared clock/account workspace, contextual task dialogs and compact person actions",
     "verification": "34 Blade views compile, existing render checks pass, authored CSS clean, native dialogs and Berlin DST interaction tested in browser"
+  },
+  {
+    "date": "2026-10-31",
+    "mode": "redesign",
+    "scope": "existing app refinement",
+    "theme": "existing Tabler violet system",
+    "pages": [
+      "Today and time account",
+      "Corrections editor and queue",
+      "Team",
+      "Admin MCP",
+      "User MCP connection",
+      "Authentication branding"
+    ],
+    "signature": "live net-work clock with quiet state illustrations and Q-clock app mark",
+    "verification": "36 Blade templates compile; public pins match; CSS 0 FAIL/REFLEX with deliberate near-neutral tint warning documented; real desktop/mobile review; PHP/JS net timing and event-ID tests; two-user real Streamable HTTP journey; authenticated page checks"
   }
 ]

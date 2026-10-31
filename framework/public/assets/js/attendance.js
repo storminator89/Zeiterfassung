@@ -30,6 +30,34 @@
             && data.start_metadata?.note === (body.note ?? ''));
     }
 
+    // Pure display helpers. Exact own session/pause seconds come from one server
+    // snapshot. Browser ticks never become booking inputs or credited balances.
+    function liveSessionSnapshot(timing, state, record, observedMillis) {
+        if (!timing || timing.version !== 1 || !['working', 'paused'].includes(state)
+            || timing.state !== state || typeof record !== 'string' || !/^[1-9][0-9]*$/.test(record)
+            || timing.record_id !== record || !Number.isFinite(observedMillis) || observedMillis < 0
+            || !['as_of_epoch', 'started_at_epoch', 'closed_pause_seconds', 'elapsed_work_seconds'].every(
+                key => Number.isSafeInteger(timing[key]) && timing[key] >= 0)
+            || timing.started_at_epoch > timing.as_of_epoch) return null;
+        const pause = timing.pause_started_at_epoch;
+        if (state === 'paused' ? !Number.isSafeInteger(pause) || pause < timing.started_at_epoch || pause > timing.as_of_epoch
+            : pause !== null) return null;
+        const expected = (pause ?? timing.as_of_epoch) - timing.started_at_epoch - timing.closed_pause_seconds;
+        if (expected < 0 || expected !== timing.elapsed_work_seconds) return null;
+        return {state, record, seconds: timing.elapsed_work_seconds, observedMillis};
+    }
+    function liveSessionSeconds(snapshot, monotonicMillis) {
+        if (!snapshot || !Number.isFinite(monotonicMillis) || monotonicMillis < snapshot.observedMillis
+            || monotonicMillis - snapshot.observedMillis > 90000) return null;
+        const seconds = snapshot.seconds + (snapshot.state === 'working' ? Math.floor((monotonicMillis - snapshot.observedMillis) / 1000) : 0);
+        return Number.isSafeInteger(seconds) && seconds >= 0 ? seconds : null;
+    }
+    function formatLiveSession(seconds) {
+        if (!Number.isSafeInteger(seconds) || seconds < 0) return '—';
+        return [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60]
+            .map(value => String(value).padStart(2, '0')).join(':');
+    }
+
     const ready = callback => document.readyState === 'loading'
         ? document.addEventListener('DOMContentLoaded', callback, {once: true}) : callback();
     ready(() => {
@@ -52,6 +80,19 @@
             ? document.body.dataset.attendanceRecord : null;
         let busy = false, refreshing = null, revision = 0, pending = null, supportsStartMetadata = false;
         let pendingVerified = true;
+        const liveSession = document.querySelector('[data-live-session]');
+        const liveSessionValue = liveSession?.querySelector('[data-live-session-value]');
+        let sessionClock = null;
+        function renderLiveSession() {
+            if (!liveSession || !liveSessionValue) return;
+            liveSession.hidden = state === 'absent';
+            const current = !busy && !pending && pendingVerified && sessionClock && sessionClock.record === expectedRecord && sessionClock.state === state;
+            liveSessionValue.textContent = formatLiveSession(current ? liveSessionSeconds(sessionClock, performance.now()) : null);
+        }
+        function updateLiveSession(data, observedMillis) {
+            sessionClock = liveSessionSnapshot(data.live_timing, data.state, data.expected_record, observedMillis);
+            renderLiveSession();
+        }
         const actionOf = button => button.dataset.attendanceAction || button.dataset.action;
         const buttons = () => [...document.querySelectorAll(buttonSelector)];
 
@@ -195,6 +236,8 @@
             if (!Object.hasOwn(allowed, nextState)) throw new Error('Unbekannter Anwesenheitsstatus. Bitte Seite neu laden.');
             state = nextState;
             expectedRecord = state !== 'absent' && recordString(nextRecord) ? nextRecord : null;
+            const illustration = document.querySelector('[data-live-session-image]');
+            if (illustration) illustration.setAttribute('src', 'assets/illustrations/' + ({working: 'focus-work.png', paused: 'calm-break.png', absent: 'day-complete.png'})[state]);
             document.querySelectorAll('[data-attendance-state]').forEach(element => { element.dataset.attendanceState = state; });
             const actions = document.getElementById('actions');
             if (actions) actions.dataset.state = state;
@@ -206,6 +249,7 @@
                     fields.querySelector('#attendance-note').value = pending.note ?? '';
                 }
             });
+            renderLiveSession();
             buttons().forEach(button => {
                 const action = actionOf(button);
                 // An uncertain event must be acknowledged with the same ID,
@@ -265,13 +309,14 @@
                 const startedAt = revision;
                 refreshing = (async () => {
                     const response = await request('attendance.php?format=status' + (document.querySelector('[data-home-balance]') ? '&home_balance=1' : ''), {cache: 'no-store', redirect: 'error'});
+                    const observedMillis = performance.now();
                     if (!response.ok) throw responseError('Anzeige konnte nicht aktualisiert werden. Bitte Seite neu laden.', response);
                     const data = await readJson(response);
                     if (!data.success || !Object.hasOwn(allowed, data.state)
                         || (data.state === 'absent' ? data.expected_record !== null : !recordString(data.expected_record))) {
                         throw new Error('Anwesenheitsstatus und Sitzungsbindung konnten nicht geladen werden. Bitte neu laden.');
                     }
-                    if (startedAt === revision && !busy) { supportsStartMetadata = data.start_metadata_version === 1; render(data.state, data.expected_record); renderRecent(data.records); applyReportFinality(data.report_finality); applyHomeBalance(data.home_balance); }
+                    if (startedAt === revision && !busy) { supportsStartMetadata = data.start_metadata_version === 1; render(data.state, data.expected_record); updateLiveSession(data, observedMillis); renderRecent(data.records); applyReportFinality(data.report_finality); applyHomeBalance(data.home_balance); }
                 })().finally(() => { refreshing = null; });
             }
             await refreshing;
@@ -401,6 +446,7 @@
         window.addEventListener('pageshow', refreshQuietly);
         window.addEventListener('focus', refreshQuietly);
         document.addEventListener('visibilitychange', refreshQuietly);
+        if (liveSession) window.setInterval(renderLiveSession, 1000);
         window.setInterval(refreshQuietly, 30000);
         refreshQuietly();
     });

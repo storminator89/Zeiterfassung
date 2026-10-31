@@ -46,3 +46,7 @@ only the head/presentation changes. PHP/Blade/CSS syntax and a finite selector
 inventory supplement the review; no runtime, server, credentials, account,
 BrowserAuth action, screenshot capture or new CI is performed. Existing earlier
 public-login imagery is reference evidence only, not a new visual pass.
+
+
+## Branding update, 31 October 2026
+The historical hummingbird has been replaced with the generated local Q-clock mark. Login, registration and setup reference only local, content-hashed PNG favicons and logo exports, plus a local Apple-touch icon and manifest. Same-origin form actions, authentication and CSP restrictions remain unchanged. No remote image, executable asset or new authentication path was added.

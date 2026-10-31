@@ -2,9 +2,11 @@
 
 `App\Mcp\Resources\ChronoApp` liefert `ui://chrono/attendance` als
 `text/html;profile=mcp-app`. Die Erweiterung bleibt standardmäßig aus:
-`CHRONO_MCP_APPS_ENABLED=false`. Der lokale MCP-Kern muss separat zugelassen
-und konfiguriert sein. Diese Oberfläche registriert keine HTTP-Route und
-schaltet die bestehende Chrono-Oberfläche nicht um.
+`CHRONO_MCP_APPS_ENABLED=false`. Für Streamable HTTP wird die Erweiterung in Verwaltung → System → MCP-Server
+aktiviert. Der gemeinsame `/mcp`-Endpunkt authentifiziert jeden Aufruf mit dem
+persönlichen API-Key; die App nutzt ausschließlich diese Identität. Für den
+optionalen STDIO-Betrieb bleibt die Umgebungsvariable verfügbar. Die Ressource
+registriert keine zusätzliche HTTP-Route.
 
 ## Protokoll und Grenzen
 

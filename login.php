@@ -141,7 +141,7 @@ $totalUsers = $stmt->fetch(PDO::FETCH_OBJ)->count;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= LOGIN_TITLE ?></title>
-    <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
+    <link rel="icon" href="assets/brand/favicon-32.png?v=chrono-q1" type="image/png">
     <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
@@ -157,7 +157,7 @@ $totalUsers = $stmt->fetch(PDO::FETCH_OBJ)->count;
     <div class="card w-full max-w-md bg-white shadow-2xl">
         <div class="card-body">
             <div class="flex flex-col items-center mb-6">
-                <img src="assets/kolibri_icon.png" alt="Quodara Chrono Logo" class="w-20 h-20 mb-2" />
+                <img src="assets/brand/app-icon-192.png?v=chrono-q1" alt="Quodara Chrono Logo" class="w-20 h-20 mb-2" />
                 <h2 class="card-title text-2xl font-semibold text-gray-800"><?= LOGIN_TITLE ?></h2>
             </div>
             

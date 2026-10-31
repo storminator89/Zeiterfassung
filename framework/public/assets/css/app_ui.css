@@ -344,7 +344,7 @@
 .chrono-empty-illustration {display:block;object-fit:contain;width:104px;height:104px;margin:0 auto var(--space-md);}
 @media(max-width:640px) {.chrono-local-ui .chrono-clock-main .card-body {padding-right:var(--space-md);}.chrono-clock-illustration {display:none;}.chrono-header-inner {gap:var(--space-xs);}.chrono-header .sidebar-brand-row {font-size:.875rem;}.chrono-header .chrono-primary-nav .sidebar-link {min-height:44px;}}
 
-[data-theme="dark"] .sidebar-brand-mark img {filter:brightness(0) invert(1);}
+[data-theme="dark"] .sidebar-brand-mark img {filter:none;}
 
 .chrono-local-ui .chrono-disclosure > .card {border:0;border-radius:0;padding:0;margin:0!important;background:none;}
 .chrono-local-ui .chrono-disclosure[open] > summary {margin-bottom:0;}
@@ -544,3 +544,108 @@
 .chrono-calendar-note dd {white-space:pre-wrap;font-weight:400;}
 .chrono-calendar-event {cursor:pointer;}
 .chrono-calendar-details .chrono-dialog-footer {justify-content:space-between;}
+
+.chrono-local-ui .chrono-correction-flow {padding:var(--space-lg);}
+.chrono-correction-context {display:flex;align-items:center;justify-content:space-between;gap:var(--space-sm);margin-bottom:var(--space-lg);}
+.chrono-correction-context h2 {font-size:1.2rem;margin:0;}
+.chrono-booking-picker {margin-bottom:var(--space-lg);}
+.chrono-booking-picker > a {display:inline-block;margin-top:var(--space-xs);}
+.chrono-correction-modes {display:flex;gap:var(--space-2xs);padding:var(--space-2xs);margin-bottom:var(--space-lg);background:var(--color-paper-2);border-radius:var(--space-xs);}
+.chrono-correction-modes a {flex:1;display:flex;align-items:center;justify-content:center;gap:var(--space-xs);padding:var(--space-sm) var(--space-xs);font-size:.875rem;color:var(--color-muted);text-decoration:none;border-radius:var(--space-xs);}
+.chrono-correction-modes a[aria-current] {background:var(--color-paper);color:var(--color-ink);box-shadow:var(--shadow-subtle);}
+.chrono-focused-form > fieldset {border:0;padding:0;margin:0;}
+.chrono-focused-form .form-label {margin-top:var(--space-md);margin-bottom:var(--space-xs);}
+.chrono-focused-form .chrono-form-pair .form-label {margin-top:0;}
+.chrono-local-ui .chrono-correction-flow .chrono-correction-time {margin:0 0 var(--space-md);}
+.chrono-pause-input {max-width:12rem;margin-bottom:var(--space-md);}
+.chrono-correction-submit {display:flex;align-items:center;justify-content:space-between;gap:var(--space-md);margin-top:var(--space-lg);}
+.chrono-correction-submit > span {font-size:.8125rem;color:var(--color-muted);}
+.chrono-focused-form .form-check {margin-top:var(--space-md);font-size:.875rem;}
+.chrono-cancel-summary {font-size:.94rem;margin-block:var(--space-md);}
+@media(max-width:640px) {.chrono-local-ui .chrono-correction-flow {padding:var(--space-md);}.chrono-correction-modes a {font-size:.8125rem;gap:var(--space-2xs);padding-inline:var(--space-2xs);}.chrono-correction-modes a .chrono-icon {display:none;}.chrono-correction-submit {align-items:flex-start;flex-direction:column;}.chrono-correction-submit > .btn {width:100%;}}
+
+.chrono-request-header {display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-md);padding:var(--space-lg) var(--space-lg) var(--space-md);}
+.chrono-request-header h3 {font-size:1rem;margin:0;}
+.chrono-request-header p {font-size:.8125rem;color:var(--color-muted);margin:var(--space-2xs) 0 0;}
+.chrono-request-body {padding:0 var(--space-lg) var(--space-md);}
+.chrono-request-period {display:flex;align-items:center;gap:var(--space-xs);flex-wrap:wrap;font-size:.875rem;margin:0 0 var(--space-md);}
+.chrono-request-period > span {margin-left:auto;color:var(--color-muted);}
+.chrono-request-comparison {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-lg);padding-block:var(--space-sm);}
+.chrono-request-comparison span,.chrono-request-reason > span {display:block;font-size:.8125rem;color:var(--color-muted);margin-bottom:var(--space-2xs);}
+.chrono-request-comparison strong {display:block;font-size:1.25rem;font-weight:600;font-variant-numeric:tabular-nums;}
+.chrono-request-comparison p {font-size:.875rem;white-space:pre-wrap;overflow-wrap:anywhere;}
+.chrono-request-difference {font-size:.8125rem;color:var(--color-muted);display:flex;align-items:center;gap:var(--space-2xs);margin-bottom:var(--space-sm);}
+.chrono-request-reason {margin-block:var(--space-sm);}
+.chrono-request-reason p {font-size:.94rem;margin:0;white-space:pre-wrap;overflow-wrap:anywhere;}
+.chrono-request-actions {display:flex;align-items:flex-start;gap:var(--space-xs);flex-wrap:wrap;padding:var(--space-md) var(--space-lg);border-top:1px solid var(--color-rule);}
+.chrono-request-withdraw {flex:1;min-width:0;}
+.chrono-request-withdraw > summary {width:max-content;list-style:none;}
+.chrono-request-withdraw > summary::-webkit-details-marker {display:none;}
+.chrono-request-withdraw > form {padding-top:var(--space-sm);}
+.chrono-request-actions > form {flex-basis:100%;}
+.chrono-request-balance {border-top:1px solid var(--color-rule);margin-top:var(--space-md);padding-top:var(--space-sm);font-size:.875rem;}
+@media(max-width:640px) {.chrono-request-header {padding:var(--space-md);}.chrono-request-body {padding-inline:var(--space-md);}.chrono-request-actions {padding:var(--space-md);}.chrono-request-period > span {width:100%;margin-left:0;}}
+
+/* MCP: one visible service, configuration and client details on demand. */
+.chrono-mcp { padding: var(--space-lg); margin-block-end: 1.5rem; }
+.chrono-mcp-heading { display:flex; align-items:center; gap:var(--space-md); margin-block-end:1.5rem; }
+.chrono-mcp-heading h2 { margin:0 0 .25rem; font-size:1.25rem; }
+.chrono-mcp-heading p { margin:0; color:var(--color-muted); }
+.chrono-mcp-heading>.badge { margin-inline-start:auto; white-space:nowrap; }
+.chrono-mcp-icon { display:grid; place-items:center; width:3.5rem; height:3.5rem; flex-shrink:0; border-radius:1rem; background:var(--color-paper-3); color:var(--color-accent); }
+.chrono-mcp-endpoint { margin-block-end:var(--space-lg); }.chrono-mcp-endpoint label { display:block; margin-block-end:var(--space-xs); font-size:.85rem; color:var(--color-muted); }
+.chrono-mcp-prerequisite { display:flex; align-items:center; gap:var(--space-xs); color:var(--color-muted); font-size:.85rem; padding-block:var(--space-sm); }
+.chrono-mcp-facts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--space-md); padding-block:0 var(--space-lg); }
+.chrono-mcp-facts span,.chrono-mcp-facts strong { display:block; }
+.chrono-mcp-facts span { color:var(--color-muted); font-size:.85rem; margin-block-end:.3rem; }
+.chrono-mcp-facts strong { font-size:.95rem; font-weight:600; }
+.chrono-mcp-setup { border-block-start:1px solid var(--color-rule); }
+.chrono-mcp-setup>summary { display:flex; align-items:center; gap:.65rem; padding-block:var(--space-md); cursor:pointer; list-style:none; font-weight:500; }
+.chrono-mcp-setup>summary::after { content:'+'; margin-inline-start:auto; color:var(--color-muted); }
+.chrono-mcp-setup[open]>summary::after { content:'−'; }
+.chrono-mcp-form,.chrono-mcp-client { padding-block:.25rem 1.25rem; }
+.chrono-mcp-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1.25rem; }
+.chrono-mcp-form label { display:block; font-weight:500; margin-block-end:.4rem; }
+.chrono-mcp-form input:not([type=checkbox]):not([type=hidden]) { width:100%; }
+.chrono-mcp small { display:block; font-size:.8rem; color:var(--color-muted); line-height:1.5; margin-block-start:.4rem; }
+.chrono-mcp-form .chrono-mcp-check { display:flex; align-items:center; gap:.7rem; margin-block:1.25rem; font-weight:400; }
+.chrono-mcp-check input { width:1.1rem; height:1.1rem; flex-shrink:0; }
+.chrono-mcp-confirm { max-width:26rem; }
+.chrono-mcp-actions { display:flex; flex-wrap:wrap; gap:.65rem; margin-block-start:1rem; }
+.chrono-mcp-client dl>div { display:grid; grid-template-columns:9rem minmax(0,1fr); gap:var(--space-md); padding:.5rem 0; }
+.chrono-mcp-client dt { font-weight:500; }.chrono-mcp-client dd { margin:0; }
+.chrono-mcp code { overflow-wrap:anywhere; white-space:normal; }
+.chrono-mcp-tools { list-style:none; padding:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1.2rem; }
+.chrono-mcp-tools li { display:flex; gap:.75rem; color:var(--color-muted); font-size:.9rem; }
+.chrono-mcp-tools svg { flex-shrink:0; color:var(--color-accent); }
+.chrono-mcp-tools strong { display:block; color:var(--color-ink); margin-block-end:.2rem; }
+.chrono-mcp-toolnames { display:flex; flex-wrap:wrap; gap:.5rem; font-size:.8rem; margin-block:var(--space-lg); }
+@media(max-width:640px) { .chrono-mcp { padding:var(--space-md); }.chrono-mcp-heading { flex-wrap:wrap; }.chrono-mcp-heading>.badge { margin-inline-start:0; }.chrono-mcp-facts,.chrono-mcp-fields,.chrono-mcp-tools { grid-template-columns:minmax(0,1fr); }.chrono-mcp-client dl>div { grid-template-columns:minmax(0,1fr); gap:.3rem; } }
+
+/* The live duration is the focus; one quiet illustration follows the work state. */
+.chrono-local-ui .chrono-today-workspace .chrono-clock-illustration {width:160px;height:140px;right:var(--space-xl);top:var(--space-xl);}
+.chrono-local-ui .chrono-today-workspace #status {max-width:calc(100% - 11rem);}
+.chrono-local-ui .chrono-today-workspace:has(.chrono-live-session:not([hidden])) #status {font-size:1.25rem;letter-spacing:0;}
+.chrono-live-session {margin-block-start:var(--space-md);max-width:calc(100% - 11rem);}
+.chrono-live-session-label {display:block;font-size:.85rem;color:var(--color-muted);margin-block-end:var(--space-2xs);}
+.chrono-live-session-value {display:block;font-size:clamp(2.5rem,4vi,3.5rem);font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:var(--tracking-display);line-height:1.15;color:var(--color-ink);}
+@media(max-width:640px) {.chrono-local-ui .chrono-today-workspace .chrono-clock-illustration {display:block;width:84px;height:84px;right:var(--space-lg);top:var(--space-lg);}.chrono-local-ui .chrono-today-workspace #status {max-width:calc(100% - 5rem);}.chrono-live-session {max-width:100%;}.chrono-live-session-value {font-size:2.75rem;}}
+
+/* A quiet, purposeful account companion to the running clock. */
+.chrono-today-workspace .chrono-balance-strip {background:color-mix(in oklab,var(--color-accent) 2.5%,var(--color-paper));border-radius:0 var(--space-md) var(--space-md) 0;}
+.chrono-local-ui .chrono-today-account .card-body {display:flex;flex-direction:column;gap:var(--space-lg);height:100%;}
+.chrono-account-heading {display:flex;align-items:center;gap:var(--space-xs);font-size:.9rem;font-weight:500;}
+.chrono-account-heading .chrono-help {margin-inline-start:auto;}
+.chrono-account-symbol {color:var(--color-accent);display:inline-flex;}
+.chrono-account-balance {margin-block:auto;}
+.chrono-account-caption,.chrono-account-unit {display:block;color:var(--color-muted);font-size:.8rem;}
+.chrono-account-caption {margin-block-end:var(--space-xs);}
+.chrono-account-value {font-size:clamp(2rem,3vi,2.75rem);font-weight:600;line-height:1.1;letter-spacing:var(--tracking-display);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+.chrono-account-unit {margin-block-start:var(--space-xs);}
+.chrono-account-value[data-report-presentation="unresolved"],.chrono-account-value[data-report-presentation="refresh-needed"] {font-size:1.25rem;letter-spacing:0;}
+.chrono-account-goal {display:flex;align-items:center;gap:var(--space-xs);font-size:.85rem;padding-block-start:var(--space-md);border-block-start:1px solid var(--color-rule);color:var(--color-muted);}
+.chrono-account-goal strong {margin-inline-start:auto;font-size:1.05rem;font-variant-numeric:tabular-nums;color:var(--color-ink);font-weight:500;}
+.chrono-account-goal small {font-size:.75rem;color:var(--color-muted);}
+.chrono-account-link {display:flex;justify-content:space-between;align-items:center;gap:var(--space-sm);text-decoration:none;color:var(--color-accent);font-size:.85rem;font-weight:500;min-height:36px;}
+.chrono-account-link:hover {text-decoration:underline;}
+@media(max-width:800px) {.chrono-today-workspace .chrono-balance-strip {border-radius:0 0 var(--space-md) var(--space-md);}.chrono-local-ui .chrono-today-account .card-body {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--space-lg);row-gap:var(--space-md);}.chrono-account-heading {grid-column:1/-1;}.chrono-account-goal {border:0;padding:0;}.chrono-account-link {grid-column:1/-1;}}

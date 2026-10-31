@@ -2,6 +2,7 @@
 
 // Private local process configuration only. Never place the token in Laravel config.
 return [
+    'http_enabled' => env('CHRONO_MCP_HTTP_ENABLED', false),
     'enabled' => env('CHRONO_MCP_ENABLED', false),
     'apps_enabled' => env('CHRONO_MCP_APPS_ENABLED', false),
     'origin' => env('CHRONO_MCP_API_ORIGIN'),

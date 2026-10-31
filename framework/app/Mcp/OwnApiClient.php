@@ -3,7 +3,7 @@
 namespace App\Mcp;
 
 /** Only the existing own-account HTTP API; no framework/domain/session shortcuts. */
-final class OwnApiClient
+final class OwnApiClient implements OwnApiGateway
 {
     public function __construct(private readonly LocalProfile $profile) {}
 

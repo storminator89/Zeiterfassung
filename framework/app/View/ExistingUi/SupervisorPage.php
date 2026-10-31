@@ -25,6 +25,26 @@ final readonly class SupervisorPage
         return $this->labels[$key] ?? throw new \InvalidArgumentException('Unknown supervisor UI label.');
     }
 
+    /** Presentation only: a second booking does not imply a second work location. */
+    public function locationLabel(mixed $location): string
+    {
+        return match ($location) {
+            'office', 'Büro' => match ($this->language) { 'en' => 'Office', 'zh' => '办公室', default => 'Büro' },
+            'home_office', 'Home', 'Home Office', 'Homeoffice' => match ($this->language) { 'en' => 'Home office', 'zh' => '居家办公', default => 'Homeoffice' },
+            'business_trip', 'Dienstreise' => match ($this->language) { 'en' => 'Business trip', 'zh' => '出差', default => 'Dienstreise' },
+            null, '' => '—',
+            default => is_string($location) ? $location : '—',
+        };
+    }
+
+    public function groupLocation(array $group): string
+    {
+        $locations = array_unique(array_map(fn (array $entry): string => $this->locationLabel($entry['standort'] ?? null), $group['entries'] ?? []));
+        return count($locations) > 1
+            ? match ($this->language) { 'en' => 'Different locations', 'zh' => '多个地点', default => 'Verschiedene Orte' }
+            : ($locations === [] ? '—' : reset($locations));
+    }
+
     public function pageUrl(int $page): string
     {
         return '?'.http_build_query(['lang' => $this->language, 'user_search' => $this->search, 'page' => $page]

@@ -137,7 +137,26 @@
                 status.textContent = 'Übernommen. ISO-Feld unten prüfen.';
                 raw.focus();
             });
-            groups.push({ local: local, refresh: refresh });
+            function hydrate() {
+                if (!raw.value) return true;
+                const match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?)(Z|[+-]\d{2}:\d{2})$/.exec(raw.value);
+                if (!match) return false;
+                const civil = match[1].length === 16 ? match[1] + ':00' : match[1];
+                const nominal = Date.parse(civil + 'Z');
+                if (!Number.isFinite(nominal) || new Date(nominal).toISOString().slice(0,19) !== civil) return false;
+                const instant = Date.parse(raw.value);
+                if (!Number.isFinite(instant)) return false;
+                // Minute precision in the editor; retain exact stored seconds in
+                // the submitted raw value until the user changes a local input.
+                local.value = wallTime(instant).slice(0,16);
+                refresh();
+                const selectedMinute = Math.floor(instant / 60000) * 60000;
+                const choice = current.find(item => item.instant === selectedMinute);
+                if (!choice) return false;
+                if (current.length > 1) { occurrence.value = choice.value; updateButton(); }
+                return true;
+            }
+            groups.push({ local: local, refresh: refresh, hydrate: hydrate });
             refresh();
         });
         if (groups.length !== 2) return;
@@ -150,5 +169,8 @@
     }
     cancel.addEventListener('change', syncCancel);
     syncCancel();
+    const hydrated = groups.map(group => group.hydrate());
+    const manual = document.getElementById('correction-raw-times');
+    if (manual && hydrated.every(Boolean)) manual.hidden = true;
 }());
 </script>
