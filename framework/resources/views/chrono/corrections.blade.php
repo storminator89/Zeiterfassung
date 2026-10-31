@@ -1,20 +1,31 @@
 @extends('chrono.layouts.app')
 
 @section('content')
-<main class="container mx-auto px-4 py-8 chrono-page">
-    <h1 class="text-2xl font-bold mb-6"><x-chrono-icon name="pencil" size="24" /> Korrekturanträge</h1>
+<main class="container mx-auto px-4 py-8 chrono-page chrono-corrections">
+    <div class="chrono-today-heading"><h1>Korrekturen</h1><img src="assets/illustrations/time-ledger.png" alt="" width="104" height="88"></div>
     <x-chrono-help><p class="opacity-70">Nachträgliche Änderungen mit Begründung und Freigabe. Originalereignisse bleiben erhalten. Eigene Anträge müssen von einer anderen berechtigten Person freigegeben werden.</p></x-chrono-help>
     @if ($corrections->error)<div class="alert alert-error mb-6" role="alert">{{ $corrections->error }}</div>@endif
     @if ($corrections->saved)<div class="alert alert-success mb-6">Gespeichert.</div>@endif
 
     @if (! $corrections->selectionInvalid)
-    <details class="chrono-disclosure mb-6" @if ($corrections->selectedRecordId > 0 || $corrections->requestDraft || $corrections->metadataDraft || $corrections->error) open @endif>
-        <summary><x-chrono-icon name="pencil" size="20" /> Korrektur beantragen</summary>
-        <section class="mt-4 chrono-form-panel">
+    <section class="card chrono-correction-editor mb-6">
+        <header class="chrono-editor-header"><h2><x-chrono-icon name="pencil" size="20" /> Zeit korrigieren</h2></header>
+        <section class="chrono-editor-body">
         @if ($corrections->requestDraft)<p class="text-sm opacity-70 mb-4" role="status">Entwurf beibehalten. Bitte prüfen und erneut senden.</p>@endif
-        <details id="correction-time-helper" class="mb-4" hidden open>
-            <summary class="cursor-pointer font-semibold">Datum und Uhrzeit</summary>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-3">
+        <form method="post" id="correction-request-form" class="chrono-form-panel">
+            @csrf
+            <fieldset @disabled(! $corrections->enabled)>
+                <input class="input input-bordered w-full form-control" type="hidden" name="action" value="request">
+                <label class="block text-sm font-semibold mt-4 mb-2" for="record_id">Buchung</label>
+                <select class="select select-bordered w-full form-select" id="record_id" name="record_id">
+                    <option value="0">Fehlende Buchung nachtragen</option>
+                    @foreach ($corrections->recordOptions as $r)
+                    <option value="{{ $r['id'] }}" @selected($corrections->selectedRecordId === $r['id'])>#{{ $r['id'] }}, {{ \App\View\ExistingUi\HumanTime::full($r['start']) }} bis {{ \App\View\ExistingUi\HumanTime::full($r['end']) }}</option>
+                    @endforeach
+                </select>
+        <section id="correction-time-helper" class="chrono-correction-time" hidden>
+
+            <div class="chrono-form-pair">
                 @foreach (['start' => 'Beginn', 'end' => 'Ende'] as $field => $label)
                 <div data-correction-time="{{ $field }}">
                     <label class="block text-sm font-semibold mb-2" for="{{ $field }}-local">{{ $label }}</label>
@@ -28,24 +39,14 @@
                 </div>
                 @endforeach
             </div>
-        </details>
-        <form method="post" id="correction-request-form" class="chrono-form-panel">
-            @csrf
-            <fieldset @disabled(! $corrections->enabled)>
-                <input class="input input-bordered w-full form-control" type="hidden" name="action" value="request">
-                <label class="block text-sm font-semibold mt-4 mb-2" for="record_id">Bestehender Eintrag</label>
-                <select class="select select-bordered w-full form-select" id="record_id" name="record_id">
-                    <option value="0">Fehlende Buchung nachtragen</option>
-                    @foreach ($corrections->recordOptions as $r)
-                    <option value="{{ $r['id'] }}" @selected($corrections->selectedRecordId === $r['id'])>#{{ $r['id'] }}, {{ \App\View\ExistingUi\HumanTime::full($r['start']) }} bis {{ \App\View\ExistingUi\HumanTime::full($r['end']) }}</option>
-                    @endforeach
-                </select>
-                <label class="block text-sm font-semibold mt-4 mb-2"><input class="checkbox checkbox-primary form-check-input" type="checkbox" name="cancel" value="1" @checked($corrections->requestDraft['cancel'] ?? false)> Bestehende Buchung stornieren (Zeitfelder dann leer lassen)</label>
-                <details class="mb-4"><summary>Zeitwerte manuell eingeben</summary><div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        </section>
+
+                <label class="block text-sm font-semibold mt-4 mb-2"><input class="checkbox checkbox-primary form-check-input" type="checkbox" name="cancel" value="1" @checked($corrections->requestDraft['cancel'] ?? false)> Buchung stornieren</label>
+                <details class="mb-4"><summary>Erweiterte Zeitangaben</summary><div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div><label class="block text-sm font-semibold mt-4 mb-2" for="start">Beginn mit Zeitzone</label><input class="input input-bordered w-full form-control" id="start" name="start" value="{{ $corrections->requestDraft['start'] ?? '' }}" placeholder="2026-10-25T09:00+01:00"></div>
                     <div><label class="block text-sm font-semibold mt-4 mb-2" for="end">Ende mit Zeitzone</label><input class="input input-bordered w-full form-control" id="end" name="end" value="{{ $corrections->requestDraft['end'] ?? '' }}" placeholder="2026-10-25T17:00+01:00"></div>
                 </div></details><div>
-                    <div><label class="block text-sm font-semibold mt-4 mb-2" for="pause">Tatsächliche Pause (Minuten)</label><input class="input input-bordered w-full form-control" id="pause" name="pause" value="{{ $corrections->requestDraft['pause'] ?? '' }}" type="number" min="0"></div>
+                    <div><label class="block text-sm font-semibold mt-4 mb-2" for="pause">Pause in Minuten</label><input class="input input-bordered w-full form-control" id="pause" name="pause" value="{{ $corrections->requestDraft['pause'] ?? '' }}" type="number" min="0"></div>
                 </div>
                 <x-chrono-help><small class="block opacity-70 mt-3">Deutschland: Winterzeit +01:00, Sommerzeit +02:00. Abwesenheitsgutschriften beginnen um 00:00 Uhr Ortszeit; als Ende 00:00 plus Sollminuten und als Pause 0 eintragen. Arbeitsnachträge dürfen nicht in der Zukunft liegen. Bei Zeitumstellungen den Offset für jeden Zeitpunkt einzeln angeben.</small></x-chrono-help>
                 <label class="block text-sm font-semibold mt-4 mb-2" for="reason">Begründung</label>
@@ -76,7 +77,7 @@
         </details>
         @endif
         </section>
-    </details>
+    </section>
     @else
     <p class="mb-6"><a class="btn btn-outline-secondary" href="adjustments.php">Buchung auswählen</a></p>
     @endif

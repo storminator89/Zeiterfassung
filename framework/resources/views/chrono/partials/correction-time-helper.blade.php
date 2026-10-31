@@ -78,11 +78,11 @@
                 current = [];
                 local.disabled = cancel.checked || fieldset.disabled;
                 occurrence.disabled = local.disabled;
-                if (!local.value) { status.textContent = 'Datum und Uhrzeit wählen.'; return; }
+                if (!local.value) { status.textContent = ''; return; }
                 try { current = choices(local.value); }
                 catch (_) { current = null; }
-                if (current === null) { current = []; status.textContent = 'Datum prüfen oder ISO-Feld direkt nutzen.'; return; }
-                if (!current.length) { status.textContent = 'Diese Uhrzeit gibt es in Berlin nicht. ISO-Feld unverändert.'; return; }
+                if (current === null) { current = []; status.textContent = 'Datum und Uhrzeit prüfen.'; return; }
+                if (!current.length) { status.textContent = 'Diese Uhrzeit gibt es in Berlin nicht. Bitte eine andere Uhrzeit wählen.'; return; }
                 if (current.length > 1) {
                     const placeholder = document.createElement('option');
                     placeholder.value = '';
@@ -97,12 +97,26 @@
                     occurrence.value = '';
                     occurrenceBox.hidden = false;
                     status.textContent = 'Diese Uhrzeit kommt zweimal vor.';
-                } else { status.textContent = 'UTC' + current[0].offset; }
+                } else { status.textContent = ''; }
                 updateButton();
             }
 
-            local.addEventListener('input', refresh);
-            occurrence.addEventListener('change', updateButton);
+            function copyFromLocal() {
+                if (fieldset.disabled || cancel.checked) return;
+                let fresh;
+                try { fresh = choices(local.value); } catch (_) { fresh = null; }
+                const choice = fresh && selected(fresh);
+                // A changed local input must never submit an older hidden value.
+                // Repeated Berlin hours require the explicit occurrence selection.
+                raw.value = choice ? choice.value : '';
+                applying = true;
+                try { raw.dispatchEvent(new Event('input', { bubbles: true })); }
+                finally { applying = false; }
+            }
+            local.addEventListener('input', function () { refresh(); copyFromLocal(); });
+            local.addEventListener('change', function () { refresh(); copyFromLocal(); });
+            occurrence.addEventListener('change', function () { updateButton(); copyFromLocal(); });
+            apply.hidden = true;
             raw.addEventListener('input', function () {
                 if (applying) return;
                 local.value = '';

@@ -22,5 +22,6 @@ summary=json.loads(get('/attendance.php?format=status&home_balance=1'))
 assert summary['home_balance']['presentation'] in ['current','unresolved','incomplete']
 assert isinstance(summary['home_balance']['label'],str) and summary['report_finality'].keys() >= {'all','week','month','year'}
 page=get('/index.php');assert 'Sichere Ereignis-ID nicht verfügbar' not in page and 'UTF-8-Bytes' not in page
-assert 'Erfasster Saldo' in page and 'chrono-disclosure' in page
+# Check the accessible balance name; Home no longer requires accordion styling.
+assert 'Erfasster Saldo' in page
 print('PASS all ten page/fragment renders, five isolated admin areas and concise Home labels')

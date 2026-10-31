@@ -25,14 +25,26 @@
 </nav>
 <section class="chrono-admin-pane" data-admin-pane="users" @if($adminSection !== 'users') hidden @endif>
     @if ($adminPauseSettings->localSecurityControls)
-    <div id="user-management" class="card bg-base-100 shadow-xl mb-8">
-        <div class="card-body">
-            <h2 class="card-title text-2xl mb-4">{{ $page->copy->text('USER_MANAGEMENT_TITLE') }}
+    <div id="user-management" class="card chrono-people-card mb-4">
+        <div class="card-header chrono-person-header">
+            <div class="chrono-person-heading"><h2 class="card-title mb-0">Personen
                 <span id="account-lifecycle-help">
                     <button type="button" id="account-lifecycle-trigger" class="btn btn-ghost btn-sm" aria-label="Hinweis zu Kontosperren" aria-describedby="account-lifecycle-tooltip" aria-controls="account-lifecycle-tooltip" aria-expanded="false">ⓘ</button>
                     <span id="account-lifecycle-tooltip" role="tooltip" hidden>@if ($adminPauseSettings->lifecycleUsers !== [])Kontostatus und Terminal-/LDAP-Sitzungssperren sind getrennte Aktionen. Gesperrte Konten bleiben mit ihrer Historie erhalten.@else Eine zentrale Kontosperre fehlt noch. Lokale Passwortänderungen sperren weder erneute LDAP-Anmeldungen noch Terminal-Zugänge.@endif</span>
                 </span>
-            </h2>
+            </h2></div>
+            <div class="chrono-person-toolbar">
+            <form action="" method="GET" class="chrono-person-search">
+                <div class="chrono-field"><div class="input-group">
+                    <input type="text" name="search" id="userSearch" aria-label="Benutzer suchen" class="input input-bordered form-control" placeholder="{{ $page->copy->text('SEARCH_USERS') }}" value="{{ $adminPauseSettings->users['search'] ?? '' }}">
+                    <button class="btn btn-outline-secondary" type="submit" aria-label="Suchen"><i class="fas fa-search" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg></i></button>
+                </div></div>
+            </form>            <button type="button" class="btn btn-primary" id="toggleUserForm" @disabled($adminPauseSettings->departments === [] || ! $adminPauseSettings->enabled || ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled']))><i class="fas fa-plus mr-2" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M4 12h16"/></svg></i>{{ $page->copy->text('BUTTON_CREATE_USER') }}</button>
+            @if ($adminPauseSettings->departments === [])<a class="link-secondary chrono-person-prerequisite" href="admin.php?section=departments">Abteilung anlegen</a>@endif
+            </div>
+        </div>
+        <div class="card-body">
+
             @if ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled'])<p class="alert alert-info mb-4" role="note">Manuelle Benutzeraufnahme ist durch die gespeicherte Auswahl deaktiviert.</p>@endif
             @if ($adminPauseSettings->ldapSessionNotice !== null)
             <p class="alert alert-info mb-4" role="status">{{ $adminPauseSettings->ldapSessionNotice }}</p>
@@ -46,8 +58,6 @@
             @unless ($managedUsersEnabled)
             <div id="user-mutations-hold" class="alert alert-info mb-4" role="note">Bestehende Benutzer bleiben nur lesend: Ändern, Löschen und Passwortänderungen sind nicht verbunden.</div>
             @endunless
-            <button type="button" class="btn btn-primary mb-4" id="toggleUserForm" @disabled($adminPauseSettings->departments === [] || ! $adminPauseSettings->enabled || ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled']))><i class="fas fa-plus mr-2" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M4 12h16"/></svg></i>{{ $page->copy->text('BUTTON_CREATE_USER') }}</button>
-            @if ($adminPauseSettings->departments === [])<a class="btn btn-outline-secondary mb-4" href="admin.php?section=departments">Zuerst Abteilung anlegen</a>@endif
             @php($createUserDraft = $adminPauseSettings->createUserDraft)
             <div id="userForm" class="{{ $createUserDraft === null ? 'hidden ' : '' }}mb-6">
                 <form method="post" class="space-y-4">
@@ -108,48 +118,27 @@
                 </form>
             </div>
             <div id="user-detail-error" class="alert alert-error mb-4 hidden" role="alert"></div>
-            <form action="" method="GET" class="mb-4">
-                <div class="chrono-field"><div class="input-group">
-                    <input type="text" name="search" id="userSearch" aria-label="Benutzer suchen" class="input input-bordered form-control" placeholder="{{ $page->copy->text('SEARCH_USERS') }}" value="{{ $adminPauseSettings->users['search'] ?? '' }}">
-                    <button class="btn btn-square" type="submit"><i class="fas fa-search" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg></i></button>
-                </div></div>
-            </form>
 
-            <div class="overflow-x-auto">
-                <table class="table w-full">
-                    <thead><tr>
-                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_USERNAME') }}</th>
 
-                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_ROLE') }}</th>
-                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_DEPARTMENT') }}</th>
-                        <th class="text-left">Vorgesetzte Person</th>
-                        <th class="text-left">Std. / Tag</th>
-                        <th class="text-left">{{ $page->copy->text('UI_CARRY_IN') }}</th>
-                        <th class="text-left">{{ $page->copy->text('TABLE_HEADER_ACTIONS') }}</th>
-                    </tr></thead>
+            <div class="chrono-person-table-wrap">
+                <table class="table table-vcenter chrono-person-table mb-0">
+                    <thead><tr><th>Person</th><th>Team</th><th>Arbeitszeit</th><th class="text-end">Aktionen</th></tr></thead>
                     <tbody>
                     @foreach (($adminPauseSettings->users['users'] ?? []) as $user)
                         <tr>
-                            <td><strong>{{ $user['username'] }}</strong> @if(isset($adminPauseSettings->lifecycleUsers[$user['id']]))<span class="badge badge-ghost">{{ ['active'=>'Aktiv','inactive'=>'Deaktiviert','departed'=>'Ausgetreten'][$adminPauseSettings->lifecycleUsers[$user['id']]['status']] ?? '—' }}</span>@endif<span class="chrono-user-email">{{ $user['email'] }}</span></td><td>{{ $user['role'] }}</td>
-                            <td>{{ $user['department_name'] ?? '' }}@if (($user['department_reference_status'] ?? null) === 'missing')<small class="block text-warning mt-1">Zugeordnete Abteilung fehlt. Zuordnung über „Bearbeiten“ prüfen.</small>@elseif (in_array($user['department_reference_status'] ?? null, ['invalid', 'unknown'], true))<small class="block text-warning mt-1">Abteilungszuordnung nicht eindeutig prüfbar. Bestand über „Bearbeiten“ prüfen.</small>@endif</td><td>{{ $user['supervisor_name'] ?? '' }}@if (($user['supervisor_reference_status'] ?? null) === 'missing')<small class="block text-warning mt-1">Zugeordnete vorgesetzte Person fehlt. Zuordnung über „Bearbeiten“ prüfen.</small>@elseif (in_array($user['supervisor_reference_status'] ?? null, ['invalid', 'unknown'], true))<small class="block text-warning mt-1">Vorgesetztenzuordnung nicht eindeutig prüfbar. Bestand über „Bearbeiten“ prüfen.</small>@endif</td>
-                            <td>{{ number_format((float)$user['regelarbeitszeit'], 2, ',', '') }} h</td><td>{{ number_format((float)$user['ueberstunden'], 2, ',', '') }} h</td>
-                            <td>
+                            <td data-label="Person"><div class="chrono-person-identity"><strong>{{ $user['username'] }}</strong><span class="chrono-person-role">{{ ['user'=>'Mitarbeitende','admin'=>'Administration','supervisor'=>'Teamleitung'][$user['role']] ?? $user['role'] }}</span>@if(isset($adminPauseSettings->lifecycleUsers[$user['id']]))<span class="badge bg-secondary-lt">{{ ['active'=>'Aktiv','inactive'=>'Deaktiviert','departed'=>'Ausgetreten'][$adminPauseSettings->lifecycleUsers[$user['id']]['status']] ?? '—' }}</span>@endif</div><span class="chrono-user-email">{{ $user['email'] }}</span></td>
+                            <td data-label="Team"><span>{{ ($user['department_name'] ?? '') ?: '—' }}</span>
+                                @if (($user['department_reference_status'] ?? null) === 'missing')<small class="d-block text-warning">Abteilung fehlt. Bitte Zuordnung prüfen.</small>@elseif (in_array($user['department_reference_status'] ?? null, ['invalid', 'unknown'], true))<small class="d-block text-warning">Abteilungszuordnung bitte prüfen.</small>@endif
+                                @if (!empty($user['supervisor_name']))<small class="d-block text-secondary">Teamleitung: {{ $user['supervisor_name'] }}</small>@endif
+                                @if (($user['supervisor_reference_status'] ?? null) === 'missing')<small class="d-block text-warning">Teamleitung fehlt. Bitte Zuordnung prüfen.</small>@elseif (in_array($user['supervisor_reference_status'] ?? null, ['invalid', 'unknown'], true))<small class="d-block text-warning">Zuordnung der Teamleitung bitte prüfen.</small>@endif
+                            </td>
+                            <td data-label="Arbeitszeit"><span class="d-block">{{ number_format((float)$user['regelarbeitszeit'], 2, ',', '') }} h / Tag</span><small class="d-block text-secondary">Übertrag {{ number_format((float)$user['ueberstunden'], 2, ',', '') }} h</small></td>
+                            <td data-label="Aktionen" class="chrono-person-actions"><div class="chrono-person-action-bar">
                                 <button type="button" class="btn btn-ghost btn-sm" data-read-user="{{ $user['id'] }}" title="{{ $page->copy->text('BUTTON_EDIT') }}" aria-label="{{ $page->copy->text('BUTTON_EDIT') }}"><span>Bearbeiten</span></button>
-                                @if (($user['has_audit_history'] ?? false) === true)
-                                <span class="sr-only">{{ $page->copy->text('ADMIN_USER_DELETE_HISTORY_LOCKED') }}</span>
-                                @elseif ($managedUsersEnabled)
-                                <form method="post" class="inline" data-delete-managed-user>
-                                    @csrf
-                                    <input type="hidden" name="delete_user" value="1">
-                                    <input type="hidden" name="user_id" value="{{ $user['id'] }}">
-                                    <button type="submit" class="btn btn-ghost btn-sm" title="{{ $page->copy->text('BUTTON_DELETE') }}"><i class="fas fa-trash-alt" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg></i></button>
-                                </form>
-                                @else
-                                <button type="button" class="btn btn-ghost btn-sm" title="{{ $page->copy->text('BUTTON_DELETE') }}" disabled aria-describedby="user-mutations-hold"><i class="fas fa-trash-alt" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg></i></button>
-                                @endif
-                                <details class="chrono-row-actions"><summary>Weitere Aktionen</summary><div>
+                                <details class="chrono-person-menu"><summary class="btn btn-ghost btn-sm" aria-label="Weitere Aktionen für {{ $user['username'] }}"><span aria-hidden="true">⋯</span></summary><div class="chrono-person-menu-panel">
+
                                 @if (isset($adminPauseSettings->lifecycleUsers[$user['id']]))
-                                    @include('chrono.partials.account-lifecycle-actions', ['lifecycleUser' => $adminPauseSettings->lifecycleUsers[$user['id']], 'lifecycleId' => $user['id']])
+                                    <div class="chrono-person-lifecycle">@include('chrono.partials.account-lifecycle-actions', ['lifecycleUser' => $adminPauseSettings->lifecycleUsers[$user['id']], 'lifecycleId' => $user['id']])</div>
                                 @endif
                                 @if (isset($adminPauseSettings->ldapSessionConfirmations[$user['id']]))
                                 <form method="post" class="inline" data-revoke-ldap-sessions aria-describedby="ldap-session-revocation-help">
@@ -162,10 +151,23 @@
                                 </form>
                                 @endif
 
+                                @if (($user['has_audit_history'] ?? false) === true)
+                                <span class="chrono-person-menu-note">{{ $page->copy->text('ADMIN_USER_DELETE_HISTORY_LOCKED') }}</span>
+                                @elseif ($managedUsersEnabled)
+                                <form method="post" class="inline" data-delete-managed-user>
+                                    @csrf
+                                    <input type="hidden" name="delete_user" value="1">
+                                    <input type="hidden" name="user_id" value="{{ $user['id'] }}">
+                                    <button type="submit" class="btn btn-ghost btn-sm chrono-person-delete" title="{{ $page->copy->text('BUTTON_DELETE') }}"><i class="fas fa-trash-alt" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg></i><span>Löschen</span></button>
+                                </form>
+                                @else
+                                <button type="button" class="btn btn-ghost btn-sm chrono-person-delete" title="{{ $page->copy->text('BUTTON_DELETE') }}" disabled aria-describedby="user-mutations-hold"><i class="fas fa-trash-alt" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg></i><span>Löschen</span></button>
+                                @endif
                                 </div></details>
-                            </td>
+                            </div></td>
                         </tr>
                     @endforeach
+                    @if (($adminPauseSettings->users['users'] ?? []) === [])<tr><td colspan="4" class="text-secondary py-4">Keine Personen gefunden.</td></tr>@endif
                     </tbody>
                 </table>
             </div>

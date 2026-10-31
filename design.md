@@ -6,7 +6,7 @@ Ein Arbeitswerkzeug für Zeiterfassung. Bestehende Funktionen und Daten bleiben 
 - Genre: modern-minimal; app screen, keine Marketingseite. Komponentenstruktur und Abstände folgen dem fertigen Tabler-Template.
 - Thema: offizielles Tabler 1.7.1 (MIT), Kolibri und vorhandener violetter Akzent.
 - Navigation: horizontale Kopfzeile mit Heute, Übersicht, Urlaub. Weitere Aufgaben unter Mehr, Konto separat.
-- Erstansicht: Zeitbuchung und eigene Buchungen. Arbeitsort und Notiz optional, Prüfungen und Exporte nach Bedarf.
+- Erstansicht: eine gemeinsame Buchungsfläche mit integriertem Zeitkonto; Tagesbuchungen direkt sichtbar. Arbeitsort und Notiz stehen beim Kommen ohne Aufklappen bereit. Abwesenheit und Berichte öffnen als native, fokussierte Arbeitsdialoge mit normalen URL-Fallbacks. Filter und Export bilden eine kompakte Werkzeugleiste.
 - Jede Seite führt mit der Aufgabe. Erweiterte Formulare öffnen sich bei ausgewähltem Vorgang, Fehler oder Entwurf.
 - Ein gemeinsamer linker Rand, eine Inhaltsbreite. Keine mehrfachen Logos, statistischen Icon-Kacheln oder verschachtelten Karten.
 

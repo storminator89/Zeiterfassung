@@ -12,5 +12,20 @@
     "preserve": "routes, form controls, scripts, all accounting",
     "source": "Official @tabler/core 1.7.1 npm tarball",
     "verification": "Authored CSS clean; 34 Blade views compile; ten render routes/five admin sections pass; live desktop/mobile and expanded-state review"
+  },
+  {
+    "date": "2026-10-31",
+    "mode": "redesign",
+    "depth": "full",
+    "scope": "app",
+    "theme": "existing Tabler brand system",
+    "pages": [
+      "Today",
+      "absence task dialog",
+      "corrections",
+      "admin persons"
+    ],
+    "changed": "direct bookings, shared clock/account workspace, contextual task dialogs and compact person actions",
+    "verification": "34 Blade views compile, existing render checks pass, authored CSS clean, native dialogs and Berlin DST interaction tested in browser"
   }
 ]

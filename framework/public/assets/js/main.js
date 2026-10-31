@@ -132,6 +132,34 @@
     window.exportToCSV = function() { window.location.assign('export_csv.php'); };
 
     ready(() => {
+        // Native task dialogs retain ordinary URL links as a no-script fallback.
+        document.querySelectorAll('[data-home-dialog]').forEach(link => {
+            const dialog = document.getElementById(link.dataset.homeDialog);
+            if (!(dialog instanceof HTMLDialogElement)) return;
+            link.addEventListener('click', event => {
+                event.preventDefault();
+                if (!dialog.open) dialog.showModal();
+            });
+        });
+        document.querySelectorAll('.chrono-home-dialog').forEach(dialog => {
+            dialog.querySelectorAll('[data-close-home-dialog]').forEach(close => close.addEventListener('click', event => {
+                event.preventDefault(); dialog.close();
+            }));
+            if (dialog.hasAttribute('data-open-home-dialog')) {
+                dialog.close(); dialog.showModal();
+            }
+        });
+        document.addEventListener('click', event => {
+            document.querySelectorAll('.chrono-ledger-export[open]').forEach(menu => {
+                if (!menu.contains(event.target)) menu.open = false;
+            });
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key !== 'Escape') return;
+            document.querySelectorAll('.chrono-ledger-export[open]').forEach(menu => {
+                menu.open = false; menu.querySelector('summary').focus();
+            });
+        });
         document.querySelectorAll('.main-title').forEach(title => {
             title.addEventListener('click', () => {
                 const content = title.nextElementSibling;

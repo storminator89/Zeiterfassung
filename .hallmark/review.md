@@ -55,3 +55,13 @@ All 34 final Blade templates passed compilation and PHP syntax parsing. Read-onl
 - History: human activity labels; audit rows with the same explicit stamping-event UUID and actor share a heading within the loaded page. Every original row and its comparison remains inside the activity details; pagination, filters and exports are unchanged. No heuristic time-based grouping.
 - System: bounded contextual API and holiday forms, adjacent checkbox labels, separate diagnostics.
 - Three original transparent illustrations generated with the built-in image tool; paths, prompts and SHA256 are recorded in assets/illustrations/provenance.json.
+
+## Today and form refinement
+
+- One shared clock/account workspace; metadata shown directly before clocking in. Bookings are visible by default.
+- Native absence/reports task dialogs with Escape, explicit cancel, ordinary URL fallback, and restored task focus. CSS/JS URLs carry content hashes so prior browser caches cannot keep old interaction behavior.
+- Absence form uses one compact choice row, dates, reason and footer; explanatory text is contextual.
+- Correction editor follows booking selection with the two time inputs. Unique valid Berlin times copy to the existing POST fields as the local input changes; gaps and unresolved repeated hours clear stale submitted values. Repeated hours still require an explicit occurrence selection. No submit/storage/network action is triggered by choosing a time.
+- Persons have four columns and a separate contextual action menu; lifecycle, LDAP and guarded deletion controls retain their original contracts.
+- Browser checks: native dialog open/cancel/Escape, readonly persons menu, automatic 30 Oct 2026 +01:00 conversion, 29 Mar 2026 gap refusal, 25 Oct 2026 repeated-hour explicit selection. No requests, absences or account changes submitted.
+- Updated the render check to keep the accessible balance assertion while removing the obsolete Home accordion-class requirement. Authenticated page checks still pass.

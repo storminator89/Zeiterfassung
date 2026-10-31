@@ -1,29 +1,15 @@
 {{-- Native get_time_records.php fragment; all prepared values are escaped here. --}}
-<div class="flex justify-between items-center mb-4">
-    <h2 class="text-xl font-bold">{{ $records->copy->text('UI_MY_RECORDS') }}</h2>
-    @if ($records->csvExport)
-    <a href="export_csv.php" target="_blank" rel="noopener noreferrer" title="{{ $records->copy->text('CSV_EXPORT_NEW_CONTEXT_HINT') }}" aria-label="{{ $records->copy->text('BUTTON_EXPORT_CSV') }}"
-            class="btn btn-outline-secondary btn-sm gap-2">
-        <x-chrono-icon name="file-export" size="18" />
-        <span class="hidden sm:inline">{{ $records->copy->text('BUTTON_EXPORT_CSV') }}</span>
-    </a>
-    @else
-    <button disabled aria-label="{{ $records->copy->text('BUTTON_EXPORT_CSV') }}" title="CSV-Export ist in dieser Vorschau noch nicht verbunden."
-            class="btn btn-outline-secondary btn-sm gap-2">
-        <x-chrono-icon name="file-export" size="18" />
-        <span class="hidden sm:inline">{{ $records->copy->text('BUTTON_EXPORT_CSV') }}</span>
-    </button>
-    @endif
-</div>
-<details class="chrono-record-tools" @if($records->reviewOnly) open @endif><summary>Filter &amp; Export</summary><div class="chrono-record-tools-body">
-@if ($records->storedValuesExport)
-<details class="chrono-export-options mb-3"><summary>Weitere Exportoptionen</summary><div class="text-sm opacity-70 mt-2"><a class="link" href="export_stored_values.php" target="_blank" rel="noopener noreferrer">Rohdaten (JSON)</a> <x-chrono-help><span>{{ $records->storedValuesText('note') }}</span></x-chrono-help></div></details>
-@endif
-<div class="flex flex-wrap items-end gap-3 mb-4">
-    <label class="text-sm font-semibold" for="time-record-review">Listenansicht<select id="time-record-review" data-record-review-filter data-page="{{ $records->page }}" class="select select-bordered select-sm block mt-1 form-select"><option value="all" @selected(! $records->reviewOnly)>Alle eigenen Einträge</option><option value="review" @selected($records->reviewOnly)>Vorhandene Prüfhinweise</option></select></label>
-    <x-chrono-help><p class="text-sm opacity-70">@if ($records->reviewOnly){{ $records->totalRecords }} passende eigene Einträge. @endif Ungültige Zeiten, bestehende Arbeitszeit-/Abwesenheitskonflikte, eindeutig prüfbare Überschneidungen abgeschlossener Arbeitszeiten und erkannte Berliner Zeitlücken oder doppelte Stunden ohne Offset; außerdem lesbare Zeiten mit Format- oder Ungültigbefund der Altzeitdiagnose. Kein vollständiger Bestandscheck oder Vollständigkeitsnachweis; ein unmarkierter Eintrag ist keine Freigabe. Bestehende Dauer- und Summenberechnungen bleiben unverändert und bestätigen keine eindeutige Altzeit. Summen berücksichtigen weiterhin den vollständigen eigenen Tageskontext.</p></x-chrono-help>
-</div>
-</div></details>
+<header class="chrono-ledger-toolbar">
+    <h2>{{ $records->copy->text('UI_MY_RECORDS') }}</h2>
+    <div class="chrono-ledger-controls">
+        <label class="sr-only" for="time-record-review">Buchungen filtern</label><select id="time-record-review" data-record-review-filter data-page="{{ $records->page }}" class="form-select form-select-sm" aria-label="Buchungen filtern"><option value="all" @selected(! $records->reviewOnly)>Alle Buchungen</option><option value="review" @selected($records->reviewOnly)>Mit Prüfhinweis</option></select>
+        <details class="chrono-ledger-export"><summary class="btn btn-sm btn-outline-secondary"><x-chrono-icon name="file-export" size="18" /> Export</summary><div class="chrono-ledger-export-menu">
+            @if ($records->csvExport)<a href="export_csv.php" target="_blank" rel="noopener noreferrer" title="{{ $records->copy->text('CSV_EXPORT_NEW_CONTEXT_HINT') }}">CSV herunterladen</a>@else<span>CSV nicht verfügbar</span>@endif
+            @if ($records->storedValuesExport)<a href="export_stored_values.php" target="_blank" rel="noopener noreferrer">Rohdaten (JSON)</a><x-chrono-help><p>{{ $records->storedValuesText('note') }}</p></x-chrono-help>@endif
+        </div></details>
+        <x-chrono-help label="Prüfhinweise der Buchungen"><p>Die Prüfansicht zeigt erkannte ungültige Zeiten und Überschneidungen. Einträge ohne Hinweis sind kein vollständiger Bestandscheck. Tageswerte berücksichtigen weiterhin alle eigenen Einträge des Tages.</p></x-chrono-help>
+    </div>
+</header>
 @if ($records->reviewOnly && $records->totalRecords === 0)
 <p class="text-sm mb-4" role="status">Keine passenden Prüfhinweise gefunden. Dies bestätigt weder einen fehlerfreien Bestand noch rekonstruierbare Altzeiten.</p>
 @endif
@@ -40,12 +26,9 @@
                 </thead>
                 <tbody class="divide-y divide-base-200">
                 @foreach ($records->groups as $group)
-                    <tr class="summary-row hover:bg-base-200/50 cursor-pointer transition-colors" data-date="{{ $group['group_key'] }}">
+                    <tr class="chrono-day-row" data-date="{{ $group['group_key'] }}">
                         <td class="px-6 py-4 w-48">
                             <div class="flex items-center gap-3">
-                                <div class="w-6 flex justify-center transition-transform duration-200">
-                                    <i class="fas fa-chevron-right text-primary" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg></i>
-                                </div>
                                 <div class="flex items-center gap-2">
                                     <div class="font-medium">{{ $group['formatted_date'] }}</div>
                                     <div class="badge badge-sm badge-ghost" title="{{ $group['is_partial'] ? 'Sichtbare Einträge / alle Einträge des Tages' : 'Anzahl der Einträge' }}">{{ $group['is_partial'] ? $group['entry_count'] . ' / ' . $group['day_entry_count'] : $group['entry_count'] }}</div>
@@ -66,7 +49,7 @@
                             </div>
                         </td>
                     </tr>
-                    <tr class="details-row bg-base-100/50" data-date="{{ $group['group_key'] }}" style="display: none;">
+                    <tr class="details-row bg-base-100/50" data-date="{{ $group['group_key'] }}" >
                         <td colspan="3" class="p-0">
                             <div class="chrono-day-entries">
                                 @if ($group['is_partial'])<p class="text-sm opacity-70 mb-3">Teilansicht: {{ $group['entry_count'] }} / {{ $group['day_entry_count'] }} Einträge auf dieser Seite. Dauer und Pause berücksichtigen alle Einträge des Tages.</p>@endif

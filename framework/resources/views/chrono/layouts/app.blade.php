@@ -13,8 +13,8 @@
 
     <link rel="icon" href="assets/kolibri_icon.png" type="image/png">
     <link rel="stylesheet" href="assets/vendor/tabler/1.7.1/tabler.min.css">
-    <link rel="stylesheet" href="assets/css/app_ui.css">
-    @if ($page->interactions->home)<script src="assets/js/main.js" defer></script>@endif
+    <link rel="stylesheet" href="assets/css/app_ui.css?v={{ substr(hash_file('sha256', public_path('assets/css/app_ui.css')),0,12) }}">
+    @if ($page->interactions->home)<script src="assets/js/main.js?v={{ substr(hash_file('sha256', public_path('assets/js/main.js')),0,12) }}" defer></script>@endif
     @if ($page->interactions->attendance)<script src="assets/js/chrono-local-web.js" defer></script>@endif
     @if ($navPage === 'supervisor.php')<script src="assets/vendor/chartjs/4.6.1/chart.umd.min.js" defer></script>@endif
 </head>
@@ -243,7 +243,7 @@
 
         // Record changes and cancellations are handled by approved correction requests.
 
-        document.querySelectorAll('.chrono-header details').forEach(menu => {
+        document.querySelectorAll('.chrono-header details, .chrono-person-menu').forEach(menu => {
             document.addEventListener('click', e => { if (!menu.contains(e.target)) menu.open = false; });
             menu.addEventListener('keydown', e => { if (e.key === 'Escape') { menu.open = false; menu.querySelector('summary').focus(); } });
         });
