@@ -1,0 +1,82 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: Tabler 1.7.1 · scope: vacation */
+/* Hallmark · pre-emit critique: one request surface, readable periods, paired review actions and a focused decision. */
+.chrono-vacation-heading {display:flex;align-items:center;justify-content:space-between;gap:var(--space-lg);margin-bottom:var(--space-lg);}
+.chrono-vacation-heading h1 {margin:0!important;}
+.chrono-vacation-heading img {width:104px;height:88px;object-fit:contain;flex-shrink:0;}
+.chrono-vacation-compose {padding:var(--space-lg);background:var(--color-paper);border-radius:var(--space-md);margin-bottom:var(--space-xl);}
+.chrono-vacation-compose > header {display:flex;align-items:center;justify-content:space-between;gap:var(--space-md);margin-bottom:var(--space-lg);}
+.chrono-vacation-compose > header h2 {display:flex;align-items:center;gap:var(--space-xs);font-size:1.1rem;margin:0;}
+.chrono-vacation-compose form {max-width:48rem;}
+.chrono-vacation .form-label {font-size:.875rem;font-weight:500;margin-bottom:var(--space-xs);}
+.chrono-vacation-date-pair {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-md);margin-bottom:var(--space-md);}
+.chrono-vacation-reason {margin-bottom:var(--space-lg);}
+.chrono-vacation-compose footer {display:flex;align-items:center;justify-content:space-between;gap:var(--space-md);}
+.chrono-vacation-compose footer > a {font-size:.875rem;color:var(--color-muted);}
+.chrono-vacation-own-link {margin-bottom:var(--space-lg);}
+.chrono-vacation-toolbar {display:flex;align-items:center;justify-content:space-between;gap:var(--space-lg);flex-wrap:wrap;margin-bottom:var(--space-md);}
+.chrono-vacation-tabs {display:flex;align-items:center;gap:var(--space-lg);}
+.chrono-vacation-tabs a {display:flex;align-items:center;min-height:44px;border-bottom:2px solid transparent;text-decoration:none;color:var(--color-muted);font-size:.94rem;font-weight:500;white-space:nowrap;}
+.chrono-vacation-tabs a.active {color:var(--color-ink);border-bottom-color:var(--color-accent);}
+.chrono-vacation-filter {display:flex;gap:var(--space-xs);align-items:center;}
+.chrono-vacation-filter .form-select {width:auto;min-width:10rem;}
+.chrono-vacation-request {padding:var(--space-lg);background:var(--color-paper);border-radius:var(--space-md);margin-bottom:var(--space-sm);min-width:0;}
+.chrono-vacation-request-heading {display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-md);}
+.chrono-vacation-request-heading h2 {font-size:1.05rem;margin:0 0 var(--space-xs);overflow-wrap:anywhere;}
+.chrono-vacation-range {display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-xs);font-size:1rem;font-weight:500;line-height:1.5;margin:0;font-variant-numeric:tabular-nums;}
+.chrono-vacation-range .chrono-icon {color:var(--color-muted);margin-inline-end:var(--space-2xs);}
+.chrono-vacation-state {padding:var(--space-2xs) var(--space-sm);border-radius:var(--radius-pill);background:var(--color-paper-2);color:var(--color-muted);font-size:.8125rem;white-space:nowrap;}
+.chrono-vacation-state[data-vacation-state="approved"] {color:var(--color-success);}
+.chrono-vacation-state[data-vacation-state="rejected"] {color:var(--color-error);}
+.chrono-vacation-request-reason {margin:var(--space-md) 0 0;color:var(--color-ink-2);font-size:.94rem;white-space:pre-wrap;overflow-wrap:anywhere;max-width:65ch;}
+.chrono-vacation-request-actions {display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-xs);margin-top:var(--space-md);}
+.chrono-vacation-request-actions:empty {display:none;}
+.chrono-vacation-refresh {font-size:.8125rem;color:var(--color-muted);margin-inline-end:var(--space-sm);}
+.chrono-vacation-preview {border-top:1px solid var(--color-rule);margin-top:var(--space-lg);padding-top:var(--space-md);}
+.chrono-vacation-preview > header {display:flex;align-items:center;gap:var(--space-xs);margin-bottom:var(--space-md);}
+.chrono-vacation-preview > header h3 {font-size:.94rem;font-weight:500;margin:0;}
+.chrono-vacation-preview dl {display:flex;gap:var(--space-xl);margin:0;}
+.chrono-vacation-preview dt {font-size:.8125rem;color:var(--color-muted);font-weight:400;margin-bottom:var(--space-2xs);}
+.chrono-vacation-preview dd {font-size:1.5rem;font-weight:600;font-variant-numeric:tabular-nums;margin:0;}
+.chrono-vacation-credit-details {margin-top:var(--space-md);font-size:.875rem;}
+.chrono-vacation-credit-details > summary {cursor:pointer;color:var(--color-muted);}
+.chrono-vacation-credit-details .table-responsive {max-height:20rem;margin-top:var(--space-sm);max-width:32rem;}
+.chrono-vacation-credit-details .table {font-variant-numeric:tabular-nums;}
+.chrono-vacation-history {margin-top:var(--space-md);font-size:.8125rem;}
+.chrono-vacation-history > summary {cursor:pointer;color:var(--color-muted);width:max-content;}
+.chrono-vacation-history ol {margin:var(--space-md) 0 0;padding:0;list-style:none;max-width:48rem;}
+.chrono-vacation-history li {padding-block:var(--space-sm);border-top:1px solid var(--color-rule);}
+.chrono-vacation-history li > div {display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-md);flex-wrap:wrap;}
+.chrono-vacation-history time {color:var(--color-muted);font-variant-numeric:tabular-nums;}
+.chrono-vacation-history li > p {margin:var(--space-xs) 0;white-space:pre-wrap;overflow-wrap:anywhere;}
+.chrono-vacation-empty {display:flex;align-items:center;justify-content:center;gap:var(--space-md);padding:var(--space-xl) var(--space-lg);color:var(--color-muted);}
+.chrono-vacation-empty p {margin:0;}
+.chrono-vacation-pagination {display:flex;align-items:center;justify-content:flex-end;gap:var(--space-md);margin-top:var(--space-lg);font-size:.875rem;color:var(--color-muted);}
+.chrono-vacation-pagination a {display:grid;place-items:center;min-width:40px;min-height:40px;border-radius:var(--space-xs);color:var(--color-ink);text-decoration:none;}
+.chrono-vacation-pagination a[aria-current] {background:var(--color-paper);}
+.chrono-local-ui .chrono-vacation-dialog {width:min(36rem,calc(100dvi - 2rem));max-height:calc(100dvh - 3rem);padding:var(--space-lg);border:0;border-radius:var(--space-md);background:var(--color-paper);color:var(--color-ink);box-shadow:var(--shadow-popover);}
+.chrono-vacation-dialog::backdrop {background:var(--color-overlay);}
+.chrono-vacation-dialog[open]:not(:modal) {position:static;max-height:none;margin:var(--space-lg) 0;width:100%;}
+.chrono-vacation-dialog > header {display:flex;align-items:center;justify-content:space-between;gap:var(--space-md);}
+.chrono-vacation-dialog > header h2 {font-size:1.2rem;margin:0;}
+.chrono-vacation-dialog-period {font-size:.875rem;color:var(--color-muted);margin:var(--space-sm) 0 var(--space-lg);}
+.chrono-vacation-dialog footer {display:flex;justify-content:flex-end;align-items:center;gap:var(--space-xs);margin-top:var(--space-lg);flex-wrap:wrap;}
+.chrono-vacation-dialog footer .chrono-help {margin-inline-end:auto;}
+@media(max-width:640px) {
+    .chrono-vacation-heading img {width:80px;height:72px;}
+    .chrono-vacation-compose,.chrono-vacation-request {padding:var(--space-md);}
+    .chrono-vacation-compose footer {align-items:stretch;flex-direction:column-reverse;}
+    .chrono-vacation-compose footer > a {text-align:center;}
+    .chrono-vacation-toolbar {gap:var(--space-sm);}
+    .chrono-vacation-filter {width:100%;}
+    .chrono-vacation-filter .form-select {flex:1;min-width:0;}
+    .chrono-vacation-request-heading {gap:var(--space-sm);flex-wrap:wrap;}
+    .chrono-vacation-range {font-size:.94rem;}
+    .chrono-vacation-request-actions .btn {font-size:.875rem;}
+    .chrono-vacation-preview dd {font-size:1.25rem;}
+    .chrono-vacation-pagination {justify-content:flex-start;flex-wrap:wrap;}
+    .chrono-local-ui .chrono-vacation-dialog {padding:var(--space-md);}
+}
+.chrono-vacation :is(a,button,input,select,textarea,summary):focus-visible {outline:2px solid var(--color-focus);outline-offset:3px;transition:none;}
+.chrono-vacation :is(button,.btn):active {transform:translateY(1px);}
+.chrono-vacation :is(h1,h2,h3) {text-wrap:balance;}
+.chrono-vacation-state {font-variant-numeric:tabular-nums;}

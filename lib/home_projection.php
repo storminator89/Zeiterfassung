@@ -113,7 +113,7 @@ function report_time_record_detail(array $record): array
         && preg_match('/\A(?:0|[1-9][0-9]{0,3})\z/', $storedCredit) === 1))
         && $storedCredit >= 0 && $storedCredit <= 1440 ? (int)$storedCredit : null;
     $durationLabel = $invalid ? 'Ungültig' : ($credit
-        ? ($creditMinutes === null ? 'Gespeicherte Sollminuten nicht auswertbar' : $creditMinutes . ' Sollminuten')
+        ? ($creditMinutes === null ? 'Gutschrift nicht auswertbar' : report_format_hours($creditMinutes / 60) . ' h Gutschrift')
         : calculateDuration($record['startzeit'], $record['endzeit'], $record['pause']));
 
     return [

@@ -118,6 +118,8 @@ final class LocalWebAdminPauseSettingsController extends Controller
             $supported['refill_holidays'] = \App\Chrono\LocalWebHolidayRefill::COMMAND_FIELDS;
             if ($this->reads instanceof HolidayRefillPreviewReads) {
                 $supported['preview_holidays'] = HolidayRefillPreviewReads::COMMAND_FIELDS;
+                $supported['load_holidays'] = ['load_holidays','holiday_year'];
+                $supported['import_holidays'] = ['import_holidays','holiday_import_token','confirm_bw_source'];
             }
         }
         $actions = [];
@@ -141,6 +143,8 @@ final class LocalWebAdminPauseSettingsController extends Controller
             throw new AuthorizationException('Diese Sicherheitsverwaltung erfordert lokale Administration.');
         }
 
+        if ($actions[0] === 'load_holidays') { return $this->loadAutomaticHolidays($request, $form); }
+        if ($actions[0] === 'import_holidays') { return $this->importAutomaticHolidays($request, $form); }
         if ($actions[0] === 'preview_holidays') { return $this->previewHolidays($form); }
         if ($actions[0] === 'refill_holidays') { return $this->refillHolidays($request, $form); }
 
@@ -187,6 +191,57 @@ final class LocalWebAdminPauseSettingsController extends Controller
             return $this->page($request,
                 'Pauseneinstellungen konnten nicht gespeichert werden. Bitte neu laden und den gespeicherten Stand prüfen.');
         }
+    }
+
+    /** Fetching and comparing never resolve a writer or submit calendar changes. */
+    private function loadAutomaticHolidays(Request $request, array $form): Response|RedirectResponse
+    {
+        $request->session()->forget(['chrono_holiday_automatic','chrono_holiday_refill_receipt']);
+        if (($form['load_holidays'] ?? null) !== '1' || !$this->reads instanceof HolidayRefillPreviewReads) {
+            return $this->page($request, error: 'Feiertagsvorschau nicht verfügbar.')->setStatusCode(400);
+        }
+        try {
+            $year=\App\Chrono\HolidayApiSource::year($form['holiday_year'] ?? null);
+            $json=app(\App\Chrono\HolidayApiSource::class)->load($year);
+            $preview=$this->reads->holidayRefillPreview($year,'BW',$json);
+            $actor=$this->adminActor();
+            $request->session()->put('chrono_holiday_automatic',[
+                'actor'=>(int)$actor->getKey(), 'generation'=>$actor->auth_generation,
+                'year'=>$year, 'json'=>$json, 'preview'=>$preview, 'token'=>bin2hex(random_bytes(32)), 'loaded_at'=>time(),
+            ]);
+            return (new RedirectResponse('admin.php?section=system#holiday-refill',303))->header('Cache-Control','no-store');
+        } catch (AuthenticationException|AuthorizationException $error) { throw $error; }
+        catch (InvalidArgumentException $error) { return $this->page($request,error:$error->getMessage(),holidayRefillDraft:['year'=>$year ?? ''])->setStatusCode(400); }
+        catch (Throwable) { return $this->page($request,error:'Feiertage konnten nicht geladen werden. Bitte später erneut versuchen.',holidayRefillDraft:['year'=>$year ?? ''])->setStatusCode(503); }
+    }
+
+    private function automaticHolidayDraft(Request $request): ?array
+    {
+        $draft=$request->session()->get('chrono_holiday_automatic');$actor=$this->adminActor();
+        if (!is_array($draft) || ($draft['actor'] ?? null)!==(int)$actor->getKey()
+            || ($draft['generation'] ?? null)!==$actor->auth_generation
+            || !is_int($draft['loaded_at'] ?? null) || $draft['loaded_at']>time() || time()-$draft['loaded_at']>600
+            || !is_string($draft['token'] ?? null) || !preg_match('/\A[a-f0-9]{64}\z/D',$draft['token'])
+            || !is_string($draft['year'] ?? null) || !is_string($draft['json'] ?? null) || !is_array($draft['preview'] ?? null)) {
+            return null;
+        }
+        return $draft;
+    }
+
+    /** The opaque form token selects only the public source already stored in this admin session. */
+    private function importAutomaticHolidays(Request $request,array $form): Response|RedirectResponse
+    {
+        $draft=$this->automaticHolidayDraft($request);
+        if (($form['import_holidays'] ?? null)!=='1' || ($form['confirm_bw_source'] ?? null)!=='BW'
+            || !is_string($form['holiday_import_token'] ?? null) || $draft===null
+            || !hash_equals($draft['token'],$form['holiday_import_token'])) {
+            return $this->page($request,error:'Bitte Feiertage erneut laden und die Übernahme bestätigen.')->setStatusCode(400);
+        }
+        // Never reuse a proposal after an uncertain write result; the original writer owns conflict/replay checks.
+        $request->session()->forget('chrono_holiday_automatic');
+        return $this->refillHolidays($request,[
+            'refill_holidays'=>'1', 'holiday_year'=>$draft['year'], 'confirm_bw_source'=>'BW', 'holiday_json'=>$draft['json'],
+        ]);
     }
 
     /** No page(), session/preferences/notices, form issuance, writer or persistent preview receipt. */
@@ -726,6 +781,8 @@ final class LocalWebAdminPauseSettingsController extends Controller
             'runtimeObservation' => $runtimeObservation,
             'managedUsersEnabled' => $localSecurityControls && $this->userMutationsEnabled(),
             'apiManagement' => $apiManagement, 'apiManagementUnavailable' => $apiManagementUnavailable,
+            'holidayAutomaticPreview' => $localSecurityControls && $this->reads instanceof HolidayRefillPreviewReads
+                ? (($draft=$this->automaticHolidayDraft($request))===null ? null : array_intersect_key($draft,array_flip(['year','token','preview','loaded_at']))) : null,
             'holidayRefillReceipt' => $holidayRefillReceipt,
             'holidayRefillPreviewEnabled' => $localSecurityControls && $this->holidayRefill !== null
                 && $this->interactions->adminPauseSettings && $this->reads instanceof HolidayRefillPreviewReads,

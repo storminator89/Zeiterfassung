@@ -1,0 +1,90 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: Tabler, brand violet · scope: terminals · v2.0.0 */
+/* Hallmark · pre-emit critique: one task view at a time; compact service control and readable device rows. */
+.chrono-terminals .chrono-terminal-intro {margin-block-end:var(--space-lg);}
+.chrono-terminals .chrono-terminal-service {display:flex;align-items:center;justify-content:space-between;gap:var(--space-lg);padding:var(--space-md) var(--space-lg);margin-block-end:var(--space-lg);border:1px solid var(--color-rule);border-radius:var(--radius-card);background:var(--color-paper);color:var(--color-ink);}
+.chrono-terminals .chrono-terminal-service-label {display:flex;align-items:center;gap:var(--space-sm);min-width:0;}
+.chrono-terminals .chrono-terminal-service-icon {display:flex;color:var(--color-accent);}
+.chrono-terminals .chrono-terminal-service-label h2 {font-size:1rem;margin:0 0 var(--space-2xs);text-wrap:balance;}
+.chrono-terminals .chrono-terminal-service-state {font-variant-numeric:tabular-nums;font-size:.8125rem;color:var(--color-muted);}
+.chrono-terminals .chrono-terminal-switch-form {display:flex;align-items:center;gap:var(--space-lg);margin:0;}
+.chrono-terminals .chrono-terminal-switch {display:flex;align-items:center;gap:var(--space-sm);padding:0;margin:0;white-space:nowrap;font-size:.875rem;}
+.chrono-terminals .chrono-terminal-switch .form-check-input {float:none;flex-shrink:0;margin:0;}
+.chrono-terminals .chrono-terminal-server-note {font-size:.875rem;color:var(--color-muted);}
+.chrono-terminals .chrono-terminal-nav {display:flex;align-items:center;gap:var(--space-lg);margin-block-end:var(--space-lg);border-block-end:1px solid var(--color-rule);overflow-x:auto;}
+.chrono-terminals .chrono-terminal-nav a {display:flex;align-items:center;gap:var(--space-xs);min-height:48px;padding-block:var(--space-sm);border-block-end:2px solid transparent;color:var(--color-muted);font-size:.94rem;text-decoration:none;white-space:nowrap;}
+.chrono-terminals .chrono-terminal-nav a[aria-current] {color:var(--color-accent);border-block-end-color:var(--color-accent);}
+.chrono-terminals .chrono-terminal-nav a:hover {color:var(--color-ink);}
+.chrono-terminals .chrono-terminal-panel {position:relative;overflow:visible;}
+.chrono-terminals .chrono-terminal-section-head {display:flex;align-items:center;gap:var(--space-xs);min-height:80px;padding:var(--space-lg);padding-inline-end:14rem;}
+.chrono-terminals .chrono-terminal-section-head h2 {display:flex;align-items:center;gap:var(--space-xs);font-size:1.125rem;margin:0;text-wrap:balance;}
+.chrono-terminals .chrono-terminal-count {font-variant-numeric:tabular-nums;font-size:.8125rem;font-weight:400;color:var(--color-muted);}
+.chrono-terminals .chrono-terminal-create > summary {position:absolute;inset-block-start:var(--space-lg);inset-inline-end:var(--space-lg);display:inline-flex;align-items:center;gap:var(--space-xs);width:max-content;list-style:none;cursor:pointer;}
+.chrono-terminals .chrono-terminal-create > summary::-webkit-details-marker {display:none;}
+.chrono-terminals .chrono-terminal-create-chevron {margin-inline-start:var(--space-2xs);}
+.chrono-terminals .chrono-terminal-create[open] .chrono-terminal-create-chevron {transform:rotate(180deg);}
+.chrono-terminals .chrono-terminal-form-panel {padding:var(--space-lg);margin:0 var(--space-lg) var(--space-lg);border-radius:var(--radius-card);background:var(--color-paper-2);color:var(--color-ink);}
+.chrono-terminals .chrono-terminal-fields {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-md);max-width:48rem;}
+.chrono-terminals .chrono-terminal-fields > div {min-width:0;}
+.chrono-terminals .chrono-terminal-fields .form-label {font-size:.875rem;font-weight:500;margin:0 0 var(--space-xs);}
+.chrono-terminals .chrono-terminal-fields :is(.form-control,.form-select) {width:100%;}
+.chrono-terminals .chrono-terminal-form-footer {display:flex;align-items:center;gap:var(--space-sm);margin-block-start:var(--space-lg);}
+.chrono-terminals .chrono-terminal-replace-note {font-size:.8125rem;color:var(--color-muted);margin-block:var(--space-md) 0;}
+.chrono-terminals .chrono-terminal-site-name {max-width:28rem;}
+.chrono-terminals .chrono-terminal-table {width:100%;margin:0;}
+.chrono-terminals .chrono-terminal-table th {padding-block:var(--space-sm);font-weight:400;}
+.chrono-terminals .chrono-terminal-table td {padding-block:var(--space-md);}
+.chrono-terminals .chrono-terminal-name {display:flex;align-items:center;gap:var(--space-sm);}
+.chrono-terminals .chrono-terminal-name > svg {flex-shrink:0;color:var(--color-muted);}
+.chrono-terminals .chrono-terminal-name strong {display:block;font-weight:500;overflow-wrap:anywhere;}
+.chrono-terminals .chrono-terminal-name span {display:block;margin-block-start:var(--space-2xs);font-size:.8125rem;color:var(--color-muted);}
+.chrono-terminals .chrono-terminal-badge {display:inline-flex;align-items:center;max-width:100%;padding:var(--space-2xs) var(--space-xs);border-radius:var(--space-2xs);background:var(--color-paper-2);color:var(--color-muted);font-size:.8125rem;line-height:1.4;}
+.chrono-terminals .chrono-terminal-badge.is-warning {background:color-mix(in oklab,var(--color-accent) 6%,var(--color-paper));color:var(--color-ink);}
+.chrono-terminals .chrono-terminal-last-seen {font-size:.875rem;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.chrono-terminals .chrono-terminal-row-action {text-align:right;}
+.chrono-terminals .chrono-terminal-row-action form {margin:0;}
+.chrono-terminals .chrono-terminal-row-action .btn {white-space:nowrap;}
+.chrono-terminals .chrono-terminal-empty {display:flex;align-items:center;gap:var(--space-md);padding:var(--space-lg);border-block-start:1px solid var(--color-rule);color:var(--color-muted);}
+.chrono-terminals .chrono-terminal-empty > svg {flex-shrink:0;}
+.chrono-terminals .chrono-terminal-empty p {font-size:.94rem;margin:0;}
+.chrono-terminals .chrono-terminal-sites {padding:0 var(--space-lg) var(--space-lg);}
+.chrono-terminals .chrono-terminal-site-context {margin:0 0 var(--space-sm);font-size:.8125rem;color:var(--color-muted);}
+.chrono-terminals .chrono-terminal-sites ul {list-style:none;padding:0;margin:0;}
+.chrono-terminals .chrono-terminal-sites li {display:flex;align-items:center;gap:var(--space-sm);padding-block:var(--space-sm);border-block-start:1px solid var(--color-rule);}
+.chrono-terminals .chrono-terminal-sites svg {color:var(--color-muted);}
+.chrono-terminals .chrono-terminal-pairing {display:flex;align-items:center;justify-content:space-between;gap:var(--space-lg);padding:var(--space-lg);margin-block-end:var(--space-lg);border:1px solid var(--color-rule);border-radius:var(--radius-card);background:var(--color-paper);color:var(--color-ink);}
+.chrono-terminals .chrono-terminal-pairing strong {display:block;font-size:1rem;font-weight:600;}
+.chrono-terminals .chrono-terminal-pairing p {font-size:.875rem;color:var(--color-muted);margin:var(--space-xs) 0 0;}
+.chrono-terminals .chrono-terminal-code {display:flex;flex-direction:column;gap:var(--space-xs);min-width:0;}
+.chrono-terminals .chrono-terminal-code code {font-size:1rem;color:var(--color-accent);white-space:normal;overflow-wrap:anywhere;}
+.chrono-terminals .chrono-terminal-code span {font-variant-numeric:tabular-nums;font-size:.8125rem;color:var(--color-muted);}
+.chrono-terminals :is(.chrono-terminal-create > summary,.chrono-terminal-nav a):focus-visible {outline:2px solid var(--color-focus);outline-offset:3px;}
+@media(max-width:800px) {
+ .chrono-terminals .chrono-terminal-service {flex-wrap:wrap;gap:var(--space-md);}
+ .chrono-terminals .chrono-terminal-switch-form {margin-inline-start:auto;}
+ .chrono-terminals .chrono-terminal-server-note {flex-basis:100%;}
+ .chrono-terminals .chrono-terminal-table {display:block;table-layout:auto;}
+ .chrono-terminals .chrono-terminal-table thead {display:none;}
+ .chrono-terminals .chrono-terminal-table tbody {display:block;}
+ .chrono-terminals .chrono-terminal-table tr {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-sm);padding:var(--space-md);}
+ .chrono-terminals .chrono-terminal-table td {display:block;padding:0;min-width:0;overflow-wrap:anywhere;border:0;}
+ .chrono-terminals .chrono-terminal-table td:first-child {grid-column:1/-1;margin-block-end:var(--space-xs);}
+ .chrono-terminals .chrono-terminal-table td[data-label]:not(:first-child)::before {content:attr(data-label);display:block;font-variant-numeric:tabular-nums;font-size:.75rem;color:var(--color-muted);margin-block-end:var(--space-2xs);}
+ .chrono-terminals .chrono-terminal-row-action {grid-column:1/-1;text-align:left;margin-block-start:var(--space-xs);}
+ .chrono-terminals .chrono-terminal-last-seen {white-space:normal;}
+ .chrono-terminals .chrono-terminal-pairing {align-items:flex-start;flex-direction:column;}
+}
+@media(max-width:560px) {
+ .chrono-terminals .chrono-terminal-service {padding:var(--space-md);}
+ .chrono-terminals .chrono-terminal-switch-form {margin-inline-start:0;width:100%;justify-content:space-between;gap:var(--space-md);}
+ .chrono-terminals .chrono-terminal-nav {gap:var(--space-md);}
+ .chrono-terminals .chrono-terminal-nav a {font-size:.875rem;}
+ .chrono-terminals .chrono-terminal-section-head {padding:var(--space-md);min-height:64px;}
+ .chrono-terminals .chrono-terminal-create > summary {position:static;margin:0 var(--space-md) var(--space-md);}
+ .chrono-terminals .chrono-terminal-form-panel {margin:0 var(--space-md) var(--space-md);padding:var(--space-md);}
+ .chrono-terminals .chrono-terminal-fields {grid-template-columns:minmax(0,1fr);}
+ .chrono-terminals .chrono-terminal-empty {padding:var(--space-md);}
+ .chrono-terminals .chrono-terminal-sites {padding:0 var(--space-md) var(--space-md);}
+ .chrono-terminals .chrono-terminal-pairing {padding:var(--space-md);}
+}
+
+.chrono-terminals :is(.btn,.chrono-terminal-nav a):active {transform:translateY(1px);}

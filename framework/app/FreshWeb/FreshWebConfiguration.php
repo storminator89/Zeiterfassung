@@ -461,6 +461,8 @@ final readonly class FreshWebConfiguration
             'assets/illustrations/calm-break.png' => '55ec1d2b0307cf7a2587c1e162e37b1f3c0ab66bbf50e5e4087263a2198af0cc',
             'assets/illustrations/day-complete.png' => '0e821f4737369e065888be366afe078ae1497d758770a466d05768a9deee78a9',
             'assets/illustrations/time-ledger.png' => '823f82d2b2c4640c3f3627c758ba834378712ce3990a65577d085df8c3162fab',
+            'assets/css/terminal_ui.css' => 'e39c5831d2def1150020189d78d335ebc4173cd075f6c65c944e09d5c91bdeb2',
+            'assets/css/vacation_ui.css' => '0682c6ae4cd7a9324939310f7514c665e36279b43f97e78c63083c4316e52276',
             'assets/css/supervisor_ui.css' => '2aa7dee7471b3aae875ab241b9d7f31e3099c12f1bb88486c862e694a2111e2a',
             'assets/css/app_ui.css' => '7955c919964c2c8326cab12532a7ce747753c126eb4d11bd5127227bea04e8fb',
             'assets/js/main.js' => '11bb9d367475614eefd30fba8c93055f74ef78d875f02d8ef96110c20340775e',

@@ -16,7 +16,7 @@
         $metaDraft = $corrections->metadataDraft;
     @endphp
     @if ($corrections->error)<div class="alert alert-error mb-4" role="alert">{{ $corrections->error }}</div>@endif
-    @if ($corrections->saved)<div class="alert alert-success mb-4" role="status">Antrag eingereicht.</div>@endif
+    @if ($corrections->saved)<div class="alert alert-success mb-4" role="status">Änderung gespeichert.</div>@endif
     @if (! $corrections->selectionInvalid)
     <section class="card chrono-correction-editor mb-6">
         <div class="chrono-editor-body chrono-correction-flow">

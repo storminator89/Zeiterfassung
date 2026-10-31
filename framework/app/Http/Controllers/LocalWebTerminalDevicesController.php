@@ -57,7 +57,7 @@ final class LocalWebTerminalDevicesController extends Controller
             try {
                 $authority=app(\App\Auth\AccountLifecycleWebIdentity::class)->capture($actor);
                 app(\App\LegacyDatabase\AttendanceWriter::class)->saveTerminalCredential((int)$actor->getKey(), hash('sha256',$actor->getAuthPassword()), $command, $authority);
-                return new RedirectResponse('terminals.php?saved=1');
+                return new RedirectResponse('terminals.php?section=access&saved=1');
             } catch (AuthenticationException|AuthorizationException $error) { throw $error;
             } catch (InvalidArgumentException|AttendanceError $error) {
                 return $this->page($request, $error->getMessage(), allowSavedQuery: false);
@@ -111,7 +111,7 @@ final class LocalWebTerminalDevicesController extends Controller
         try {
             $this->sites->create($command);
 
-            return new RedirectResponse('terminals.php?saved=1');
+            return new RedirectResponse('terminals.php?section=sites&saved=1');
         } catch (AuthenticationException|AuthorizationException $error) {
             throw $error;
         } catch (AttendanceError|InvalidArgumentException $error) {
@@ -132,7 +132,7 @@ final class LocalWebTerminalDevicesController extends Controller
         try {
             $this->revocations->revoke($command);
             // The fixed writer returned only after confirmed COMMIT/idle.
-            return new RedirectResponse('terminals.php?saved=1');
+            return new RedirectResponse('terminals.php?section=access&saved=1');
         } catch (AuthenticationException|AuthorizationException $error) {
             throw $error;
         } catch (AttendanceError|InvalidArgumentException $error) {

@@ -402,3 +402,23 @@ then rebinds the known admission metadata. See the maintenance prerequisites,
 channel metadata and interrupted-handoff boundaries in
 [vacation-requests-standard.md](vacation-requests-standard.md). No deployment,
 key rotation, arbitrary restore or Native-data cutover is implied.
+
+### Feiertage über die Verwaltung laden
+
+Unter **Verwaltung → System → Feiertage** das Jahr wählen und **Feiertage laden**
+öffnen. Die Anwendung lädt ausschließlich die öffentliche Baden-Württemberg-Antwort
+von `feiertage-api.de` und zeigt neue, vorhandene oder abweichende Termine an.
+Es müssen keine JSON-Daten kopiert werden. Erst **Für Baden-Württemberg übernehmen**
+und **Feiertage übernehmen** ergänzen fehlende landesweite Feiertage. Vorhandene
+Einträge werden nicht ersetzt; Konflikte verhindern die Übernahme. Bereits erfasste
+Abwesenheitsgutschriften werden nicht neu berechnet. Eine Vorschau gilt zehn Minuten
+und nur für die angemeldete Sitzung; nach Ablauf erneut laden. Bei unerreichbarer
+Quelle bleiben Kalender und Buchungen unverändert.
+
+Die Geräteverwaltung unter **Praxis-Terminals** trennt Geräte, persönliche Zugänge
+und Standorte in drei Ansichten. Der Modulschalter bleibt unabhängig davon erreichbar.
+
+Entwicklertest: `tests/holiday_automatic_source.php` prüft die begrenzte feste Quelle
+ohne Netzwerk. `tests/holiday_automatic_journey.py` schreibt ausschließlich in die
+separate synthetische Installation auf `127.0.0.1:18084`; sie erwartet einen noch
+leeren Feiertagsbestand für 2028 und darf nicht gegen echte Nutzerdaten laufen.

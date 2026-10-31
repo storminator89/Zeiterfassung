@@ -33,3 +33,11 @@ Vorlagen: `framework/resources/views/chrono`.
 
 ## Zeitkonto und Identität
 Das neue App-Zeichen verbindet ein Q mit einem Uhrenring auf einer violetten Kachel. Es ersetzt den Vogel in Navigation, Anmeldung, Favicons und App-Icons. Vorlagen unter `assets/brand`, öffentliche Laufzeitkopien unter `framework/public/assets/brand`; Herkunft und Größenexporte sind dokumentiert. Zustandsgrafiken bleiben klein und zeigen jeweils nur Arbeiten, Pause oder Feierabend. Der Live-Zähler steht optisch vor den sekundären Kontowerten; das Zeitkonto bündelt Saldo, Tagesziel und den Zugang zur Auswertung.
+
+## Urlaub und Freigabe
+Die Urlaubsseite verwendet dieselben ruhigen Flächen wie Heute: ein kompaktes
+Antragsformular und eine Liste mit Zeitraum und Status. Freigaben führen von der
+Stundenvorschau zu einem einzelnen Entscheidungsdialog. Der Verlauf bleibt auf
+Wunsch zugänglich; technische Kennungen stehen nur in kontextueller Hilfe.
+Terminalverwaltung teilt Geräte, Zugänge und Standorte in drei Aufgabenansichten.
+Feiertage werden serverseitig geladen und nach einem lesbaren Abgleich übernommen.

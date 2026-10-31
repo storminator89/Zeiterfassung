@@ -88,3 +88,47 @@ Today has a server-derived net work duration from the existing own session and e
 A newly generated Q-clock mark replaces the former bird in runtime chrome, authentication pages, native compatibility URLs, favicons, Apple touch icon, manifest and extension icons. Artwork originals/provenance and format exports are retained locally. Dark mode preserves the actual colored mark. No external asset dependency was introduced.
 
 Validation: 36 Blade templates compile; all pinned public assets match; no CSS FAIL or REFLEX; exact PHP/JS timer/pause tests and existing event-ID tests pass; authenticated ten-route/five-area render checks pass. Actual desktop and mobile browser review performed; desktop final proof is `/tmp/chrono-today-final.png`. API/MCP activation and all synthetic bookings were confined to the separate `/tmp/chrono-mcp-http-test-v2` installation. Real installation and the user's active review fixture preserve their data.
+
+
+## Terminal management, automatic holidays and approval journeys
+
+Terminal management now shows one compact module row and three task tabs: devices,
+personal access and sites. Dates are human-readable; a saved access/site returns
+to its relevant tab. Existing commands, pairing authority, credential handling and
+CSRF contracts remain. Desktop browser review covered all tabs and an expanded
+access form without writing a terminal credential. `terminal_ui.css`: no sloplint
+FAIL, REFLEX or WARN. Proof: `/tmp/chrono-terminals-final.png`.
+
+The holiday form fetches the fixed public BW source on the server, previews its
+validated bounded response and binds explicit import to actor, authentication
+generation, a random one-use session token and ten-minute expiry. No pasted JSON
+or caller-controlled URL is accepted in the new flow. Existing insert-only writer,
+audit and conflict checks remain. Unit source boundary checks and the live separate
+synthetic 2028 fetch/preview/import/replay journey passed. Review and real holiday
+calendars were not modified by testing.
+
+Actual browser journeys on the separate 18084 fixture: Alice requested correction
+of her synthetic booking from 14:19 to 14:09; the independent admin approved it.
+Alice's Today showed 14:09–14:19 and 00:10. Alice requested 3–4 November 2026 leave;
+the admin preview showed two 480-minute workdays, approved it, and Alice saw
+Freigegeben and two separate 08:00 vacation entries. No own approval was offered.
+The correction success copy no longer says a new request was submitted after
+a reviewer decision. Both decisions were made on invented test accounts only.
+
+
+Vacation now follows the Today surface system: an always-visible compact request
+form, a readable period/status ledger, and paired review intents. Each decision
+opens one native reason dialog with its original exact POST fields; approve retains
+the fresh server preview/plan hash and its no-script URL fallback keeps preview ID.
+History uses human outcomes and Berlin dates, with actor/revision identifiers only
+in contextual help. Existing entry credits show hours rather than raw target minutes.
+
+After deployment, a new Alice request for 5 November was submitted through the new
+form, reviewed by the separate admin, previewed as one day / 08:00 h, and approved
+through the new dialog. The approved filter displayed both test requests. Withdrawal
+dialog open/Escape restored focus without a command. Desktop and mobile reviewed;
+public asset pins (24) and all 36 Blade compiles passed, ten authenticated page/fragment
+renders and five admin areas passed. Both new CSS files have zero static sloplint
+FAIL/REFLEX/WARN; its render tier was unavailable for standalone CSS, so actual IAB
+screenshots supplied visual review. Proof: `/tmp/chrono-vacation-review-final.png`
+and `/tmp/chrono-vacation-approved-final.png`.
