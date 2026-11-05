@@ -649,3 +649,11 @@
 .chrono-account-link {display:flex;justify-content:space-between;align-items:center;gap:var(--space-sm);text-decoration:none;color:var(--color-accent);font-size:.85rem;font-weight:500;min-height:36px;}
 .chrono-account-link:hover {text-decoration:underline;}
 @media(max-width:800px) {.chrono-today-workspace .chrono-balance-strip {border-radius:0 0 var(--space-md) var(--space-md);}.chrono-local-ui .chrono-today-account .card-body {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--space-lg);row-gap:var(--space-md);}.chrono-account-heading {grid-column:1/-1;}.chrono-account-goal {border:0;padding:0;}.chrono-account-link {grid-column:1/-1;}}
+
+/* Compact comparison stays readable at phone widths. */
+@media(max-width:640px) {
+ .chrono-local-ui .chrono-analysis-table {table-layout:fixed;width:100%;min-width:0;}
+ .chrono-local-ui .chrono-analysis-table :is(th,td) {white-space:normal;overflow-wrap:anywhere;padding:var(--space-xs);}
+ .chrono-local-ui .chrono-dashboard-tabs {flex-wrap:wrap;gap:var(--space-sm);overflow:visible;}
+ .chrono-local-ui .chrono-dashboard-tabs .nav-link {font-size:.875rem;}
+}

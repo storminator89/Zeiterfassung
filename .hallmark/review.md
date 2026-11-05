@@ -146,3 +146,20 @@ existing installation was separately recovered from a host device-number change
 under a cold backup, exact inode/key fingerprint checks and unchanged DB hash;
 full runtime bootstrap and browser login page passed. This does not implement a
 general automatic reboot recovery facility.
+
+## Follow-up: task selection, onboarding states and mobile comparison
+
+Corrections now start with an explicit change/insert choice. An existing booking
+must be selected before its editor appears; new-entry and rejected-draft paths
+retain their form fields and POST contracts. Browser checked picker navigation,
+exact prefilled time fields and the separate blank insert form. Department lists
+have a useful empty state; terminal module status no longer implies that a device
+is already configured. Week/month comparison retains only shared metrics, with
+period-specific values separately labeled. At phone width the headers wrap and
+both columns remain visible without lateral scrolling. Browser proof:
+`/tmp/chrono-analysis-mobile-final.png`. All 36 Blade templates compile. CSS lint
+has no FAIL and the existing, previously documented near-neutral accent WARN.
+
+A real deployment issue surfaced during verification: persistent compiled views
+could be newer than image source mtimes. The start command now explicitly clears
+those views after startup, and the browser then displayed the updated templates.

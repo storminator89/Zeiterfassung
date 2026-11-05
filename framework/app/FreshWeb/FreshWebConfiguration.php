@@ -464,7 +464,7 @@ final readonly class FreshWebConfiguration
             'assets/css/terminal_ui.css' => 'e39c5831d2def1150020189d78d335ebc4173cd075f6c65c944e09d5c91bdeb2',
             'assets/css/vacation_ui.css' => '0682c6ae4cd7a9324939310f7514c665e36279b43f97e78c63083c4316e52276',
             'assets/css/supervisor_ui.css' => '2aa7dee7471b3aae875ab241b9d7f31e3099c12f1bb88486c862e694a2111e2a',
-            'assets/css/app_ui.css' => '7955c919964c2c8326cab12532a7ce747753c126eb4d11bd5127227bea04e8fb',
+            'assets/css/app_ui.css' => 'afa1883a3851a678544ef7ea0cd8d166c74a6c3e5ffcb655df029e908e9992d5',
             'assets/js/main.js' => '11bb9d367475614eefd30fba8c93055f74ef78d875f02d8ef96110c20340775e',
             'assets/js/attendance.js' => 'f82ec1ace457f8f298665694a07362b72a8bf3672a0bf185927d12ec387705ff',
             'assets/js/chrono-local-web.js' => '7c2d604dbb88920f6d9c6f1b0307bbb368b6e703d2b5d64b5831865c37ead831',

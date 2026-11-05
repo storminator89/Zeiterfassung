@@ -49,5 +49,7 @@ if [ ! -e "$chrono_env" ]; then
     : > "$chrono_data/installation-ready"
 fi
 docker compose --env-file "$chrono_env" -f "$chrono_root/compose.yaml" up -d --wait --wait-timeout 90
+# Private compiled views survive container replacement; source mtimes alone are insufficient.
+docker compose --env-file "$chrono_env" -f "$chrono_root/compose.yaml" exec -T web php artisan view:clear
 printf '%s\n' "$chrono_data" > "$chrono_root/.chrono-data-dir"
 sed -n 's/^CHRONO_LARAVEL_ORIGIN=/Open: /p' "$chrono_env"

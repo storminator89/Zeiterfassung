@@ -193,10 +193,11 @@
                 <input type="text" name="department_name" aria-label="Neue Abteilung" class="input input-bordered flex-grow form-control" placeholder="{{ $page->copy->text('FORM_NEW_DEPARTMENT') }}" required @disabled(! $adminPauseSettings->enabled)>
                 <button type="submit" class="btn btn-primary" @disabled(! $adminPauseSettings->enabled)><i class="fas fa-plus mr-2" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M4 12h16"/></svg></i>{{ $page->copy->text('BUTTON_ADD_DEPARTMENT') }}</button>
             </form>
-            <div class="chrono-field mb-4">
+            <div class="chrono-field mb-4" @if($adminPauseSettings->departments === []) hidden @endif>
                 <input type="text" id="departmentSearch" aria-label="Abteilungen suchen" class="input input-bordered form-control" placeholder="{{ $page->copy->text('SEARCH_DEPARTMENTS') }}">
             </div>
-            <table class="table w-full">
+            @if($adminPauseSettings->departments === [])<p class="text-secondary" role="status">Noch keine Abteilung vorhanden. Lege eine Abteilung an, um anschließend Personen zuzuordnen.</p>@endif
+            <table class="table w-full" @if($adminPauseSettings->departments === []) hidden @endif>
                 <thead><tr>
                     <th class="text-left">{{ $page->copy->text('TABLE_HEADER_DEPARTMENT_ID') }}</th>
                     <th class="text-left">{{ $page->copy->text('TABLE_HEADER_DEPARTMENT_NAME') }}</th>

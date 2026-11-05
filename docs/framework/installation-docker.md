@@ -444,3 +444,11 @@ Wiederanbindung: bestehende Metadaten nicht ungeprüft ersetzen. Für die lokale
 Installation vom 5. November 2026 wurde nach vollständiger kalter Sicherung eine
 begrenzte Wiederanbindung vorgenommen; Datenbankbytes blieben unverändert und die
 vollständige Laufzeitprüfung sowie die Browser-Anmeldung waren danach erfolgreich.
+
+`start.sh` leert nach dem erfolgreichen Containerstart den privaten Blade-Cache.
+So bleiben nach Image-Updates keine alten Ansichten wegen erhaltener Dateizeiten
+aktiv. Bei einem manuellen Compose-Update ebenfalls ausführen:
+
+```sh
+docker compose --env-file /absoluter/privater/pfad/local.env -f compose.yaml exec -T web php artisan view:clear
+```

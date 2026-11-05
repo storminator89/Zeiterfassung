@@ -14,24 +14,30 @@
         $editQuery = $corrections->selectedRecordId > 0 ? ['record_id'=>$corrections->selectedRecordId] : [];
         $timeDraft = $corrections->requestDraft;
         $metaDraft = $corrections->metadataDraft;
+        $createBooking = !$selectedBooking && (request()->query('intent') === 'new' || $timeDraft !== [] || $corrections->recordOptions === []);
+        $showEditor = $selectedBooking || $createBooking;
     @endphp
     @if ($corrections->error)<div class="alert alert-error mb-4" role="alert">{{ $corrections->error }}</div>@endif
     @if ($corrections->saved)<div class="alert alert-success mb-4" role="status">Änderung gespeichert.</div>@endif
     @if (! $corrections->selectionInvalid)
+    <nav class="chrono-correction-modes mb-4" aria-label="Korrektur wählen">
+        <a href="adjustments.php" @if(!$createBooking) aria-current="page" @endif><x-chrono-icon name="pencil" size="18" />Buchung ändern</a>
+        <a href="adjustments.php?intent=new" @if($createBooking) aria-current="page" @endif><x-chrono-icon name="plus" size="18" />Buchung nachtragen</a>
+    </nav>
     <section class="card chrono-correction-editor mb-6">
         <div class="chrono-editor-body chrono-correction-flow">
             <header class="chrono-correction-context">
-                <h2>{{ $selectedBooking ? 'Buchung bearbeiten' : 'Buchung nachtragen' }}</h2>
+                <h2>{{ $createBooking ? 'Buchung nachtragen' : 'Buchung ändern' }}</h2>
                 <x-chrono-help label="Freigabe der Änderung"><p>Änderungen werden als Antrag gespeichert. Eine andere berechtigte Person gibt sie frei; die ursprüngliche Buchung bleibt in der Historie.</p></x-chrono-help>
             </header>
-            <form method="get" action="adjustments.php" id="correction-booking-picker" class="chrono-booking-picker">
+            <form method="get" action="adjustments.php" id="correction-booking-picker" class="chrono-booking-picker" @if($createBooking) hidden @endif>
                 <input type="hidden" name="edit" value="{{ $editMode }}">
-                <label for="correction-booking" class="form-label">{{ $selectedBooking ? 'Ausgewählte Buchung' : 'Oder bestehende Buchung auswählen' }}</label>
+                <label for="correction-booking" class="form-label">{{ $selectedBooking ? 'Ausgewählte Buchung' : 'Welche Buchung möchtest du ändern?' }}</label>
                 <div class="flex gap-2"><select id="correction-booking" name="record_id" class="form-select" required>
                     <option value="" disabled @selected(!$selectedBooking)>Buchung auswählen</option>
                     @foreach($corrections->recordOptions as $r)<option value="{{ $r['id'] }}" @selected($corrections->selectedRecordId === $r['id'])>{{ \App\View\ExistingUi\HumanTime::full($r['start']) }} – {{ \App\View\ExistingUi\HumanTime::clock($r['end'], $r['start']) }}</option>@endforeach
                 </select><button class="btn btn-outline-secondary" type="submit" id="correction-booking-load">Auswählen</button></div>
-                @if($selectedBooking)<a href="adjustments.php" class="text-sm">Neue Buchung nachtragen</a>@endif
+                @if($selectedBooking)<a href="adjustments.php?intent=new" class="text-sm">Neue Buchung nachtragen</a>@endif
             </form>
             @if($selectedBooking)
             <nav class="chrono-correction-modes" aria-label="Was möchtest du ändern?">
@@ -62,7 +68,7 @@
                 </form>
                 @else<p role="status">Bitte zuerst eine Buchung auswählen.</p>@endif
             @else
-                <form method="post" action="{{ 'adjustments.php?edit='.$editMode }}" id="correction-request-form" class="chrono-focused-form">
+                <form method="post" action="{{ 'adjustments.php?edit='.$editMode.($createBooking ? '&intent=new' : '') }}" id="correction-request-form" class="chrono-focused-form" @if(!$showEditor) hidden @endif>
                     @csrf
                     <fieldset @disabled(!$corrections->enabled)>
                         <input type="hidden" name="action" value="request"><input type="hidden" id="record_id" name="record_id" value="{{ $corrections->selectedRecordId }}">

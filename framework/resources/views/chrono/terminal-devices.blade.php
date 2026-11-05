@@ -35,7 +35,7 @@
     <section class="chrono-terminal-service" aria-label="Terminal-Betrieb">
         <div class="chrono-terminal-service-label">
             <span class="chrono-terminal-service-icon"><x-chrono-icon name="device-desktop" size="24" /></span>
-            <div><h2>Terminal-Betrieb</h2><span class="chrono-terminal-service-state">{{ $terminalDevices->moduleEnabled ? 'Aktiviert' : 'Deaktiviert' }}</span></div>
+            <div><h2>Terminal-Betrieb</h2><span class="chrono-terminal-service-state">{{ $terminalDevices->moduleEnabled ? (count($terminalDevices->devices) === 0 ? 'Modul aktiv, noch kein Gerät eingerichtet' : 'Modul aktiviert') : 'Modul deaktiviert' }}</span></div>
         </div>
         <form method="post" class="chrono-terminal-switch-form">
             @csrf
