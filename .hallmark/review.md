@@ -180,3 +180,18 @@ input. Without JS, the original minute fields remain. Actual browser checks:
 underlying value. Preview remained read-only and the effective model stayed at
 40:00. Credit preview rows now show human dates and hours. All Blade templates
 compiled. Screenshot: `/tmp/chrono-settings-organized.png`.
+
+## Work-model preview redesigned for end users
+
+Replaced the technical preview block with a single period/person header, one
+contextual explanation and a direct four-column comparison: day, stored credit,
+new daily target and difference. Internal person/booking identifiers and page-size
+prose are absent from the first view. Existing history navigation remains on the
+readable date. Unknown/truncated and timestamp-review warnings remain visible;
+no invented aggregate or statement that credits will be automatically changed.
+Pagination keeps the original form-bound preview commands. Mobile rows retain
+visible field labels. Actual synthetic preview: 06.11.2026, stored08:00 h,
+new04:00 h, difference-04:00 h. No model or credit was saved. Desktop/mobile
+screenshots: `/tmp/chrono-model-preview-desktop.png` and
+`/tmp/chrono-model-preview-mobile.png`. Blade compilation passed; CSS has no FAIL
+and only the previously documented Today accent warning.

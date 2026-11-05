@@ -14,22 +14,31 @@
 $creditPreview = $workModels->creditPreview;
 $creditHours = static fn($minutes) => ($minutes < 0 ? '-' : '').sprintf('%02d:%02d', intdiv(abs($minutes),60), abs($minutes)%60).' h';
 @endphp
-    <section id="model-credit-preview" class="card bg-base-100 shadow-xl p-6 mb-6">
-        <h2 class="text-xl font-semibold mb-4">Vorschau (nicht gespeichert)</h2>
-        <p>{{ $creditPreview['username'] }}, Person #{{ $creditPreview['person_id'] }}, ab {{ $creditPreview['from'] }} (Europe/Berlin){{ $creditPreview['until'] !== null ? ' bis vor '.$creditPreview['until'].' (nächstes vorhandenes Modell)' : '' }}</p>
-        <x-chrono-help><p class="text-sm opacity-70 mt-3">Das Tagessoll des eingegebenen Modells im Vergleich zur gespeicherten Netto-Gutschrift. Bereits erfasste Gutschriften werden weder neu berechnet noch geändert. Die Abweichung ist kein Kontosaldo und kein automatischer Korrekturauftrag. Nur bereits gespeicherte Feiertage werden berücksichtigt; deren Vollständigkeit ist nicht bestätigt.</p></x-chrono-help>
-        @if ($creditPreview['truncated'] || $creditPreview['unknown'])<p class="mt-3" role="status">Die Vorschau ist begrenzt oder enthält nicht auswertbare Gutschriften. Unbekannte Werte sind nicht null Minuten; es gibt keine abschließende Summe.</p>@endif
-        @if (! $creditPreview['items'])<p class="mt-3" role="status">Keine zuordenbaren gespeicherten Abwesenheiten im betrachteten Modellabschnitt gefunden. Dies ist kein Vollständigkeits- oder Datenqualitätsnachweis.</p>@else
-        <x-chrono-help><p class="text-sm mt-3">Bis zu 100 gespeicherte Gutschriften je Seite in der bisherigen Beginn-/ID-Reihenfolge. Unlesbare Anfänge stehen zuerst; Ortszeit-/Formathinweise bleiben unabhängig davon ungeklärt.</p></x-chrono-help>
-        <div class="table-responsive mt-3"><table class="table"><thead><tr><th>Buchung</th><th>Tag (Berlin)</th><th>Gutschrift</th><th>Soll im neuen Modell</th><th>Differenz</th></tr></thead><tbody>
-        @foreach ($creditPreview['items'] as $credit)
-            <tr><td><a class="link link-primary" target="_blank" rel="noopener noreferrer" href="{{ 'history.php?'.http_build_query(['entity'=>'zeiterfassung','user_id'=>$creditPreview['person_id'],'record_id'=>$credit['id']]) }}">#{{ $credit['id'] }}</a>@if ($credit['timestamp_review'] ?? false)<span class="block text-sm">Zeitformat/Ortszeit ungeklärt; keine erfundene Gutschrift.</span>@endif</td><td>{{ isset($credit['day']) ? substr(\App\View\ExistingUi\HumanTime::full($credit['day'].'T00:00:00'),0,10) : 'Nicht zuordenbar' }}</td><td>{{ $credit['stored_minutes'] === null ? 'Nicht auswertbar' : $creditHours($credit['stored_minutes']) }}</td><td>{{ $credit['hypothetical_target'] === null ? 'Unbekannt' : $creditHours($credit['hypothetical_target']) }}</td><td>{{ $credit['difference'] === null ? 'Unbekannt' : ($credit['difference'] > 0 ? '+' : '').$creditHours($credit['difference']) }}</td></tr>
-        @endforeach
-        </tbody></table></div>
+    <section id="model-credit-preview" class="card chrono-model-preview mb-6" aria-labelledby="model-preview-title">
+        <header class="chrono-model-preview-header">
+            <div><span class="badge bg-secondary-lt">Vorschau</span><h2 id="model-preview-title">Abwesenheiten im neuen Modell</h2><p>{{ $creditPreview['username'] }}<span>Ab {{ substr(\App\View\ExistingUi\HumanTime::full($creditPreview['from'].'T00:00:00'),0,10) }}</span></p></div>
+            <x-chrono-help label="Was zeigt dieser Vergleich?"><p>Verglichen werden bereits gutgeschriebene Abwesenheitsstunden mit dem Tagessoll des eingegebenen Modells. Die Abweichung ist das neue Tagessoll minus die gespeicherte Gutschrift. Bestehende Buchungen werden durch das Modell nicht automatisch geändert.</p><p>Es zählen nur gespeicherte Feiertage. Bei einem späteren Modell endet der Vergleich vor dessen Beginn.</p>@if($creditPreview['until'] !== null)<p>Nächstes Modell ab {{ substr(\App\View\ExistingUi\HumanTime::full($creditPreview['until'].'T00:00:00'),0,10) }}.</p>@endif<p>Die Vorschau wird mit jedem Aufruf neu geprüft. Es werden höchstens 100 Einträge je Seite angezeigt.</p></x-chrono-help>
+        </header>
+        <p class="chrono-model-preview-note"><x-chrono-icon name="info-circle" size="18" /> Prüfe Abweichungen vor dem Speichern des Modells.</p>
+        @if ($creditPreview['truncated'] || $creditPreview['unknown'])<p class="alert alert-warning mx-3" role="status">Einige Einträge lassen sich nicht sicher vergleichen. Die Vorschau ist nicht vollständig.</p>@endif
+        @if (!$creditPreview['items'])
+            <p class="chrono-model-preview-empty" role="status">Für diesen Zeitraum wurden keine passenden Abwesenheiten gefunden.</p>
+        @else
+        <div class="table-responsive"><table class="table chrono-model-preview-table mb-0">
+            <thead><tr><th>Tag</th><th>Gutgeschrieben</th><th>Neues Tagessoll</th><th>Abweichung</th></tr></thead>
+            <tbody>@foreach ($creditPreview['items'] as $credit)
+                <tr><th scope="row"><a href="{{ 'history.php?'.http_build_query(['entity'=>'zeiterfassung','user_id'=>$creditPreview['person_id'],'record_id'=>$credit['id']]) }}" aria-label="{{ isset($credit['day']) ? 'Buchung vom '.substr(\App\View\ExistingUi\HumanTime::full($credit['day'].'T00:00:00'),0,10).' ansehen' : 'Buchungsdetails ansehen' }}">{{ isset($credit['day']) ? substr(\App\View\ExistingUi\HumanTime::full($credit['day'].'T00:00:00'),0,10) : 'Datum unbekannt' }}</a>@if($credit['timestamp_review'] ?? false)<span class="d-block small text-warning">Datum prüfen</span>@endif</th>
+                <td data-label="Gutgeschrieben">{{ $credit['stored_minutes'] === null ? 'Nicht auswertbar' : $creditHours($credit['stored_minutes']) }}</td>
+                <td data-label="Neues Tagessoll">{{ $credit['hypothetical_target'] === null ? 'Unbekannt' : $creditHours($credit['hypothetical_target']) }}</td>
+                <td data-label="Abweichung"><strong>{{ $credit['difference'] === null ? 'Nicht vergleichbar' : ($credit['difference'] === 0 ? 'Unverändert' : ($credit['difference'] > 0 ? '+' : '').$creditHours($credit['difference'])) }}</strong></td></tr>
+            @endforeach</tbody>
+        </table></div>
         @endif
+        <footer class="chrono-model-preview-footer">
+            <span class="text-secondary small">{{ count($creditPreview['items']) }} {{ count($creditPreview['items']) === 1 ? 'Eintrag angezeigt' : 'Einträge angezeigt' }}@if(($creditPreview['pagination_version'] ?? null) === 1 && $creditPreview['pages'] > 1) — Seite {{ $creditPreview['page'] }} von {{ $creditPreview['pages'] }}@endif</span>
+            <a class="btn btn-outline-secondary" href="#user_id"><x-chrono-icon name="pencil" size="18" /> Modell bearbeiten</a>
+        </footer>
         @if (($creditPreview['pagination_version'] ?? null) === 1)
-        <p class="text-sm mt-3">{{ $creditPreview['total'] }} passende gespeicherte Buchungen, Vorschauseite {{ $creditPreview['page'] }} von {{ $creditPreview['pages'] }}, höchstens {{ $creditPreview['page_size'] }} je Seite.</p>
-        <x-chrono-help><p class="text-sm opacity-70 mt-2">Jeder Seitenaufruf prüft die aktuell ausgefüllte Modellmaske erneut, ohne Speichern. Neue Daten oder geänderte Eingaben können Seiten verschieben. Für eine geänderte Maske können Sie die Vorschau oben bewusst auf Seite 1 neu starten. Kein eingefrorener Abschlussstand.</p></x-chrono-help>
         @if ($creditPreview['pages'] > 1)
         <nav class="flex flex-wrap gap-3 mt-3" aria-label="Gutschriften-Vorschauseiten">
             @if ($creditPreview['page'] > 1)<button type="submit" form="work-model-form" class="btn btn-outline-secondary" name="preview_page" value="1" formnovalidate @disabled(! $workModels->enabled)>Erste Seite</button><button type="submit" form="work-model-form" class="btn btn-outline-secondary" name="preview_page" value="{{ $creditPreview['page'] - 1 }}" formnovalidate @disabled(! $workModels->enabled)>Vorherige Seite</button>@endif
@@ -37,7 +46,6 @@ $creditHours = static fn($minutes) => ($minutes < 0 ? '-' : '').sprintf('%02d:%0
         </nav>
         @endif
         @endif
-        <p class="mt-4"><a class="link" href="#user_id">Zurück zum Modellformular (ohne Neuladen)</a></p>
     </section>
     @endif
 
