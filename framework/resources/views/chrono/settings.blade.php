@@ -17,12 +17,12 @@
                 </div>
             @endif
 
-            <form method="post" class="space-y-4">
+            <form method="post" class="space-y-4" aria-label="Persönliche Einstellungen">
 @csrf
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="chrono-field">
                         <label class="label" for="lang">
-                            <span class="label-text">{{ $page->copy->text('SETTINGS_LANGUAGE') }}</span>
+                            <span class="label-text">{{ ['de'=>'Sprache','en'=>'Language','zh'=>'语言'][$page->copy->language] ?? 'Sprache' }}</span>
                         </label>
                         <select name="lang" id="lang" class="select select-bordered w-full form-select">
                             <option value="de" @selected($page->copy->language === 'de')>Deutsch</option>
@@ -32,25 +32,8 @@
                     </div>
 
                     <div class="chrono-field">
-                        <label class="label" for="regelarbeitszeit">
-                            <span class="label-text">{{ $page->copy->text('SETTINGS_REGULAR_WORKING_HOURS') }}</span>
-                        </label>
-                        <input type="number" step="0.1" id="regelarbeitszeit" disabled name="regelarbeitszeit" value="{{ $settings->regularHours }}" min="0" max="24" class="input input-bordered w-full form-control"><a class="link text-sm mt-2" href="work_models.php">Arbeitszeitmodell ansehen</a>
-                    </div>
-
-                    @if ($page->role === 'admin')
-                        <div class="chrono-field">
-                            <label class="label" for="ueberstunden">
-                                <span class="label-text">Übertrag (Stunden)</span>
-                            </label>
-                            <input type="number" step="any" id="ueberstunden" name="ueberstunden" value="{{ $settings->carryInHours }}" class="input input-bordered w-full form-control" aria-describedby="carry-in-contract">
-                            <x-chrono-help><p id="carry-in-contract" class="text-sm opacity-70 mt-2">Nur Ihr eigener früherer Überstunden-Übertrag. Positive und negative endliche Zahlen mit Dezimalpunkt und optionalem Exponent sind zulässig; keine Leerzeichen oder Dezimalkommas. Ungültige, zu kleine oder nicht darstellbare Werte werden abgelehnt, nicht gerundet. Das vorhandene REAL-Datenformat bleibt eine binäre Näherung; die bestehende Historie ist kein verlustfreies Dezimaljournal. Bei einem Fehler kann die zuvor gewählte Sprache bereits übernommen sein.</p></x-chrono-help>
-                        </div>
-                    @endif
-
-                    <div class="chrono-field">
                         <label class="label" for="theme_mode">
-                            <span class="label-text">{{ $page->copy->text('NAV_DARK_MODE') }}</span>
+                            <span class="label-text">{{ ['de'=>'Darstellung','en'=>'Appearance','zh'=>'外观'][$page->copy->language] ?? 'Darstellung' }}</span>
                         </label>
                         <select name="theme_mode" id="theme_mode" class="select select-bordered w-full form-select">
                             <option value="light" @selected($settings->themeMode === 'light')>{{ $page->copy->text('SETTINGS_THEME_LIGHT') }}</option>
@@ -60,6 +43,24 @@
                     </div>
                 </div>
 
+                <details class="chrono-disclosure mt-4" @if($settings->error && request()->has('ueberstunden')) open @endif><summary><x-chrono-icon name="briefcase" size="20" /> Arbeitszeit und Übertrag</summary><div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-3">                    <div class="chrono-field">
+                        <label class="label" for="regelarbeitszeit">
+                            <span class="label-text">{{ $page->copy->text('SETTINGS_REGULAR_WORKING_HOURS') }}</span>
+                        </label>
+                        <input type="number" step="0.1" id="regelarbeitszeit" disabled name="regelarbeitszeit" value="{{ $settings->regularHours }}" min="0" max="24" class="input input-bordered w-full form-control"><a class="link text-sm mt-2" href="work_models.php">Arbeitszeitmodell ansehen</a>
+                    </div>
+
+                    @if ($page->role === 'admin')
+                        <div class="chrono-field">
+                            <label class="label" for="ueberstunden">
+                                <span class="label-text">Früherer Überstundenübertrag (Stunden)</span>
+                            </label>
+                            <input type="number" step="any" id="ueberstunden" name="ueberstunden" value="{{ $settings->carryInHours }}" class="input input-bordered w-full form-control" aria-describedby="carry-in-contract">
+                            <x-chrono-help><p id="carry-in-contract" class="text-sm opacity-70 mt-2">Nur Ihr eigener früherer Überstunden-Übertrag. Positive und negative endliche Zahlen mit Dezimalpunkt und optionalem Exponent sind zulässig; keine Leerzeichen oder Dezimalkommas. Ungültige, zu kleine oder nicht darstellbare Werte werden abgelehnt, nicht gerundet. Das vorhandene REAL-Datenformat bleibt eine binäre Näherung; die bestehende Historie ist kein verlustfreies Dezimaljournal. Bei einem Fehler kann die zuvor gewählte Sprache bereits übernommen sein.</p></x-chrono-help>
+                        </div>
+                    @endif
+
+</div></details>
                 <div class="mt-6">
                     <button type="submit" class="btn btn-primary">{{ $page->copy->text('BUTTON_SAVE_CHANGES') }}</button>
                 </div>
@@ -127,6 +128,7 @@
             @endif
         </div>
     </div>
+    <h2 class="h3 mt-5 mb-3">Integrationen</h2>
     @include('chrono.partials.mcp-connection')
 </main>
 

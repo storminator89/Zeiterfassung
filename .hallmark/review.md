@@ -163,3 +163,20 @@ has no FAIL and the existing, previously documented near-neutral accent WARN.
 A real deployment issue surfaced during verification: persistent compiled views
 could be newer than image source mtimes. The start command now explicitly clears
 those views after startup, and the browser then displayed the updated templates.
+
+## Follow-up: personal preferences, history and work schedules
+
+Preferences lead with language and appearance; working-time/carry-in fields remain
+in the same original POST form under a focused disclosure, and integrations have a
+separate heading. History moves person/record identifiers to advanced filters and
+uses human labels for baseline/account admission concepts. Work schedules lead
+with the effective week; version history opens when selected or paginated. Team
+range labels are shortened to Von/Bis.
+
+Progressive schedule editing accepts HH:mm, converts exactly to the existing
+whole-minute POST fields, supports 24:00, and clears stale raw values on invalid
+input. Without JS, the original minute fields remain. Actual browser checks:
+08:30 survived a server preview roundtrip; 24:01 failed validity and cleared the
+underlying value. Preview remained read-only and the effective model stayed at
+40:00. Credit preview rows now show human dates and hours. All Blade templates
+compiled. Screenshot: `/tmp/chrono-settings-organized.png`.

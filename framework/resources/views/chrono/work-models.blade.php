@@ -12,6 +12,7 @@
     @if ($workModels->creditPreview !== null)
     @php
 $creditPreview = $workModels->creditPreview;
+$creditHours = static fn($minutes) => ($minutes < 0 ? '-' : '').sprintf('%02d:%02d', intdiv(abs($minutes),60), abs($minutes)%60).' h';
 @endphp
     <section id="model-credit-preview" class="card bg-base-100 shadow-xl p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">Vorschau (nicht gespeichert)</h2>
@@ -22,7 +23,7 @@ $creditPreview = $workModels->creditPreview;
         <x-chrono-help><p class="text-sm mt-3">Bis zu 100 gespeicherte Gutschriften je Seite in der bisherigen Beginn-/ID-Reihenfolge. Unlesbare Anfänge stehen zuerst; Ortszeit-/Formathinweise bleiben unabhängig davon ungeklärt.</p></x-chrono-help>
         <div class="table-responsive mt-3"><table class="table"><thead><tr><th>Buchung</th><th>Tag (Berlin)</th><th>Gutschrift</th><th>Soll im neuen Modell</th><th>Differenz</th></tr></thead><tbody>
         @foreach ($creditPreview['items'] as $credit)
-            <tr><td><a class="link link-primary" target="_blank" rel="noopener noreferrer" href="{{ 'history.php?'.http_build_query(['entity'=>'zeiterfassung','user_id'=>$creditPreview['person_id'],'record_id'=>$credit['id']]) }}">#{{ $credit['id'] }}</a>@if ($credit['timestamp_review'] ?? false)<span class="block text-sm">Zeitformat/Ortszeit ungeklärt; keine erfundene Gutschrift.</span>@endif</td><td>{{ $credit['day'] ?? 'Nicht zuordenbar' }}</td><td>{{ $credit['stored_minutes'] === null ? 'Nicht auswertbar' : $credit['stored_minutes'].' min' }}</td><td>{{ $credit['hypothetical_target'] === null ? 'Unbekannt' : $credit['hypothetical_target'].' min' }}</td><td>{{ $credit['difference'] === null ? 'Unbekannt' : ($credit['difference'] > 0 ? '+' : '').$credit['difference'].' min' }}</td></tr>
+            <tr><td><a class="link link-primary" target="_blank" rel="noopener noreferrer" href="{{ 'history.php?'.http_build_query(['entity'=>'zeiterfassung','user_id'=>$creditPreview['person_id'],'record_id'=>$credit['id']]) }}">#{{ $credit['id'] }}</a>@if ($credit['timestamp_review'] ?? false)<span class="block text-sm">Zeitformat/Ortszeit ungeklärt; keine erfundene Gutschrift.</span>@endif</td><td>{{ isset($credit['day']) ? substr(\App\View\ExistingUi\HumanTime::full($credit['day'].'T00:00:00'),0,10) : 'Nicht zuordenbar' }}</td><td>{{ $credit['stored_minutes'] === null ? 'Nicht auswertbar' : $creditHours($credit['stored_minutes']) }}</td><td>{{ $credit['hypothetical_target'] === null ? 'Unbekannt' : $creditHours($credit['hypothetical_target']) }}</td><td>{{ $credit['difference'] === null ? 'Unbekannt' : ($credit['difference'] > 0 ? '+' : '').$creditHours($credit['difference']) }}</td></tr>
         @endforeach
         </tbody></table></div>
         @endif
@@ -119,8 +120,8 @@ $minutes = $weekMinutes[$i] ?? null;
     @endif
 
 
-    <section class="card bg-base-100 shadow-xl p-6 mb-6">
-        <h2 class="text-xl font-semibold mb-4">Modellverlauf</h2>
+    <details class="chrono-disclosure mb-6" @if($workModels->selectedModel || $workModels->page > 1) open @endif>
+        <summary><x-chrono-icon name="history" size="20" /> Frühere Arbeitszeitmodelle</summary><div class="mt-4">
         <x-chrono-help><p class="text-sm opacity-70 mb-4">{{ $workModels->total }} Modellversionen, Seite {{ $workModels->page }} von {{ $workModels->pages }}, {{ $workModels->pageSize }} je Seite innerhalb Ihrer bisherigen Sichtrechte. Neue Versionen können die Seiten verschieben.</p></x-chrono-help>
         @if ($workModels->models === [])<p role="status">Keine sichtbaren Modellversionen.</p>@else
         <div class="table-responsive">
@@ -140,6 +141,34 @@ $minutes = $weekMinutes[$i] ?? null;
             @if ($workModels->page < $workModels->pages)<a class="btn btn-outline-secondary" href="{{ $workModels->url($workModels->page + 1) }}">Ältere Modellversionen</a>@endif
         </nav>
         @endif
-    </section>
+    </div></details>
 </main>
+<script>
+(() => {
+    const form = document.getElementById('work-model-form');
+    if (!form) return;
+    // Presentation only: the existing writer continues to receive whole minutes.
+    form.querySelectorAll('input[id^="model-day"]').forEach(raw => {
+        const label = form.querySelector('label[for="' + raw.id + '"]');
+        if (!label) return;
+        const input = document.createElement('input');
+        input.type = 'text'; input.inputMode = 'numeric'; input.className = raw.className;
+        input.id = raw.id + '-hours'; input.placeholder = '08:00'; input.required = true;
+        input.maxLength = 5;
+        const parsed = /^(?:0|[1-9][0-9]{0,3})$/.test(raw.value) ? Number(raw.value) : null;
+        input.value = parsed !== null && parsed <= 1440
+            ? String(Math.floor(parsed / 60)).padStart(2, '0') + ':' + String(parsed % 60).padStart(2, '0') : '';
+        const sync = () => {
+            const match = /^([0-9]{1,2}):([0-5][0-9])$/.exec(input.value);
+            const minutes = match ? Number(match[1]) * 60 + Number(match[2]) : null;
+            const valid = minutes !== null && minutes <= 1440;
+            raw.value = valid ? String(minutes) : '';
+            input.setCustomValidity(valid ? '' : 'Bitte Stunden und Minuten eingeben, zum Beispiel 08:00 (höchstens 24:00).');
+        };
+        raw.type = 'hidden'; raw.after(input); label.htmlFor = input.id;
+        label.querySelector('.chrono-entry-caption').textContent = 'Std.:Min.';
+        input.addEventListener('input', sync); sync();
+    });
+})();
+</script>
 @endsection
