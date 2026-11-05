@@ -48,6 +48,14 @@ if [ ! -e "$chrono_env" ]; then
     docker compose --env-file "$chrono_env" -f "$chrono_root/deploy/laravel/compose.yaml" run --rm --entrypoint php -v "$chrono_root/deploy/laravel/prepare-terminal.php:/run/prepare-terminal.php:ro" operator /run/prepare-terminal.php "/var/lib/chrono-laravel/$chrono_instance"
     : > "$chrono_data/installation-ready"
 fi
+# The supported local profile has one web consumer. Stop it before identity checks.
+docker compose --env-file "$chrono_env" -f "$chrono_root/compose.yaml" stop web
+chrono_existing_instance="$(sed -n 's/^CHRONO_LARAVEL_INSTANCE=//p' "$chrono_env")"
+[[ "$chrono_existing_instance" =~ ^chrono-fresh-[a-f0-9]{24}$ ]] || { echo "Invalid local instance." >&2; exit 1; }
+# An unclosed first-user setup retains its existing NEW-only startup path.
+if [ -f "$chrono_data/$chrono_existing_instance/setup-closed" ]; then
+    docker compose --env-file "$chrono_env" -f "$chrono_root/deploy/laravel/compose.yaml" run --rm --entrypoint php operator /opt/chrono/deploy/laravel/rebind-device.php "/var/lib/chrono-laravel/$chrono_existing_instance" --offline
+fi
 docker compose --env-file "$chrono_env" -f "$chrono_root/compose.yaml" up -d --wait --wait-timeout 90
 # Private compiled views survive container replacement; source mtimes alone are insufficient.
 docker compose --env-file "$chrono_env" -f "$chrono_root/compose.yaml" exec -T web php artisan view:clear

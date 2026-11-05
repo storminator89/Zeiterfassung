@@ -195,3 +195,17 @@ new04:00 h, difference-04:00 h. No model or credit was saved. Desktop/mobile
 screenshots: `/tmp/chrono-model-preview-desktop.png` and
 `/tmp/chrono-model-preview-mobile.png`. Blade compilation passed; CSS has no FAIL
 and only the previously documented Today accent warning.
+
+## Today progress and local restart follow-up
+
+Home separates today's work/credit progress from the recorded-day account.
+The meter follows confirmed running seconds and freezes during a pause.
+Unavailable or conflicting data shows no invented value; overnight aggregate
+pauses cannot safely be assigned to calendar days. Synthetic browser start,
+pause and end passed; proof `/tmp/chrono-day-progress-desktop.png`.
+
+The local start script now performs a stopped, device-number-only rebind with
+a verified private backup and an interruption fence. Audit-fixture tests refused
+a changed inode without mutations, then accepted a device-only change with an
+identical DB hash and full runtime bootstrap. The real installation passed the
+unchanged-device path. This is scoped to the single-consumer local profile.

@@ -181,6 +181,7 @@ final readonly class FreshWebConfiguration
 
     private static function requireNoUpgradeFence(string $directory): void
     {
+        if (@lstat($directory.'/device-rebind.pending') !== false) { throw new LogicException('Device recovery is incomplete; keep consumers stopped.'); }
         clearstatcache(true,$directory.'/vacation-v7-upgrade.json');
         if (@lstat($directory.'/vacation-v7-upgrade.json') !== false) {
             throw new LogicException('The stopped vacation upgrade must complete before web admission.');
@@ -464,9 +465,9 @@ final readonly class FreshWebConfiguration
             'assets/css/terminal_ui.css' => 'e39c5831d2def1150020189d78d335ebc4173cd075f6c65c944e09d5c91bdeb2',
             'assets/css/vacation_ui.css' => '0682c6ae4cd7a9324939310f7514c665e36279b43f97e78c63083c4316e52276',
             'assets/css/supervisor_ui.css' => '2aa7dee7471b3aae875ab241b9d7f31e3099c12f1bb88486c862e694a2111e2a',
-            'assets/css/app_ui.css' => 'eecd6667103c1d86bac0b22fdd68cb582a35bc1cfcae8906314d94f359693d5c',
+            'assets/css/app_ui.css' => 'a3e5e010461f431f7e511d7a64390c4a4d83ccae76bb7e81ccee2b63d3772be0',
             'assets/js/main.js' => '11bb9d367475614eefd30fba8c93055f74ef78d875f02d8ef96110c20340775e',
-            'assets/js/attendance.js' => 'f82ec1ace457f8f298665694a07362b72a8bf3672a0bf185927d12ec387705ff',
+            'assets/js/attendance.js' => '3510f614dd8fa18697d51089b68c41b231039a7340e8bd736a793c1b05357c62',
             'assets/js/chrono-local-web.js' => '7c2d604dbb88920f6d9c6f1b0307bbb368b6e703d2b5d64b5831865c37ead831',
         ] as $name => $hash) {
             $path = $public.'/'.$name;

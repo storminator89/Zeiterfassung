@@ -39,12 +39,19 @@
                 </div>
             </section>
         </div>
-        <aside class="min-w-0 chrono-balance-strip" aria-label="Zeitkonto">
+        <aside class="min-w-0 chrono-balance-strip" aria-label="Tag und Zeitkonto">
             <section class="chrono-today-account">
                 <div class="card-body p-4 sm:p-6">
-                    <header class="chrono-account-heading"><span class="chrono-account-symbol"><x-chrono-icon name="clock" size="20" /></span><span>Dein Zeitkonto</span><x-chrono-help label="Berechnung des Saldos"><p>{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p><p>Auch für den heutigen gebuchten Tag wird bereits das ganze Tagessoll abgezogen. Der Wert ist kein laufender Tagesfortschritt.</p><p>{{ $page->currentMonthName }}: {{ $page->workingDaysThisMonth }} Arbeitstage.</p></x-chrono-help></header>
-                    <div class="chrono-account-balance"><span class="chrono-account-caption">Saldo gebuchter Tage</span><div data-home-balance aria-label="{{ $page->copy->text('UI_RECORDED_BALANCE') }}" data-report-period="all" data-report-presentation="{{ $page->overtimePresentation() }}" class="chrono-account-value {{ $page->reportUnresolved || $page->reportInvalidCount > 0 || $page->positiveOvertime === null || $page->overtimeLabel() === '00:00' ? '' : ($page->positiveOvertime ? 'text-success' : '') }}">{{ $page->overtimeLabel() }}</div><span class="chrono-account-unit">Stunden</span></div>
+                    <header class="chrono-account-heading"><span class="chrono-account-symbol"><x-chrono-icon name="clock" size="20" /></span><span>Dein Tag</span><x-chrono-help label="Berechnung des Saldos"><p>{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p><p>Auch für den heutigen gebuchten Tag wird bereits das ganze Tagessoll abgezogen. Der Wert ist kein laufender Tagesfortschritt.</p><p>{{ $page->currentMonthName }}: {{ $page->workingDaysThisMonth }} Arbeitstage.</p></x-chrono-help></header>
+                    <section class="chrono-today-progress" aria-label="Tagesfortschritt" data-today-progress>
+                        <span class="chrono-account-caption" data-today-label>Heute gearbeitet</span>
+                        <strong class="chrono-account-value" data-today-value>—</strong>
+                        <p class="text-secondary small mb-2" data-today-credit hidden></p>
                     <div class="chrono-account-goal"><x-chrono-icon name="briefcase" size="18" /><span>Soll heute</span><strong>{{ $page->dailyHoursFormatted ?? '—' }}<small> h</small></strong></div>
+                        <progress class="w-full" data-today-meter max="1" value="0" aria-label="Fortschritt zum Tagesziel" hidden></progress>
+                        <p class="text-secondary small mt-2" data-today-remaining>Wird geladen …</p>
+                    </section>
+                    <div class="chrono-account-balance chrono-account-recorded"><span class="chrono-account-caption">Zeitkonto gebuchter Tage</span><div data-home-balance aria-label="{{ $page->copy->text('UI_RECORDED_BALANCE') }}" data-report-period="all" data-report-presentation="{{ $page->overtimePresentation() }}" class="chrono-account-value {{ $page->reportUnresolved || $page->reportInvalidCount > 0 || $page->positiveOvertime === null || $page->overtimeLabel() === '00:00' ? '' : ($page->positiveOvertime ? 'text-success' : '') }}">{{ $page->overtimeLabel() }}</div><span class="chrono-account-unit">Stunden</span></div>
                     <a href="dashboard.php" class="chrono-account-link"><span>Zeitkonto öffnen</span><x-chrono-icon name="arrow-right" size="18" /></a>
                 </div>
             </section>

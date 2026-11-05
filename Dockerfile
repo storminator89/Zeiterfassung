@@ -31,6 +31,7 @@ COPY --from=dependencies /opt/chrono/ /opt/chrono/
 COPY deploy/laravel/apache.conf /etc/apache2/sites-available/chrono-laravel.conf
 COPY deploy/laravel/php.ini /usr/local/etc/php/conf.d/chrono-laravel.ini
 COPY --chmod=0555 deploy/laravel/web-entrypoint.sh /usr/local/bin/chrono-laravel-web
+COPY --chmod=0444 deploy/laravel/rebind-device.php /opt/chrono/deploy/laravel/rebind-device.php
 RUN cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini \
     && a2dissite 000-default \
     && a2enmod ssl rewrite headers reqtimeout \

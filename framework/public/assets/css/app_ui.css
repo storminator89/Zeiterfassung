@@ -681,3 +681,8 @@
  .chrono-model-preview-table td::before {content:attr(data-label);color:var(--color-muted);font-size:.875rem;}
  .chrono-model-preview-footer {padding:var(--space-md);}
 }
+
+.chrono-today-progress {padding-block:var(--space-md);border-bottom:1px solid var(--color-rule);margin-bottom:var(--space-md);}
+.chrono-today-progress > strong {display:block;font-variant-numeric:tabular-nums;}
+.chrono-local-ui .chrono-account-recorded .chrono-account-value {font-size:1.25rem;}
+.chrono-today-progress progress {accent-color:var(--color-accent);height:8px;}

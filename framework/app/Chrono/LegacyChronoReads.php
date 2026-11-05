@@ -49,9 +49,12 @@ final class LegacyChronoReads implements ChronoReads, OwnApiTimeEntryKindReads, 
             $liveBreaks = $liveSession === null ? [] : $this->rows($pdo,
                 'SELECT session_id,started_at,ended_at FROM break_intervals WHERE session_id=? ORDER BY started_at,id',
                 [$liveSession['id']]);
-            $liveTiming = LiveAttendanceTiming::fromSnapshot($status, $liveSession, $liveBreaks, time());
+            $now = time();
+            $liveTiming = LiveAttendanceTiming::fromSnapshot($status, $liveSession, $liveBreaks, $now);
+            $todayProgress = TodayProgress::fromRecords($context, $status, $liveTiming, $today->format('Y-m-d'),
+                planned_minutes($pdo, (int)$actor->getKey(), $today->format('Y-m-d')), $now);
 
-            return ['success' => true, 'start_metadata_version' => 1, 'records' => $records, 'live_timing' => $liveTiming,
+            return ['success' => true, 'start_metadata_version' => 1, 'records' => $records, 'live_timing' => $liveTiming, 'today_progress' => $todayProgress,
                 'report_finality' => $this->reportFinality(report_absence_conflicts($context), $today),
                 'expected_record' => $status['record_id'] === null ? null : (string) $status['record_id'],
             ] + $status;

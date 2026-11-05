@@ -83,7 +83,43 @@
         const liveSession = document.querySelector('[data-live-session]');
         const liveSessionValue = liveSession?.querySelector('[data-live-session-value]');
         let sessionClock = null;
+        const todayRoot = document.querySelector('[data-today-progress]');
+        let todayClock = null, todayLoaded = false;
+        const hoursMinutes = seconds => {
+            const minutes = Math.floor(seconds / 60);
+            return String(Math.floor(minutes / 60)).padStart(2,'0') + ':' + String(minutes % 60).padStart(2,'0');
+        };
+        function updateTodayProgress(value, observedMillis) {
+            todayLoaded = true;
+            todayClock = value && value.version === 1 && typeof value.advancing === 'boolean'
+                && ['work_seconds','credit_seconds','target_seconds','as_of_epoch'].every(key => Number.isSafeInteger(value[key]) && value[key] >= 0)
+                && value.target_seconds <= 86400 && Number.isSafeInteger(value.work_seconds + value.credit_seconds)
+                ? {...value, observedMillis} : null;
+        }
+        function renderTodayProgress() {
+            if (!todayRoot) return;
+            const elapsed = todayClock ? performance.now() - todayClock.observedMillis : -1;
+            const valid = todayClock && elapsed >= 0 && elapsed <= 90000 && !busy && !pending && pendingVerified;
+            const meter = todayRoot.querySelector('[data-today-meter]');
+            const credit = todayRoot.querySelector('[data-today-credit]');
+            const output = todayRoot.querySelector('[data-today-value]');
+            if (!valid) {
+                output.textContent = '—'; meter.hidden = true; credit.hidden = true;
+                todayRoot.querySelector('[data-today-remaining]').textContent = todayLoaded && !todayClock && !busy && !pending ? 'Tagesstand nicht verfügbar' : 'Tagesstand wird geprüft'; return;
+            }
+            const total = todayClock.work_seconds + todayClock.credit_seconds + (todayClock.advancing ? Math.floor(elapsed/1000) : 0);
+            output.textContent = hoursMinutes(total) + ' h';
+            todayRoot.querySelector('[data-today-label]').textContent = todayClock.credit_seconds ? 'Heute angerechnet' : 'Heute gearbeitet';
+            credit.hidden = todayClock.credit_seconds === 0;
+            credit.textContent = 'Davon Gutschrift: ' + hoursMinutes(todayClock.credit_seconds) + ' h';
+            meter.hidden = todayClock.target_seconds === 0;
+            meter.max = Math.max(1,todayClock.target_seconds); meter.value = Math.min(total,meter.max);
+            todayRoot.querySelector('[data-today-remaining]').textContent = todayClock.target_seconds === 0 ? 'Heute kein Tagesziel'
+                : total >= todayClock.target_seconds ? 'Tagesziel erreicht' : 'Noch ' + hoursMinutes(Math.ceil((todayClock.target_seconds-total)/60)*60) + ' h zum Tagesziel';
+        }
+
         function renderLiveSession() {
+            renderTodayProgress();
             if (!liveSession || !liveSessionValue) return;
             liveSession.hidden = state === 'absent';
             const current = !busy && !pending && pendingVerified && sessionClock && sessionClock.record === expectedRecord && sessionClock.state === state;
@@ -91,6 +127,7 @@
         }
         function updateLiveSession(data, observedMillis) {
             sessionClock = liveSessionSnapshot(data.live_timing, data.state, data.expected_record, observedMillis);
+            updateTodayProgress(data.today_progress, observedMillis);
             renderLiveSession();
         }
         const actionOf = button => button.dataset.attendanceAction || button.dataset.action;

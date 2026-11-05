@@ -435,15 +435,22 @@ CHRONO_BUILD_NETWORK=host ./start.sh
 Standard bleibt das isolierte Docker-Build-Netzwerk (`default`). Die Auswahl gilt
 nur für den Build; die Web-Portbindung und Laufzeitfreigaben ändern sich nicht.
 
-### Bekannte Grenze nach einem Host-Neustart
+### Lokaler Neustart bei geänderter Gerätekennung
 
-Die Laufzeit bindet Datenbank und Schlüssel an Dateisystem-Gerätekennungen und
-Inodes. Eine geänderte Gerätekennung kann deshalb trotz identischem Pfad, Inode
-und Inhalt den Start verweigern. Es gibt weiterhin keine automatische allgemeine
-Wiederanbindung: bestehende Metadaten nicht ungeprüft ersetzen. Für die lokale
-Installation vom 5. November 2026 wurde nach vollständiger kalter Sicherung eine
-begrenzte Wiederanbindung vorgenommen; Datenbankbytes blieben unverändert und die
-vollständige Laufzeitprüfung sowie die Browser-Anmeldung waren danach erfolgreich.
+`./start.sh` stoppt den einzelnen Web-Container des lokalen Standardprofils und
+prüft bei abgeschlossener Einrichtung die gebundene Dateisystemidentität.
+Bleiben Pfad, Inode, Eigentümer, Rechte und Schlüsselprüfsummen gleich, wird eine
+geänderte Gerätekennung nach einer vollständigen geprüften privaten Sicherung
+neu gebunden. Datenbank und Schlüsselbytes bleiben unverändert. Anschließend
+muss die vollständige Datenbankzulassung bestehen, bevor Web wieder startet.
+
+Die Sicherung liegt im privaten Elternordner unter `device-rebind-backup-*`.
+Bei einer unterbrochenen Umstellung sperrt `device-rebind.pending` den Webstart;
+dann Sicherung und Zustand prüfen, statt die Sperre zu löschen oder erneut zu
+starten. Geänderte Inodes, unbekannte Metadaten, LDAP-Zulassungen und laufende
+Upgrade-Verfahren werden nicht automatisch übernommen. Der Ablauf gilt für den
+lokalen Einzelcontainer ohne weitere Datenbankverbraucher; ein automatischer
+Betriebssystem-Startdienst wird dadurch nicht eingerichtet.
 
 `start.sh` leert nach dem erfolgreichen Containerstart den privaten Blade-Cache.
 So bleiben nach Image-Updates keine alten Ansichten wegen erhaltener Dateizeiten
