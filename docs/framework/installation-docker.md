@@ -422,3 +422,25 @@ Entwicklertest: `tests/holiday_automatic_source.php` prüft die begrenzte feste 
 ohne Netzwerk. `tests/holiday_automatic_journey.py` schreibt ausschließlich in die
 separate synthetische Installation auf `127.0.0.1:18084`; sie erwartet einen noch
 leeren Feiertagsbestand für 2028 und darf nicht gegen echte Nutzerdaten laufen.
+
+### Docker-Build bei lokalen DNS-Problemen
+
+Wenn Paketquellen im Docker-Build nicht aufgelöst werden, obwohl der Host sie
+auflösen kann, lässt sich auf Linux explizit das Host-Netzwerk verwenden:
+
+```sh
+CHRONO_BUILD_NETWORK=host ./start.sh
+```
+
+Standard bleibt das isolierte Docker-Build-Netzwerk (`default`). Die Auswahl gilt
+nur für den Build; die Web-Portbindung und Laufzeitfreigaben ändern sich nicht.
+
+### Bekannte Grenze nach einem Host-Neustart
+
+Die Laufzeit bindet Datenbank und Schlüssel an Dateisystem-Gerätekennungen und
+Inodes. Eine geänderte Gerätekennung kann deshalb trotz identischem Pfad, Inode
+und Inhalt den Start verweigern. Es gibt weiterhin keine automatische allgemeine
+Wiederanbindung: bestehende Metadaten nicht ungeprüft ersetzen. Für die lokale
+Installation vom 5. November 2026 wurde nach vollständiger kalter Sicherung eine
+begrenzte Wiederanbindung vorgenommen; Datenbankbytes blieben unverändert und die
+vollständige Laufzeitprüfung sowie die Browser-Anmeldung waren danach erfolgreich.

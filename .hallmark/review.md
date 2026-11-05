@@ -132,3 +132,17 @@ renders and five admin areas passed. Both new CSS files have zero static sloplin
 FAIL/REFLEX/WARN; its render tier was unavailable for standalone CSS, so actual IAB
 screenshots supplied visual review. Proof: `/tmp/chrono-vacation-review-final.png`
 and `/tmp/chrono-vacation-approved-final.png`.
+
+## November usability follow-up
+
+Separated administration from the personal More menu and moved Settings into
+Account. Home now links directly to the vacation request page; the connected
+absence dialog is restricted to sickness, with the original writer unchanged.
+The recorded-day balance retains its original calculation but uses an explicit
+caption and contextual explanation instead of a red warning for negative values.
+Actual synthetic browser submission confirmed one sick day and an 08:00 credit;
+proof `/tmp/chrono-illness-verified.png`. Timer and event-ID tests passed. The
+existing installation was separately recovered from a host device-number change
+under a cold backup, exact inode/key fingerprint checks and unchanged DB hash;
+full runtime bootstrap and browser login page passed. This does not implement a
+general automatic reboot recovery facility.

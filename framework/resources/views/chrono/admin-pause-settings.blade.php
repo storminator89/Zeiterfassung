@@ -40,7 +40,7 @@
                     <button class="btn btn-outline-secondary" type="submit" aria-label="Suchen"><i class="fas fa-search" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg></i></button>
                 </div></div>
             </form>            <button type="button" class="btn btn-primary" id="toggleUserForm" @disabled($adminPauseSettings->departments === [] || ! $adminPauseSettings->enabled || ($adminPauseSettings->intakePolicy !== null && ! $adminPauseSettings->intakePolicy['manual_enabled']))><i class="fas fa-plus mr-2" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M4 12h16"/></svg></i>{{ $page->copy->text('BUTTON_CREATE_USER') }}</button>
-            @if ($adminPauseSettings->departments === [])<a class="link-secondary chrono-person-prerequisite" href="admin.php?section=departments">Abteilung anlegen</a>@endif
+            @if ($adminPauseSettings->departments === [])<a class="link-secondary chrono-person-prerequisite" href="admin.php?section=departments">Zuerst eine Abteilung anlegen</a>@endif
             </div>
         </div>
         <div class="card-body">

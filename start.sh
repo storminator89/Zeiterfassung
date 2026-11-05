@@ -18,7 +18,9 @@ chrono_image="${CHRONO_LARAVEL_IMAGE:-chrono-laravel:local}"
 if [ -e "$chrono_env" ] && [ ! -f "$chrono_data/installation-ready" ]; then
     echo 'An incomplete installation exists. Inspect it; nothing has been reset or retried.' >&2; exit 1
 fi
-docker build -t "$chrono_image" "$chrono_root"
+chrono_build_network="${CHRONO_BUILD_NETWORK:-default}"
+case "$chrono_build_network" in default|host|none) ;; *) echo "Unsupported CHRONO_BUILD_NETWORK." >&2; exit 1;; esac
+docker build --network "$chrono_build_network" -t "$chrono_image" "$chrono_root"
 if [ ! -e "$chrono_env" ]; then
     [ -z "$(find "$chrono_data" -mindepth 1 -maxdepth 1 -print -quit)" ] || { echo "Nonempty private directory without local.env: refusing adoption." >&2; exit 1; }
     mkdir "$chrono_data/.installing" || exit 1

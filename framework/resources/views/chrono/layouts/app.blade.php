@@ -51,21 +51,22 @@
                             <span>Team</span>
                         </a>
                     @endif
-                    @if ($page->role === 'admin')
+                    </div>
+                </details>
+
+                @if ($page->role === 'admin')<details class="chrono-nav-more"><summary>Verwaltung</summary><div class="sidebar-items">
                     <a href="admin.php" class="sidebar-link {{ $navPage === 'admin.php' ? 'active' : '' }}" @if ($navPage === 'admin.php') aria-current="page" @endif><x-chrono-icon name="settings" size="20" />
                             <span>Verwaltung</span>
                         </a>
 <a href="terminals.php" class="sidebar-link {{ $navPage === 'terminals.php' ? 'active' : '' }}" @if ($navPage === 'terminals.php') aria-current="page" @endif><x-chrono-icon name="device-desktop" size="20" /><span>Terminals</span></a>
-                    @endif
-                    <a href="settings.php" class="sidebar-link {{ $navPage === 'settings.php' ? 'active' : '' }}" @if ($navPage === 'settings.php') aria-current="page" @endif><x-chrono-icon name="user" size="20" />
-                            <span>{{ $page->copy->text('NAV_SETTINGS') }}</span>
-                        </a>
-                    </div>
-                </details>
 
+</div></details>@endif
             </nav>
             <div id="navbar" class="chrono-header-actions">
-                            <details class="chrono-account-menu"><summary>Konto</summary><div class="sidebar-items">
+                            <details class="chrono-account-menu"><summary>Konto</summary><div class="sidebar-items">                    <a href="settings.php" class="sidebar-link {{ $navPage === 'settings.php' ? 'active' : '' }}" @if ($navPage === 'settings.php') aria-current="page" @endif><x-chrono-icon name="user" size="20" />
+                            <span>{{ $page->copy->text('NAV_SETTINGS') }}</span>
+                        </a>
+
                                             <button type="button" class="sidebar-link w-full" @if ($page->cspNonce === null) onclick="showAboutModal()" @else data-local-about="open" @endif>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 10v7M12 6v1M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20"/></svg>
                             <span>{{ $page->copy->text('NAV_ABOUT') }}</span>

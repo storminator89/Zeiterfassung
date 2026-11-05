@@ -226,7 +226,7 @@
             element.dataset.reportPresentation = value.presentation;
             element.classList.remove('text-success', 'text-error');
             if (value.presentation === 'current' && value.label !== '00:00' && value.positive !== null) {
-                element.classList.add(value.positive ? 'text-success' : 'text-error');
+                if (value.positive) element.classList.add('text-success');
             }
             reportRefreshNeeded = false;
             reportNotice();

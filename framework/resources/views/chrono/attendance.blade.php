@@ -42,8 +42,8 @@
         <aside class="min-w-0 chrono-balance-strip" aria-label="Zeitkonto">
             <section class="chrono-today-account">
                 <div class="card-body p-4 sm:p-6">
-                    <header class="chrono-account-heading"><span class="chrono-account-symbol"><x-chrono-icon name="clock" size="20" /></span><span>Dein Zeitkonto</span><x-chrono-help label="Berechnung des Saldos"><p>{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p><p>{{ $page->currentMonthName }}: {{ $page->workingDaysThisMonth }} Arbeitstage.</p></x-chrono-help></header>
-                    <div class="chrono-account-balance"><span class="chrono-account-caption">Saldo</span><div data-home-balance aria-label="{{ $page->copy->text('UI_RECORDED_BALANCE') }}" data-report-period="all" data-report-presentation="{{ $page->overtimePresentation() }}" class="chrono-account-value {{ $page->reportUnresolved || $page->reportInvalidCount > 0 || $page->positiveOvertime === null || $page->overtimeLabel() === '00:00' ? '' : ($page->positiveOvertime ? 'text-success' : 'text-error') }}">{{ $page->overtimeLabel() }}</div><span class="chrono-account-unit">Stunden</span></div>
+                    <header class="chrono-account-heading"><span class="chrono-account-symbol"><x-chrono-icon name="clock" size="20" /></span><span>Dein Zeitkonto</span><x-chrono-help label="Berechnung des Saldos"><p>{{ $page->copy->text('DASHBOARD_OVERTIME_INFO') }}</p><p>Auch für den heutigen gebuchten Tag wird bereits das ganze Tagessoll abgezogen. Der Wert ist kein laufender Tagesfortschritt.</p><p>{{ $page->currentMonthName }}: {{ $page->workingDaysThisMonth }} Arbeitstage.</p></x-chrono-help></header>
+                    <div class="chrono-account-balance"><span class="chrono-account-caption">Saldo gebuchter Tage</span><div data-home-balance aria-label="{{ $page->copy->text('UI_RECORDED_BALANCE') }}" data-report-period="all" data-report-presentation="{{ $page->overtimePresentation() }}" class="chrono-account-value {{ $page->reportUnresolved || $page->reportInvalidCount > 0 || $page->positiveOvertime === null || $page->overtimeLabel() === '00:00' ? '' : ($page->positiveOvertime ? 'text-success' : '') }}">{{ $page->overtimeLabel() }}</div><span class="chrono-account-unit">Stunden</span></div>
                     <div class="chrono-account-goal"><x-chrono-icon name="briefcase" size="18" /><span>Soll heute</span><strong>{{ $page->dailyHoursFormatted ?? '—' }}<small> h</small></strong></div>
                     <a href="dashboard.php" class="chrono-account-link"><span>Zeitkonto öffnen</span><x-chrono-icon name="arrow-right" size="18" /></a>
                 </div>
@@ -51,7 +51,8 @@
         </aside>
     </div>
     <nav class="chrono-today-shortcuts" aria-label="Weitere Aufgaben">
-        <a href="attendance.php?panel=absence#home-absence" data-home-dialog="home-absence"><x-chrono-icon name="calendar-check" size="20" />Abwesenheit erfassen</a>
+        @if ($vacationAvailable)<a href="vacation.php"><x-chrono-icon name="plane" size="20" />Urlaub beantragen</a>@endif
+        <a href="attendance.php?panel=absence#home-absence" data-home-dialog="home-absence"><x-chrono-icon name="calendar-off" size="20" />{{ $vacationAvailable ? 'Krankheit melden' : 'Abwesenheit erfassen' }}</a>
         <a href="adjustments.php"><x-chrono-icon name="pencil" size="20" />Zeit korrigieren</a>
         <a href="attendance.php?panel=reports#home-reports" data-home-dialog="home-reports"><x-chrono-icon name="chart-bar" size="20" />Berichte &amp; Export</a>
     </nav>
@@ -64,28 +65,25 @@
 <div class="chrono-tools">
                     @if ($page->holidaysThisWeek !== [])<details class="chrono-holiday-note"><summary>{{ $page->copy->text('HOLIDAYS_THIS_WEEK') }}</summary><div>@foreach ($page->holidaysThisWeek as $holiday)<p class="text-sm">{{ $holiday['date'] }} {{ $holiday['name'] }}</p>@endforeach</div></details>@endif
                     <dialog id="home-absence" class="chrono-home-dialog" aria-labelledby="home-absence-title" @if(request()->query('panel') === 'absence') open data-open-home-dialog @endif>
-                    <header class="chrono-home-dialog-header"><h2 id="home-absence-title"><x-chrono-icon name="calendar-check" size="22" /> Abwesenheit erfassen</h2><a href="attendance.php" data-close-home-dialog class="btn btn-icon btn-ghost-secondary" aria-label="Dialog schließen">×</a></header>
+                    <header class="chrono-home-dialog-header"><h2 id="home-absence-title"><x-chrono-icon name="calendar-check" size="22" /> {{ $vacationAvailable ? 'Krankheit melden' : 'Abwesenheit erfassen' }}</h2><a href="attendance.php" data-close-home-dialog class="btn btn-icon btn-ghost-secondary" aria-label="Dialog schließen">×</a></header>
                     <form id="absence-form" method="post" action="save.php" class="chrono-absence-form">
                         @csrf
                         <fieldset disabled @if ($page->interactions->absences) data-local-absence-enabled="1" @endif class="chrono-absence-fields">
                             <legend class="sr-only">Abwesenheit</legend>
                             <fieldset class="chrono-absence-kind"><legend class="sr-only">Art der Abwesenheit</legend>
-                                <label><input type="radio" name="beschreibung" value="Urlaub" class="form-check-input" checked required><x-chrono-icon name="plane" size="18" />{{ $page->copy->text('EVENT_VACATION') }}</label>
-                                <label><input type="radio" name="beschreibung" value="Krankheit" class="form-check-input" required><x-chrono-icon name="calendar-off" size="18" />{{ $page->copy->text('EVENT_SICK') }}</label>
+                                @if(!$vacationAvailable)<label><input type="radio" name="beschreibung" value="Urlaub" class="form-check-input" @if(!$vacationAvailable) checked @endif required><x-chrono-icon name="plane" size="18" />{{ $page->copy->text('EVENT_VACATION') }}</label>@endif
+                                <label><input type="radio" name="beschreibung" value="Krankheit" class="form-check-input" @if($vacationAvailable) checked @endif required><x-chrono-icon name="calendar-off" size="18" />{{ $page->copy->text('EVENT_SICK') }}</label>
                             </fieldset>
                             <div class="chrono-form-pair">
                                 <div><label for="urlaubStart" class="form-label">Von</label><input type="date" id="urlaubStart" name="urlaubStart" class="form-control" required></div>
                                 <div><label for="urlaubEnde" class="form-label">Bis</label><input type="date" id="urlaubEnde" name="urlaubEnde" class="form-control" required></div>
                             </div>
-                            @if ($vacationAvailable)
-                            <input type="hidden" name="vacation_command_id" value="{{ bin2hex(random_bytes(16)) }}">
-                            <div><label class="form-label" for="home-vacation-reason">{{ $vacationCopy->text('home_reason') }}</label><textarea id="home-vacation-reason" name="vacation_reason" maxlength="2000" class="form-control" rows="2"></textarea></div>
-                            @endif
+
                             <p id="absence-message" class="text-sm" role="status" aria-live="polite"></p>
                             <footer class="chrono-dialog-footer">
                                 <x-chrono-help label="Abwesenheiten und Feiertage"><p>Urlaub und Krankheit erhalten die Sollminuten Ihres Arbeitszeitmodells. Freie Tage und hinterlegte Feiertage werden ausgelassen. Gutschriften sind keine gestempelten Arbeitszeiten.</p>@if($vacationAvailable)<p>{{ $vacationCopy->text('home_note') }} <a href="vacation.php">{{ $vacationCopy->text('open') }}</a></p>@endif @if($page->interactions->dashboard)<p><a href="dashboard.php?holiday_inventory=1#holiday-inventory" target="_blank" rel="noopener noreferrer">{{ $page->copy->text('HOLIDAY_INVENTORY_ABSENCE_LINK') }}</a></p>@endif</x-chrono-help>
                                 <a href="attendance.php" data-close-home-dialog class="btn btn-outline-secondary">Abbrechen</a>
-                                <button type="submit" class="btn btn-primary">Abwesenheit erfassen</button>
+                                <button type="submit" class="btn btn-primary">{{ $vacationAvailable ? 'Krankheit melden' : 'Abwesenheit erfassen' }}</button>
                             </footer>
                         </fieldset>
                     </form>
